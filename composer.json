@@ -1,5 +1,5 @@
 {
-  "name": "six-it/pimcore-skeleton",
+  "name": "six-it/pimcore-source",
   "type": "library",
   "description": "Content & Product Management Framework (CMS/PIM/E-Commerce)",
   "keywords": [
@@ -225,7 +225,9 @@
       "Pimcore\\Composer::installAssets"
     ]
   },
-  "bin": ["bin/pimcore-install"],
+  "bin": [
+    "bin/pimcore-install"
+  ],
   "config": {
     "sort-packages": true,
     "preferred-install": {
