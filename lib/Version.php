@@ -24,7 +24,7 @@ use OutOfBoundsException;
  */
 final class Version
 {
-    const PACKAGE_NAME = 'six-it/pimcore';
+    const PACKAGE_NAME = 'six-it/pimcore-source';
 
     private const PLATFORM_VERSION_PACKAGE_NAME = 'six-it/platform-version';
 
