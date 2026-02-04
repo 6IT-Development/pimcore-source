@@ -28,7 +28,7 @@ final class Version
 
     private const PLATFORM_VERSION_PACKAGE_NAME = 'six-it/platform-version';
 
-    private const MAJOR_VERSION = 11;
+    private const MAJOR_VERSION = 1;
 
     public static function getMajorVersion(): int
     {
