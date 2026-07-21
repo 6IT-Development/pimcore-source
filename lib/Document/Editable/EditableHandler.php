@@ -31,6 +31,7 @@ use Pimcore\HttpKernel\WebPathResolver;
 use Pimcore\Model\Document\Editable;
 use Pimcore\Model\Document\Editable\Area\Info;
 use Pimcore\Model\Document\PageSnippet;
+use Pimcore\Templating\TwigDefaultDelegatingEngine;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Bridge\Twig\Extension\HttpKernelRuntime;
@@ -39,7 +40,6 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Controller\ControllerReference;
 use Symfony\Component\HttpKernel\Fragment\FragmentRendererInterface;
-use Symfony\Component\Templating\EngineInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -51,7 +51,7 @@ class EditableHandler implements LoggerAwareInterface
 
     protected AreabrickManagerInterface $brickManager;
 
-    protected EngineInterface $templating;
+    protected TwigDefaultDelegatingEngine $templating;
 
     protected BundleLocatorInterface $bundleLocator;
 
@@ -80,7 +80,7 @@ class EditableHandler implements LoggerAwareInterface
 
     public function __construct(
         AreabrickManagerInterface $brickManager,
-        EngineInterface $templating,
+        TwigDefaultDelegatingEngine $templating,
         BundleLocatorInterface $bundleLocator,
         WebPathResolver $webPathResolver,
         RequestHelper $requestHelper,

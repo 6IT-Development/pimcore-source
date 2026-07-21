@@ -16,10 +16,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Controller;
 
+use Pimcore\Templating\TwigDefaultDelegatingEngine;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Symfony\Component\Templating\EngineInterface;
 
 abstract class Controller extends AbstractController
 {
@@ -76,7 +76,7 @@ abstract class Controller extends AbstractController
     public static function getSubscribedServices(): array
     {
         $services = parent::getSubscribedServices();
-        $services['pimcore.templating'] = '?'.EngineInterface::class;
+        $services['pimcore.templating'] = '?'.TwigDefaultDelegatingEngine::class;
 
         return $services;
     }

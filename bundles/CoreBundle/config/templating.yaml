@@ -40,7 +40,7 @@ services:
         tags:
             - { name: pimcore.navigation.renderer, alias: breadcrumbs }
 
-    Symfony\Component\Templating\EngineInterface: '@pimcore.templating.engine.delegating'
+    Pimcore\Templating\TwigDefaultDelegatingEngine: '@pimcore.templating.engine.delegating'
 
     pimcore.templating.engine.delegating:
         public: true

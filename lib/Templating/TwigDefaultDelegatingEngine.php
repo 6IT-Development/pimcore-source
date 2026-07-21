@@ -19,34 +19,23 @@ namespace Pimcore\Templating;
 use Exception;
 use Pimcore\Config;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Templating\DelegatingEngine as BaseDelegatingEngine;
-use Symfony\Component\Templating\EngineInterface;
-use Symfony\Component\Templating\TemplateReferenceInterface;
 use Twig\Environment;
 use Twig\Extension\SandboxExtension;
 
 /**
  * @internal
  */
-class TwigDefaultDelegatingEngine extends BaseDelegatingEngine
+class TwigDefaultDelegatingEngine
 {
     protected bool $delegate = false;
 
-    /**
-     * @param EngineInterface[] $engines
-     */
-    public function __construct(protected Environment $twig, protected Config $config, array $engines = [])
+    public function __construct(protected Environment $twig, protected Config $config)
     {
-        parent::__construct($engines);
     }
 
-    public function exists(string|TemplateReferenceInterface $name): bool
+    public function exists(string $name): bool
     {
-        if (!$this->delegate) {
-            return $this->twig->getLoader()->exists($name);
-        } else {
-            return parent::exists($name);
-        }
+        return $this->twig->getLoader()->exists($name);
     }
 
     /**
@@ -54,22 +43,14 @@ class TwigDefaultDelegatingEngine extends BaseDelegatingEngine
      *
      * @throws Exception
      */
-    public function render(string|TemplateReferenceInterface $name, array $parameters = []): string
+    public function render(string $name, array $parameters = []): string
     {
-        if (!$this->delegate) {
-            return $this->twig->render($name, $parameters);
-        } else {
-            return parent::render($name, $parameters);
-        }
+        return $this->twig->render($name, $parameters);
     }
 
-    public function supports(string|TemplateReferenceInterface $name): bool
+    public function supports(string $name): bool
     {
-        if (!$this->delegate) {
-            return true;
-        } else {
-            return parent::supports($name);
-        }
+        return true;
     }
 
     public function setDelegate(bool $delegate): void
@@ -117,5 +98,10 @@ class TwigDefaultDelegatingEngine extends BaseDelegatingEngine
         $response->setContent($this->render($view, $parameters));
 
         return $response;
+    }
+
+    public function stream(string $view, array $parameters = []): void
+    {
+        $this->twig->display($view, $parameters);
     }
 }
