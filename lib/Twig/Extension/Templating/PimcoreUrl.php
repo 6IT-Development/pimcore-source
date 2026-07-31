@@ -10,8 +10,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension\Templating;
@@ -35,7 +35,7 @@ class PimcoreUrl implements RuntimeExtensionInterface
         $this->requestHelper = $requestHelper;
     }
 
-    public function __invoke(array $urlOptions = [], string $name = null, bool $reset = false, bool $encode = true, bool $relative = false): string
+    public function __invoke(array $urlOptions = [], ?string $name = null, bool $reset = false, bool $encode = true, bool $relative = false): string
     {
         // merge all parameters from request to parameters
         if (!$reset && $this->requestHelper->hasMainRequest()) {
@@ -47,10 +47,8 @@ class PimcoreUrl implements RuntimeExtensionInterface
 
     /**
      * Generate URL with support to only pass parameters ZF1 style (defaults to current route).
-     *
-     *
      */
-    protected function generateUrl(array|string $name = null, ?array $parameters = [], int $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH, bool $encode = true): string
+    protected function generateUrl(null|array|string $name = null, ?array $parameters = [], int $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH, bool $encode = true): string
     {
         if ($encode !== true) {
             // encoding is default anyway, so we only set it when really necessary, to minimize the risk of
@@ -74,29 +72,26 @@ class PimcoreUrl implements RuntimeExtensionInterface
             $name = $this->getCurrentRoute();
         }
 
-        $object = $parameters['object'] ?? null;
-        $linkGenerator = null;
+        if (isset($parameters['object']) && is_object($parameters['object'])) {
+            $linkGenerator = null;
+            $object = $parameters['object'];
 
-        if ($object) {
             if (method_exists($object, 'getClass') && method_exists($object->getClass(), 'getLinkGenerator')) {
                 $linkGenerator = $object->getClass()->getLinkGenerator();
             } elseif (method_exists($object, 'getLinkGenerator')) { // useful for ecommerce LinkGeneratorAwareInterface
                 $linkGenerator = $object->getLinkGenerator();
             }
-        }
 
-        if ($linkGenerator) {
-            if (array_key_exists('object', $parameters)) {
+            if (is_object($linkGenerator) && method_exists($linkGenerator, 'generate')) {
                 unset($parameters['object']);
-            }
-            $path = $linkGenerator->generate($object, [
-                'route' => $name,
-                'parameters' => $parameters,
-                'context' => $this,
-                'referenceType' => $referenceType,
-            ]);
 
-            return $path;
+                return $linkGenerator->generate($object, [
+                    'route' => $name,
+                    'parameters' => $parameters,
+                    'context' => $this,
+                    'referenceType' => $referenceType,
+                ]);
+            }
         }
 
         if ($name !== null) {
@@ -108,20 +103,19 @@ class PimcoreUrl implements RuntimeExtensionInterface
 
     /**
      * Tries to get the current route name from current or main request
-     *
      */
     protected function getCurrentRoute(): ?string
     {
-        $route = null;
-
         if ($this->requestHelper->hasCurrentRequest()) {
-            $route = $this->requestHelper->getCurrentRequest()->attributes->get('_route');
+            if ($route = $this->requestHelper->getCurrentRequest()->attributes->get('_route')) {
+                return $route;
+            }
         }
 
-        if (!$route && $this->requestHelper->hasMainRequest()) {
-            $route = $this->requestHelper->getMainRequest()->attributes->get('_route');
+        if ($this->requestHelper->hasMainRequest()) {
+            return $this->requestHelper->getMainRequest()->attributes->get('_route');
         }
 
-        return $route;
+        return null;
     }
 }

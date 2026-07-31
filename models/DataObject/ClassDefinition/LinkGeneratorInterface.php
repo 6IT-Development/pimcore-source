@@ -19,7 +19,6 @@ namespace Pimcore\Model\DataObject\ClassDefinition;
 interface LinkGeneratorInterface
 {
     /**
-     *
      * To support mockups or arbitrary objects
      */
     public function generate(object $object, array $params = []): string;
