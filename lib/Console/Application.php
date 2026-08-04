@@ -10,8 +10,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore\Console;
@@ -22,7 +22,6 @@ use Pimcore\Event\System\ConsoleEvent;
 use Pimcore\Event\SystemEvents;
 use Pimcore\Migrations\FilteredMigrationsRepository;
 use Pimcore\Migrations\FilteredTableMetadataStorage;
-use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
 use Pimcore\Version;
 use RuntimeException;
@@ -32,6 +31,7 @@ use Symfony\Component\Console\ConsoleEvents;
 use Symfony\Component\Console\Event\ConsoleCommandEvent;
 use Symfony\Component\Console\Event\ConsoleTerminateEvent;
 use Symfony\Component\Console\Input\InputDefinition;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\HttpKernel\KernelInterface;
 
@@ -43,13 +43,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
 final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Application
 {
     /**
-     * Constructor.
-     *
-     *
      * @internal param string $name The name of the application
-     * @internal param string $version The version of the application
-     *
-     * @api
      */
     public function __construct(KernelInterface $kernel)
     {
@@ -58,100 +52,105 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
         $this->setName('Pimcore');
         $this->setVersion(Version::getVersion());
 
-        // we set locale to EN.UTF8 to not getting into UTF-8 issues, eg. when dealing with umlauts & escapeshellarg()
+        // we set locale to EN.UTF8 to not getting into UTF-8 issues, e.g. when dealing with umlauts & escapeshellarg()
         setlocale(LC_ALL, ['en.utf8', 'en.UTF-8', 'en_US.utf8', 'en_US.UTF-8', 'en_GB.utf8', 'en_GB.UTF-8']);
 
         // allow to register commands here (e.g. through plugins)
         $dispatcher = Pimcore::getEventDispatcher();
-        $event = new ConsoleEvent($this);
-        $dispatcher->dispatch($event, SystemEvents::CONSOLE_INIT);
+        $dispatcher->dispatch(new ConsoleEvent($this), SystemEvents::CONSOLE_INIT);
 
         $this->setDispatcher($dispatcher);
 
-        $maintenanceModeHelper = $kernel->getContainer()->get(MaintenanceModeHelperInterface::class);
-        $dispatcher->addListener(ConsoleEvents::COMMAND, function (ConsoleCommandEvent $event) use ($kernel, $maintenanceModeHelper) {
+        $container = $kernel->getContainer();
+        $maintenanceModeHelper = $container->get(MaintenanceModeHelperInterface::class);
+
+        $dispatcher->addListener(ConsoleEvents::COMMAND, function (ConsoleCommandEvent $event) use ($container, $maintenanceModeHelper) {
+            $input = $event->getInput();
+
             // skip if maintenance mode is on and the flag is not set
-            if (($maintenanceModeHelper->isActive() || Admin::isInMaintenanceMode()) &&
-                !$event->getInput()->getOption('ignore-maintenance-mode')
-            ) {
-                throw new RuntimeException(
-                    'In maintenance mode - set the flag --ignore-maintenance-mode to force execution!'
-                );
+            if ($maintenanceModeHelper->isActive() && !$this->getInputOption($input, 'ignore-maintenance-mode')) {
+                throw new RuntimeException('In maintenance mode - set the flag --ignore-maintenance-mode to force execution!');
             }
 
-            if ($event->getInput()->hasOption('time-limit')) {
+            if ($timeLimit = (int)$this->getInputOption($input, 'time-limit')) {
                 // this is to set the database wait_timeout according to the --time-limit option provided by messenger:consume
                 // to ensure the worker has a working database connection over the entire lifetime of the process
-                $timeLimit = (int) $event->getInput()->getOption('time-limit');
                 $db = Pimcore\Db::get();
-                $result = $db->fetchAssociative("SHOW VARIABLES LIKE 'wait_timeout'");
-                if ($result['Value'] < $timeLimit) {
-                    $db->executeQuery('SET SESSION wait_timeout = ' . $timeLimit);
+                if ($db->fetchAssociative("SHOW VARIABLES LIKE 'wait_timeout'")['Value'] < $timeLimit) {
+                    $db->executeQuery("SET SESSION wait_timeout = $timeLimit");
                 }
             }
 
-            if ($event->getInput()->getOption('maintenance-mode')) {
+            if ($this->getInputOption($input, 'maintenance-mode')) {
                 // enable maintenance mode if requested
                 $maintenanceModeId = 'cache-warming-dummy-session-id';
 
-                $event->getOutput()->writeln(
-                    'Activating maintenance mode with ID <comment>' . $maintenanceModeId . '</comment> ...'
-                );
+                $event->getOutput()->writeln("Activating maintenance mode with ID <comment>$maintenanceModeId</comment> ...");
 
                 $maintenanceModeHelper->activate($maintenanceModeId);
             }
 
-            if ($event->getCommand() instanceof DoctrineCommand &&
-                $prefix = $event->getInput()->getOption('prefix')
-            ) {
-                $kernel->getContainer()->get(FilteredMigrationsRepository::class)->setPrefix($prefix);
-                $kernel->getContainer()->get(FilteredTableMetadataStorage::class)->setPrefix($prefix);
+            if ($this->isDoctrineCommand($event->getCommand()) && $prefix = $this->getInputOption($input, 'prefix')) {
+                $container->get(FilteredMigrationsRepository::class)->setPrefix($prefix);
+                $container->get(FilteredTableMetadataStorage::class)->setPrefix($prefix);
             }
         });
 
         $dispatcher->addListener(ConsoleEvents::TERMINATE, function (ConsoleTerminateEvent $event) use ($maintenanceModeHelper) {
-            if ($event->getInput()->getOption('maintenance-mode')) {
+            if ($this->getInputOption($event->getInput(), 'maintenance-mode')) {
                 $event->getOutput()->writeln('Deactivating maintenance mode...');
-                //BC Layer for Admin::activateMaintenanceMode, if the maintenance file already exists
-                if (Admin::isInMaintenanceMode()) {
-                    Admin::deactivateMaintenanceMode();
+
+                if ($maintenanceModeHelper->isActive()) {
+                    $maintenanceModeHelper->deactivate();
                 }
-                $maintenanceModeHelper->deactivate();
             }
         });
     }
 
-    /**
-     * Gets the default input definition.
-     *
-     */
-    protected function getDefaultInputDefinition(): InputDefinition
+    private function getInputOption(InputInterface $input, string $name): mixed
     {
-        $inputDefinition = parent::getDefaultInputDefinition();
-        $inputDefinition->addOption(new InputOption('ignore-maintenance-mode', null, InputOption::VALUE_NONE, 'Set this flag to force execution in maintenance mode'));
-        $inputDefinition->addOption(new InputOption('maintenance-mode', null, InputOption::VALUE_NONE, 'Set this flag to force maintenance mode while this task runs'));
+        if (!$input->hasOption($name)) {
+            return null;
+        }
 
-        return $inputDefinition;
+        return $input->getOption($name);
+    }
+
+    private function isDoctrineCommand(Command $command): bool
+    {
+        return str_starts_with($command->getName(), 'doctrine:') || $command instanceof DoctrineCommand;
     }
 
     public function add(Command $command): ?Command
+    {
+        return $this->addCommand($command);
+    }
+
+    public function addCommand(callable|Command $command): ?Command
     {
         if ($command instanceof LazyCommand && str_starts_with($command->getName(), 'doctrine:')) {
             $command = $command->getCommand();
         }
 
-        if ($command instanceof DoctrineCommand) {
+        if ($this->isDoctrineCommand($command)) {
             $definition = $command->getDefinition();
 
             // add filter option
-            $definition->addOption(new InputOption(
-                'prefix',
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Optional prefix filter for version classes, eg. Pimcore\Bundle\CoreBundle\Migrations'
-            ));
+            $definition->addOption(new InputOption(name: 'prefix', mode: InputOption::VALUE_OPTIONAL, description: 'Optional prefix filter for version classes, eg. Pimcore\Bundle\CoreBundle\Migrations'));
         }
 
-        return parent::add($command);
+        return parent::addCommand($command);
+    }
+
+    /**
+     * Gets the default input definition.
+     */
+    protected function getDefaultInputDefinition(): InputDefinition
+    {
+        $inputDefinition = parent::getDefaultInputDefinition();
+        $inputDefinition->addOption(new InputOption(name: 'ignore-maintenance-mode', mode: InputOption::VALUE_NONE, description: 'Set this flag to force execution in maintenance mode'));
+        $inputDefinition->addOption(new InputOption(name: 'maintenance-mode', mode: InputOption::VALUE_NONE, description: 'Set this flag to force maintenance mode while this task runs'));
+
+        return $inputDefinition;
     }
 }

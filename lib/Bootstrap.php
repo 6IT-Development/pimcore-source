@@ -10,8 +10,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -95,11 +95,14 @@ class Bootstrap
     {
         // this should already be defined at this point, but we include a fallback for backwards compatibility here
         if (!defined('PIMCORE_PROJECT_ROOT')) {
+            // TODO csak symlink közben
+
             define(
                 'PIMCORE_PROJECT_ROOT',
-                $_SERVER['PIMCORE_PROJECT_ROOT'] ?? $_ENV['PIMCORE_PROJECT_ROOT'] ??
-                $_SERVER['REDIRECT_PIMCORE_PROJECT_ROOT'] ?? $_ENV['REDIRECT_PIMCORE_PROJECT_ROOT'] ??
-                realpath(__DIR__ . '/../../../..')
+                getcwd() ?:
+                    $_SERVER['PIMCORE_PROJECT_ROOT'] ?? $_ENV['PIMCORE_PROJECT_ROOT'] ??
+                    $_SERVER['REDIRECT_PIMCORE_PROJECT_ROOT'] ?? $_ENV['REDIRECT_PIMCORE_PROJECT_ROOT'] ??
+                    realpath(__DIR__ . '/../../../..')
             );
         }
     }
@@ -233,7 +236,7 @@ class Bootstrap
     {
         $environment = Config::getEnvironment();
 
-        $debug = (bool) ($_SERVER['APP_DEBUG'] ?? false);
+        $debug = (bool)($_SERVER['APP_DEBUG'] ?? false);
         if ($debug) {
             umask(0000);
             Debug::enable();
