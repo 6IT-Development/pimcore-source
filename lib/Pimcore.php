@@ -10,11 +10,12 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 use Pimcore\Cache;
+use Pimcore\Helper\LongRunningHelper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -39,7 +40,7 @@ class Pimcore
             if (!is_bool($value)) {
                 $value = filter_var($value, \FILTER_VALIDATE_BOOLEAN);
             }
-            $_SERVER['PIMCORE_DEV_MODE'] = (bool) $value;
+            $_SERVER['PIMCORE_DEV_MODE'] = (bool)$value;
         }
 
         return $_SERVER['PIMCORE_DEV_MODE'];
@@ -47,8 +48,6 @@ class Pimcore
 
     /**
      * switches pimcore into the admin mode - there you can access also unpublished elements, ....
-     *
-     * @internal
      */
     public static function setAdminMode(): void
     {
@@ -57,8 +56,6 @@ class Pimcore
 
     /**
      * switches back to the non admin mode, where unpublished elements are invisible
-     *
-     * @internal
      */
     public static function unsetAdminMode(): void
     {
@@ -84,25 +81,16 @@ class Pimcore
         }
     }
 
-    /**
-     * @internal
-     */
     public static function getEventDispatcher(): EventDispatcherInterface
     {
         return self::getContainer()->get('event_dispatcher');
     }
 
-    /**
-     * @internal
-     */
     public static function getKernel(): ?KernelInterface
     {
         return self::$kernel;
     }
 
-    /**
-     * @internal
-     */
     public static function hasKernel(): bool
     {
         if (self::$kernel) {
@@ -124,8 +112,6 @@ class Pimcore
      * Accessing the container this way is discouraged as dependencies should be wired through the container instead of
      * needing to access the container directly. This exists mainly for compatibility with legacy code.
      *
-     * @internal
-     *
      * @deprecated this method just exists for legacy reasons and shouldn't be used in new code
      */
     public static function getContainer(): ?ContainerInterface
@@ -133,9 +119,6 @@ class Pimcore
         return static::getKernel()->getContainer();
     }
 
-    /**
-     * @internal
-     */
     public static function hasContainer(): bool
     {
         if (static::hasKernel()) {
@@ -156,7 +139,7 @@ class Pimcore
      */
     public static function collectGarbage(array $keepItems = []): void
     {
-        $longRunningHelper = self::getContainer()->get(\Pimcore\Helper\LongRunningHelper::class);
+        $longRunningHelper = self::getContainer()->get(LongRunningHelper::class);
         $longRunningHelper->cleanUp([
             'pimcoreRuntimeCache' => [
                 'keepItems' => $keepItems,
@@ -169,15 +152,13 @@ class Pimcore
      */
     public static function deleteTemporaryFiles(): void
     {
-        /** @var \Pimcore\Helper\LongRunningHelper $longRunningHelper */
-        $longRunningHelper = self::getContainer()->get(\Pimcore\Helper\LongRunningHelper::class);
+        /** @var LongRunningHelper $longRunningHelper */
+        $longRunningHelper = self::getContainer()->get(LongRunningHelper::class);
         $longRunningHelper->deleteTemporaryFiles();
     }
 
     /**
      * this method is called with register_shutdown_function() and writes all data queued into the cache
-     *
-     * @internal
      */
     public static function shutdown(): void
     {
@@ -193,25 +174,16 @@ class Pimcore
         }
     }
 
-    /**
-     * @internal
-     */
     public static function disableShutdown(): void
     {
         self::$shutdownEnabled = false;
     }
 
-    /**
-     * @internal
-     */
     public static function enableShutdown(): void
     {
         self::$shutdownEnabled = true;
     }
 
-    /**
-     * @internal
-     */
     public static function disableMinifyJs(): bool
     {
         if (self::inDevMode()) {

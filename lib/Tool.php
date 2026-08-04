@@ -10,8 +10,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -65,7 +65,7 @@ final class Tool
      */
     public static function isValidLanguage(?string $language): bool
     {
-        $language = (string) $language; // cast to string
+        $language = (string)$language; // cast to string
         $languages = self::getValidLanguages();
 
         // if not configured, every language is valid
@@ -179,7 +179,7 @@ final class Tool
         $localeService = Pimcore::getContainer()->get(LocaleServiceInterface::class);
         $locale = $localeService->findLocale();
 
-        $cacheKey = 'system_supported_locales_' . strtolower((string) $locale);
+        $cacheKey = 'system_supported_locales_' . strtolower((string)$locale);
         if (!$languageOptions = Cache::load($cacheKey)) {
             $languages = $localeService->getLocaleList();
 
@@ -250,7 +250,7 @@ final class Tool
         return $languageOptions;
     }
 
-    private static function resolveRequest(Request $request = null): ?Request
+    private static function resolveRequest(?Request $request = null): ?Request
     {
         if (null === $request) {
             // do an extra check for the container as we might be in a state where no container is set yet
@@ -266,7 +266,7 @@ final class Tool
         return $request;
     }
 
-    public static function isFrontend(Request $request = null): bool
+    public static function isFrontend(?Request $request = null): bool
     {
         if (null === $request) {
             $request = Pimcore::getContainer()->get('request_stack')->getMainRequest();
@@ -284,7 +284,7 @@ final class Tool
     /**
      * eg. editmode, preview, version preview, always when it is a "frontend-request", but called out of the admin
      */
-    public static function isFrontendRequestByAdmin(Request $request = null): bool
+    public static function isFrontendRequestByAdmin(?Request $request = null): bool
     {
         $request = self::resolveRequest($request);
 
@@ -314,7 +314,7 @@ final class Tool
     /**
      * @internal
      */
-    public static function useFrontendOutputFilters(Request $request = null): bool
+    public static function useFrontendOutputFilters(?Request $request = null): bool
     {
         $request = self::resolveRequest($request);
 
@@ -346,7 +346,7 @@ final class Tool
     /**
      * @internal
      */
-    public static function getHostname(Request $request = null): ?string
+    public static function getHostname(?Request $request = null): ?string
     {
         $request = self::resolveRequest($request);
 
@@ -363,7 +363,7 @@ final class Tool
     /**
      * @internal
      */
-    public static function getRequestScheme(Request $request = null): string
+    public static function getRequestScheme(?Request $request = null): string
     {
         $request = self::resolveRequest($request);
 
@@ -379,7 +379,7 @@ final class Tool
      *
      * @param string|null $useProtocol use a specific protocol
      */
-    public static function getHostUrl(string $useProtocol = null, Request $request = null): string
+    public static function getHostUrl(?string $useProtocol = null, ?Request $request = null): string
     {
         $request = self::resolveRequest($request);
 
@@ -415,10 +415,7 @@ final class Tool
         return $protocol . '://' . $hostname . $port;
     }
 
-    /**
-     * @internal
-     */
-    public static function getClientIp(Request $request = null): ?string
+    public static function getClientIp(?Request $request = null): ?string
     {
         $request = self::resolveRequest($request);
         if ($request) {
@@ -442,10 +439,7 @@ final class Tool
         return $ip;
     }
 
-    /**
-     * @internal
-     */
-    public static function getAnonymizedClientIp(Request $request = null): ?string
+    public static function getAnonymizedClientIp(?Request $request = null): ?string
     {
         $request = self::resolveRequest($request);
 
@@ -461,7 +455,7 @@ final class Tool
     /**
      * @throws Exception
      */
-    public static function getMail(array|string $recipients = null, string $subject = null): Mail
+    public static function getMail(array|string|null $recipients = null, ?string $subject = null): Mail
     {
         $mail = new Mail();
 
@@ -519,7 +513,7 @@ final class Tool
             if ($response->getStatusCode() < 300) {
                 return (string)$response->getBody();
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
         }
 
         return false;
@@ -571,7 +565,7 @@ final class Tool
         // we need to set a custom error handler here for the time being
         // unfortunately suppressNotFoundWarnings() doesn't work all the time, it has something to do with the calls in
         // Pimcore\Tool::ClassMapAutoloader(), but don't know what actual conditions causes this problem.
-        // but to be save we log the errors into the debug.log, so if anything else happens we can see it there
+        // but to be safe we log the errors into the debug.log, so if anything else happens we can see it there
         // the normal warning is e.g. Warning: include_once(Path/To/Class.php): failed to open stream: No such file or directory in ...
         set_error_handler(function (int $errno, string $errstr, string $errfile, int $errline): bool {
             //Logger::debug(implode(" ", [$errno, $errstr, $errfile, $errline]));
@@ -590,23 +584,24 @@ final class Tool
     }
 
     /**
-     * @internal
-     *
      * @return string[]
+     *
+     * @internal
      *
      * @deprecated. Remove in Pimcore 12
      */
     public static function getCachedSymfonyEnvironments(): array
     {
         $dirs = glob(PIMCORE_SYMFONY_CACHE_DIRECTORY . '/*', GLOB_ONLYDIR);
-        if (($key = array_search(PIMCORE_CACHE_DIRECTORY, $dirs)) !== false) {
+
+        if (false !== $key = array_search(PIMCORE_CACHE_DIRECTORY, $dirs)) {
             unset($dirs[$key]);
         }
+
         $dirs = array_map('basename', $dirs);
-        $dirs = array_filter($dirs, function ($value) {
-            // this filters out "old" build directories, which end with a ~
-            return !(bool) preg_match('/~$/', $value);
-        });
+
+        // this filters out "old" build directories, which end with a ~
+        $dirs = array_filter($dirs, static fn(string $dir): bool => !str_ends_with($dir, '~'));
 
         return array_values($dirs);
     }

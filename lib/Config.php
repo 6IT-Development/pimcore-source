@@ -10,13 +10,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore;
 
 use ArrayAccess;
+use BadMethodCallException;
 use Exception;
 use Pimcore;
 use Pimcore\Cache\RuntimeCache;
@@ -42,36 +43,31 @@ final class Config implements ArrayAccess
      */
     protected static ?array $systemConfig = null;
 
-    public function offsetExists($offset): bool
+    public function offsetExists(mixed $offset): bool
     {
         return self::getSystemConfiguration($offset) !== null;
     }
 
-    public function offsetSet($offset, $value): void
+    public function offsetSet(mixed $offset, mixed $value): void
     {
-        throw new Exception("modifying the config isn't allowed");
+        throw new BadMethodCallException("modifying the config isn't allowed");
     }
 
-    public function offsetUnset($offset): void
+    public function offsetUnset(mixed $offset): void
     {
-        throw new Exception("modifying the config isn't allowed");
+        throw new BadMethodCallException("modifying the config isn't allowed");
     }
 
     /**
-     *
-     *
      * @return array<string, mixed>|null
      */
-    public function offsetGet($offset): ?array
+    public function offsetGet(mixed $offset): ?array
     {
         return self::getSystemConfiguration($offset);
     }
 
     /**
-     * @internal
-     *
      * @param string $name - name of configuration file. slash is allowed for subdirectories.
-     *
      */
     public static function locateConfigFile(string $name): string
     {
@@ -125,54 +121,44 @@ final class Config implements ArrayAccess
      *
      * @internal ONLY FOR TESTING PURPOSES IF NEEDED FOR SPECIFIC TEST CASES
      */
-    public static function setSystemConfiguration(?array $configuration, string $offset = null): void
+    public static function setSystemConfiguration(?array $configuration, ?string $offset = null): void
     {
         if (null !== $offset) {
             self::getSystemConfiguration();
-            static::$systemConfig[$offset] = $configuration;
+            Config::$systemConfig[$offset] = $configuration;
         } else {
-            static::$systemConfig = $configuration;
+            Config::$systemConfig = $configuration;
         }
     }
 
     /**
      * @return null|array<string, mixed>
-     *
-     * @internal
      */
-    public static function getSystemConfiguration(string $offset = null): ?array
+    public static function getSystemConfiguration(?string $offset = null): ?array
     {
-        if (null === static::$systemConfig && $container = Pimcore::getContainer()) {
+        if (null === Config::$systemConfig && $container = Pimcore::getContainer()) {
+            $saveSettingsEvent = new GenericEvent(arguments: ['settings' => $container->getParameter('pimcore.config')]);
+            $container->get('event_dispatcher')->dispatch($saveSettingsEvent, SystemEvents::GET_SYSTEM_CONFIGURATION);
 
-            $settings = $container->getParameter('pimcore.config');
-
-            $saveSettingsEvent = new GenericEvent(null, [
-                'settings' => $settings,
-            ]);
-            $eventDispatcher = $container->get('event_dispatcher');
-            $eventDispatcher->dispatch($saveSettingsEvent, SystemEvents::GET_SYSTEM_CONFIGURATION);
-            $settings = $saveSettingsEvent->getArgument('settings');
-
-            static::$systemConfig = $settings;
+            Config::$systemConfig = $saveSettingsEvent->getArgument('settings');
         }
 
         if (null !== $offset) {
-            return static::$systemConfig[$offset] ?? null;
+            return Config::$systemConfig[$offset] ?? null;
         }
 
-        return static::$systemConfig;
+        return Config::$systemConfig;
     }
 
     /**
-     *
-     *
      * @internal
      */
-    public static function getWebsiteConfigRuntimeCacheKey(string $languange = null): string
+    public static function getWebsiteConfigRuntimeCacheKey(?string $language = null): string
     {
         $cacheKey = 'pimcore_config_website';
-        if ($languange) {
-            $cacheKey .= '_' . $languange;
+
+        if ($language) {
+            $cacheKey .= '_' . $language;
         }
 
         return $cacheKey;
@@ -180,8 +166,10 @@ final class Config implements ArrayAccess
 
     /**
      * @return array<string, mixed>
+     *
+     * @throws Exception
      */
-    public static function getWebsiteConfig(string $language = null): array
+    public static function getWebsiteConfig(?string $language = null): array
     {
         if (RuntimeCache::isRegistered(self::getWebsiteConfigRuntimeCacheKey($language))) {
             $config = RuntimeCache::get(self::getWebsiteConfigRuntimeCacheKey($language));
@@ -237,41 +225,27 @@ final class Config implements ArrayAccess
                         continue;
                     }
 
-                    switch ($item->getType()) {
-                        case 'document':
-                        case 'asset':
-                        case 'object':
-                            $s = $item->getData();
+                    $data = match ($item->getType()) {
+                        'document', 'asset', 'object' => $item->getData(),
+                        'bool' => (bool)$item->getData(),
+                        'text' => (string)$item->getData(),
+                        default => null,
+                    };
 
-                            break;
-                        case 'bool':
-                            $s = (bool) $item->getData();
-
-                            break;
-                        case 'text':
-                            $s = (string) $item->getData();
-
-                            break;
-                        default:
-                            $s = null;
-
-                            break;
-                    }
-
-                    if ($s instanceof Model\Element\ElementInterface) {
-                        $elementCacheKey = $s->getCacheTag();
+                    if ($data instanceof Model\Element\ElementInterface) {
+                        $elementCacheKey = $data->getCacheTag();
                         $cacheTags[$elementCacheKey] = $elementCacheKey;
                     }
 
-                    if (isset($s)) {
-                        $config[$key] = $s;
+                    if (isset($data)) {
+                        $config[$key] = $data;
                     }
                 }
 
                 //TODO resolve for all langs, current lang first, then no lang
                 Cache::save($config, $cacheKey, $cacheTags, null, 998);
             } elseif (is_array($config)) {
-                foreach ($config as $key => $setting) {
+                foreach ($config as $setting) {
                     if ($setting instanceof ElementInterface) {
                         $elementCacheKey = $setting->getCacheTag();
                         if (!RuntimeCache::isRegistered($elementCacheKey)) {
@@ -292,7 +266,7 @@ final class Config implements ArrayAccess
      *
      * @internal
      */
-    public static function setWebsiteConfig(?array $config, string $language = null): void
+    public static function setWebsiteConfig(?array $config, ?string $language = null): void
     {
         RuntimeCache::set(self::getWebsiteConfigRuntimeCacheKey($language), $config);
     }
@@ -300,11 +274,12 @@ final class Config implements ArrayAccess
     /**
      * Returns whole website config or only a given setting for the current site
      *
-     * @param string|null $key  Config key to directly load. If null, the whole config will be returned
-     * @param mixed $default    Default value to use if the key is not set
+     * @param string|null $key Config key to directly load. If null, the whole config will be returned
+     * @param mixed $default Default value to use if the key is not set
      *
+     * @throws Exception
      */
-    public static function getWebsiteConfigValue(string $key = null, mixed $default = null, string $language = null): mixed
+    public static function getWebsiteConfigValue(?string $key = null, mixed $default = null, ?string $language = null): mixed
     {
         $config = self::getWebsiteConfig($language);
         if (null !== $key) {
@@ -318,8 +293,6 @@ final class Config implements ArrayAccess
      * @return array<string, mixed>
      *
      * @throws Exception
-     *
-     * @internal
      */
     public static function getReportConfig(): array
     {
@@ -335,8 +308,7 @@ final class Config implements ArrayAccess
                 if ($configJson) {
                     $config = json_decode($configJson->getData(), true);
                 }
-            } catch (Exception $e) {
-                // nothing to do
+            } catch (Exception) {
             }
         }
 
@@ -347,8 +319,6 @@ final class Config implements ArrayAccess
 
     /**
      * @param array<string, mixed> $config
-     *
-     * @internal
      */
     public static function setReportConfig(array $config): void
     {
@@ -367,8 +337,6 @@ final class Config implements ArrayAccess
 
     /**
      * @param array<string, mixed> $runtimeConfig
-     *
-     * @internal
      */
     public static function inPerspective(array $runtimeConfig, string $key): bool
     {
@@ -413,8 +381,6 @@ final class Config implements ArrayAccess
      * @return array<string, mixed>
      *
      * @throws Exception
-     *
-     * @internal
      */
     public static function getConfigInstance(string $file): array
     {
