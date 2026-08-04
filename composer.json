@@ -46,7 +46,7 @@
     "composer-runtime-api": "^2.0",
     "composer/ca-bundle": "^1.2",
     "defuse/php-encryption": "^2.2.0",
-"doctrine/dbal": "^3.8",
+    "doctrine/dbal": "^3.8",
     "doctrine/doctrine-bundle": "^2.6.3",
     "doctrine/doctrine-migrations-bundle": "^3.2.2",
     "doctrine/inflector": "^2.0.2",
@@ -100,6 +100,7 @@
     "symfony/mime": "^7.4",
     "symfony/monolog-bundle": "^3.8",
     "symfony/options-resolver": "^7.4",
+    "symfony/object-mapper": "^7.4",
     "symfony/password-hasher": "^7.4",
     "symfony/process": "^7.4",
     "symfony/property-access": "^7.4",
@@ -125,7 +126,8 @@
     "twig/extra-bundle": "^3.4.0",
     "twig/string-extra": "^3.3.5",
     "twig/twig": "^3.21.1",
-    "umpirsky/country-list": "^2.0.6"
+    "umpirsky/country-list": "^2.0.6",
+    "ext-libxml": "*"
   },
   "conflict": {
     "doctrine/doctrine-migrations-bundle": "3.4.0",
