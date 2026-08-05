@@ -11,23 +11,22 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Processor;
 
 use Monolog\LogRecord;
-use Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger;
 use Pimcore\Bundle\ApplicationLoggerBundle\FileObject;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Document;
 
 /**
- * Make sure you add this processor when using the ApplicationLoggerDb handler as is
- * prepares data to be written by the handler. This replicates the functionalty implemented
- * in ApplicationLogger, but makes it available when using the ApplicationLoggerDb handler
+ * Make sure you add this processor when using the ApplicationLoggerDb handler as it
+ * prepares data to be written by the handler. This replicates the functionality implemented
+ * in ApplicationLogger but makes it available when using the ApplicationLoggerDb handler
  * in a pure PSR-3 handler context configured as monolog channel handler instead of
  * the ApplicationLogger class.
  */
@@ -37,9 +36,8 @@ class ApplicationLoggerProcessor
     {
         $record = $this->processFileObject($record);
         $record = $this->processRelatedObject($record);
-        $record = $this->processLoggingSource($record);
 
-        return $record;
+        return $this->processLoggingSource($record);
     }
 
     private function processFileObject(LogRecord $record): LogRecord
@@ -72,7 +70,7 @@ class ApplicationLoggerProcessor
         $relatedObject = $context['relatedObject'];
         $relatedObjectType = $context['relatedObjectType'] ?? null;
 
-        if (null !== $relatedObject && is_object($relatedObject)) {
+        if (is_object($relatedObject)) {
             if ($relatedObject instanceof AbstractObject) {
                 $relatedObject = $relatedObject->getId();
                 $relatedObjectType = 'object';

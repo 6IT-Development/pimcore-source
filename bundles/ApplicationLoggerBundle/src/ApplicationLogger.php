@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,16 +11,20 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
+use Monolog\Handler\HandlerInterface;
 use Monolog\Level;
 use Monolog\Logger;
 use Pimcore;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
+use Pimcore\Model\Asset;
+use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Psr\Log\InvalidArgumentException;
@@ -33,7 +38,7 @@ class ApplicationLogger implements LoggerInterface
 
     protected string|null|FileObject $fileObject = null;
 
-    protected \Pimcore\Model\DataObject\AbstractObject|\Pimcore\Model\Document|int|\Pimcore\Model\Asset|null $relatedObject = null;
+    protected AbstractObject|Document|int|Asset|null $relatedObject = null;
 
     protected string $relatedObjectType = 'object';
 
@@ -64,13 +69,13 @@ class ApplicationLogger implements LoggerInterface
 
     public function addWriter(object $writer): void
     {
-        if ($writer instanceof \Monolog\Handler\HandlerInterface) {
+        if ($writer instanceof HandlerInterface) {
             if (!isset($this->loggers['default-monolog'])) {
                 // auto init Monolog logger
                 $this->loggers['default-monolog'] = new Logger('app');
             }
             $this->loggers['default-monolog']->pushHandler($writer);
-        } elseif ($writer instanceof \Psr\Log\LoggerInterface) {
+        } elseif ($writer instanceof LoggerInterface) {
             $this->loggers[] = $writer;
         }
     }
@@ -80,29 +85,20 @@ class ApplicationLogger implements LoggerInterface
         $this->component = $component;
     }
 
-    /**
-     *
-     * @deprecated
-     *
-     */
     public function setFileObject(FileObject|string $fileObject): void
     {
         $this->fileObject = $fileObject;
     }
 
-    /**
-     *
-     * @deprecated
-     */
-    public function setRelatedObject(\Pimcore\Model\Asset|int|\Pimcore\Model\Document|\Pimcore\Model\DataObject\AbstractObject $relatedObject): void
+    public function setRelatedObject(Asset|int|Document|AbstractObject $relatedObject): void
     {
         $this->relatedObject = $relatedObject;
 
-        if ($this->relatedObject instanceof \Pimcore\Model\DataObject\AbstractObject) {
+        if ($this->relatedObject instanceof AbstractObject) {
             $this->relatedObjectType = 'object';
-        } elseif ($this->relatedObject instanceof \Pimcore\Model\Asset) {
+        } elseif ($this->relatedObject instanceof Asset) {
             $this->relatedObjectType = 'asset';
-        } elseif ($this->relatedObject instanceof \Pimcore\Model\Document) {
+        } elseif ($this->relatedObject instanceof Document) {
             $this->relatedObjectType = 'document';
         } else {
             $this->relatedObjectType = 'object';
@@ -122,7 +118,7 @@ class ApplicationLogger implements LoggerInterface
 
         if (isset($context['fileObject'])) {
             if (is_string($context['fileObject'])) {
-                $context['fileObject'] = preg_replace('/^'.preg_quote(\PIMCORE_PROJECT_ROOT, '/').'/', '', $context['fileObject']);
+                $context['fileObject'] = preg_replace('/^' . preg_quote(\PIMCORE_PROJECT_ROOT, '/') . '/', '', $context['fileObject']);
             } elseif ($context['fileObject'] instanceof FileObject) {
                 $context['fileObject'] = $context['fileObject']->getFilename();
             } else {
@@ -152,7 +148,7 @@ class ApplicationLogger implements LoggerInterface
         }
 
         foreach ($this->loggers as $logger) {
-            if ($logger instanceof \Psr\Log\LoggerInterface) {
+            if ($logger instanceof LoggerInterface) {
                 $logger->log($level, $message, $context);
             }
         }
@@ -160,7 +156,6 @@ class ApplicationLogger implements LoggerInterface
 
     /**
      * Resolve logging source
-     *
      */
     protected function resolveLoggingSource(): string
     {
@@ -185,43 +180,32 @@ class ApplicationLogger implements LoggerInterface
             }
         }
 
-        $normalizeFile = function ($filename) {
-            return str_replace(PIMCORE_PROJECT_ROOT . '/', '', $filename);
-        };
-
-        $source = '';
-        if (null !== $previousCall) {
-            if (isset($previousCall['class'])) {
-                // called from a class method
-                // ClassName->methodName():line
-                $source = sprintf(
-                    '%s::%s:%d',
-                    $previousCall['class'],
-                    $previousCall['function'],
-                    $logCall['line']
-                );
-            } else {
-                // called from a function
-                // filename.php::functionName():line
-                $source = sprintf(
-                    '%s::%s:%d',
-                    $normalizeFile($previousCall['file']),
-                    $previousCall['function'],
-                    $logCall['line']
-                );
-            }
-        } else {
+        if (null === $previousCall) {
             // we don't have a previous call when the logger was directly called
             // from a standalone PHP file (e.g. from a CLI script)
             // filename.php:line
-            $source = sprintf(
-                '%s:%d',
-                $normalizeFile($logCall['file']),
-                $logCall['line']
-            );
+            return sprintf('%s:%d', $this->normalizeFilename($logCall['file']), $logCall['line']);
         }
 
-        return $source;
+        if (isset($previousCall['class'])) {
+            // called from a class method
+            // ClassName->methodName():line
+            return sprintf('%s::%s:%d', $previousCall['class'], $previousCall['function'], $logCall['line']);
+        }
+
+        // called from a function
+        // filename.php::functionName():line
+        return sprintf(
+            '%s::%s:%d',
+            $this->normalizeFilename($previousCall['file']),
+            $previousCall['function'],
+            $logCall['line']
+        );
+    }
+
+    private function normalizeFilename(string $filename): string
+    {
+        return str_replace(PIMCORE_PROJECT_ROOT . '/', '', $filename);
     }
 
     public function emergency(string|Stringable $message, array $context = []): void
@@ -272,7 +256,7 @@ class ApplicationLogger implements LoggerInterface
             if (is_array($params[1])) {
                 // standard PSR-3 -> $context is an array
                 $context = $params[1];
-            } elseif ($params[1] instanceof \Pimcore\Model\Element\ElementInterface) {
+            } elseif ($params[1] instanceof ElementInterface) {
                 $context['relatedObject'] = $params[1];
             }
         }
@@ -292,13 +276,19 @@ class ApplicationLogger implements LoggerInterface
         $this->log($level, $message, $context);
     }
 
-    public function logException(string $message, Throwable $exceptionObject, ?string $priority = 'alert', \Pimcore\Model\DataObject\AbstractObject $relatedObject = null, string $component = null): void
+    public function logException(
+        string          $message,
+        Throwable       $exceptionObject,
+        ?string         $priority = 'alert',
+        ?AbstractObject $relatedObject = null,
+        ?string         $component = null
+    ): void
     {
         if (is_null($priority)) {
             $priority = 'alert';
         }
 
-        $message .= ' : '.$exceptionObject->getMessage();
+        $message .= ' : ' . $exceptionObject->getMessage();
 
         $fileObject = self::createExceptionFileObject($exceptionObject);
 
@@ -306,7 +296,7 @@ class ApplicationLogger implements LoggerInterface
             'relatedObject' => $relatedObject,
             'fileObject' => $fileObject,
             'component' => $component,
-         ]);
+        ]);
     }
 
     /**
@@ -314,13 +304,14 @@ class ApplicationLogger implements LoggerInterface
      * as the logException method to any PSR/monolog logger (e.g. when consumed via DI)
      */
     public static function logExceptionObject(
-        LoggerInterface $logger,
-        string $message,
-        Throwable $exception,
+        LoggerInterface  $logger,
+        string           $message,
+        Throwable        $exception,
         int|string|Level $level = Level::Alert,
-        \Pimcore\Model\DataObject\AbstractObject $relatedObject = null,
-        array $context = []
-    ): void {
+        ?AbstractObject  $relatedObject = null,
+        array            $context = []
+    ): void
+    {
         $message .= ' : ' . $exception->getMessage();
 
         $fileObject = self::createExceptionFileObject($exception);

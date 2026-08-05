@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
@@ -24,24 +25,21 @@ use Pimcore\Tool\Storage;
 
 final class FileObject
 {
-    protected ?string $filename = null;
-
-    protected string $data;
-
-    public function __construct(string $data, string $filename = null)
+    public function __construct(
+        protected  string $data,
+        protected ?string $filename = null
+    )
     {
-        $this->data = $data;
-        $this->filename = $filename;
-
         if (!$this->filename) {
             $this->filename = date('/Y/m/d/') . uniqid('fileobject_', true);
         }
+
         $storage = Storage::get('application_log');
 
         try {
             $storage->write($this->filename, $this->data);
-        } catch (FilesystemException | UnableToWriteFile) {
-            Logger::warn('Application Logger could not write File Object:'.$this->filename);
+        } catch (FilesystemException|UnableToWriteFile) {
+            Logger::warn('Application Logger could not write File Object:' . $this->filename);
         }
     }
 
@@ -52,7 +50,7 @@ final class FileObject
 
     public function getFilename(): string
     {
-        return preg_replace('/^'.preg_quote(PIMCORE_PROJECT_ROOT, '/').'/', '', $this->filename);
+        return preg_replace('/^' . preg_quote(PIMCORE_PROJECT_ROOT, '/') . '/', '', $this->filename);
     }
 
     public function getData(): string

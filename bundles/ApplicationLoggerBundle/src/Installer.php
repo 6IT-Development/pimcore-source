@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,21 +11,20 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
+use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 
 class Installer extends SettingsStoreAwareInstaller
 {
-    protected const USER_PERMISSIONS_CATEGORY = 'Pimcore Application Logger Bundle';
+    protected const string USER_PERMISSIONS_CATEGORY = 'Pimcore Application Logger Bundle';
 
-    protected const USER_PERMISSIONS = [
-        'application_logging',
-    ];
+    protected const array USER_PERMISSIONS = ['application_logging'];
 
     public function install(): void
     {
@@ -44,7 +44,7 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function createApplicationLogTable(): void
     {
-        $db =  \Pimcore\Db::get();
+        $db = Db::get();
 
         $db->executeQuery("CREATE TABLE IF NOT EXISTS `application_logs` (
           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -70,14 +70,14 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function dropApplicationLogTable(): void
     {
-        $db =  \Pimcore\Db::get();
+        $db = Db::get();
 
         $db->executeQuery('DROP TABLE IF EXISTS `application_logs`;');
     }
 
     private function addUserPermission(): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
             $db->insert('users_permission_definitions', [
@@ -89,7 +89,7 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function removeUserPermission(): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
             $db->delete('users_permission_definitions', [

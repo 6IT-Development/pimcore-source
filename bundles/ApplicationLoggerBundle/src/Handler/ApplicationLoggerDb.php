@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Handler;
@@ -25,15 +26,15 @@ use Pimcore\Db;
 
 class ApplicationLoggerDb extends AbstractProcessingHandler
 {
-    const TABLE_NAME = 'application_logs';
+    final public const string TABLE_NAME = 'application_logs';
 
-    const TABLE_ARCHIVE_PREFIX = 'application_logs_archive';
+    final public const string TABLE_ARCHIVE_PREFIX = 'application_logs_archive';
 
-    private Connection $db;
-
-    public function __construct(Connection $db, int|string|Level $level = Level::Debug, bool $bubble = true)
-    {
-        $this->db = $db;
+    public function __construct(
+        private readonly Connection $db,
+        int|string|Level $level = Level::Debug,
+        bool $bubble = true
+    ) {
         parent::__construct($level, $bubble);
     }
 
@@ -61,9 +62,7 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
     {
         $db = Db::get();
 
-        $components = $db->fetchFirstColumn('SELECT component FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(component) GROUP BY component;');
-
-        return $components;
+        return $db->fetchFirstColumn('SELECT component FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(component) GROUP BY component;');
     }
 
     /**

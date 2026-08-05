@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
@@ -30,19 +31,13 @@ use Psr\Log\LoggerInterface;
 /**
  * @internal
  */
-class LogArchiveTask implements TaskInterface
+readonly class LogArchiveTask implements TaskInterface
 {
-    private Connection $db;
-
-    private Config $config;
-
-    private LoggerInterface $logger;
-
-    public function __construct(Connection $db, Config $config, LoggerInterface $logger)
-    {
-        $this->db = $db;
-        $this->config = $config;
-        $this->logger = $logger;
+    public function __construct(
+        private Connection      $db,
+        private Config          $config,
+        private LoggerInterface $logger
+    ) {
     }
 
     public function execute(): void
@@ -51,19 +46,19 @@ class LogArchiveTask implements TaskInterface
         $storage = Storage::get('application_log');
 
         $date = new DateTime('now');
-        $tablename = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX.'_'.$date->format('Y').'_'.$date->format('m');
+        $tablename = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_' . $date->format('Y') . '_' . $date->format('m');
 
         if (!empty($this->config['applicationlog']['archive_alternative_database'])) {
-            $tablename = $db->quoteIdentifier($this->config['applicationlog']['archive_alternative_database']).'.'.$tablename;
+            $tablename = $db->quoteIdentifier($this->config['applicationlog']['archive_alternative_database']) . '.' . $tablename;
         }
 
-        $archive_threshold = (int) ($this->config['applicationlog']['archive_treshold'] ?? 30);
+        $archive_threshold = (int)($this->config['applicationlog']['archive_treshold'] ?? 30);
 
         $timestamp = time();
-        $sql = 'SELECT %s FROM '.ApplicationLoggerDb::TABLE_NAME.' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME('.$timestamp.'), INTERVAL '.$archive_threshold.' DAY)';
+        $sql = 'SELECT %s FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $archive_threshold . ' DAY)';
 
         if ($db->fetchOne(sprintf($sql, 'COUNT(*)')) > 0) {
-            $db->executeQuery('CREATE TABLE IF NOT EXISTS '.$tablename." (
+            $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $tablename . " (
                        id BIGINT(20) NOT NULL,
                        `pid` INT(11) NULL DEFAULT NULL,
                        `timestamp` DATETIME NOT NULL,
@@ -78,9 +73,9 @@ class LogArchiveTask implements TaskInterface
                        maintenanceChecked TINYINT(1)
                     ) ENGINE = ARCHIVE ROW_FORMAT = DEFAULT;");
 
-            $db->executeQuery('INSERT INTO '.$tablename.' '.sprintf($sql, '*'));
+            $db->executeQuery('INSERT INTO ' . $tablename . ' ' . sprintf($sql, '*'));
 
-            $this->logger->debug('Deleting referenced FileObjects of application_logs which are older than '.$archive_threshold.' days');
+            $this->logger->debug('Deleting referenced FileObjects of application_logs which are older than ' . $archive_threshold . ' days');
 
             $fileObjectPaths = $db->fetchAllAssociative(sprintf($sql, 'fileobject'));
             foreach ($fileObjectPaths as $objectPath) {
@@ -92,7 +87,7 @@ class LogArchiveTask implements TaskInterface
                 }
             }
 
-            $db->executeQuery('DELETE FROM '.ApplicationLoggerDb::TABLE_NAME.' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME('.$timestamp.'), INTERVAL '.$archive_threshold.' DAY);');
+            $db->executeQuery('DELETE FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $archive_threshold . ' DAY);');
         }
 
         $archiveTables = $db->fetchFirstColumn(
@@ -102,14 +97,15 @@ class LogArchiveTask implements TaskInterface
                 AND table_name LIKE ?',
             [
                 $this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase(),
-                ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX.'_%',
+                ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_%',
             ]
         );
+
         foreach ($archiveTables as $archiveTable) {
-            if (preg_match('/^'.ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX.'_(\d{4})_(\d{2})$/', $archiveTable, $matches)) {
-                $deleteArchiveLogDate = Carbon::createFromFormat('Y/m', $matches[1].'/'.$matches[2]);
-                if ($deleteArchiveLogDate->add(new DateInterval('P'.($this->config['applicationlog']['delete_archive_threshold'] ?? 6).'M')) < new DateTimeImmutable()) {
-                    $db->executeStatement('DROP TABLE IF EXISTS `'.($this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase()).'`.'.$archiveTable);
+            if (preg_match('/^' . ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_(\d{4})_(\d{2})$/', $archiveTable, $matches)) {
+                $deleteArchiveLogDate = Carbon::createFromFormat('Y/m', $matches[1] . '/' . $matches[2]);
+                if ($deleteArchiveLogDate->add(new DateInterval('P' . ($this->config['applicationlog']['delete_archive_threshold'] ?? 6) . 'M')) < new DateTimeImmutable()) {
+                    $db->executeStatement('DROP TABLE IF EXISTS `' . ($this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase()) . '`.' . $archiveTable);
 
                     $folderName = $deleteArchiveLogDate->format('Y/m');
 

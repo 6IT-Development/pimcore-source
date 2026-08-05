@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
@@ -19,27 +20,22 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
 use Doctrine\DBAL\Connection;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Config;
+use Pimcore\Mail;
 use Pimcore\Maintenance\TaskInterface;
+use Pimcore\Tool;
 use Symfony\Component\Mime\Address;
 
-/**
- * @internal
- */
-class LogMailMaintenanceTask implements TaskInterface
+readonly class LogMailMaintenanceTask implements TaskInterface
 {
-    private Connection $db;
-
-    private Config $config;
-
-    public function __construct(Connection $db, Config $config)
+    public function __construct(
+        private Connection $db,
+        private Config     $config
+    )
     {
-        $this->db = $db;
-        $this->config = $config;
     }
 
     public function execute(): void
     {
-
         if (!empty($this->config['applicationlog']['mail_notification']['send_log_summary'])) {
             $receivers = preg_split('/,|;/', $this->config['applicationlog']['mail_notification']['mail_receiver']);
 
@@ -48,9 +44,7 @@ class LogMailMaintenanceTask implements TaskInterface
             });
 
             // getting the enums from priority
-            $priorityColumnDefinition = $this->db->fetchAllAssociative(
-                'SHOW COLUMNS FROM ' .ApplicationLoggerDb::TABLE_NAME. " LIKE 'priority'"
-            );
+            $priorityColumnDefinition = $this->db->fetchAllAssociative('SHOW COLUMNS FROM ' . ApplicationLoggerDb::TABLE_NAME . " LIKE 'priority'");
 
             // type is the actual enum values
             $columnType = reset($priorityColumnDefinition)['Type'];
@@ -94,13 +88,13 @@ class LogMailMaintenanceTask implements TaskInterface
 
                     $html = var_export($entries, true);
                     $html = "<pre>$html</pre>";
-                    $mail = new \Pimcore\Mail();
+                    $mail = new Mail();
                     $mail->setIgnoreDebugMode(true);
                     $mail->html($html);
                     foreach ($receivers as $receiver) {
                         $mail->addTo(new Address($receiver, $receiver));
                     }
-                    $mail->subject('Error Log '.\Pimcore\Tool::getHostUrl());
+                    $mail->subject('Error Log ' . Tool::getHostUrl());
                     $mail->send();
                 }
             }
