@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\StaticRoutesBundle\Controller;
@@ -28,7 +29,7 @@ class SettingsController extends UserAwareController
 {
     use JsonHelperTrait;
 
-    #[Route("/staticroutes", name: "pimcore_bundle_staticroutes_settings_staticroutes", methods: ["POST"])]
+    #[Route('/staticroutes', name: 'pimcore_bundle_staticroutes_settings_staticroutes', methods: [Request::METHOD_POST])]
     public function staticroutesAction(Request $request): JsonResponse
     {
         $this->checkPermission('routes');
@@ -67,7 +68,7 @@ class SettingsController extends UserAwareController
 
                 return $this->jsonResponse(['data' => $route->getObjectVars(), 'success' => true]);
             } elseif ($request->query->getString('xaction') == 'create') {
-                if (!(new Staticroute())->isWriteable()) {
+                if (!new Staticroute()->isWriteable()) {
                     throw new ConfigWriteException();
                 }
                 unset($data['id']);

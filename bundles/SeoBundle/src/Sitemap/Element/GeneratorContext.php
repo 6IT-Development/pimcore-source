@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Sitemap\Element;
@@ -25,11 +25,11 @@ class GeneratorContext implements GeneratorContextInterface
 {
     private UrlContainerInterface $urlContainer;
 
-    private ?string $section = null;
+    private ?string $section;
 
-    private array $parameters = [];
+    private array $parameters;
 
-    public function __construct(UrlContainerInterface $urlContainer, string $section = null, array $parameters = [])
+    public function __construct(UrlContainerInterface $urlContainer, ?string $section = null, array $parameters = [])
     {
         $this->urlContainer = $urlContainer;
         $this->section = $section;

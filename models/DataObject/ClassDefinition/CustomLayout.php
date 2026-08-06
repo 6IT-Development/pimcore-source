@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition;
@@ -66,12 +67,12 @@ class CustomLayout extends Model\AbstractModel
             if (!$customLayout) {
                 throw new Exception('Custom Layout in registry is null');
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             try {
                 $customLayout = new self();
                 $customLayout->getDao()->getById($id);
                 RuntimeCache::set($cacheKey, $customLayout);
-            } catch (Model\Exception\NotFoundException $e) {
+            } catch (Model\Exception\NotFoundException) {
                 return null;
             }
         }
@@ -91,12 +92,12 @@ class CustomLayout extends Model\AbstractModel
             if (!$customLayout) {
                 throw new Exception('Custom Layout in registry is null');
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             try {
                 $customLayout = new self();
                 $customLayout->getDao()->getByName($name);
                 RuntimeCache::set($cacheKey, $customLayout);
-            } catch (Model\Exception\NotFoundException $e) {
+            } catch (Model\Exception\NotFoundException) {
                 return null;
             }
         }
@@ -118,7 +119,7 @@ class CustomLayout extends Model\AbstractModel
             }
 
             return $customLayout;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
         }
 
         return null;
@@ -137,6 +138,7 @@ class CustomLayout extends Model\AbstractModel
                 return $definition;
             }
             if (method_exists($definition, 'getChildren')) {
+                // TODO array_any, de ref miatt teszt
                 foreach ($definition->getChildren() as $child) {
                     if ($childDefinition = $findElement($key, $child)) {
                         return $childDefinition;
@@ -187,7 +189,7 @@ class CustomLayout extends Model\AbstractModel
         // empty custom layout cache
         try {
             Cache::clearTag('customlayout_' . $this->getId());
-        } catch (Exception $e) {
+        } catch (Exception) {
         }
     }
 
@@ -202,7 +204,7 @@ class CustomLayout extends Model\AbstractModel
             $description = str_replace(['/**', '*/', '//'], '', $this->getDescription());
             $description = str_replace("\n", "\n* ", $description);
 
-            $cd .= '* '.$description."\n";
+            $cd .= '* ' . $description . "\n";
         }
         $cd .= '*/';
 
@@ -219,7 +221,7 @@ class CustomLayout extends Model\AbstractModel
 
             return $customLayout->getDao()->getLatestIdentifier($classId);
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             return null;
         }
@@ -237,13 +239,13 @@ class CustomLayout extends Model\AbstractModel
         // empty object cache
         try {
             Cache::clearTag('customlayout_' . $this->getId());
-        } catch (Exception $e) {
+        } catch (Exception) {
         }
 
         // empty output cache
         try {
             Cache::clearTag('output');
-        } catch (Exception $e) {
+        } catch (Exception) {
         }
 
         $this->getDao()->delete();

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Controller;
@@ -28,7 +28,7 @@ class MiscController extends UserAwareController
 {
     use JsonHelperTrait;
 
-    #[Route("/http-error-log", name: "pimcore_bundle_seo_misc_httperrorlog", methods: ["POST"])]
+    #[Route('/http-error-log', name: 'pimcore_bundle_seo_misc_httperrorlog', methods: [Request::METHOD_POST])]
     public function httpErrorLogAction(Request $request): JsonResponse
     {
         $this->checkPermission('http_errors');
@@ -75,14 +75,15 @@ class MiscController extends UserAwareController
         ]);
     }
 
-    #[Route("/http-error-log-detail", name: "pimcore_bundle_seo_misc_httperrorlogdetail", methods: ["GET"])]
-    public function httpErrorLogDetailAction(Request $request, ?Profiler $profiler): Response
+    #[Route('/http-error-log-detail', name: 'pimcore_bundle_seo_misc_httperrorlogdetail', methods: [Request::METHOD_GET])]
+    public function httpErrorLogDetailAction(
+        Request   $request,
+        ?Profiler $profiler
+    ): Response
     {
         $this->checkPermission('http_errors');
 
-        if ($profiler) {
-            $profiler->disable();
-        }
+        $profiler?->disable();
 
         $db = Db::get();
         $data = $db->fetchAssociative('SELECT * FROM http_error_log WHERE uri = ?', [$request->query->getString('uri')]);
@@ -96,7 +97,7 @@ class MiscController extends UserAwareController
         return $this->render('@PimcoreSeo/misc/http_error_log_detail.html.twig', ['data' => $data]);
     }
 
-    #[Route("/http-error-log-flush", name: "pimcore_bundle_seo_misc_httperrorlogflush", methods: ["DELETE"])]
+    #[Route('/http-error-log-flush', name: 'pimcore_bundle_seo_misc_httperrorlogflush', methods: [Request::METHOD_DELETE])]
     public function httpErrorLogFlushAction(Request $request): JsonResponse
     {
         $this->checkPermission('http_errors');

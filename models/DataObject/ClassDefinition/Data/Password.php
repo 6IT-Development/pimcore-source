@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -32,7 +33,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
     use DataObject\Traits\DataWidthTrait;
     use DataObject\Traits\SimpleNormalizerTrait;
 
-    const HASH_FUNCTION_PASSWORD_HASH = 'password_hash';
+    public const string HASH_FUNCTION_PASSWORD_HASH = 'password_hash';
 
     /**
      * @internal
@@ -131,7 +132,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
      *
      * @see ResourcePersistenceAwareInterface::getDataForResource
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         if (empty($data)) {
             return null;
@@ -166,7 +167,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
         $hashed = $this->calculateHash($data);
 
         /** set the hashed password back to the object, to be sure that is not plain-text after the first save
-         this is especially to avoid plaintext passwords in the search-index see: PIMCORE-1406 */
+         * this is especially to avoid plaintext passwords in the search-index see: PIMCORE-1406 */
 
         // a model should be switched if the owner parameter is used,
         // for example: field collections would use \Pimcore\Model\DataObject\Fieldcollection\Data\Dao
@@ -271,7 +272,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
      *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $data;
     }
@@ -281,12 +282,12 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $this->getDataForResource($data, $object, $params);
     }
 
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $data;
     }
@@ -295,7 +296,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
      * @see Data::getDataFromEditmode
      *
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         if ($data === '') {
             return null;
@@ -310,7 +311,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return '******';
     }
@@ -330,7 +331,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
         return true;
     }
 
-    public function getDiffDataFromEditmode(array $data, DataObject\Concrete $object = null, array $params = []): mixed
+    public function getDiffDataFromEditmode(array $data, ?DataObject\Concrete $object = null, array $params = []): mixed
     {
         return $data[0]['data'];
     }
@@ -338,7 +339,7 @@ class Password extends Data implements ResourcePersistenceAwareInterface, QueryR
     /** See parent class.
      *
      */
-    public function getDiffDataForEditMode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDiffDataForEditMode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         $diffdata = [];
         $diffdata['data'] = $data;

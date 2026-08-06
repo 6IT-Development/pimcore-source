@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable\Block;
@@ -31,7 +32,7 @@ class Item extends AbstractBlockItem
         $class = 'Pimcore\\Model\\Document\\Editable\\' . str_replace('get', '', $func);
 
         if ($element === null) {
-            return new $class;
+            return new $class();
         }
 
         if (!strcasecmp(get_class($element), $class)) {

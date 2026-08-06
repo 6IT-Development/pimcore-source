@@ -9,14 +9,15 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 use Pimcore;
 use Pimcore\DataObject\Consent\Service;
+use Pimcore\Db;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -34,12 +35,9 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
     public int $defaultValue = 0;
 
     /**
-     * @param null|DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataForResource
-     *
      */
-    public function getDataForResource(mixed $data, Concrete $object = null, array $params = []): array
+    public function getDataForResource(mixed $data, ?Concrete $object = null, array $params = []): array
     {
         if ($data instanceof DataObject\Data\Consent) {
             return [
@@ -59,10 +57,10 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
      *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): DataObject\Data\Consent
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): DataObject\Data\Consent
     {
         if (is_array($data) && $data[$this->getName() . '__consent'] !== null) {
-            $consent = new DataObject\Data\Consent((bool) $data[$this->getName() . '__consent'], $data[$this->getName() . '__note']);
+            $consent = new DataObject\Data\Consent((bool)$data[$this->getName() . '__consent'], $data[$this->getName() . '__note']);
         } else {
             $consent = new DataObject\Data\Consent();
         }
@@ -81,7 +79,7 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): bool
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): bool
     {
         if ($data instanceof DataObject\Data\Consent) {
             return $data->getConsent();
@@ -96,7 +94,7 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         // get data & info from note
         if ($data instanceof DataObject\Data\Consent) {
@@ -115,7 +113,7 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): DataObject\Data\Consent
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): DataObject\Data\Consent
     {
         if ($data === 'false') {
             $data = false;
@@ -133,7 +131,7 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
         if (!$oldData || $oldData->getConsent() != $data) {
             $service = Pimcore::getContainer()->get(Service::class);
 
-            if ($data == true) {
+            if ($data) {
                 $note = $service->insertConsentNote($object, $this->getName(), 'Manually by User via Pimcore Backend.');
             } else {
                 $note = $service->insertRevokeNote($object, $this->getName());
@@ -152,7 +150,7 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
      *  - "key" => the key of the data element
      *  - "data" => the data
      */
-    public function getDiffDataFromEditmode(array $data, DataObject\Concrete $object = null, array $params = []): DataObject\Data\Consent
+    public function getDiffDataFromEditmode(array $data, ?DataObject\Concrete $object = null, array $params = []): DataObject\Data\Consent
     {
         $data = $data[0]['data'];
 
@@ -170,14 +168,14 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
 
         $noteId = null;
         if (!$originalNote || ($originalNote->getCtype() == 'object' && $originalNote->getCid() != $object->getId())) {
-            if ($consent == true) {
+            if ($consent) {
                 $note = $service->insertConsentNote($object, $this->getName(), $data['noteContent']);
             } else {
                 $note = $service->insertRevokeNote($object, $this->getName());
             }
 
             if (!empty($originalNote)) {
-                $note->setTitle($note->getTitle() . ' (objects merged - original consent date: ' . date('Y-m-d H:i:s', $originalNote->getDate()) .')');
+                $note->setTitle($note->getTitle() . ' (objects merged - original consent date: ' . date('Y-m-d H:i:s', $originalNote->getDate()) . ')');
                 $note->save();
 
                 $noteId = $note->getId();
@@ -189,20 +187,12 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
         return new DataObject\Data\Consent($consent, $noteId);
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataForGrid(?DataObject\Data\Consent $data, Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(?DataObject\Data\Consent $data, ?Concrete $object = null, array $params = []): ?array
     {
         return $this->getDataForEditmode($data, $object, $params);
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataFromGridEditor(bool|string $data, Concrete $object = null, array $params = []): DataObject\Data\Consent
+    public function getDataFromGridEditor(bool|string $data, ?Concrete $object = null, array $params = []): DataObject\Data\Consent
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
@@ -213,7 +203,7 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return $data ? (string)$data->getConsent() : '';
     }
@@ -225,9 +215,9 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
         }
 
         /* @todo seems to cause problems with old installations
-        if(!is_bool($data) and $data !== 1 and $data !== 0){
-        throw new \Exception(get_class($this).": invalid data");
-        }*/
+         * if(!is_bool($data) and $data !== 1 and $data !== 0){
+         * throw new \Exception(get_class($this).": invalid data");
+         * }*/
     }
 
     public function getForCsvExport(DataObject\Localizedfield|DataObject\Fieldcollection\Data\AbstractData|DataObject\Objectbrick\Data\AbstractData|DataObject\Concrete $object, array $params = []): string
@@ -275,7 +265,7 @@ class Consent extends Data implements ResourcePersistenceAwareInterface, QueryRe
      */
     public function getFilterConditionExt(mixed $value, string $operator, array $params = []): string
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $value = $db->quote($value);
         $key = $db->quoteIdentifier($this->name);
 

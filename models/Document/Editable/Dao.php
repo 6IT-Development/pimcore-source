@@ -9,19 +9,20 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
 
 use Pimcore\Db\Helper;
 use Pimcore\Model;
+use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Document\Editable\Areablock $model
+ * @property Areablock $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -30,7 +31,7 @@ class Dao extends Model\Dao\AbstractDao
         $data = $this->model->getDataForResource();
 
         if (is_array($data) || is_object($data)) {
-            $data = \Pimcore\Tool\Serialize::serialize($data);
+            $data = Serialize::serialize($data);
         }
 
         $element = [

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Localization;
@@ -26,23 +27,23 @@ use RuntimeException;
  */
 class IntlFormatter
 {
-    const DATE_SHORT = 'date_short';
+    public const string DATE_SHORT = 'date_short';
 
-    const DATE_MEDIUM = 'date_medium';
+    public const string DATE_MEDIUM = 'date_medium';
 
-    const DATE_LONG = 'date_long';
+    public const string DATE_LONG = 'date_long';
 
-    const DATETIME_SHORT = 'datetime_short';
+    public const string DATETIME_SHORT = 'datetime_short';
 
-    const DATETIME_MEDIUM = 'datetime_medium';
+    public const string DATETIME_MEDIUM = 'datetime_medium';
 
-    const DATETIME_LONG = 'datetime_long';
+    public const string DATETIME_LONG = 'datetime_long';
 
-    const TIME_SHORT = 'time_short';
+    public const string TIME_SHORT = 'time_short';
 
-    const TIME_MEDIUM = 'time_medium';
+    public const string TIME_MEDIUM = 'time_medium';
 
-    const TIME_LONG = 'time_long';
+    public const string TIME_LONG = 'time_long';
 
     protected ?string $locale = null;
 
@@ -154,7 +155,7 @@ class IntlFormatter
                 IntlDateFormatter::NONE,
                 IntlDateFormatter::LONG
             ),
-            default => throw new RuntimeException("Invalid format '{$format}' for date formatter."),
+            default => throw new RuntimeException("Invalid format '$format' for date formatter."),
         };
     }
 

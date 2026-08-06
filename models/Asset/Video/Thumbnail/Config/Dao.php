@@ -9,29 +9,30 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Video\Thumbnail\Config;
 
 use Exception;
 use Pimcore;
+use Pimcore\Config;
 use Pimcore\Messenger\CleanupThumbnailsMessage;
 use Pimcore\Model;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Asset\Video\Thumbnail\Config $model
+ * @property Model\Asset\Video\Thumbnail\Config $model
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
-    private const CONFIG_KEY = 'video_thumbnails';
+    private const string CONFIG_KEY = 'video_thumbnails';
 
     public function configure(): void
     {
-        $config = \Pimcore\Config::getSystemConfiguration();
+        $config = Config::getSystemConfiguration();
 
         $storageConfig = $config['config_location'][self::CONFIG_KEY];
 
@@ -46,7 +47,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      *
      * @throws Exception
      */
-    public function getByName(string $id = null): void
+    public function getByName(?string $id = null): void
     {
         if ($id != null) {
             $this->model->setName($id);
@@ -83,7 +84,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $dataRaw = $this->model->getObjectVars();
         $data = [];
         $allowedProperties = ['name', 'description', 'group', 'items', 'medias',
-            'videoBitrate', 'audioBitrate', 'creationDate', 'modificationDate', ];
+            'videoBitrate', 'audioBitrate', 'creationDate', 'modificationDate',];
 
         foreach ($dataRaw as $key => $value) {
             if (in_array($key, $allowedProperties)) {
@@ -106,7 +107,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 
     protected function autoClearTempFiles(): void
     {
-        $enabled = \Pimcore\Config::getSystemConfiguration('assets')['video']['thumbnails']['auto_clear_temp_files'];
+        $enabled = Config::getSystemConfiguration('assets')['video']['thumbnails']['auto_clear_temp_files'];
         if ($enabled) {
             Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
                 new CleanupThumbnailsMessage('video', $this->model->getName())
@@ -114,7 +115,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         }
     }
 
-    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
+    protected function prepareDataStructureForYaml(string $id, mixed $data): array
     {
         return [
             'pimcore' => [

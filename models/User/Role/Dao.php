@@ -9,18 +9,19 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\User\Role;
 
 use Pimcore\Model;
+use Pimcore\Model\User\Role;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\User\Role $model
+ * @property Role $model
  */
 class Dao extends Model\User\UserRole\Dao
 {

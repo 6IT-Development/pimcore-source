@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Test\DataType;
@@ -73,7 +74,7 @@ abstract class AbstractDataTypeTestCase extends TestCase
             $method = $field['method'];
 
             if (!$method) {
-                throw new InvalidArgumentException(sprintf('Need a method to call'));
+                throw new InvalidArgumentException('Need a method to call');
             }
 
             if (!method_exists($this->testDataHelper, $method)) {
@@ -170,7 +171,7 @@ abstract class AbstractDataTypeTestCase extends TestCase
 
         $db = Db::get();
         $select = 'SELECT calculatedValue from object_query_' . $this->testObject->getClassId()
-                        . ' WHERE oo_id = ' . $this->testObject->getId();
+            . ' WHERE oo_id = ' . $this->testObject->getId();
         $row = $db->fetchAssociative($select);
 
         $this->assertEquals($value, $row['calculatedValue'], 'value should have been written to query table');
@@ -326,7 +327,7 @@ abstract class AbstractDataTypeTestCase extends TestCase
         $this->testDataHelper->assertEncrypted($this->testObject, 'encryptedField', $this->seed);
 
         $db = Db::get();
-        $result = $db->fetchOne('select encryptedField from object_store_' . $this->testObject->getClassId() . ' where oo_id=' .  $this->testObject->getId());
+        $result = $db->fetchOne('select encryptedField from object_store_' . $this->testObject->getClassId() . ' where oo_id=' . $this->testObject->getId());
         $this->assertNotNull($result);
 
         $this->assertNotTrue($result === 'content');
@@ -813,7 +814,6 @@ abstract class AbstractDataTypeTestCase extends TestCase
         $this->assertEquals('MyController::myAction', $action, 'wrong controller/action');
 
         // check uniqueness
-        $ex = null;
         $duplicateSlug = new UrlSlug('/xyz/abc');
         $this->testObject->setUrlSlug2([$duplicateSlug]);
         $ex = null;

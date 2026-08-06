@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\Place;
 
+use Pimcore\Tool\Admin;
 use Pimcore\Workflow\Manager;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
@@ -36,7 +38,7 @@ class StatusInfo
         $this->twig = $twig;
         $this->translator = $translator;
 
-        $user = \Pimcore\Tool\Admin::getCurrentUser();
+        $user = Admin::getCurrentUser();
         $this->userLanguage = $user ? $user->getLanguage() : 'en';
     }
 
@@ -54,7 +56,7 @@ class StatusInfo
         );
     }
 
-    public function getAllPalacesHtml(object $subject, string $workflowName = null): string
+    public function getAllPalacesHtml(object $subject, ?string $workflowName = null): string
     {
         $places = $this->getAllPlaces($subject, false, $workflowName);
 
@@ -68,7 +70,7 @@ class StatusInfo
         );
     }
 
-    public function getAllPlacesForCsv(object $subject, string $workflowName = null): string
+    public function getAllPlacesForCsv(object $subject, ?string $workflowName = null): string
     {
         $places = $this->getAllPlaces($subject, false, $workflowName);
         $result = [];
@@ -83,7 +85,7 @@ class StatusInfo
     /**
      * @return PlaceConfig[]
      */
-    private function getAllPlaces(object $subject, bool $visibleInHeaderOnly = false, string $workflowName = null): array
+    private function getAllPlaces(object $subject, bool $visibleInHeaderOnly = false, ?string $workflowName = null): array
     {
         $places = [];
 

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Property\Predefined;
@@ -18,16 +18,17 @@ namespace Pimcore\Model\Property\Predefined;
 use Exception;
 use Pimcore\Config;
 use Pimcore\Model;
+use Pimcore\Model\Property\Predefined;
 use Symfony\Component\Uid\Uuid as Uid;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Property\Predefined $model
+ * @property Predefined $model
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
-    private const CONFIG_KEY = 'predefined_properties';
+    private const string CONFIG_KEY = 'predefined_properties';
 
     public function configure(): void
     {
@@ -46,7 +47,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getById(string $id = null): void
+    public function getById(?string $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -72,7 +73,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getByKey(string $key = null): void
+    public function getByKey(?string $key = null): void
     {
         if ($key != null) {
             $this->model->setKey($key);
@@ -80,7 +81,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $key = $this->model->getKey();
 
         $list = new Listing();
-        /** @var Model\Property\Predefined[] $properties */
+        /** @var Predefined[] $properties */
         $properties = array_values(array_filter($list->getProperties(), function ($item) use ($key) {
             return $item->getKey() == $key;
         }
@@ -113,7 +114,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $dataRaw = $this->model->getObjectVars();
         $data = [];
         $allowedProperties = ['name', 'description', 'key', 'type', 'data',
-            'config', 'ctype', 'inheritable', 'creationDate', 'modificationDate', ];
+            'config', 'ctype', 'inheritable', 'creationDate', 'modificationDate',];
 
         foreach ($dataRaw as $key => $value) {
             if (in_array($key, $allowedProperties)) {
@@ -131,7 +132,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $this->deleteData($this->model->getId());
     }
 
-    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
+    protected function prepareDataStructureForYaml(string $id, mixed $data): array
     {
         return [
             'pimcore' => [

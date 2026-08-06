@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\DocType;
@@ -18,16 +18,17 @@ namespace Pimcore\Model\Document\DocType;
 use Exception;
 use Pimcore\Config;
 use Pimcore\Model;
+use Pimcore\Model\Document\DocType;
 use Symfony\Component\Uid\Uuid as Uid;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Document\DocType $model
+ * @property DocType $model
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
-    private const CONFIG_KEY = 'document_types';
+    private const string CONFIG_KEY = 'document_types';
 
     public function configure(): void
     {
@@ -83,7 +84,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $dataRaw = $this->model->getObjectVars();
         $data = [];
         $allowedProperties = ['name', 'group', 'controller',
-            'template', 'type', 'priority', 'creationDate', 'modificationDate', 'staticGeneratorEnabled', ];
+            'template', 'type', 'priority', 'creationDate', 'modificationDate', 'staticGeneratorEnabled',];
 
         foreach ($dataRaw as $key => $value) {
             if (in_array($key, $allowedProperties)) {
@@ -101,7 +102,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $this->deleteData($this->model->getId());
     }
 
-    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
+    protected function prepareDataStructureForYaml(string $id, mixed $data): array
     {
         return [
             'pimcore' => [

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -97,7 +97,7 @@ class AssetsInstaller
         return $resolver->resolve($options);
     }
 
-    public function setRunCallback(Closure $runCallback = null): void
+    public function setRunCallback(?Closure $runCallback = null): void
     {
         $this->runCallback = $runCallback;
     }

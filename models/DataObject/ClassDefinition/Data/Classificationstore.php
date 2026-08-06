@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -146,7 +147,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
      *
      * @see Data::getDataForEditmode
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         if (!$data instanceof DataObject\Classificationstore) {
             return [];
@@ -154,11 +155,11 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
 
         $fieldData = [];
         $metaData = [];
-        $result = $this->doGetDataForEditMode($data, $object, $fieldData, $metaData, 1);
+        $result = $this->doGetDataForEditMode($data, $object, $fieldData, $metaData);
 
         // replace the real data with the data for the editmode
-        foreach ($result['data'] as $language => &$groups) {
-            foreach ($groups as $groupId => &$keys) {
+        foreach ($result['data'] as &$groups) {
+            foreach ($groups as &$keys) {
                 foreach ($keys as $keyId => &$keyValue) {
                     $keyConfig = DataObject\Classificationstore\DefinitionCache::get($keyId);
                     if ($keyConfig->getEnabled()) {
@@ -278,18 +279,16 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
                     // still some values are missing, ask the parent
                     $getter = 'get' . ucfirst($this->getName());
                     $parentData = $parent->$getter();
-                    $parentResult = $this->doGetDataForEditMode($parentData, $parent, $fieldData, $metaData, $level + 1);
+                    $this->doGetDataForEditMode($parentData, $parent, $fieldData, $metaData, $level + 1);
                 }
             }
         }
 
-        $result = [
+        return [
             'data' => $fieldData,
             'metaData' => $metaData,
             'inherited' => $inherited,
         ];
-
-        return $result;
     }
 
     /**
@@ -298,10 +297,11 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
      * @see Data::getDataFromEditmode
      */
     public function getDataFromEditmode(
-        mixed $data,
-        DataObject\Concrete $object = null,
-        array $params = []
-    ): DataObject\Classificationstore {
+        mixed                $data,
+        ?DataObject\Concrete $object = null,
+        array                $params = []
+    ): DataObject\Classificationstore
+    {
         $classificationStore = $this->getDataFromObjectParam($object);
 
         if (!$classificationStore instanceof DataObject\Classificationstore) {
@@ -312,15 +312,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
         $groupCollectionMapping = $data['groupCollectionMapping'];
         $data = $data['data'];
 
-        $correctedMapping = [];
-
-        foreach ($groupCollectionMapping as $groupId => $collectionId) {
-            if (isset($activeGroups[$groupId]) && $activeGroups[$groupId]) {
-                $correctedMapping[$groupId] = $collectionId;
-            }
-        }
-
-        $classificationStore->setGroupCollectionMappings($correctedMapping);
+        $classificationStore->setGroupCollectionMappings(array_filter($groupCollectionMapping, fn($groupId) => isset($activeGroups[$groupId]) && $activeGroups[$groupId], ARRAY_FILTER_USE_KEY));
 
         if (is_array($data)) {
             foreach ($data as $language => $groups) {
@@ -356,11 +348,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
         return $classificationStore;
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataForGrid(mixed $data, Concrete $object = null, array $params = []): string
+    public function getDataForGrid(mixed $data, ?Concrete $object = null, array $params = []): string
     {
         return 'not supported';
     }
@@ -371,7 +359,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         // this is handled directly in the template
         // https://github.com/pimcore/admin-ui-classic-bundle/blob/1.x/templates/admin/data_object/data_object/preview_version.html.twig
@@ -402,7 +390,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
                     /** @var ResourcePersistenceAwareInterface $fieldDefinition */
                     $fieldDefinition = DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
 
-                    foreach ($values as $language => $value) {
+                    foreach ($values as $value) {
                         $value = $fieldDefinition->getDataForResource($value, $object, $params);
                         if (is_array($value)) {
                             $value = implode(',', $value);
@@ -475,7 +463,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
         $this->fieldDefinitionsCache = null;
     }
 
-    public function save(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function save(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         $classificationStore = $this->getDataFromObjectParam($object);
         if ($classificationStore instanceof DataObject\Classificationstore) {
@@ -484,7 +472,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
         }
     }
 
-    public function load(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): DataObject\Classificationstore
+    public function load(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): DataObject\Classificationstore
     {
         $classificationStore = new DataObject\Classificationstore();
         $classificationStore->setObject($object);
@@ -494,7 +482,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
         return $classificationStore;
     }
 
-    public function delete(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function delete(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         $classificationStore = $this->getDataFromObjectParam($object);
 
@@ -674,7 +662,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
      *
      * @throws Exception
      */
-    public function getDiffDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDiffDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         throw new Exception('not supported');
     }
@@ -682,7 +670,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
     /**
      * @throws Exception
      */
-    public function getDiffDataFromEditmode(array $data, Concrete $object = null, array $params = []): mixed
+    public function getDiffDataFromEditmode(array $data, ?Concrete $object = null, array $params = []): mixed
     {
         throw new Exception('not supported');
     }
@@ -951,7 +939,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
 
     public function getStoreId(): int
     {
-        return $this->storeId ? $this->storeId : 1;
+        return $this->storeId ?: 1;
     }
 
     /**
@@ -959,7 +947,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
      */
     public function setStoreId(int $storeId): static
     {
-        $this->storeId = $storeId ? $storeId : 1;
+        $this->storeId = $storeId ?: 1;
 
         return $this;
     }

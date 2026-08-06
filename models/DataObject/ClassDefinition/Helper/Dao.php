@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Helper;
@@ -41,7 +41,7 @@ trait Dao
                 if (is_array($columnType)) {
                     // multicolumn field
                     foreach ($columnType as $fkey => $fvalue) {
-                        $indexName = $field->getName().'__'.$fkey;
+                        $indexName = $field->getName() . '__' . $fkey;
                         $columnName = '`' . $indexName . '`';
                         if ($unique) {
                             if ($isLocalized) {
@@ -73,7 +73,7 @@ trait Dao
                 if (is_array($columnType)) {
                     // multicolumn field
                     foreach ($columnType as $fkey => $fvalue) {
-                        $indexName = $field->getName().'__'.$fkey;
+                        $indexName = $field->getName() . '__' . $fkey;
                         if ($this->indexExists($table, $prefix, $indexName)) {
                             $this->db->executeQuery('ALTER TABLE `' . $table . '` DROP INDEX `' . $prefix . $indexName . '`;');
                         }
@@ -176,7 +176,7 @@ trait Dao
             $lowerCaseColumns = array_map('strtolower', $protectedColumns);
             foreach ($columnsToRemove as $value) {
                 if (!in_array(strtolower($value), $lowerCaseColumns) && $this->indexExists($table, 'u_index_', $value)) {
-                    $this->db->executeQuery('ALTER TABLE `'.$table.'` DROP INDEX `u_index_'. $value . '`;');
+                    $this->db->executeQuery('ALTER TABLE `' . $table . '` DROP INDEX `u_index_' . $value . '`;');
                 }
             }
             $this->resetValidTableColumnsCache($table);

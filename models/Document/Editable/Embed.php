@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,16 +11,18 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
 
+use Embera\Embera;
+use Pimcore\Cache;
 use Pimcore\Model;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Embed extends Model\Document\Editable
 {
@@ -33,7 +36,7 @@ class Embed extends Model\Document\Editable
         return 'embed';
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         return [
             'url' => $this->url,
@@ -68,11 +71,11 @@ class Embed extends Model\Document\Editable
 
             $cacheKey = 'doc_embed_' . crc32(serialize([$this->url, $config]));
 
-            if (!$html = \Pimcore\Cache::load($cacheKey)) {
-                $embera = new \Embera\Embera($config);
+            if (!$html = Cache::load($cacheKey)) {
+                $embera = new Embera($config);
                 $html = $embera->autoEmbed($this->url);
 
-                \Pimcore\Cache::save($html, $cacheKey, ['embed'], 86400, 1, true);
+                Cache::save($html, $cacheKey, ['embed'], 86400, 1, true);
             }
 
             return $html;
@@ -87,9 +90,7 @@ class Embed extends Model\Document\Editable
 
         // get frontendcode for preview
         // put the video code inside the generic code
-        $html = str_replace('</div>', $this->frontend() . '</div>', $html);
-
-        return $html;
+        return str_replace('</div>', $this->frontend() . '</div>', $html);
     }
 
     public function setDataFromResource(mixed $data): static

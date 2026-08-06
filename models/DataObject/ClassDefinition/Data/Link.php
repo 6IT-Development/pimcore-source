@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -50,7 +51,7 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
      *
      * @see ResourcePersistenceAwareInterface::getDataForResource
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         if ($data instanceof DataObject\Data\Link) {
             $data = clone $data;
@@ -81,7 +82,7 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Link
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Link
     {
         $link = Serialize::unserialize($data);
 
@@ -106,7 +107,7 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -117,7 +118,7 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if (!$data instanceof DataObject\Data\Link) {
             return null;
@@ -128,21 +129,15 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
         return $dataArray;
     }
 
-    /**
-     * @param null|DataObject\Concrete $object
-     *
-     */
-    public function getDataForGrid(?DataObject\Data\Link $data, Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(?DataObject\Data\Link $data, ?Concrete $object = null, array $params = []): ?array
     {
         return $this->getDataForEditmode($data, $object, $params);
     }
 
     /**
-     *
-     *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Link
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Link
     {
         $link = new DataObject\Data\Link();
         $link->setValues($data);
@@ -154,24 +149,17 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
         return $link;
     }
 
-    /**
-     * @param null|DataObject\Concrete $object
-     *
-     */
-    public function getDataFromGridEditor(array $data, Concrete $object = null, array $params = []): ?DataObject\Data\Link
+    public function getDataFromGridEditor(array $data, ?Concrete $object = null, array $params = []): ?DataObject\Data\Link
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
 
     /**
-     *
-     *
      * @see Data::getVersionPreview
-     *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
-        return (string) $data;
+        return (string)$data;
     }
 
     public function checkValidity(mixed $data, bool $omitMandatoryCheck = false, array $params = []): void
@@ -281,13 +269,11 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
         return true;
     }
 
-    /** Generates a pretty version preview (similar to getVersionPreview) can be either HTML or
+    /**
+     * Generates a pretty version preview (similar to getVersionPreview) can be either HTML or
      * a image URL. See the https://github.com/pimcore/object-merger bundle documentation for details
-     *
-     * @param DataObject\Concrete|null $object
-     *
      */
-    public function getDiffVersionPreview(?DataObject\Data\Link $data, Concrete $object = null, array $params = []): ?string
+    public function getDiffVersionPreview(?DataObject\Data\Link $data, ?Concrete $object = null, array $params = []): ?string
     {
         if ($data instanceof DataObject\Data\Link) {
             if ($data->getText()) {
@@ -369,7 +355,7 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
         return null;
     }
 
-    public function denormalize(mixed $value, array $params = []): mixed
+    public function denormalize(mixed $value, array $params = []): ?\DataObject\Data\Link
     {
         if (is_array($value)) {
             $link = new DataObject\Data\Link();

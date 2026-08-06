@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Options;
@@ -93,17 +93,17 @@ final class BlockOptions
     public function toString(): string
     {
         $options = '[';
-        $options .= "'manual' => " . $this->getManualAsString() .',';
+        $options .= "'manual' => " . $this->getManualAsString() . ',';
 
         if ($this->getLimit()) {
-            $options .= "'limit' => " . $this->getLimit() .',';
+            $options .= "'limit' => " . $this->getLimit() . ',';
         }
 
-        $options .= "'reload' => " . $this->getReloadAsString() .',';
-        $options .= "'default' => " . $this->getDefault() .',';
+        $options .= "'reload' => " . $this->getReloadAsString() . ',';
+        $options .= "'default' => " . $this->getDefault() . ',';
 
         if ($this->getClass()) {
-            $options .= "'class' => \"". $this->getClass() . '",';
+            $options .= "'class' => \"" . $this->getClass() . '",';
         }
 
         $options .= ']';

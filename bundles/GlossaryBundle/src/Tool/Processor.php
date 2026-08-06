@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GlossaryBundle\Tool;
@@ -36,14 +37,15 @@ class Processor
 
     private DocumentResolver $documentResolver;
 
-    private array $blockedTags = [];
+    private array $blockedTags;
 
     public function __construct(
-        RequestHelper $requestHelper,
+        RequestHelper    $requestHelper,
         EditmodeResolver $editmodeResolver,
         DocumentResolver $documentResolver,
-        array $blockedTags = [],
-    ) {
+        array            $blockedTags = [],
+    )
+    {
         $this->requestHelper = $requestHelper;
         $this->editmodeResolver = $editmodeResolver;
         $this->documentResolver = $documentResolver;

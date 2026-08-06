@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Security\Hasher;
@@ -31,17 +32,14 @@ class PasswordFieldHasher extends AbstractUserAwarePasswordHasher
 {
     use CheckPasswordLengthTrait;
 
-    protected string $fieldName;
-
     /**
      * If true, the user password hash will be updated if necessary.
-     *
      */
     protected bool $updateHash = true;
 
-    public function __construct(string $fieldName = 'password')
+    public function __construct(protected string $fieldName = 'password')
     {
-        $this->fieldName = $fieldName;
+        parent::__construct();
     }
 
     public function getUpdateHash(): bool

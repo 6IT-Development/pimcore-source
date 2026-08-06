@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\DataProvider\GDPR;
@@ -20,13 +21,14 @@ use Pimcore\Bundle\AdminBundle\GDPR\DataProvider;
 use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\AdminBundle\Service\GridData;
 use Pimcore\Bundle\SimpleBackendSearchBundle\Model\Search\Backend\Data;
+use Pimcore\Db;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\Element;
 
 class DataObjects extends DataProvider\DataObjects
 {
-    public function searchData(int $id, string $firstname, string $lastname, string $email, int $start, int $limit, string $sort = null): array
+    public function searchData(int $id, string $firstname, string $lastname, string $email, int $start, int $limit, ?string $sort = null): array
     {
         if (empty($id) && empty($firstname) && empty($lastname) && empty($email)) {
             return ['data' => [], 'success' => true, 'total' => 0];
@@ -38,7 +40,7 @@ class DataObjects extends DataProvider\DataObjects
 
         $searcherList = new Data\Listing();
         $conditionParts = [];
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         //id search
         if ($id) {
@@ -60,7 +62,7 @@ class DataObjects extends DataProvider\DataObjects
         $classnames = [];
         if ($this->config['classes']) {
             foreach ($this->config['classes'] as $classname => $classConfig) {
-                if ($classConfig['include'] == true) {
+                if ($classConfig['include']) {
                     $classnames[] = $classname;
                 }
             }

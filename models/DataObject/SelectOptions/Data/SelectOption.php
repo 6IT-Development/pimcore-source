@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\SelectOptions\Data;
@@ -20,17 +21,18 @@ use JsonSerializable;
 
 class SelectOption implements JsonSerializable
 {
-    public const PROPERTY_VALUE = 'value';
+    public const string PROPERTY_VALUE = 'value';
 
-    public const PROPERTY_LABEL = 'label';
+    public const string PROPERTY_LABEL = 'label';
 
-    public const PROPERTY_NAME = 'name';
+    public const string PROPERTY_NAME = 'name';
 
     public function __construct(
         protected string $value,
         protected string $label,
         protected string $name = '',
-    ) {
+    )
+    {
     }
 
     public function getValue(): string

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Sitemap\Document;
@@ -26,10 +26,11 @@ class DocumentGeneratorContext extends GeneratorContext
 {
     public function __construct(
         UrlContainerInterface $urlContainer,
-        string $section = null,
-        Site $site = null,
-        array $parameters = []
-    ) {
+        ?string               $section = null,
+        ?Site                 $site = null,
+        array                 $parameters = []
+    )
+    {
         if (null !== $site) {
             $parameters['site'] = $site;
         }

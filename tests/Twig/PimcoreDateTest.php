@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Twig;
@@ -51,10 +51,9 @@ class PimcoreDateTest extends TestCase
             TWIG,
         ]));
         $snippet = new Pimcore\Model\Document\Snippet();
-        $date = (new Pimcore\Model\Document\Editable\Date())
+        $date = new Pimcore\Model\Document\Editable\Date()
             ->setName('myDate')
-            ->setDataFromResource(1733954969)
-        ;
+            ->setDataFromResource(1733954969);
         $snippet->setEditable($date);
 
         $result = $this->engine->render(
@@ -83,10 +82,9 @@ class PimcoreDateTest extends TestCase
             TWIG,
         ]));
         $snippet = new Pimcore\Model\Document\Snippet();
-        $date = (new Pimcore\Model\Document\Editable\Date())
+        $date = new Pimcore\Model\Document\Editable\Date()
             ->setName('myDate')
-            ->setDataFromResource(1733954969)
-        ;
+            ->setDataFromResource(1733954969);
         $snippet->setEditable($date);
 
         $result = $this->engine->render(

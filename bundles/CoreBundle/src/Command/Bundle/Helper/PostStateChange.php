@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Bundle\Helper;
@@ -29,13 +29,14 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 /**
  * @internal
  */
-class PostStateChange
+readonly class PostStateChange
 {
     public function __construct(
-        private CacheClearer $cacheClearer,
-        private AssetsInstaller $assetsInstaller,
+        private CacheClearer             $cacheClearer,
+        private AssetsInstaller          $assetsInstaller,
         private EventDispatcherInterface $eventDispatcher
-    ) {
+    )
+    {
     }
 
     public static function configureStateChangeCommandOptions(Command $command): void
@@ -70,8 +71,8 @@ class PostStateChange
             return;
         }
 
-        $runAssetsInstall = $input->getOption('no-assets-install') ? false : true;
-        $runCacheClear = $input->getOption('no-cache-clear') ? false : true;
+        $runAssetsInstall = !$input->getOption('no-assets-install');
+        $runCacheClear = !$input->getOption('no-cache-clear');
 
         if (!$runAssetsInstall && !$runCacheClear) {
             return;
@@ -93,7 +94,7 @@ class PostStateChange
                     'env' => $environment,
                     'ansi' => $io->isDecorated(),
                 ]);
-            } catch (ProcessFailedException $e) {
+            } catch (ProcessFailedException) {
                 // noop - output should be enough
             }
         }
@@ -111,7 +112,7 @@ class PostStateChange
                 $this->cacheClearer->clear($environment, [
                     'ansi' => $io->isDecorated(),
                 ]);
-            } catch (ProcessFailedException $e) {
+            } catch (ProcessFailedException) {
                 // noop - output should be enough
             }
         }

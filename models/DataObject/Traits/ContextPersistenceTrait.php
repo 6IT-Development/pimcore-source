@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Traits;
@@ -27,9 +28,10 @@ use Pimcore\Model\DataObject\Localizedfield;
 trait ContextPersistenceTrait
 {
     protected function prepareMyCurrentRelations(
-        Localizedfield|\Pimcore\Model\DataObject\Fieldcollection\Data\AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object,
-        array $params
-    ): array {
+        Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object,
+        array                                                                                        $params
+    ): array
+    {
         if ($object instanceof Concrete) {
             $relations = $object->retrieveRelationData(['fieldname' => $this->getName(), 'ownertype' => 'object']);
         } elseif ($object instanceof AbstractData) {
@@ -48,9 +50,9 @@ trait ContextPersistenceTrait
                 $fieldname = $context['fieldname'] ?? null;
                 if ($context['containerType'] === 'fieldcollection') {
                     $index = $context['index'] ?? null;
-                    $filter = '/'.$context['containerType'].'~'.$fieldname.'/'.$index.'/%';
+                    $filter = '/' . $context['containerType'] . '~' . $fieldname . '/' . $index . '/%';
                 } else {
-                    $filter = '/'.$context['containerType'].'~'.$fieldname.'/%';
+                    $filter = '/' . $context['containerType'] . '~' . $fieldname . '/%';
                 }
                 $relations = $object->getObject()->retrieveRelationData(
                     [

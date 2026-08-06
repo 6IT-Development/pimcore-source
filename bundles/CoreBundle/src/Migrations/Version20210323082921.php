@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\CoreBundle\Migrations;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Pimcore\Config;
+use Pimcore\Db;
 
 /**
  * @internal
@@ -45,7 +46,7 @@ final class Version20210323082921 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $db->executeQuery('DROP TABLE IF EXISTS `website_settings`;');
         $db->executeQuery("CREATE TABLE `website_settings` (
     `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,

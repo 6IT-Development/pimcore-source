@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Adapter;
@@ -49,7 +50,7 @@ class LibreOffice extends Ghostscript
     public function isFileTypeSupported(string $fileType): bool
     {
         // it's also possible to pass a path or filename
-        if (preg_match("/\.?(pdf|doc|docx|odt|xls|xlsx|ods|ppt|pptx|odp)$/i", $fileType)) {
+        if (preg_match('/\.?(pdf|doc|docx|odt|xls|xlsx|ods|ppt|pptx|odp)$/i', $fileType)) {
             return true;
         }
 
@@ -68,7 +69,7 @@ class LibreOffice extends Ghostscript
     public function load(Asset\Document $asset): static
     {
         // avoid timeouts
-        $maxExecTime = (int) ini_get('max_execution_time');
+        $maxExecTime = (int)ini_get('max_execution_time');
         if ($maxExecTime > 1 && $maxExecTime < 250) {
             set_time_limit(250);
         }
@@ -84,7 +85,7 @@ class LibreOffice extends Ghostscript
 
         // first we have to create a pdf out of the document (if it isn't already one), so that we can pass it to ghostscript
         // unfortunately there isn't any other way at the moment
-        if (!preg_match("/\.?pdf$/i", $asset->getFilename())) {
+        if (!preg_match('/\.?pdf$/i', $asset->getFilename())) {
             if (!parent::isFileTypeSupported($asset->getFilename())) {
                 $this->getPdf();
             }
@@ -104,7 +105,7 @@ class LibreOffice extends Ghostscript
             if (parent::isFileTypeSupported($asset->getFilename())) {
                 return parent::getPdf($asset);
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             // nothing to do, delegate to libreoffice
         }
 
@@ -143,7 +144,7 @@ class LibreOffice extends Ghostscript
 
             Logger::debug('LibreOffice Output was: ' . $out);
 
-            $tmpName = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/' . preg_replace("/\." . pathinfo($localAssetTmpPath, PATHINFO_EXTENSION) . '$/', '.pdf', basename($localAssetTmpPath));
+            $tmpName = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/' . preg_replace('/\.' . pathinfo($localAssetTmpPath, PATHINFO_EXTENSION) . '$/', '.pdf', basename($localAssetTmpPath));
             if (file_exists($tmpName)) {
                 $storage->write($storagePath, file_get_contents($tmpName));
                 unlink($tmpName);

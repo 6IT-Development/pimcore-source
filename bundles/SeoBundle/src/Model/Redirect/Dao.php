@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Model\Redirect;
@@ -21,12 +21,13 @@ use Pimcore\Bundle\SeoBundle\Redirect\RedirectUrlPartResolver;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Site;
+use Pimcore\Tool\Admin;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
  * @internal
  *
- * @property \Pimcore\Bundle\SeoBundle\Model\Redirect $model
+ * @property Redirect $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -34,7 +35,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      * @throws NotFoundException
      */
-    public function getById(int $id = null): void
+    public function getById(?int $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -55,7 +56,7 @@ class Dao extends Model\Dao\AbstractDao
     public function getByExactMatch(Request $request, ?Site $site = null, bool $override = false): void
     {
         $partResolver = new RedirectUrlPartResolver($request);
-        $siteId = $site ? $site->getId() : null;
+        $siteId = $site?->getId();
 
         $sql = 'SELECT * FROM redirects WHERE
             (
@@ -102,7 +103,7 @@ class Dao extends Model\Dao\AbstractDao
             // create in database
             $this->db->insert('redirects', []);
 
-            $this->model->setId((int) $this->db->lastInsertId());
+            $this->model->setId((int)$this->db->lastInsertId());
         }
 
         $this->updateModificationInfos();
@@ -113,7 +114,7 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($type as $key => $value) {
             if (in_array($key, $this->getValidTableColumns('redirects'))) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 }
                 $data[$key] = $value;
             }
@@ -141,7 +142,7 @@ class Dao extends Model\Dao\AbstractDao
 
         // auto assign user if possible, if no user present, use ID=0 which represents the "system" user
         $userId = 0;
-        $user = \Pimcore\Tool\Admin::getCurrentUser();
+        $user = Admin::getCurrentUser();
         if ($user instanceof Model\User) {
             $userId = $user->getId();
         }

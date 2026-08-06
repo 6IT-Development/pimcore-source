@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CustomReportsBundle\Tool\Adapter;
@@ -25,7 +26,7 @@ use stdClass;
  */
 class Sql extends AbstractAdapter
 {
-    public function getData(?array $filters, ?string $sort, ?string $dir, ?int $offset, ?int $limit, array $fields = null, array $drillDownFilters = null): array
+    public function getData(?array $filters, ?string $sort, ?string $dir, ?int $offset, ?int $limit, ?array $fields = null, ?array $drillDownFilters = null): array
     {
         $db = Db::get();
 
@@ -39,7 +40,7 @@ class Sql extends AbstractAdapter
             $order = '';
             if ($sort && $dir) {
                 $dir = ((strtoupper($dir) === 'ASC') ? 'ASC' : 'DESC');
-                $order = ' ORDER BY ' . $db->quoteIdentifier($sort) . ' ' .$dir;
+                $order = ' ORDER BY ' . $db->quoteIdentifier($sort) . ' ' . $dir;
             }
 
             $sql = $baseQuery['data'] . $order;
@@ -74,7 +75,7 @@ class Sql extends AbstractAdapter
         throw new Exception("Only 'SELECT' statements are allowed! You've used '" . $matches[0] . "'");
     }
 
-    protected function buildQueryString(stdClass $config, bool $ignoreSelectAndGroupBy = false, array $drillDownFilters = null, string $selectField = null): string
+    protected function buildQueryString(stdClass $config, bool $ignoreSelectAndGroupBy = false, ?array $drillDownFilters = null, ?string $selectField = null): string
     {
         $config = (array)$config;
         $sql = '';
@@ -115,7 +116,7 @@ class Sql extends AbstractAdapter
             $db = Db::get();
             foreach ($drillDownFilters as $field => $value) {
                 if ($value !== '' && $value !== null) {
-                    $havingParts[] = ($db->quoteIdentifier($field) .' = ' . $db->quote($value));
+                    $havingParts[] = ($db->quoteIdentifier($field) . ' = ' . $db->quote($value));
                 }
             }
 
@@ -127,7 +128,7 @@ class Sql extends AbstractAdapter
         return $sql;
     }
 
-    protected function getBaseQuery(array $filters, array $fields, bool $ignoreSelectAndGroupBy = false, array $drillDownFilters = null, string $selectField = null): ?array
+    protected function getBaseQuery(array $filters, array $fields, bool $ignoreSelectAndGroupBy = false, ?array $drillDownFilters = null, ?string $selectField = null): ?array
     {
         $db = Db::get();
         $condition = ['1 = 1'];
@@ -150,7 +151,7 @@ class Sql extends AbstractAdapter
             switch ($operator) {
                 case 'like':
                     $fields[] = $filter['property'];
-                    $condition[] = $db->quoteIdentifier($filter['property']) . ' LIKE ' . $db->quote('%' . $value. '%');
+                    $condition[] = $db->quoteIdentifier($filter['property']) . ' LIKE ' . $db->quote('%' . $value . '%');
 
                     break;
                 case 'lt':
@@ -181,7 +182,7 @@ class Sql extends AbstractAdapter
             }
         }
 
-        if (!preg_match('/(ALTER|CREATE|DROP|RENAME|TRUNCATE|UPDATE|DELETE) /i', $sql, $matches)) {
+        if (!preg_match('/(ALTER|CREATE|DROP|RENAME|TRUNCATE|UPDATE|DELETE) /i', $sql)) {
             $condition = implode(' AND ', $condition);
 
             $total = 'SELECT COUNT(*) FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Mail\Plugins;
@@ -113,7 +114,7 @@ final class RedirectingPlugin
      */
     private function appendDebugInformation(Mail $message): void
     {
-        if ($message->isPreventingDebugInformationAppending() != true) {
+        if (!$message->isPreventingDebugInformationAppending()) {
             $originalData = [];
 
             //adding the debug information to the html email
@@ -125,8 +126,8 @@ final class RedirectingPlugin
                 $debugInformation = MailHelper::getDebugInformation('html', $message);
                 $debugInformationStyling = MailHelper::getDebugInformationCssStyle();
 
-                $html = preg_replace("!(</\s*body\s*>)!is", "$debugInformation\\1", $html);
-                $html = preg_replace("!(<\s*head\s*>)!is", "\\1$debugInformationStyling", $html);
+                $html = preg_replace('!(</\s*body\s*>)!i', "$debugInformation\\1", $html);
+                $html = preg_replace('!(<\s*head\s*>)!i', "\\1$debugInformationStyling", $html);
 
                 $message->html($html);
             } elseif (!empty($text)) {

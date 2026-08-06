@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ImporterService\Importer;
@@ -36,7 +37,7 @@ class AbstractElementImporter implements ImporterInterface
 
         $attributeSet = $event->getAttributeSet();
 
-        if (!$element instanceof Element\ElementInterface || $attributeSet->isEmpty()) {
+        if ($attributeSet->isEmpty()) {
             return;
         }
 
@@ -56,8 +57,7 @@ class AbstractElementImporter implements ImporterInterface
     protected function importAttribute(Element\ElementInterface $element, string $targetLanguage, Attribute $attribute): void
     {
         if ($attribute->getType() === Attribute::TYPE_PROPERTY) {
-            $property = $element->getProperty($attribute->getName(), true);
-            if ($property) {
+            if ($property = $element->getProperty($attribute->getName(), true)) {
                 $property->setData($attribute->getContent());
             } else {
                 $element->setProperty($attribute->getName(), 'text', $attribute->getContent(), false, true);

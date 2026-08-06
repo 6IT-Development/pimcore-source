@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Editable\Block;
@@ -44,13 +44,13 @@ final class BlockStateStack implements Countable, JsonSerializable
      * Adds a new state to the stack
      *
      */
-    public function push(BlockState $blockState = null): void
+    public function push(?BlockState $blockState = null): void
     {
         if (null === $blockState) {
             $blockState = new BlockState();
         }
 
-        array_push($this->states, $blockState);
+        $this->states[] = $blockState;
     }
 
     /**

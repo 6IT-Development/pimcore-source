@@ -11,12 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Unit\Mail;
 
+use Pimcore\Config;
+use Pimcore\Mail;
 use Pimcore\Tests\Support\Test\TestCase;
 use Symfony\Component\Mime\Header\Headers;
 use Symfony\Component\Mime\Part\TextPart;
@@ -39,13 +41,13 @@ class MailTest extends TestCase
      */
     public function testGenerateMail(): void
     {
-        $headers = (new Headers())
+        $headers = new Headers()
             ->addMailboxListHeader('From', [$this->defaultSettings['from']])
             ->addMailboxListHeader('To', [$this->defaultSettings['to']])
             ->addTextHeader('Subject', $this->defaultSettings['subject']);
         $body = new TextPart($this->defaultSettings['text']);
 
-        $mail = new \Pimcore\Mail($headers, $body);
+        $mail = new Mail($headers, $body);
 
         $this->assertEquals($this->defaultSettings['from'], $mail->getFrom()[0]->getAddress(), 'From recipient is not set properly');
         $this->assertEquals($this->defaultSettings['to'], $mail->getTo()[0]->getAddress(), 'To recipient is not set properly');
@@ -57,7 +59,7 @@ class MailTest extends TestCase
      */
     public function testGenerateMailWithArray(): void
     {
-        $headers = (new Headers())
+        $headers = new Headers()
             ->addMailboxListHeader('From', [$this->defaultSettings['from']])
             ->addMailboxListHeader('To', [$this->defaultSettings['to']]);
 
@@ -69,7 +71,7 @@ class MailTest extends TestCase
             'subject' => $this->defaultSettings['subject'],
         ];
 
-        $mail = new \Pimcore\Mail($mailArray);
+        $mail = new Mail($mailArray);
 
         $this->assertEquals($this->defaultSettings['from'], $mail->getFrom()[0]->getAddress(), 'From recipient is not set properly');
         $this->assertEquals($this->defaultSettings['to'], $mail->getTo()[0]->getAddress(), 'To recipient is not set properly');
@@ -81,8 +83,8 @@ class MailTest extends TestCase
      */
     public function testMailInit(): void
     {
-        $emailConfig = \Pimcore\Config::getSystemConfiguration('email');
-        $mail = new \Pimcore\Mail();
+        $emailConfig = Config::getSystemConfiguration('email');
+        $mail = new Mail();
 
         $this->assertEquals($emailConfig['sender']['email'], $mail->getFrom()[0]->getAddress(), 'From recipient not initialized from system settings');
         if (!empty($emailConfig['return']['email'])) {
@@ -95,7 +97,7 @@ class MailTest extends TestCase
      */
     public function testAddRecipientsToMail(): void
     {
-        $mail = new \Pimcore\Mail();
+        $mail = new Mail();
         $mail->clearRecipients();
         foreach (['To', 'Cc', 'Bcc', 'ReplyTo'] as $key) {
             $setterName = 'add' . $key;
@@ -113,7 +115,7 @@ class MailTest extends TestCase
      */
     public function testClearRecipientsFromMail(): void
     {
-        $mail = new \Pimcore\Mail();
+        $mail = new Mail();
         $mail->addTo($this->defaultSettings['to'])
             ->addCc($this->defaultSettings['to'])
             ->addBcc($this->defaultSettings['to'])
@@ -132,7 +134,7 @@ class MailTest extends TestCase
      */
     public function testTextBodyRenderedWithParams(): void
     {
-        $mail = new \Pimcore\Mail();
+        $mail = new Mail();
         $mail->text('Hi, {{ firstname }} {{ lastname }}.');
         $mail->setParams([
             'firstname' => 'John',
@@ -147,7 +149,7 @@ class MailTest extends TestCase
      */
     public function testHtmlBodyRenderedWithParams(): void
     {
-        $mail = new \Pimcore\Mail();
+        $mail = new Mail();
         $mail->html('Hi, {{ firstname }} {{ lastname }}.');
         $mail->setParams([
             'firstname' => 'John',

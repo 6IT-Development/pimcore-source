@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\TranslationItemCollection;
@@ -42,7 +43,7 @@ class TranslationItemCollection
 
     public function addPimcoreElement(ElementInterface $element): TranslationItemCollection
     {
-        $this->items[] = new TranslationItem(Element\Service::getElementType($element), (string) $element->getId(), $element);
+        $this->items[] = new TranslationItem(Element\Service::getElementType($element), (string)$element->getId(), $element);
 
         return $this;
     }
@@ -57,13 +58,12 @@ class TranslationItemCollection
 
     public function toArray(): array
     {
-        $elementsArray = [];
-        foreach ($this->getItems() as $element) {
+        return array_reduce($this->getItems(), static function (array $elementsArray, TranslationItem $element) {
             $elementsArray[$element->getType()] = $elementsArray[$element->getType()] ?? [];
             $elementsArray[$element->getType()][] = $element->getId();
-        }
 
-        return $elementsArray;
+            return $elementsArray;
+        }, []);
     }
 
     public function isEmpty(): bool

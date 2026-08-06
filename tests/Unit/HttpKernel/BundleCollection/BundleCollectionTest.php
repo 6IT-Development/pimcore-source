@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Unit\HttpKernel\BundleCollection;
@@ -41,10 +41,10 @@ class BundleCollectionTest extends TestCase
         $this->collection = new BundleCollection();
 
         $this->bundles = [
-            new BundleA,
-            new BundleB,
-            new BundleC,
-            new BundleD,
+            new BundleA(),
+            new BundleB(),
+            new BundleC(),
+            new BundleD(),
         ];
     }
 
@@ -181,7 +181,7 @@ class BundleCollectionTest extends TestCase
         $collection = $this->collection;
 
         $bundles = $this->bundles;
-        $bundles[] = new BundleD;
+        $bundles[] = new BundleD();
 
         $collection->addBundle($bundles[0]); // this will always be loaded
         $collection->addBundle($bundles[1], 0, ['dev']);
@@ -256,7 +256,7 @@ class BundleCollectionTest extends TestCase
         $collection = new BundleCollection();
 
         // BundleH is now implicitely added and tries to add BundleG with prio 5
-        $collection->addBundle(new BundleG, 10);
+        $collection->addBundle(new BundleG(), 10);
 
         $this->assertEquals([
             BundleG::class,
@@ -278,11 +278,11 @@ class BundleCollectionTest extends TestCase
         $collection = new BundleCollection();
 
         // add BundleH explicitly
-        $collection->addBundle(new BundleH, 50);
+        $collection->addBundle(new BundleH(), 50);
 
         // BundleG tries to add BundleH, but it will be ignored as it is already registered with a higher priority
         // BundleG is registered with priority 10, which is higher than in BundleH and will so the new prio will be 10
-        $collection->addBundle(new BundleG, 10);
+        $collection->addBundle(new BundleG(), 10);
 
         // BundleJ will try to add BundleH again with prio 9
         $collection->addBundle(new BundleJ());
@@ -336,7 +336,7 @@ class BundleG extends Bundle implements DependentBundleInterface
 {
     public static function registerDependentBundles(BundleCollection $collection): void
     {
-        $collection->addBundle(new BundleH, 8);
+        $collection->addBundle(new BundleH(), 8);
     }
 }
 
@@ -344,7 +344,7 @@ class BundleH extends Bundle implements DependentBundleInterface
 {
     public static function registerDependentBundles(BundleCollection $collection): void
     {
-        $collection->addBundle(new BundleG, 5);
+        $collection->addBundle(new BundleG(), 5);
     }
 }
 
@@ -352,9 +352,9 @@ class BundleI extends Bundle implements DependentBundleInterface
 {
     public static function registerDependentBundles(BundleCollection $collection): void
     {
-        $collection->addBundle(new BundleA);
-        $collection->addBundle(new BundleB);
-        $collection->addBundle(new BundleE);
+        $collection->addBundle(new BundleA());
+        $collection->addBundle(new BundleB());
+        $collection->addBundle(new BundleE());
     }
 }
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\CurrentMessage;
@@ -23,14 +24,15 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * @internal
  */
-final class CurrentMessageProvider implements CurrentMessageProviderInterface
+final readonly class CurrentMessageProvider implements CurrentMessageProviderInterface
 {
     public function __construct(
-        private readonly TranslatorInterface $translator
-    ) {
+        private TranslatorInterface $translator
+    )
+    {
     }
 
-    public function getTranslationMessages(string $key, array $parameters = [], string $domain = null): MessageInterface
+    public function getTranslationMessages(string $key, array $parameters = [], ?string $domain = null): MessageInterface
     {
         return new TranslationMessage($key, $parameters, $domain, $this->translator);
     }

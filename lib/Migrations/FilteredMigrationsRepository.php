@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Migrations;
@@ -20,18 +21,19 @@ use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\FilesystemMigrationsRepository;
 use Doctrine\Migrations\Metadata\AvailableMigration;
 use Doctrine\Migrations\Metadata\AvailableMigrationsSet;
+use Doctrine\Migrations\MigrationsRepository;
 use Doctrine\Migrations\Version\Version;
 
 /**
  * @internal
  */
-final class FilteredMigrationsRepository implements \Doctrine\Migrations\MigrationsRepository
+final class FilteredMigrationsRepository implements MigrationsRepository
 {
     private FilesystemMigrationsRepository $filesystemRepo;
 
     private ?string $prefix = null;
 
-    public function __invoke(DependencyFactory $dependencyFactory): static
+    public function __invoke(DependencyFactory $dependencyFactory): FilteredMigrationsRepository
     {
         $filesystemRepo = new FilesystemMigrationsRepository(
             $dependencyFactory->getConfiguration()->getMigrationClasses(),

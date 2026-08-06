@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Controller;
@@ -18,8 +18,11 @@ namespace Pimcore\Bundle\CoreBundle\Controller;
 use Exception;
 use PDO;
 use Pimcore\Controller\Controller;
+use Pimcore\Db;
 use Pimcore\Logger;
 use Pimcore\Model\Asset;
+use Sabre\DAV\Browser\Plugin;
+use Sabre\DAV\Server;
 
 /**
  * @internal
@@ -33,12 +36,12 @@ class WebDavController extends Controller
         try {
             $publicDir = new Asset\WebDAV\Folder($homeDir);
             $objectTree = new Asset\WebDAV\Tree($publicDir);
-            $server = new \Sabre\DAV\Server($objectTree);
+            $server = new Server($objectTree);
             $server->setBaseUri($this->generateUrl('pimcore_webdav', ['path' => '/']));
 
             // lock plugin
             /** @var PDO $pdo */
-            $pdo = \Pimcore\Db::get()->getNativeConnection();
+            $pdo = Db::get()->getNativeConnection();
             $lockBackend = new \Sabre\DAV\Locks\Backend\PDO($pdo);
             $lockBackend->tableName = 'webdav_locks';
 
@@ -46,7 +49,7 @@ class WebDavController extends Controller
             $server->addPlugin($lockPlugin);
 
             // browser plugin
-            $server->addPlugin(new \Sabre\DAV\Browser\Plugin());
+            $server->addPlugin(new Plugin());
 
             $server->start();
         } catch (Exception $e) {

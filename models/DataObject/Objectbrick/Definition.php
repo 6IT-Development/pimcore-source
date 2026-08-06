@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Objectbrick;
@@ -100,7 +101,7 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
         if (!$this->getFieldDefinitions()) {
             return;
         }
-        $isLocalized = $this->getFieldDefinition('localizedfields') ? true : false;
+        $isLocalized = (bool)$this->getFieldDefinition('localizedfields');
 
         $classDefinitions = $this->getClassDefinitions();
         $validLanguages = Tool::getValidLanguages();
@@ -115,8 +116,8 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
                 continue;
             }
 
-            $tables[] = 'object_brick_query_' . $key .  '_' . $class->getId();
-            $tables[] = 'object_brick_store_' . $key .  '_' . $class->getId();
+            $tables[] = 'object_brick_query_' . $key . '_' . $class->getId();
+            $tables[] = 'object_brick_store_' . $key . '_' . $class->getId();
             if ($isLocalized) {
                 foreach ($validLanguages as $validLanguage) {
                     $tables[] = 'object_brick_localized_query_' . $key . '_' . $class->getId() . '_' . $validLanguage;
@@ -132,7 +133,7 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
 
             $length = strlen($longestTablename);
             if ($length > 64) {
-                throw new Exception('table name ' . $longestTablename . ' would be too long. Max length is 64. Current length would be ' .  $length . '.');
+                throw new Exception('table name ' . $longestTablename . ' would be too long. Max length is 64. Current length would be ' . $length . '.');
             }
         }
     }
@@ -290,8 +291,8 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
      */
     private function getClassesToCleanup(Definition $oldObject): array
     {
-        $oldDefinitions = $oldObject->getClassDefinitions() ? $oldObject->getClassDefinitions() : [];
-        $newDefinitions = $this->getClassDefinitions() ? $this->getClassDefinitions() : [];
+        $oldDefinitions = $oldObject->getClassDefinitions() ?: [];
+        $newDefinitions = $this->getClassDefinitions() ?: [];
 
         $old = $this->buildClassList($oldDefinitions);
         $new = $this->buildClassList($newDefinitions);
@@ -397,7 +398,7 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
                 continue;
             }
 
-            $allowedTypes = $fd->getAllowedTypes() ? $fd->getAllowedTypes() : [];
+            $allowedTypes = $fd->getAllowedTypes() ?: [];
             foreach ($allowedTypes as $allowedType) {
                 $result[] = $fd->getName() . '-' . $allowedType;
             }
@@ -411,8 +412,6 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
      */
     private function createContainerClasses(): void
     {
-        $containerDefinition = [];
-
         if (!empty($this->classDefinitions)) {
             foreach ($this->classDefinitions as $cl) {
                 $class = DataObject\ClassDefinition::getByName($cl['classname']);
@@ -440,7 +439,7 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
                     $class->save();
                 } else {
                     // still, the brick fields definitions could have changed.
-                    Cache::clearTag('class_'.$class->getId());
+                    Cache::clearTag('class_' . $class->getId());
                     Logger::debug('Objectbrick ' . $this->getKey() . ', no change for class ' . $class->getName());
                 }
             }
@@ -547,13 +546,13 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
      */
     public function isWritable(): bool
     {
-        return (bool) ($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? !str_starts_with($this->getDefinitionFile(), PIMCORE_CUSTOM_CONFIGURATION_DIRECTORY));
+        return (bool)($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? !str_starts_with($this->getDefinitionFile(), PIMCORE_CUSTOM_CONFIGURATION_DIRECTORY));
     }
 
     /**
      * @internal
      */
-    public function getDefinitionFile(string $key = null): string
+    public function getDefinitionFile(?string $key = null): string
     {
         return $this->locateDefinitionFile($key ?? $this->getKey(), 'objectbricks/%s.php');
     }

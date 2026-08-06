@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Thumbnail;
 
 use Exception;
+use League\Flysystem\FilesystemException;
 use Pimcore\Config as PimcoreConfig;
 use Pimcore\Helper\TemporaryFileHelperTrait;
 use Pimcore\Model\Asset;
@@ -91,7 +93,7 @@ trait ImageThumbnailTrait
      */
     public function getStream()
     {
-        $pathReference = $this->getPathReference(false);
+        $pathReference = $this->getPathReference();
         if ($pathReference['type'] === 'asset') {
             return $this->asset->getStream();
         } elseif (isset($pathReference['storagePath'])) {
@@ -163,9 +165,9 @@ trait ImageThumbnailTrait
     }
 
     /**
+     * @return array{width?: int, height?: int}
      * @internal
      *
-     * @return array{width?: int, height?: int}
      */
     public function readDimensionsFromFile(): array
     {
@@ -188,7 +190,7 @@ trait ImageThumbnailTrait
                         $dimensions['height'] = $thumbnail['height'];
                     }
                 }
-            } catch (Exception $e) {
+            } catch (Exception) {
                 // noting to do
             }
         }
@@ -231,9 +233,9 @@ trait ImageThumbnailTrait
 
             // realWidth / realHeight is only relevant if using high-res option (retina, ...)
             $width = $dimensions['width'] ?? null;
-            $this->width = $this->realWidth = ($width !== null ? (int) $width : null);
+            $this->width = $this->realWidth = ($width !== null ? (int)$width : null);
             $height = $dimensions['height'] ?? null;
-            $this->height = $this->realHeight = ($height !== null ? (int) $height : null);
+            $this->height = $this->realHeight = ($height !== null ? (int)$height : null);
             if ($config && $config->getHighResolution() > 1) {
                 if ($this->width) {
                     $this->width = (int)floor($this->realWidth / $config->getHighResolution());
@@ -296,13 +298,13 @@ trait ImageThumbnailTrait
             if ($type === 'data-uri') {
                 return $path;
             } elseif ($type === 'deferred') {
-                $prefix = \Pimcore\Config::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail_deferred'];
+                $prefix = PimcoreConfig::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail_deferred'];
                 $path = $prefix . urlencode_ignore_slash($path);
             } elseif ($type === 'thumbnail') {
-                $prefix = \Pimcore\Config::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail'];
+                $prefix = PimcoreConfig::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail'];
                 $path = $prefix . urlencode_ignore_slash($path);
             } elseif ($type === 'asset') {
-                $prefix = \Pimcore\Config::getSystemConfiguration('assets')['frontend_prefixes']['source'];
+                $prefix = PimcoreConfig::getSystemConfiguration('assets')['frontend_prefixes']['source'];
                 $path = $prefix . urlencode_ignore_slash($path);
             } else {
                 $path = urlencode_ignore_slash($path);
@@ -316,16 +318,16 @@ trait ImageThumbnailTrait
     {
         $path = $this->getPath(['deferredAllowed' => true, 'frontend' => true]);
         if (!preg_match('@^(https?|data):@', $path)) {
-            $path = \Pimcore\Tool::getHostUrl() . $path;
+            $path = Tool::getHostUrl() . $path;
         }
 
         return $path;
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function getLocalFile(): ?string
     {
@@ -362,9 +364,9 @@ trait ImageThumbnailTrait
     }
 
     /**
+     * @throws FilesystemException
      * @internal
      *
-     * @throws \League\Flysystem\FilesystemException
      */
     public function existsOnStorage(?array $pathReference = []): bool
     {
@@ -393,7 +395,7 @@ trait ImageThumbnailTrait
             return $thumbnail['filesize'];
         }
 
-        $pathReference = $this->getPathReference(false);
+        $pathReference = $this->getPathReference();
         if ($pathReference['type'] === 'asset') {
             return $this->asset->getFileSize();
         } elseif (isset($pathReference['storagePath'])) {

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -33,10 +33,10 @@ final class Version20220120121803 extends AbstractMigration
         $this->addSql('SET foreign_key_checks = 0');
 
         foreach (['documents_hardlink', 'documents_link', 'documents_page', 'documents_snippet', 'documents_printpage', 'documents_email', 'documents_newsletter', 'documents_translations'] as $table) {
-            if (!$schema->getTable($table)->hasForeignKey('fk_'.$table.'_documents')) {
+            if (!$schema->getTable($table)->hasForeignKey('fk_' . $table . '_documents')) {
                 $this->addSql(
-                    'ALTER TABLE `'.$table.'`
-                    ADD CONSTRAINT `fk_'.$table.'_documents`
+                    'ALTER TABLE `' . $table . '`
+                    ADD CONSTRAINT `fk_' . $table . '_documents`
                     FOREIGN KEY (`id`)
                     REFERENCES `documents` (`id`)
                     ON UPDATE NO ACTION
@@ -86,8 +86,8 @@ final class Version20220120121803 extends AbstractMigration
     public function down(Schema $schema): void
     {
         foreach (['documents_hardlink', 'documents_link', 'documents_page', 'documents_snippet', 'documents_printpage', 'documents_email', 'email_log', 'documents_newsletter', 'documents_editables', 'documents_translations'] as $table) {
-            if ($schema->getTable($table)->hasForeignKey('fk_'.$table.'_documents')) {
-                $this->addSql('ALTER TABLE `'.$table.'` DROP FOREIGN KEY `fk_'.$table.'_documents`;');
+            if ($schema->getTable($table)->hasForeignKey('fk_' . $table . '_documents')) {
+                $this->addSql('ALTER TABLE `' . $table . '` DROP FOREIGN KEY `fk_' . $table . '_documents`;');
             }
         }
 

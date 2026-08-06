@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Helper\DataType;
 
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use DateTime;
 use Exception;
 use InvalidArgumentException;
@@ -38,11 +41,11 @@ use TypeError;
 
 class TestDataHelper extends AbstractTestDataHelper
 {
-    const IMAGE = 'sampleimage.jpg';
+    public const string IMAGE = 'sampleimage.jpg';
 
-    const DOCUMENT = 'sampledocument.txt';
+    public const string DOCUMENT = 'sampledocument.txt';
 
-    const HOTSPOT_IMAGE = 'hotspot.jpg';
+    public const string HOTSPOT_IMAGE = 'hotspot.jpg';
 
     public function assertBooleanSelect(Concrete $object, string $field, int $seed = 1): void
     {
@@ -98,9 +101,7 @@ class TestDataHelper extends AbstractTestDataHelper
     public function getFieldDefinition(Concrete $object, string $field): ?Data
     {
         $cd = $object->getClass();
-        $fd = $cd->getFieldDefinition($field);
-
-        return $fd;
+        return $cd->getFieldDefinition($field);
     }
 
     public function assertIsEqual(Concrete $object, string $field, mixed $expected, mixed $value): void
@@ -168,10 +169,10 @@ class TestDataHelper extends AbstractTestDataHelper
     {
         $getter = 'get' . ucfirst($field);
 
-        /** @var \Carbon\CarbonPeriod $value */
+        /** @var CarbonPeriod $value */
         $value = $object->$getter();
 
-        $expected = new \Carbon\CarbonPeriod('2018-04-21', '3 days', '2018-04-27');
+        $expected = new CarbonPeriod('2018-04-21', '3 days', '2018-04-27');
 
         $this->assertIsEqual($object, $field, $expected, $value);
     }
@@ -337,9 +338,7 @@ class TestDataHelper extends AbstractTestDataHelper
     {
         $longitude = 2.2008440814678;
         $latitude = 102.25112915039;
-        $point = new DataObject\Data\GeoCoordinates($latitude, $longitude);
-
-        return $point;
+        return new DataObject\Data\GeoCoordinates($latitude, $longitude);
     }
 
     public function assertGeopolygon(Concrete $object, string $field, int $seed = 1): void
@@ -397,7 +396,7 @@ class TestDataHelper extends AbstractTestDataHelper
         $this->assertEquals($expected->getHotspots(), $value->getHotspots());
     }
 
-    private function createHotspots(int $idx = null, int $seed = 0): array
+    private function createHotspots(?int $idx = null, int $seed = 0): array
     {
         $result = [];
 
@@ -1003,7 +1002,7 @@ class TestDataHelper extends AbstractTestDataHelper
         $brick = new DataObject\Objectbrick\Data\UnittestBrick($object);
         $brick->setBrickInput('brickinput' . $seed);
 
-        $emptyObjects = TestHelper::createEmptyObjects('myBrickPrefix', true, 10);
+        $emptyObjects = TestHelper::createEmptyObjects('myBrickPrefix');
         $emptyLazyObjects = TestHelper::createEmptyObjects('myLazyBrickPrefix', true, 15);
         $brick->setBrickLazyRelation($emptyLazyObjects);
 
@@ -1033,7 +1032,7 @@ class TestDataHelper extends AbstractTestDataHelper
     {
         $setter = 'set' . ucfirst($field);
 
-        $date = new \Carbon\Carbon();
+        $date = new Carbon();
         $date->setDate(2000, 12, 24);
 
         $object->$setter($date);
@@ -1043,7 +1042,7 @@ class TestDataHelper extends AbstractTestDataHelper
     {
         $setter = 'set' . ucfirst($field);
 
-        $period = new \Carbon\CarbonPeriod('2018-04-21', '3 days', '2018-04-27');
+        $period = new CarbonPeriod('2018-04-21', '3 days', '2018-04-27');
 
         $object->$setter($period);
     }
@@ -1079,7 +1078,7 @@ class TestDataHelper extends AbstractTestDataHelper
         $fc->setFieldinput1('field1' . $seed);
         $fc->setFieldinput2('field2' . $seed);
 
-        $emptyObjects = TestHelper::createEmptyObjects('myprefix', true, 10);
+        $emptyObjects = TestHelper::createEmptyObjects('myprefix');
         $emptyLazyObjects = TestHelper::createEmptyObjects('myLazyPrefix', true, 15);
         $fc->setFieldRelation($emptyObjects);
         $fc->setFieldLazyRelation($emptyLazyObjects);

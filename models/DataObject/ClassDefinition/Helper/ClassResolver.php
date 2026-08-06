@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Helper;
@@ -28,10 +29,11 @@ abstract class ClassResolver
     private static array $cache;
 
     protected static function resolve(
-        ?string $class,
-        callable $validationCallback = null,
-        bool $showError = true
-    ): ?object {
+        ?string   $class,
+        ?callable $validationCallback = null,
+        bool      $showError = true
+    ): ?object
+    {
         if (!$class) {
             return null;
         }
@@ -39,14 +41,14 @@ abstract class ClassResolver
         $return = null;
         if ($showError) {
             $return = self::$cache[$class] ??= self::returnValidServiceOrNull(
-                str_starts_with($class, '@') ? Pimcore::getContainer()->get(substr($class, 1)) : new $class,
+                str_starts_with($class, '@') ? Pimcore::getContainer()->get(substr($class, 1)) : new $class(),
                 $validationCallback
             );
         }
 
         try {
             $return = self::$cache[$class] ??= self::returnValidServiceOrNull(
-                str_starts_with($class, '@') ? Pimcore::getContainer()->get(substr($class, 1)) : new $class,
+                str_starts_with($class, '@') ? Pimcore::getContainer()->get(substr($class, 1)) : new $class(),
                 $validationCallback
             );
         } catch (Error $e) {
@@ -56,7 +58,7 @@ abstract class ClassResolver
         return $return;
     }
 
-    private static function returnValidServiceOrNull(object $service, callable $validationCallback = null): ?object
+    private static function returnValidServiceOrNull(object $service, ?callable $validationCallback = null): ?object
     {
         if ($validationCallback && !$validationCallback($service)) {
             return null;

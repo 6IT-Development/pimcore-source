@@ -12,21 +12,21 @@ declare(strict_types=1);
  * LICENSE.md which is distributed with this source code.
  *
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
-use const PIMCORE_PROJECT_ROOT;
 use League\Flysystem\FilesystemException;
 use League\Flysystem\UnableToWriteFile;
 use Pimcore\Logger;
 use Pimcore\Tool\Storage;
+use const PIMCORE_PROJECT_ROOT;
 
 final class FileObject
 {
     public function __construct(
-        protected  string $data,
+        protected string  $data,
         protected ?string $filename = null
     )
     {

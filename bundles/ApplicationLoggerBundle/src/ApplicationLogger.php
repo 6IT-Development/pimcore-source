@@ -31,6 +31,7 @@ use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Stringable;
 use Throwable;
+use const PIMCORE_PROJECT_ROOT;
 
 class ApplicationLogger implements LoggerInterface
 {
@@ -54,7 +55,7 @@ class ApplicationLogger implements LoggerInterface
         if ($container->has($containerId)) {
             $logger = $container->get($containerId);
         } else {
-            $logger = new self;
+            $logger = new self();
             if ($initDbHandler) {
                 $logger->addWriter($container->get(ApplicationLoggerDb::class));
             }
@@ -118,7 +119,7 @@ class ApplicationLogger implements LoggerInterface
 
         if (isset($context['fileObject'])) {
             if (is_string($context['fileObject'])) {
-                $context['fileObject'] = preg_replace('/^' . preg_quote(\PIMCORE_PROJECT_ROOT, '/') . '/', '', $context['fileObject']);
+                $context['fileObject'] = preg_replace('/^' . preg_quote(PIMCORE_PROJECT_ROOT, '/') . '/', '', $context['fileObject']);
             } elseif ($context['fileObject'] instanceof FileObject) {
                 $context['fileObject'] = $context['fileObject']->getFilename();
             } else {

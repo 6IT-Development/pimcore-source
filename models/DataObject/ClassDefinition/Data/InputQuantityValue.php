@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -46,7 +47,7 @@ class InputQuantityValue extends AbstractQuantityValue
         $this->defaultValue = $defaultValue;
     }
 
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?InputQuantityValueDataObject
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?InputQuantityValueDataObject
     {
         if ($data[$this->getName() . '__value'] || $data[$this->getName() . '__unit']) {
             $dataObject = $this->getNewDataObject($data[$this->getName() . '__value'], $data[$this->getName() . '__unit']);
@@ -63,7 +64,7 @@ class InputQuantityValue extends AbstractQuantityValue
         return null;
     }
 
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?InputQuantityValueDataObject
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?InputQuantityValueDataObject
     {
         if (is_array($data)) {
             $dataValue = $data['value'] === null || $data['value'] === '' ? null : $data['value'];
@@ -77,7 +78,7 @@ class InputQuantityValue extends AbstractQuantityValue
         return null;
     }
 
-    public function getDataFromGridEditor(array $data, Concrete $object = null, array $params = []): ?InputQuantityValueDataObject
+    public function getDataFromGridEditor(array $data, ?Concrete $object = null, array $params = []): ?InputQuantityValueDataObject
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
@@ -121,7 +122,7 @@ class InputQuantityValue extends AbstractQuantityValue
             && $this->prepareUnitIdForComparison($oldValue->getUnitId()) === $this->prepareUnitIdForComparison($newValue->getUnitId());
     }
 
-    private function getNewDataObject(string $value = null, Unit|string $unitId = null): InputQuantityValueDataObject
+    private function getNewDataObject(?string $value = null, Unit|string|null $unitId = null): InputQuantityValueDataObject
     {
         return new InputQuantityValueDataObject($value, $unitId);
     }

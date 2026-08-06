@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Grid;
@@ -28,13 +29,14 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * @internal
  */
-final class JobRunGrid implements JobRunGridInterface
+final readonly class JobRunGrid implements JobRunGridInterface
 {
     public function __construct(
-        private readonly CurrentMessageProviderInterface $currentMessageProvider,
-        private readonly ExecutionContextInterface $executionContext,
-        private readonly TranslatorInterface $translator
-    ) {
+        private CurrentMessageProviderInterface $currentMessageProvider,
+        private ExecutionContextInterface       $executionContext,
+        private TranslatorInterface             $translator
+    )
+    {
     }
 
     public function convertJobRunToArray(JobRun $jobRun): array
@@ -56,8 +58,7 @@ final class JobRunGrid implements JobRunGridInterface
             'current_message' => $currentMessage->getMessage(),
             'canCancel' => $jobRun->getState() === JobRunStates::RUNNING,
             'log' => array_map(
-                static fn (LogLine $line) =>
-                [
+                static fn(LogLine $line) => [
                     'logMessage' => $line->getLogLine(),
                     'createdAt' => $line->getCreatedAt()->format(DateTimeInterface::ATOM),
                 ],

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\MarkingStore;
@@ -25,7 +26,7 @@ use Symfony\Component\Workflow\MarkingStore\MarkingStoreInterface;
 
 class DataObjectSplittedStateMarkingStore implements MarkingStoreInterface
 {
-    const ALLOWED_PLACE_FIELD_TYPES = ['input', 'select', 'multiselect'];
+    public const array ALLOWED_PLACE_FIELD_TYPES = ['input', 'select', 'multiselect'];
 
     private string $workflowName;
 
@@ -60,7 +61,7 @@ class DataObjectSplittedStateMarkingStore implements MarkingStoreInterface
                 continue;
             }
 
-            $placeNames = array_merge($placeNames, (array) $propertyPlaces);
+            $placeNames = array_merge($placeNames, (array)$propertyPlaces);
         }
 
         $places = [];

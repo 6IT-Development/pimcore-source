@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Extension\Bundle\Traits;
@@ -52,9 +52,7 @@ trait PackageVersionTrait
         $version = InstalledVersions::getPrettyVersion($this->getComposerPackageName());
 
         // normalizes e.g. 'v2.3.0' to '2.3.0'
-        $version = preg_replace('/^v/', '', $version);
-
-        return $version;
+        return preg_replace('/^v/', '', $version);
     }
 
     public function getDescription(): string

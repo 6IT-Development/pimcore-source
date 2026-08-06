@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Agent;
@@ -27,8 +28,8 @@ interface JobExecutionAgentInterface
      * Start new Job Run based on a job definition
      */
     public function startJobExecution(
-        Job $job,
-        ?int $ownerId,
+        Job    $job,
+        ?int   $ownerId,
         string $executionContext = 'default'
     ): JobRun;
 
@@ -37,7 +38,7 @@ interface JobExecutionAgentInterface
      */
     public function continueJobMessageExecution(
         GenericExecutionEngineMessageInterface $message,
-        ?Throwable $throwable = null
+        ?Throwable                             $throwable = null
     ): void;
 
     /**

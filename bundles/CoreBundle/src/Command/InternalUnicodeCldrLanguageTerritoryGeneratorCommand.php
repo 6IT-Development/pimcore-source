@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -33,7 +34,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class InternalUnicodeCldrLanguageTerritoryGeneratorCommand extends AbstractCommand
 {
-    public function __construct(private LocaleServiceInterface $localeService)
+    public function __construct(private readonly LocaleServiceInterface $localeService)
     {
         parent::__construct();
     }
@@ -48,7 +49,7 @@ class InternalUnicodeCldrLanguageTerritoryGeneratorCommand extends AbstractComma
 
         foreach ($xml->territoryInfo->territory as $territory) {
             foreach ($territory->languagePopulation as $language) {
-                $languageCode = (string) $language['type'];
+                $languageCode = (string)$language['type'];
                 if ($this->localeService->isLocale($languageCode)) {
                     $populationAbsolute = $territory['population'] * $language['populationPercent'] / 100;
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\Dumper;
@@ -34,7 +35,7 @@ class StateMachineGraphvizDumper extends GraphvizDumper
      *  * node: The default options for nodes (places)
      *  * edge: The default options for edges
      */
-    public function dump(Definition $definition, Marking $marking = null, array $options = []): string
+    public function dump(Definition $definition, ?Marking $marking = null, array $options = []): string
     {
         $places = $this->findPlaces($definition, $marking, $options['workflowName']);
         $edges = $this->findEdges($definition);
@@ -42,10 +43,9 @@ class StateMachineGraphvizDumper extends GraphvizDumper
         $options = array_replace_recursive(self::$defaultOptions, $options);
 
         return $this->startDot($options)
-            .$this->addPlaces($places)
-            .$this->addEdges($edges)
-            .$this->endDot()
-        ;
+            . $this->addPlaces($places)
+            . $this->addEdges($edges)
+            . $this->endDot();
     }
 
     /**
@@ -77,8 +77,8 @@ class StateMachineGraphvizDumper extends GraphvizDumper
     {
         $code = '';
 
-        foreach ($edges as $id => $edges) {
-            foreach ($edges as $edge) {
+        foreach ($edges as $id => $inner) {
+            foreach ($inner as $edge) {
                 $code .= sprintf("  place_%s -> place_%s [label=\"%s\" color=\"%s\" style=\"%s\"];\n", $this->dotize($id), $this->dotize($edge['to']), $edge['label'], '#AFAFAF', 'dashed');
             }
         }

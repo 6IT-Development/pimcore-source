@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Event;
@@ -23,33 +24,33 @@ final class RedirectEvents
      *
      * @var string
      */
-    const PRE_SAVE = 'pimcore.redirect.preSave';
+    public const string PRE_SAVE = 'pimcore.redirect.preSave';
 
     /**
      * @Event("Pimcore\Event\Model\RedirectEvent")
      *
      * @var string
      */
-    const POST_SAVE = 'pimcore.redirect.postSave';
+    public const string POST_SAVE = 'pimcore.redirect.postSave';
 
     /**
      * @Event("Pimcore\Event\Model\RedirectEvent")
      *
      * @var string
      */
-    const PRE_DELETE = 'pimcore.redirect.preDelete';
+    public const string PRE_DELETE = 'pimcore.redirect.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\RedirectEvent")
      *
      * @var string
      */
-    const POST_DELETE = 'pimcore.redirect.postDelete';
+    public const string POST_DELETE = 'pimcore.redirect.postDelete';
 
     /**
      * @Event("Pimcore\Event\Model\RedirectEvent")
      *
      * @var string
      */
-    const PRE_BUILD = 'pimcore.redirect.preBuild';
+    public const string PRE_BUILD = 'pimcore.redirect.preBuild';
 }

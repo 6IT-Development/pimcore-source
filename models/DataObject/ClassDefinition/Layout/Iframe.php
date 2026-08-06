@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Layout;
@@ -64,8 +65,8 @@ class Iframe extends Model\DataObject\ClassDefinition\Layout implements LayoutDe
 
     public function enrichLayoutDefinition(?Concrete $object, array $context = []): static
     {
-        $this->width = $this->getWidth() ? $this->getWidth() : 500;
-        $this->height = $this->getHeight() ? $this->getHeight() : 500;
+        $this->width = $this->getWidth() ?: 500;
+        $this->height = $this->getHeight() ?: 500;
 
         return $this;
     }

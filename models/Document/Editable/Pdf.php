@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -22,7 +23,7 @@ use Pimcore\Model;
 use Pimcore\Model\Asset;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Pdf extends Model\Document\Editable implements EditmodeDataInterface
 {
@@ -37,7 +38,7 @@ class Pdf extends Model\Document\Editable implements EditmodeDataInterface
         return 'pdf';
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         return [
             'id' => $this->id,
@@ -126,7 +127,7 @@ class Pdf extends Model\Document\Editable implements EditmodeDataInterface
         return $this;
     }
 
-    public function frontend()
+    public function frontend(): string
     {
         $asset = $this->id ? Asset::getById($this->id) : null;
 
@@ -141,13 +142,11 @@ class Pdf extends Model\Document\Editable implements EditmodeDataInterface
             $pdfPath = $asset->getFullPath();
             $thumbnailPath = $asset->getImageThumbnail($thumbnailConfig, 1, true);
 
-            $code = <<<HTML
+            return <<<HTML
             <div id="$divId" class="pimcore-pdfViewer">
                 <a href="$pdfPath" target="_blank"><img src="$thumbnailPath"></a>
             </div>
 HTML;
-
-            return $code;
         } else {
             return $this->getErrorCode('Preview in progress or not a valid PDF file');
         }
@@ -160,14 +159,12 @@ HTML;
             $message = '';
         }
 
-        $code = '
+        return '
         <div id="pimcore_pdf_' . $this->getName() . '" class="pimcore_editable_pdf">
             <div class="pimcore_editable_video_error" style="line-height: 50px; text-align:center; width: 100%; min-height: 50px; background: #ececec;">
                 ' . $message . '
             </div>
         </div>';
-
-        return $code;
     }
 
     public function isEmpty(): bool

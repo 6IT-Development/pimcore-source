@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\WebDAV;
@@ -31,38 +32,25 @@ class Service
 
     public static function getDeleteLog(): array
     {
-        $log = [];
         if (file_exists(self::getDeleteLogFile())) {
             $log = unserialize(file_get_contents(self::getDeleteLogFile()));
             if (!is_array($log)) {
-                $log = [];
+                return [];
             } else {
-                // cleanup old entries
-                $tmpLog = [];
-                foreach ($log as $path => $data) {
-                    if ($data['timestamp'] > (time() - 30)) { // remove 30 seconds old entries
-                        $tmpLog[$path] = $data;
-                    }
-                }
-
-                $log = $tmpLog;
+                // clean up old entries
+                // remove 30 seconds old entries
+                return array_filter($log, fn($data) => $data['timestamp'] > (time() - 30));
             }
         }
 
-        return $log;
+        return [];
     }
 
     public static function saveDeleteLog(array $log): void
     {
-        // cleanup old entries
-        $tmpLog = [];
-        foreach ($log as $path => $data) {
-            if ($data['timestamp'] > (time() - 30)) { // remove 30 seconds old entries
-                $tmpLog[$path] = $data;
-            }
-        }
+        // clean up old entries
+        // remove 30 seconds old entries
 
-        $filesystem = new Filesystem();
-        $filesystem->dumpFile(Asset\WebDAV\Service::getDeleteLogFile(), serialize($tmpLog));
+        new Filesystem()->dumpFile(Asset\WebDAV\Service::getDeleteLogFile(), serialize(array_filter($log, fn($data) => $data['timestamp'] > (time() - 30))));
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Navigation;
@@ -215,11 +216,11 @@ class Builder
             }
         }
 
-        $isLink = static fn ($page): bool => $page instanceof DocumentPage && $page->getDocumentType() === 'link';
+        $isLink = static fn($page): bool => $page instanceof DocumentPage && $page->getDocumentType() === 'link';
 
         // cleanup active pages from links
         // pages have priority, if we don't find any active page, we use all we found
-        if ($nonLinkPages = array_filter($activePages, static fn ($page): bool => !$isLink($page))) {
+        if ($nonLinkPages = array_filter($activePages, static fn($page): bool => !$isLink($page))) {
             $activePages = $nonLinkPages;
         }
 
@@ -246,7 +247,7 @@ class Builder
                     || ($isLink($page) && str_starts_with($activeDocument->getFullPath(), $uri));
 
                 if ($isActive) {
-                    $page->setActive(true);
+                    $page->setActive();
                     $page->setClass($page->getClass() . ' active active-trail');
                 }
             }
@@ -254,19 +255,19 @@ class Builder
     }
 
     /**
-     * @internal
-     *
      * @param Container $navigation navigation container to iterate
      * @param string $property name of property to match against
      * @param string $value value to match property against
      *
      * @return Page[]
+     * @internal
+     *
      */
     protected function findActivePages(Container $navigation, string $property, string $value): array
     {
         $filterByPrefix = new PrefixRecursiveFilterIterator($navigation, $property, $value);
         $flatten = new RecursiveIteratorIterator($filterByPrefix, RecursiveIteratorIterator::SELF_FIRST);
-        $filterMatches = new CallbackFilterIterator($flatten, static fn (Page $page): bool => $page->get($property) === $value);
+        $filterMatches = new CallbackFilterIterator($flatten, static fn(Page $page): bool => $page->get($property) === $value);
 
         return iterator_to_array($filterMatches, false);
     }
@@ -278,7 +279,7 @@ class Builder
      */
     protected function addActiveCssClasses(Page $page, bool $isActive = false): void
     {
-        $page->setActive(true);
+        $page->setActive();
 
         $parent = $page->getParent();
         $isRoot = false;
@@ -342,7 +343,7 @@ class Builder
      *
      * @internal
      */
-    protected function buildNextLevel(Document $parentDocument, bool $isRoot = false, callable $pageCallback = null, array $parents = [], int $maxDepth = null): array
+    protected function buildNextLevel(Document $parentDocument, bool $isRoot = false, ?callable $pageCallback = null, array $parents = [], ?int $maxDepth = null): array
     {
         $this->currentLevel++;
         $pages = [];

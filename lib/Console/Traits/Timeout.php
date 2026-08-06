@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Console\Traits;
@@ -93,7 +94,7 @@ trait Timeout
                     throw new Exception($abortMessage);
                 }
             } elseif (is_null($oldStartTime) || date('i', $oldStartTime) != date('i', $this->startTimeCurrentStep)) {
-                Logger::debug('Timeout enabled. Still needs '.($this->timeout - $timeSinceStartMinutes).' minutes in order to complete.');
+                Logger::debug('Timeout enabled. Still needs ' . ($this->timeout - $timeSinceStartMinutes) . ' minutes in order to complete.');
             }
         }
     }

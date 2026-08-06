@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Routing\Dynamic;
@@ -35,9 +35,10 @@ final class DataObjectRouteHandler implements DynamicRouteHandlerInterface
     private RequestHelper $requestHelper;
 
     public function __construct(
-        SiteResolver $siteResolver,
+        SiteResolver  $siteResolver,
         RequestHelper $requestHelper
-    ) {
+    )
+    {
         $this->siteResolver = $siteResolver;
         $this->requestHelper = $requestHelper;
     }
@@ -45,10 +46,10 @@ final class DataObjectRouteHandler implements DynamicRouteHandlerInterface
     public function getRouteByName(string $name): ?DataObjectRoute
     {
         if (preg_match('/^data_object_(\d+)_(\d+)_(.*)$/', $name, $match)) {
-            $slug = DataObject\Data\UrlSlug::resolveSlug($match[3], (int) $match[2]);
+            $slug = DataObject\Data\UrlSlug::resolveSlug($match[3], (int)$match[2]);
             if ($slug && $slug->getObjectId() == $match[1]) {
                 /** @var DataObject\Concrete $object * */
-                $object = DataObject::getById((int) $match[1]);
+                $object = DataObject::getById((int)$match[1]);
                 if ($object instanceof DataObject\Concrete && $object->isPublished()) {
                     return $this->buildRouteForFromSlug($slug, $object);
                 }

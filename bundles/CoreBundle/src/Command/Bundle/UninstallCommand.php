@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
@@ -29,7 +29,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class UninstallCommand extends AbstractBundleCommand
 {
-    public function __construct(PimcoreBundleManager $bundleManager, private PostStateChange $postStateChangeHelper)
+    public function __construct(PimcoreBundleManager $bundleManager, private readonly PostStateChange $postStateChangeHelper)
     {
         parent::__construct($bundleManager);
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Agent;
@@ -40,22 +41,23 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
 {
     use StopMessengerWorkersTrait;
 
-    private const LOG_JOB_RUN_ID_KEY = '%job_run_id%';
+    private const string LOG_JOB_RUN_ID_KEY = '%job_run_id%';
 
-    private const LOG_JOB_RUN_NAME_KEY = '%job_run_name%';
+    private const string LOG_JOB_RUN_NAME_KEY = '%job_run_name%';
 
     private bool $isDev;
 
     public function __construct(
-        string $environment,
-        private readonly string $errorHandlingMode,
-        private readonly ExecutionContextInterface $executionContext,
-        private readonly JobRunRepositoryInterface $jobRunRepository,
+        string                                             $environment,
+        private readonly string                            $errorHandlingMode,
+        private readonly ExecutionContextInterface         $executionContext,
+        private readonly JobRunRepositoryInterface         $jobRunRepository,
         private readonly JobRunErrorLogRepositoryInterface $jobRunErrorLogRepository,
-        private readonly LoggerInterface $genericExecutionEngineLogger,
-        private readonly MessageBusInterface $executionEngineBus,
-        private readonly Translator $translator
-    ) {
+        private readonly LoggerInterface                   $genericExecutionEngineLogger,
+        private readonly MessageBusInterface               $executionEngineBus,
+        private readonly Translator                        $translator
+    )
+    {
         $this->isDev = $environment === 'dev';
     }
 
@@ -63,10 +65,11 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      * @throws Exception
      */
     public function startJobExecution(
-        Job $job,
-        ?int $ownerId,
+        Job    $job,
+        ?int   $ownerId,
         string $executionContext = 'default'
-    ): JobRun {
+    ): JobRun
+    {
         $jobRun = $this->jobRunRepository->createFromJob($job, $ownerId);
         $jobRun->setExecutionContext($executionContext);
         $jobRun->setState(JobRunStates::RUNNING);
@@ -90,8 +93,9 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      */
     public function continueJobMessageExecution(
         GenericExecutionEngineMessageInterface $message,
-        ?Throwable $throwable = null
-    ): void {
+        ?Throwable                             $throwable = null
+    ): void
+    {
         $jobRun = $this->jobRunRepository->getJobRunById($message->getJobRunId());
         if (!$this->isRunning($jobRun->getId())) {
             return;
@@ -225,8 +229,9 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      */
     private function handleJobExecutionError(
         GenericExecutionEngineMessageInterface $message,
-        Throwable $throwable
-    ): void {
+        Throwable                              $throwable
+    ): void
+    {
         $jobRun = $this->jobRunRepository->getJobRunById($message->getJobRunId());
 
         $this->genericExecutionEngineLogger->error("[JobRun {$jobRun->getId()}]: " . $throwable);
@@ -241,12 +246,11 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             $errorMessage,
         );
 
-        match
-        (
-            $this->getErrorHandlingMode(
-                $jobRun,
-                $this->getSelectionProcessingModeFromJobRun($jobRun)
-            )
+        match (
+        $this->getErrorHandlingMode(
+            $jobRun,
+            $this->getSelectionProcessingModeFromJobRun($jobRun)
+        )
         ) {
             ErrorHandlingMode::STOP_ON_FIRST_ERROR =>
             $this->stopJobExecutionOnError(
@@ -263,9 +267,10 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     }
 
     private function getErrorHandlingMode(
-        JobRun $jobRun,
+        JobRun                  $jobRun,
         SelectionProcessingMode $selectionProcessingMode
-    ): ErrorHandlingMode {
+    ): ErrorHandlingMode
+    {
         if ($selectionProcessingMode === SelectionProcessingMode::ONCE) {
             return ErrorHandlingMode::STOP_ON_FIRST_ERROR;
         }
@@ -282,10 +287,11 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      * @throws Exception
      */
     private function continueJobExecutionOnError(
-        JobRun $jobRun,
+        JobRun                                 $jobRun,
         GenericExecutionEngineMessageInterface $message,
-        string $errorMessage
-    ): void {
+        string                                 $errorMessage
+    ): void
+    {
         $this->setJobRunError(
             $jobRun,
             $errorMessage,
@@ -303,7 +309,8 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     private function stopJobExecutionOnError(
         JobRun $jobRun,
         string $errorMessage
-    ): void {
+    ): void
+    {
         $this->stopMessengerWorkers();
         $this->setJobRunError($jobRun, $errorMessage, [], false);
         $this->genericExecutionEngineLogger->info("[JobRun {$jobRun->getId()}]: JobRun cancelled due to errors.");
@@ -326,12 +333,13 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      * @throws Exception
      */
     private function setJobRunError(
-        JobRun $jobRun,
-        string $errorMessage,
-        array $params = [],
-        bool $translate = true,
+        JobRun        $jobRun,
+        string        $errorMessage,
+        array         $params = [],
+        bool          $translate = true,
         ?JobRunStates $status = null
-    ): void {
+    ): void
+    {
         $jobRun->setState($status ?? JobRunStates::FAILED);
         if ($translate) {
             $translatedMessage = $this->translator->trans($errorMessage, $params);
@@ -441,17 +449,18 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      * @param ElementDescriptor[] $selectedElements
      */
     private function dispatchSelectedElements(
-        int $jobRunId,
-        int $currentStepId,
-        string $messageString,
+        int                     $jobRunId,
+        int                     $currentStepId,
+        string                  $messageString,
         SelectionProcessingMode $selectionProcessingMode,
-        array $selectedElements = []
-    ): void {
+        array                   $selectedElements = []
+    ): void
+    {
         if (empty($selectedElements) || $selectionProcessingMode === SelectionProcessingMode::ONCE) {
             $this->executionEngineBus->dispatch(new $messageString(
-                $jobRunId,
-                $currentStepId
-            )
+                    $jobRunId,
+                    $currentStepId
+                )
             );
 
             return;
@@ -459,10 +468,10 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
 
         foreach ($selectedElements as $selectedElement) {
             $this->executionEngineBus->dispatch(new $messageString(
-                $jobRunId,
-                $currentStepId,
-                $selectedElement
-            )
+                    $jobRunId,
+                    $currentStepId,
+                    $selectedElement
+                )
             );
         }
     }

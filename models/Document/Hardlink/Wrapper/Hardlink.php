@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,16 +11,17 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Hardlink\Wrapper;
 
 use Pimcore\Model;
+use Pimcore\Model\Document\Hardlink\Dao;
 
 /**
- * @method \Pimcore\Model\Document\Hardlink\Dao getDao()
+ * @method Dao getDao()
  */
 class Hardlink extends Model\Document\Hardlink implements Model\Document\Hardlink\Wrapper\WrapperInterface
 {

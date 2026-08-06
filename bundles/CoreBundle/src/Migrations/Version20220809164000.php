@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -35,7 +35,7 @@ final class Version20220809164000 extends AbstractMigration
         $docTypeList = $db->fetchAllAssociative("SELECT id, data FROM `settings_store` WHERE scope = 'pimcore_document_types'");
         foreach ($docTypeList as $docType) {
             $dataArray = json_decode($docType['data'], true);
-            $dataArray['staticGeneratorEnabled'] = (bool) $dataArray['staticGeneratorEnabled'];
+            $dataArray['staticGeneratorEnabled'] = (bool)$dataArray['staticGeneratorEnabled'];
             $docType['data'] = json_encode($dataArray);
             $this->addSql("UPDATE `settings_store` SET data = :data WHERE id = :id AND scope = 'pimcore_document_types'", $docType);
         }
@@ -48,7 +48,7 @@ final class Version20220809164000 extends AbstractMigration
         $docTypeList = $db->fetchAllAssociative("SELECT id, data FROM `settings_store` WHERE scope = 'pimcore_document_types'");
         foreach ($docTypeList as $docType) {
             $dataArray = json_decode($docType['data'], true);
-            $dataArray['staticGeneratorEnabled'] = (int) $dataArray['staticGeneratorEnabled'];
+            $dataArray['staticGeneratorEnabled'] = (int)$dataArray['staticGeneratorEnabled'];
             $docType['data'] = json_encode($dataArray);
             $this->addSql("UPDATE `settings_store` SET data = :data WHERE id = :id AND scope = 'pimcore_document_types'", $docType);
         }

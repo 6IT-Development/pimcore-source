@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
@@ -26,15 +27,18 @@ use Pimcore\Db;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
+use Pimcore\File;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\ClassDefinition\Dao;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\ClassDefinition\Data\ClassSavedInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\FieldDefinitionEnrichmentInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
 
 /**
- * @method \Pimcore\Model\DataObject\ClassDefinition\Dao getDao()
+ * @method Dao getDao()
  */
 final class ClassDefinition extends Model\AbstractModel implements ClassDefinitionInterface
 {
@@ -260,7 +264,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             $id = $class->getDao()->getIdByName($name);
 
             return self::getById($id);
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -345,7 +349,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             $db = Db::get();
             $maxId = $db->fetchOne('SELECT MAX(CAST(id AS SIGNED)) FROM classes;');
             $maxId = $maxId ? $maxId + 1 : 1;
-            $this->setId((string) $maxId);
+            $this->setId((string)$maxId);
         }
 
         if (!preg_match('/[a-zA-Z]\w+/', $this->getName())) {
@@ -357,7 +361,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
         }
 
         foreach (['parentClass', 'listingParentClass', 'useTraits', 'listingUseTraits'] as $propertyName) {
-            $propertyValue = $this->{'get'.ucfirst($propertyName)}();
+            $propertyValue = $this->{'get' . ucfirst($propertyName)}();
             if ($propertyValue && !preg_match('/^[a-zA-Z_\x7f-\xff\\\][a-zA-Z0-9_\x7f-\xff\\\ ,]*$/', $propertyValue)) {
                 throw new Exception(sprintf('Invalid %s value for class definition: %s', $propertyName,
                     $this->getParentClass()));
@@ -382,14 +386,14 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
         $this->generateClassFiles($saveDefinitionFile);
 
         foreach ($fieldDefinitions as $fd) {
-            if ($fd instanceof \Pimcore\Model\DataObject\ClassDefinition\Data\ClassSavedInterface) {
+            if ($fd instanceof ClassSavedInterface) {
                 $fd->classSaved($this);
             }
         }
 
         // empty object cache
         try {
-            Cache::clearTag('class_'.$this->getId());
+            Cache::clearTag('class_' . $this->getId());
         } catch (Exception $e) {
         }
 
@@ -421,11 +425,11 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
         Pimcore::getContainer()->get(PHPClassDumperInterface::class)->dumpPHPClasses($this);
 
         if ($generateDefinitionFile) {
-            // save definition as a php file
+            // save definition as a PHP file
             $definitionFile = $this->getDefinitionFile();
             if (!is_writable(dirname($definitionFile)) || (is_file($definitionFile) && !is_writable($definitionFile))) {
                 throw new Exception(
-                    'Cannot write definition file in: '.$definitionFile.' please check write permission on this directory.'
+                    'Cannot write definition file in: ' . $definitionFile . ' please check write permission on this directory.'
                 );
             }
             /** @var self $clone */
@@ -442,9 +446,9 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             $data .= $this->getInfoDocBlock();
             $data .= "\n\n";
 
-            $data .= 'return '.$exportedClass.";\n";
+            $data .= 'return ' . $exportedClass . ";\n";
 
-            \Pimcore\File::putPhpFile($definitionFile, $data);
+            File::putPhpFile($definitionFile, $data);
         }
     }
 
@@ -454,18 +458,18 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
     protected function getInfoDocBlock(): string
     {
         $cd = '/**' . "\n";
-        $cd .= ' * Inheritance: '.($this->getAllowInherit() ? 'yes' : 'no')."\n";
-        $cd .= ' * Variants: '.($this->getAllowVariants() ? 'yes' : 'no')."\n";
+        $cd .= ' * Inheritance: ' . ($this->getAllowInherit() ? 'yes' : 'no') . "\n";
+        $cd .= ' * Variants: ' . ($this->getAllowVariants() ? 'yes' : 'no') . "\n";
 
         if ($title = $this->getTitle()) {
-            $cd .= ' * Title: ' . $title."\n";
+            $cd .= ' * Title: ' . $title . "\n";
         }
 
         if ($description = $this->getDescription()) {
             $description = str_replace(['/**', '*/', '//'], '', $description);
             $description = str_replace("\n", "\n * ", $description);
 
-            $cd .= ' * '.$description."\n";
+            $cd .= ' * ' . $description . "\n";
         }
 
         $cd .= " *\n";
@@ -501,7 +505,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
 
         // empty object cache
         try {
-            Cache::clearTag('class_'.$this->getId());
+            Cache::clearTag('class_' . $this->getId());
         } catch (Exception $e) {
         }
 
@@ -563,13 +567,13 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
      */
     public function isWritable(): bool
     {
-        return (bool) ($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? !str_starts_with($this->getDefinitionFile(), PIMCORE_CUSTOM_CONFIGURATION_DIRECTORY));
+        return (bool)($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? !str_starts_with($this->getDefinitionFile(), PIMCORE_CUSTOM_CONFIGURATION_DIRECTORY));
     }
 
     /**
      * @internal
      */
-    public function getDefinitionFile(string $name = null): string
+    public function getDefinitionFile(?string $name = null): string
     {
         return $this->locateDefinitionFile($name ?? $this->getName(), 'definition_%s.php');
     }
@@ -719,7 +723,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             $deletedComponents = [];
             foreach ($oldFieldDefinitions as $fieldDefinition) {
                 if (!array_key_exists($fieldDefinition->getName(), $newFieldDefinitions)) {
-                    array_push($deletedComponents, $fieldDefinition);
+                    $deletedComponents[] = $fieldDefinition;
                 }
             }
             $this->setDeletedDataComponents($deletedComponents);
@@ -811,7 +815,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
      */
     public function setParentClass(string $parentClass): static
     {
-        $this->parentClass = (string) $parentClass;
+        $this->parentClass = $parentClass;
 
         return $this;
     }
@@ -866,18 +870,18 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
      */
     public function isEncryptedTable(string $table): bool
     {
-        return (array_search($table, $this->encryptedTables) === false) ? false : true;
+        return in_array($table, $this->encryptedTables);
     }
 
     public function hasEncryptedTables(): bool
     {
-        return (bool) count($this->encryptedTables);
+        return (bool)count($this->encryptedTables);
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function setEncryptedTables(array $encryptedTables): static
     {
@@ -956,7 +960,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
      */
     public function setDescription(string $description): static
     {
-        $this->description = (string) $description;
+        $this->description = $description;
 
         return $this;
     }
@@ -1106,7 +1110,7 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
      */
     public function setCompositeIndices(array $compositeIndices): static
     {
-        $class = $this->getFieldDefinitions([]);
+        $class = $this->getFieldDefinitions();
         foreach ($compositeIndices as $indexInd => $compositeIndex) {
             foreach ($compositeIndex['index_columns'] as $fieldInd => $fieldName) {
                 if (isset($class[$fieldName]) && $class[$fieldName] instanceof ManyToOneRelation) {

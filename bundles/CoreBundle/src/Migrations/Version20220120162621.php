@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -118,15 +118,15 @@ final class Version20220120162621 extends AbstractMigration
     public function down(Schema $schema): void
     {
         foreach (['asset', 'document', 'object'] as $elementType) {
-            if ($schema->getTable('users_workspaces_'.$elementType)->hasForeignKey('fk_users_workspaces_'.$elementType.'_'.$elementType.'s')) {
-                $this->addSql('ALTER TABLE `users_workspaces_'.$elementType.'` DROP FOREIGN KEY `fk_users_workspaces_'.$elementType.'_'.$elementType.'s`');
+            if ($schema->getTable('users_workspaces_' . $elementType)->hasForeignKey('fk_users_workspaces_' . $elementType . '_' . $elementType . 's')) {
+                $this->addSql('ALTER TABLE `users_workspaces_' . $elementType . '` DROP FOREIGN KEY `fk_users_workspaces_' . $elementType . '_' . $elementType . 's`');
             }
 
-            if ($schema->getTable('users_workspaces_'.$elementType)->hasForeignKey('fk_users_workspaces_'.$elementType.'_users')) {
-                $this->addSql('ALTER TABLE `users_workspaces_'.$elementType.'` DROP FOREIGN KEY `fk_users_workspaces_'.$elementType.'_users`');
+            if ($schema->getTable('users_workspaces_' . $elementType)->hasForeignKey('fk_users_workspaces_' . $elementType . '_users')) {
+                $this->addSql('ALTER TABLE `users_workspaces_' . $elementType . '` DROP FOREIGN KEY `fk_users_workspaces_' . $elementType . '_users`');
             }
 
-            $this->addSql('ALTER TABLE `users_workspaces_'.$elementType.'` CHANGE `userId` `userId` int(11) NOT NULL DEFAULT \'0\'');
+            $this->addSql('ALTER TABLE `users_workspaces_' . $elementType . '` CHANGE `userId` `userId` int(11) NOT NULL DEFAULT \'0\'');
         }
     }
 }

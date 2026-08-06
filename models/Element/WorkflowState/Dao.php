@@ -9,19 +9,20 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\WorkflowState;
 
 use Pimcore\Db\Helper;
 use Pimcore\Model;
+use Pimcore\Model\Element\WorkflowState;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Element\WorkflowState $model
+ * @property WorkflowState $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -42,21 +43,11 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * Save object to database
      *
-     *
      * @todo: not all save methods return a boolean, why this one?
      */
     public function save(): bool
     {
-        $dataAttributes = $this->model->getObjectVars();
-
-        $data = [];
-        foreach ($dataAttributes as $key => $value) {
-            if (in_array($key, $this->getValidTableColumns('element_workflow_state'))) {
-                $data[$key] = $value;
-            }
-        }
-
-        Helper::upsert($this->db, 'element_workflow_state', $data, $this->getPrimaryKey('element_workflow_state'));
+        Helper::upsert($this->db, 'element_workflow_state', array_filter($this->model->getObjectVars(), fn($key) => in_array($key, $this->getValidTableColumns('element_workflow_state'), true), ARRAY_FILTER_USE_KEY), $this->getPrimaryKey('element_workflow_state'));
 
         return true;
     }

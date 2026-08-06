@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Messenger\Handler;
@@ -31,10 +32,11 @@ use function sprintf;
 class AssetUpdateTasksHandler
 {
     public function __construct(
-        protected LoggerInterface $logger,
+        protected LoggerInterface   $logger,
         protected LongRunningHelper $longRunningHelper,
-        protected LockFactory $lockFactory
-    ) {
+        protected LockFactory       $lockFactory
+    )
+    {
     }
 
     public function __invoke(AssetUpdateTasksMessage $message): void
@@ -145,7 +147,7 @@ class AssetUpdateTasksHandler
                 $image->setCustomSetting('imageHeight', $dimensions['height']);
                 $imageDimensionsCalculated = true;
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             $this->logger->warning('Problem getting the dimensions of the image with ID ' . $image->getId());
         }
 

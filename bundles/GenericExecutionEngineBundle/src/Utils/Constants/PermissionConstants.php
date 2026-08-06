@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants;
@@ -24,7 +25,7 @@ class PermissionConstants
     /**
      * Permission have a max length of 50 chars!
      */
-    public const GEE_JOB_RUN = 'gee_job_run_permission';
+    public const string GEE_JOB_RUN = 'gee_job_run_permission';
 
-    public const GEE_SEE_ALL_JOB_RUNS = 'gee_see_all_job_runs_permission';
+    public const string GEE_SEE_ALL_JOB_RUNS = 'gee_see_all_job_runs_permission';
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Traits;
@@ -59,9 +60,9 @@ trait OwnerAwareFieldTrait
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function _setOwnerFieldname(?string $fieldname): static
     {
@@ -71,9 +72,9 @@ trait OwnerAwareFieldTrait
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function _setOwnerLanguage(?string $language): static
     {

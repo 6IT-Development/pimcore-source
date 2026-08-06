@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Repository;
@@ -22,8 +23,8 @@ use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRunErrorLog;
 interface JobRunErrorLogRepositoryInterface
 {
     public function createFromJobRun(
-        JobRun $jobRun,
-        ?int $elementId = null,
+        JobRun  $jobRun,
+        ?int    $elementId = null,
         ?string $message = null
     ): void;
 
@@ -33,11 +34,11 @@ interface JobRunErrorLogRepositoryInterface
      * @return JobRunErrorLog[]
      */
     public function getLogsByJobRunId(
-        int $jobRunId,
-        int $step = null,
+        int   $jobRunId,
+        ?int  $step = null,
         array $orderBy = [],
-        int $limit = 100,
-        int $offset = 0
+        int   $limit = 100,
+        int   $offset = 0
     ): array;
 
     public function getTotalCount(): int;

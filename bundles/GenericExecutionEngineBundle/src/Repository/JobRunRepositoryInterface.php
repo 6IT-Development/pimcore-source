@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Repository;
@@ -24,15 +25,15 @@ use Pimcore\Model\Element\ElementDescriptor;
 
 interface JobRunRepositoryInterface
 {
-    public function createFromJob(Job $job, int $ownerId = null): JobRun;
+    public function createFromJob(Job $job, ?int $ownerId = null): JobRun;
 
     public function update(JobRun $jobRun): JobRun;
 
     public function updateLogLocalized(
         JobRun $jobRun,
         string $message,
-        array $params = [],
-        bool $updateCurrentMessage = true,
+        array  $params = [],
+        bool   $updateCurrentMessage = true,
         string $defaultLocale = 'en'
     ): void;
 
@@ -44,8 +45,8 @@ interface JobRunRepositoryInterface
     public function updateLogLocalizedWithDomain(
         JobRun $jobRun,
         string $message,
-        array $params = [],
-        bool $updateCurrentMessage = true,
+        array  $params = [],
+        bool   $updateCurrentMessage = true,
         string $defaultLocale = 'en',
         string $domain = 'admin'
     ): void;
@@ -61,18 +62,18 @@ interface JobRunRepositoryInterface
      * @return JobRun[]
      */
     public function getJobRunsByUserId(
-        int $ownerId = null,
+        ?int  $ownerId = null,
         array $orderBy = [],
-        int $limit = 100,
-        int $offset = 0
+        int   $limit = 100,
+        int   $offset = 0
     ): array;
 
     public function getTotalCount(): int;
 
     public function getRunningJobsByUserId(
-        int $ownerId,
+        int   $ownerId,
         array $orderBy = [],
-        int $limit = 10,
+        int   $limit = 10,
     ): array;
 
     public function getLastJobRunByName(string $name): ?JobRun;

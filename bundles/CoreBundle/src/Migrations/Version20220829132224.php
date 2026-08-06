@@ -11,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use Pimcore\Config;
 use Pimcore\Model\Tool\SettingsStore;
 
 final class Version20220829132224 extends AbstractMigration
@@ -30,7 +31,7 @@ final class Version20220829132224 extends AbstractMigration
 
     private function loadLegacyConfigs(string $fileName): array
     {
-        $file = \Pimcore\Config::locateConfigFile($fileName);
+        $file = Config::locateConfigFile($fileName);
         $configs = [];
 
         if (file_exists($file)) {
@@ -53,7 +54,7 @@ final class Version20220829132224 extends AbstractMigration
     private function migrateCommonConfigurations(string $fileName, string $scope): void
     {
         $configs = $this->loadLegacyConfigs($fileName);
-        foreach ($configs as $key => $config) {
+        foreach ($configs as $config) {
             $id = $config['id'] ?? $config['name'];
             $this->migrateToSettingsStore((string)$id, $scope, $config);
         }

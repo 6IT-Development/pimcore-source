@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\Note;
@@ -23,11 +23,12 @@ use Pimcore\Model;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
+use Pimcore\Model\Element\Note;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Element\Note $model
+ * @property Note $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -74,7 +75,7 @@ class Dao extends Model\Dao\AbstractDao
                     $data = $date;
                 }
             } elseif ($type == 'bool') {
-                $data = (bool) $data;
+                $data = (bool)$data;
             }
 
             $preparedData[$name] = [
@@ -94,20 +95,14 @@ class Dao extends Model\Dao\AbstractDao
     {
         $version = $this->model->getObjectVars();
 
-        $data = [];
-
         // save main table
-        foreach ($version as $key => $value) {
-            if (in_array($key, $this->getValidTableColumns('notes'))) {
-                $data[$key] = $value;
-            }
-        }
+        $data = array_filter($version, fn($key) => in_array($key, $this->getValidTableColumns('notes'), true), ARRAY_FILTER_USE_KEY);
 
         Helper::upsert($this->db, 'notes', $data, $this->getPrimaryKey('notes'));
 
         $lastInsertId = $this->db->lastInsertId();
         if (!$this->model->getId() && $lastInsertId) {
-            $this->model->setId((int) $lastInsertId);
+            $this->model->setId((int)$lastInsertId);
         }
 
         // save data table
@@ -133,7 +128,7 @@ class Dao extends Model\Dao\AbstractDao
                     $data = $data->getTimestamp();
                 }
             } elseif ($type == 'bool') {
-                $data = (bool) $data;
+                $data = (bool)$data;
             }
 
             $this->db->insert('notes_data', [

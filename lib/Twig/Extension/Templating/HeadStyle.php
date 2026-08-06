@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -117,7 +118,7 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
      *
      * @return $this
      */
-    public function __invoke(string $content = null, string $placement = 'APPEND', array|string $attributes = []): static
+    public function __invoke(?string $content = null, string $placement = 'APPEND', array|string $attributes = []): static
     {
         if (is_string($content)) {
             $action = match (strtoupper($placement)) {
@@ -165,7 +166,7 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
             $content = (string)$args[0];
             $attrs = [];
             if (isset($args[1])) {
-                $attrs = (array) $args[1];
+                $attrs = (array)$args[1];
             }
 
             $item = $this->createData($content, $attrs);
@@ -215,7 +216,7 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
     /**
      * Override offsetSet to enforce style creation
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      */
     public function offsetSet($offset, mixed $value): void
@@ -319,7 +320,7 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
     /**
      * Convert content and attributes into valid style tag
      *
-     * @param  stdClass $item Item to render
+     * @param stdClass $item Item to render
      * @param string|null $indent Indentation to use
      *
      */
@@ -344,7 +345,7 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
                             if (!in_array($type, $this->_mediaTypes)) {
                                 continue;
                             }
-                            $value .= $type .',';
+                            $value .= $type . ',';
                         }
                         $value = substr($value, 0, -1);
                     }
@@ -353,8 +354,8 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
             }
         }
 
-        $escapeStart = $indent . '<!--'. PHP_EOL;
-        $escapeEnd = $indent . '-->'. PHP_EOL;
+        $escapeStart = $indent . '<!--' . PHP_EOL;
+        $escapeEnd = $indent . '-->' . PHP_EOL;
         if (isset($item->attributes['conditional'])
             && !empty($item->attributes['conditional'])
             && is_string($item->attributes['conditional'])
@@ -382,7 +383,7 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
      *
      *
      */
-    public function toString(int|string $indent = null): string
+    public function toString(int|string|null $indent = null): string
     {
         $indent = (null !== $indent)
             ? $this->getWhitespace($indent)
@@ -398,9 +399,7 @@ class HeadStyle extends AbstractExtension implements RuntimeExtensionInterface
         }
 
         $return = $indent . implode($this->getSeparator() . $indent, $items);
-        $return = preg_replace("/(\r\n?|\n)/", '$1' . $indent, $return);
-
-        return $return;
+        return preg_replace("/(\r\n?|\n)/", '$1' . $indent, $return);
     }
 
     /**

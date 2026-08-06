@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -24,7 +24,7 @@ use Pimcore\Cache\RuntimeCache;
 
 final class Version20240606165618 extends AbstractMigration
 {
-    const CACHEKEY = 'system_resource_columns_';
+    public const string CACHEKEY = 'system_resource_columns_';
 
     public function getDescription(): string
     {

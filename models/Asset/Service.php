@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset;
 
 use Exception;
+use League\Flysystem\FilesystemException;
 use Pimcore;
 use Pimcore\Config;
 use Pimcore\Event\AssetEvents;
@@ -36,7 +38,7 @@ use Symfony\Component\HttpKernel\EventListener\AbstractSessionListener;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * @method \Pimcore\Model\Asset\Dao getDao()
+ * @method Dao getDao()
  */
 class Service extends Model\Element\Service
 {
@@ -45,7 +47,7 @@ class Service extends Model\Element\Service
      *
      * @var array
      */
-    public const GRID_SYSTEM_COLUMNS = ['preview', 'id', 'type', 'fullpath', 'filename', 'creationDate', 'modificationDate', 'size'];
+    public const array GRID_SYSTEM_COLUMNS = ['preview', 'id', 'type', 'fullpath', 'filename', 'creationDate', 'modificationDate', 'size'];
 
     /**
      * @internal
@@ -57,7 +59,7 @@ class Service extends Model\Element\Service
      */
     protected array $_copyRecursiveIds = [];
 
-    public function __construct(Model\User $user = null)
+    public function __construct(?Model\User $user = null)
     {
         $this->_user = $user;
     }
@@ -198,7 +200,7 @@ class Service extends Model\Element\Service
         return $target;
     }
 
-    public static function pathExists(string $path, string $type = null): bool
+    public static function pathExists(string $path, ?string $type = null): bool
     {
         if (!$path) {
             return false;
@@ -214,7 +216,7 @@ class Service extends Model\Element\Service
 
                 return true;
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
         }
 
         return false;
@@ -275,7 +277,7 @@ class Service extends Model\Element\Service
                 }
 
                 $item['data'] = $transformedData;
-            } catch (UnsupportedException $e) {
+            } catch (UnsupportedException) {
             }
 
             $result[] = $item;
@@ -298,7 +300,7 @@ class Service extends Model\Element\Service
                 /** @var Data $instance */
                 $instance = $loader->build($item['type']);
                 $transformedData = $instance->getDataForEditMode($item['data'], $item);
-            } catch (UnsupportedException $e) {
+            } catch (UnsupportedException) {
             }
 
             $item['data'] = $transformedData;
@@ -383,7 +385,7 @@ class Service extends Model\Element\Service
                     // file was generated, to avoid race conditions and other unintended behavior
 
                     if (!$thumbnailConfig instanceof $thumbnailConfigClass) {
-                        throw new Exception('Deferred thumbnail config file doesn\'t contain a valid '.$thumbnailConfigClass.' object');
+                        throw new Exception('Deferred thumbnail config file doesn\'t contain a valid ' . $thumbnailConfigClass . ' object');
                     }
                 } elseif (Config::getSystemConfiguration()['assets'][$config['type']]['thumbnails']['status_cache']) {
                     // Delete Thumbnail Name from Cache so the next call can generate a new TmpStore entry
@@ -411,7 +413,7 @@ class Service extends Model\Element\Service
                     return $asset->getThumbnail($config['thumbnail_name'], [$config['file_extension']]);
                 } else {
                     $time = 1;
-                    if (preg_match("|~\-~time\-(\d+)\.|", $config['filename'], $matchesThumbs)) {
+                    if (preg_match('|~\-~time\-(\d+)\.|', $config['filename'], $matchesThumbs)) {
                         $time = (int)$matchesThumbs[1];
                     }
 
@@ -419,11 +421,11 @@ class Service extends Model\Element\Service
                 }
             } elseif ($asset instanceof Asset\Document) {
                 $page = 1;
-                if (preg_match("|~\-~page\-(\d+)(@[0-9.]+x)?\.|", $config['filename'], $matchesThumbs)) {
+                if (preg_match('|~\-~page\-(\d+)(@[0-9.]+x)?\.|', $config['filename'], $matchesThumbs)) {
                     $page = (int)$matchesThumbs[1];
                 }
 
-                $thumbnailConfig->setName(preg_replace("/\-[\d]+/", '', $thumbnailConfig->getName()));
+                $thumbnailConfig->setName(preg_replace('/\-[\d]+/', '', $thumbnailConfig->getName()));
                 $thumbnailConfig->setName(str_replace('document_', '', $thumbnailConfig->getName()));
 
                 return $asset->getImageThumbnail($thumbnailConfig, $page);
@@ -447,7 +449,7 @@ class Service extends Model\Element\Service
 
                 //check if high res image is called
 
-                preg_match("@([^\@]+)(\@[0-9.]+x)?\.?([^\.]+)?\.([a-zA-Z]{2,5})@", $config['filename'], $matches);
+                preg_match('@([^\@]+)(\@[0-9.]+x)?\.?([^\.]+)?\.([a-zA-Z]{2,5})@', $config['filename'], $matches);
 
                 if (empty($matches) || !isset($matches[1])) {
                     return null;
@@ -459,7 +461,7 @@ class Service extends Model\Element\Service
                 }
 
                 // check if a media query thumbnail was requested
-                if (preg_match("#~\-~media\-\-(.*)\-\-query#", $matches[1], $mediaQueryResult)) {
+                if (preg_match('#~\-~media\-\-(.*)\-\-query#', $matches[1], $mediaQueryResult)) {
                     $thumbnailConfig->selectMedia($mediaQueryResult[1]);
                 }
 
@@ -471,12 +473,13 @@ class Service extends Model\Element\Service
     }
 
     /**
-     * @throws \League\Flysystem\FilesystemException
+     * @throws FilesystemException
      */
     public static function getStreamedResponseFromImageThumbnail(
         ThumbnailInterface|Asset\Video\ImageThumbnailInterface|Asset\Document\ImageThumbnailInterface|array $thumbnail,
-        array $config
-    ): ?StreamedResponse {
+        array                                                                                               $config
+    ): ?StreamedResponse
+    {
         $thumbnailStream = null;
 
         $storage = Storage::get('thumbnail');
@@ -552,16 +555,16 @@ class Service extends Model\Element\Service
     }
 
     /**
+     * @throws FilesystemException
      * @internal
      *
-     * @throws \League\Flysystem\FilesystemException
      */
     public static function getStreamedResponseForThumbnail(array $config, string $uri): ?StreamedResponse
     {
         $storage = Storage::get('thumbnail');
         $storagePath = urldecode($uri);
 
-        $prefix = \Pimcore\Config::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail'];
+        $prefix = Config::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail'];
         if ($prefix) {
             $storagePath = preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $storagePath);
         }

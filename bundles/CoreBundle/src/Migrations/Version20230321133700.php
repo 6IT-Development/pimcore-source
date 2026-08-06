@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -22,6 +22,7 @@ use DateTimeZone;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Exception;
+use Pimcore\Db;
 
 final class Version20230321133700 extends AbstractMigration
 {
@@ -34,13 +35,14 @@ final class Version20230321133700 extends AbstractMigration
         Schema $schema,
         string $table,
         string $timeStampColumn,
-        bool $up = true
-    ): void {
+        bool   $up = true
+    ): void
+    {
         if (!$schema->hasTable($table)) {
             return;
         }
 
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $fromTimeZone = $up ? date_default_timezone_get() : 'UTC';
         $toTimeZone = $up ? 'UTC' : date_default_timezone_get();
 
@@ -98,7 +100,7 @@ final class Version20230321133700 extends AbstractMigration
                 }
                 $convertedMap[$oldValue] = $newValue;
 
-            } catch (Exception $e) {
+            } catch (Exception) {
                 // Ignore invalid or unparsable timestamps
             }
         }
@@ -109,7 +111,7 @@ final class Version20230321133700 extends AbstractMigration
             $collisionTimestamps = array_keys($collisions);
 
             // Build placeholders for prepared statement
-            $quoted = array_map(fn ($ts) => $db->quote((string)$ts), $collisionTimestamps);
+            $quoted = array_map(fn($ts) => $db->quote((string)$ts), $collisionTimestamps);
             $collidingTimestamps = implode(',', $quoted);
 
             $sql = sprintf(

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Element;
@@ -169,14 +170,14 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
         $role = new User\Role();
         $role->setName('Testrole');
         $role->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => true, 'view' => true, 'save'=>true, 'publish'=>false ]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => true, 'view' => true, 'save' => true, 'publish' => false]),
         ]);
         $role->save();
 
         $role2 = new User\Role();
         $role2->setName('dummyRole');
         $role2->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save'=>false, 'publish'=>false, 'settings' => true ]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save' => false, 'publish' => false, 'settings' => true]),
         ]);
         $role2->save();
 
@@ -186,13 +187,13 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
         $this->userPermissionTest1->setPermissions(['objects']);
         $this->userPermissionTest1->setRoles([$role->getId(), $role2->getId()]);
         $this->userPermissionTest1->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true, 'create'=> true, 'rename'=> true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->c->getId(), 'cPath' => $this->c->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->abcdefghjkl->getId(), 'cPath' => $this->abcdefghjkl->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true, 'create' => true, 'rename' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->c->getId(), 'cPath' => $this->c->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->abcdefghjkl->getId(), 'cPath' => $this->abcdefghjkl->getFullpath(), 'list' => true, 'view' => true]),
         ]);
         $this->userPermissionTest1->save();
 
@@ -202,12 +203,12 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
         $this->userPermissionTest2->setPermissions(['objects']);
         $this->userPermissionTest2->setRoles([$role->getId(), $role2->getId()]);
         $this->userPermissionTest2->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save'=>true, 'publish'=>true, 'settings' => false]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save' => true, 'publish' => true, 'settings' => false]),
         ]);
         $this->userPermissionTest2->save();
 
@@ -216,7 +217,7 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
         $this->userPermissionTest3->setName('Permissiontest3');
         $this->userPermissionTest3->setPermissions(['objects']);
         $this->userPermissionTest3->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->usertestobject->getId(), 'cPath' => $this->usertestobject->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->usertestobject->getId(), 'cPath' => $this->usertestobject->getFullpath(), 'list' => true, 'view' => true]),
         ]);
         $this->userPermissionTest3->save();
 
@@ -232,10 +233,10 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
         $this->userPermissionTest5->setName('Permissiontest5');
         $this->userPermissionTest5->setPermissions(['assets', 'objects']);
         $this->userPermissionTest5->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->usertestobject->getId(), 'cPath' => $this->usertestobject->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->usertestobject->getId(), 'cPath' => $this->usertestobject->getFullpath(), 'list' => true, 'view' => true]),
         ]);
         $this->userPermissionTest5->setWorkspacesAsset([
-            (new User\Workspace\Asset())->setValues(['cId' => $this->assetElement->getId(), 'cPath' => $this->assetElement->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Asset()->setValues(['cId' => $this->assetElement->getId(), 'cPath' => $this->assetElement->getFullpath(), 'list' => true, 'view' => true]),
         ]);
         $this->userPermissionTest5->save();
 
@@ -244,10 +245,10 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
         $this->userPermissionTest6->setName('Permissiontest6');
         $this->userPermissionTest6->setPermissions([]);
         $this->userPermissionTest6->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->usertestobject->getId(), 'cPath' => $this->usertestobject->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->usertestobject->getId(), 'cPath' => $this->usertestobject->getFullpath(), 'list' => true, 'view' => true]),
         ]);
         $this->userPermissionTest6->setWorkspacesAsset([
-            (new User\Workspace\Asset())->setValues(['cId' => $this->assetElement->getId(), 'cPath' => $this->assetElement->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Asset()->setValues(['cId' => $this->assetElement->getId(), 'cPath' => $this->assetElement->getFullpath(), 'list' => true, 'view' => true]),
         ]);
 
         $this->userPermissionTest6->save();
@@ -339,14 +340,15 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
 
     protected function doIsAllowedTest(
         DataObject\AbstractObject $element,
-        string $type, bool $resultAdmin,
-        bool $resultPermissionTest1,
-        bool $resultPermissionTest2,
-        bool $resultPermissionTest3,
-        bool $resultPermissionTest4,
-        bool $resultPermissionTest5,
-        bool $resultPermissionTest6
-    ): void {
+        string                    $type, bool $resultAdmin,
+        bool                      $resultPermissionTest1,
+        bool                      $resultPermissionTest2,
+        bool                      $resultPermissionTest3,
+        bool                      $resultPermissionTest4,
+        bool                      $resultPermissionTest5,
+        bool                      $resultPermissionTest6
+    ): void
+    {
         $admin = User::getByName('admin');
 
         $this->assertEquals(
@@ -558,7 +560,7 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
 
     protected function buildController(string $classname, User $user): mixed
     {
-        $dataObjectController = Stub::construct($classname, [], [
+        return Stub::construct($classname, [], [
             'getPimcoreUser' => function () use ($user) {
                 return $user;
             },
@@ -569,8 +571,6 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
                 return $params;
             },
         ]);
-
-        return $dataObjectController;
     }
 
     protected function doTestSearch(string $searchText, User $user, array $expectedResultPaths, int $limit = 100): void
@@ -706,8 +706,8 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
         //update role
         $role = User\Role::getByName('Testrole');
         $role->setWorkspacesObject([
-            (new User\Workspace\DataObject())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\DataObject())->setValues(['cId' => $manyElementX->getId(), 'cPath' => $manyElementX->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\DataObject()->setValues(['cId' => $manyElementX->getId(), 'cPath' => $manyElementX->getFullpath(), 'list' => true, 'view' => true]),
         ]);
         $role->save();
 
@@ -716,7 +716,7 @@ class ModelDataObjectPermissionsTest extends ModelTestCase
             array_map(function ($item) {
                 return $item->getFullpath();
             }, $manyElementList),
-            [ $manyElementX->getFullpath() ]
+            [$manyElementX->getFullpath()]
         ), $elementCount + 1
         );
         $this->doTestSearch('manyelement', $this->userPermissionTest1, [$manyElementX->getFullpath()], $elementCount + 1);

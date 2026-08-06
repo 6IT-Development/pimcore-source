@@ -9,14 +9,13 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Objectbrick\Data;
 
 use Exception;
-use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
@@ -27,7 +26,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterf
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Objectbrick\Data\AbstractData $model
+ * @property AbstractData $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -42,7 +41,7 @@ class Dao extends Model\Dao\AbstractDao
         // HACK: set the pimcore admin mode to false to get the inherited values from parent if this source one is empty
         $inheritedValues = DataObject::doGetInheritedValues();
 
-        $storetable = $this->model->getDefinition()->getTableName($object->getClass(), false);
+        $storetable = $this->model->getDefinition()->getTableName($object->getClass());
         $querytable = $this->model->getDefinition()->getTableName($object->getClass(), true);
 
         $this->inheritanceHelper = new DataObject\Concrete\Dao\InheritanceHelper($object->getClassId(), 'id', $storetable, $querytable, null, 'id');
@@ -55,9 +54,6 @@ class Dao extends Model\Dao\AbstractDao
             $data = [];
             $data['id'] = $object->getId();
             $data['fieldname'] = $this->model->getFieldname();
-
-            $dirtyRelations = [];
-            $db = Db::get();
 
             if (($params['isUpdate'] ?? false) === false && $this->model->getObject()->getClass()->getAllowInherit()) {
                 // if this is a fresh object, then we don't need the check
@@ -118,7 +114,7 @@ class Dao extends Model\Dao\AbstractDao
             }
 
             if ($isBrickUpdate) {
-                $this->db->update($storetable, Helper::quoteDataIdentifiers($this->db, $data), ['id'=> $object->getId()]);
+                $this->db->update($storetable, Helper::quoteDataIdentifiers($this->db, $data), ['id' => $object->getId()]);
             } else {
                 $this->db->insert($storetable, Helper::quoteDataIdentifiers($this->db, $data));
             }
@@ -254,7 +250,7 @@ class Dao extends Model\Dao\AbstractDao
     public function delete(DataObject\Concrete $object): void
     {
         // update data for store table
-        $storeTable = $this->model->getDefinition()->getTableName($object->getClass(), false);
+        $storeTable = $this->model->getDefinition()->getTableName($object->getClass());
         $this->db->delete($storeTable, ['id' => $object->getId()]);
 
         // update data for query table

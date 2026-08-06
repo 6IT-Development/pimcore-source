@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
 
 use __PHP_Incomplete_Class;
+use DeepCopy\Matcher\PropertyMatcher;
 use Exception;
 use Pimcore;
 use Pimcore\Event\Model\VersionEvent;
@@ -32,11 +34,12 @@ use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Version\Adapter\VersionStorageAdapterInterface;
+use Pimcore\Model\Version\Dao;
 use Pimcore\Model\Version\SetDumpStateFilter;
 use Pimcore\Tool\Serialize;
 
 /**
- * @method \Pimcore\Model\Version\Dao getDao()
+ * @method Dao getDao()
  */
 final class Version extends AbstractModel
 {
@@ -95,7 +98,7 @@ final class Version extends AbstractModel
             $version->getDao()->getById($id);
 
             return $version;
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             return null;
         }
     }
@@ -139,7 +142,7 @@ final class Version extends AbstractModel
 
         // get stack trace, if enabled
         if ($this->getGenerateStackTrace()) {
-            $this->stackTrace = (new Exception())->getTraceAsString();
+            $this->stackTrace = new Exception()->getTraceAsString();
         }
 
         $data = $this->getData();
@@ -188,7 +191,7 @@ final class Version extends AbstractModel
         $this->dispatchEvent(new VersionEvent($this), VersionEvents::POST_SAVE);
     }
 
-    private function marshalData(ElementInterface $data): mixed
+    private function marshalData(ElementInterface $data): array|\ElementInterface|object
     {
         $context = [
             'source' => __METHOD__,
@@ -213,13 +216,11 @@ final class Version extends AbstractModel
             );
         }
 
-        $copier->addFilter(new SetDumpStateFilter(true), new \DeepCopy\Matcher\PropertyMatcher(ElementDumpStateInterface::class, ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
-        $newData = $copier->copy($data);
-
-        return $newData;
+        $copier->addFilter(new SetDumpStateFilter(true), new PropertyMatcher(ElementDumpStateInterface::class, ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
+        return $copier->copy($data);
     }
 
-    private function unmarshalData(ElementInterface $data): mixed
+    private function unmarshalData(ElementInterface $data): array|\ElementInterface|object
     {
         $context = [
             'source' => __METHOD__,
@@ -347,7 +348,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setCid(int $cid): static
+    public function setCid(int $cid): Version
     {
         $this->cid = $cid;
 
@@ -357,7 +358,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setDate(int $date): static
+    public function setDate(int $date): Version
     {
         $this->date = $date;
 
@@ -367,7 +368,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setId(int $id): static
+    public function setId(int $id): Version
     {
         $this->id = $id;
 
@@ -377,7 +378,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setNote(string $note): static
+    public function setNote(string $note): Version
     {
         $this->note = $note;
 
@@ -387,7 +388,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setUserId(int $userId): static
+    public function setUserId(int $userId): Version
     {
         if ($user = User::getById($userId)) {
             $this->userId = $userId;
@@ -409,7 +410,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setData(mixed $data): static
+    public function setData(mixed $data): Version
     {
         $this->data = $data;
 
@@ -424,7 +425,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setSerialized(bool $serialized): static
+    public function setSerialized(bool $serialized): Version
     {
         $this->serialized = $serialized;
 
@@ -439,7 +440,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setCtype(string $ctype): static
+    public function setCtype(string $ctype): Version
     {
         $this->ctype = $ctype;
 
@@ -454,7 +455,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setUser(?User $user): static
+    public function setUser(?User $user): Version
     {
         $this->user = $user;
 
@@ -474,7 +475,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setPublic(bool $public): static
+    public function setPublic(bool $public): Version
     {
         $this->public = $public;
 
@@ -539,7 +540,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setAutoSave(bool $autoSave): static
+    public function setAutoSave(bool $autoSave): Version
     {
         $this->autoSave = $autoSave;
 

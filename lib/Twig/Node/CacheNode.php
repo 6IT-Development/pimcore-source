@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Node;
@@ -25,14 +26,15 @@ use Twig\Node\Node;
 final class CacheNode extends Node
 {
     public function __construct(
-        private string $key,
-        private ?int $ttl,
-        private array $tags,
-        private bool $force,
-        Node $body,
-        int $lineno,
-        ?string $tag = 'pimcorecache'
-    ) {
+        private readonly string $key,
+        private readonly ?int   $ttl,
+        private readonly array  $tags,
+        private readonly bool   $force,
+        Node                    $body,
+        int                     $lineno,
+        ?string                 $tag = 'pimcorecache'
+    )
+    {
         parent::__construct(['body' => $body], [], $lineno, $tag);
     }
 
@@ -46,8 +48,7 @@ final class CacheNode extends Node
             ->addDebugInfo($this)
             ->write($before)
             ->subcompile($this->getNode('body'))
-            ->write($after)
-        ;
+            ->write($after);
     }
 
     private function getPhpCode(string $splitChars): string
@@ -61,10 +62,10 @@ final class CacheNode extends Node
         return <<<PHP
 
     \$cacheExtension = \$this->env->getExtension('Pimcore\Twig\Extension\CacheTagExtension');
-    \$key = '{$key}';
-    \$tags = {$tags};
-    \$ttl = {$ttl};
-    \$force = {$force};
+    \$key = '$key';
+    \$tags = $tags;
+    \$ttl = $ttl;
+    \$force = $force;
     \$content = \$cacheExtension->getContentFromCache(\$key, \$force);
     if (!\$content) {
         \$cacheExtension->startBuffering();

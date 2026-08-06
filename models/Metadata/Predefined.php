@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Metadata;
@@ -21,11 +22,12 @@ use Pimcore;
 use Pimcore\Loader\ImplementationLoader\Exception\UnsupportedException;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Metadata\Predefined\Dao;
 
 /**
  * @internal
  *
- * @method \Pimcore\Model\Metadata\Predefined\Dao getDao()
+ * @method Dao getDao()
  * @method void save()
  * @method void delete()
  * @method bool isWriteable()
@@ -62,7 +64,7 @@ final class Predefined extends Model\AbstractModel
             $metadata->getDao()->getById($id);
 
             return $metadata;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -78,16 +80,14 @@ final class Predefined extends Model\AbstractModel
             $metadata->getDao()->getByNameAndLanguage($name, $language);
 
             return $metadata;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
 
     public static function create(): Predefined
     {
-        $type = new self();
-
-        return $type;
+        return new self();
     }
 
     public function getName(): ?string
@@ -108,7 +108,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setName(string $name): static
+    public function setName(string $name): Predefined
     {
         $this->name = str_replace('~', '---', $name);
 
@@ -118,7 +118,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setType(string $type): static
+    public function setType(string $type): Predefined
     {
         $this->type = $type;
 
@@ -128,7 +128,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setData(mixed $data): static
+    public function setData(mixed $data): Predefined
     {
         $this->data = $data;
 
@@ -143,7 +143,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setId(string $id): static
+    public function setId(string $id): Predefined
     {
         $this->id = $id;
 
@@ -153,7 +153,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setDescription(?string $description): static
+    public function setDescription(?string $description): Predefined
     {
         $this->description = $description;
 
@@ -168,7 +168,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setCreationDate(int $creationDate): static
+    public function setCreationDate(int $creationDate): Predefined
     {
         $this->creationDate = $creationDate;
 
@@ -183,7 +183,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setModificationDate(int $modificationDate): static
+    public function setModificationDate(int $modificationDate): Predefined
     {
         $this->modificationDate = $modificationDate;
 
@@ -198,7 +198,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setLanguage(?string $language): static
+    public function setLanguage(?string $language): Predefined
     {
         $this->language = $language;
 
@@ -213,7 +213,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setGroup(?string $group): static
+    public function setGroup(?string $group): Predefined
     {
         $this->group = $group;
 
@@ -228,7 +228,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setTargetSubtype(?string $targetSubtype): static
+    public function setTargetSubtype(?string $targetSubtype): Predefined
     {
         $this->targetSubtype = $targetSubtype;
 
@@ -248,7 +248,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setConfig(?string $config): static
+    public function setConfig(?string $config): Predefined
     {
         $this->config = $config;
 
@@ -262,7 +262,7 @@ final class Predefined extends Model\AbstractModel
             /** @var Model\Asset\MetaData\ClassDefinition\Data\Data $instance */
             $instance = $loader->build($this->type);
             $this->data = $instance->getDataFromEditMode($this->data);
-        } catch (UnsupportedException $e) {
+        } catch (UnsupportedException) {
             Logger::error('could not resolve asset metadata implementation for ' . $this->type);
         }
     }
@@ -274,7 +274,7 @@ final class Predefined extends Model\AbstractModel
             /** @var Model\Asset\MetaData\ClassDefinition\Data\Data $instance */
             $instance = $loader->build($this->type);
             $this->data = $instance->getDataForEditmode($this->data);
-        } catch (UnsupportedException $e) {
+        } catch (UnsupportedException) {
             Logger::error('could not resolve asset metadata implementation for ' . $this->type);
         }
     }

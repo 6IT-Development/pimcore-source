@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Helper;
@@ -23,9 +24,11 @@ use Codeception\TestInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Exception;
+use Pimcore\Bootstrap;
 use Pimcore\Bundle\InstallBundle\Installer;
 use Pimcore\Cache;
 use Pimcore\Event\TestEvents;
+use Pimcore\Helper\LongRunningHelper;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\ClassDefinitionManager;
 use Pimcore\Model\Document;
@@ -115,7 +118,7 @@ class Pimcore extends Module\Symfony
         //require_once __DIR__ . '/../../../config/constants.php';
         $this->setupPimcoreDirectories();
 
-        $this->kernel = \Pimcore\Bootstrap::kernel();
+        $this->kernel = Bootstrap::kernel();
 
         if ($this->config['cache_router'] === true) {
             $this->persistService('router', true);
@@ -308,7 +311,7 @@ class Pimcore extends Module\Symfony
     {
         //need to load initialize that service first, before module/symfony does its magic
         //related to https://github.com/pimcore/pimcore/pull/10331
-        $this->grabService(\Pimcore\Helper\LongRunningHelper::class);
+        $this->grabService(LongRunningHelper::class);
 
         parent::_before($test);
 

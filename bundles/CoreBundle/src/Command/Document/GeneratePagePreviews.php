@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Document;
@@ -43,8 +43,7 @@ class GeneratePagePreviews extends AbstractCommand
                 'urlPrefix',
                 'u',
                 InputOption::VALUE_OPTIONAL,
-                'Prefix for the document path, eg. https://example.com, if not specified, Pimcore will try use the main domain from system settings.',
-                null
+                'Prefix for the document path, eg. https://example.com, if not specified, Pimcore will try use the main domain from system settings.'
             )
             ->addOption(
                 'parent',
@@ -68,7 +67,7 @@ class GeneratePagePreviews extends AbstractCommand
         $parentIdOrPath = $input->getOption('parent');
         if ($parentIdOrPath) {
             if (is_numeric(($parentIdOrPath))) {
-                $parent = Document::getById((int) $parentIdOrPath);
+                $parent = Document::getById((int)$parentIdOrPath);
             } else {
                 $parent = Document::getByPath($parentIdOrPath);
             }
@@ -114,7 +113,7 @@ class GeneratePagePreviews extends AbstractCommand
              * @var Document\Page $doc
              */
             try {
-                $success = Document\Service::generatePagePreview($doc->getId(), null, $hostUrl);
+                Document\Service::generatePagePreview($doc->getId(), null, $hostUrl);
             } catch (Exception $e) {
                 $this->io->error($e->getMessage());
             }

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Routing\Dynamic;
@@ -56,12 +56,13 @@ final class DocumentRouteHandler implements DynamicRouteHandlerInterface
     private StaticPageResolver $staticPageResolver;
 
     public function __construct(
-        Document\Service $documentService,
-        SiteResolver $siteResolver,
-        RequestHelper $requestHelper,
-        Config $config,
+        Document\Service   $documentService,
+        SiteResolver       $siteResolver,
+        RequestHelper      $requestHelper,
+        Config             $config,
         StaticPageResolver $staticPageResolver
-    ) {
+    )
+    {
         $this->documentService = $documentService;
         $this->siteResolver = $siteResolver;
         $this->requestHelper = $requestHelper;
@@ -77,7 +78,7 @@ final class DocumentRouteHandler implements DynamicRouteHandlerInterface
     public function getDirectRouteDocumentTypes(): array
     {
         if (empty($this->directRouteDocumentTypes)) {
-            $documentConfig = \Pimcore\Config::getSystemConfiguration('documents');
+            $documentConfig = Config::getSystemConfiguration('documents');
             foreach ($documentConfig['type_definitions']['map'] as $type => $config) {
                 if (isset($config['direct_route']) && $config['direct_route']) {
                     $this->directRouteDocumentTypes[] = $type;
@@ -91,7 +92,7 @@ final class DocumentRouteHandler implements DynamicRouteHandlerInterface
     public function getRouteByName(string $name): ?DocumentRoute
     {
         if (preg_match('/^document_(\d+)$/', $name, $match)) {
-            $document = Document::getById((int) $match[1]);
+            $document = Document::getById((int)$match[1]);
 
             if ($this->isDirectRouteDocument($document)) {
                 return $this->buildRouteForDocument($document);
@@ -154,7 +155,7 @@ final class DocumentRouteHandler implements DynamicRouteHandlerInterface
      *
      *
      */
-    public function buildRouteForDocument(Document $document, DynamicRequestContext $context = null): ?DocumentRoute
+    public function buildRouteForDocument(Document $document, ?DynamicRequestContext $context = null): ?DocumentRoute
     {
         // check for direct hardlink
         if ($document instanceof Document\Hardlink) {
@@ -203,15 +204,16 @@ final class DocumentRouteHandler implements DynamicRouteHandlerInterface
      * Handle direct route documents (not link)
      */
     private function handleDirectRouteDocument(
-        Document\PageSnippet $document,
-        DocumentRoute $route,
-        DynamicRequestContext $context = null
-    ): ?DocumentRoute {
+        Document\PageSnippet   $document,
+        DocumentRoute          $route,
+        ?DynamicRequestContext $context = null
+    ): ?DocumentRoute
+    {
         // if we have a request in context, we're currently in match mode (not generating URLs) -> only match when frontend request by admin
         try {
             $request = $context ? $context->getRequest() : $this->requestHelper->getMainRequest();
             $isAdminRequest = $this->requestHelper->isFrontendRequestByAdmin($request);
-        } catch (LogicException $e) {
+        } catch (LogicException) {
             // catch logic exception here - when the exception fires, it is no admin request
             $isAdminRequest = false;
         }
@@ -256,10 +258,11 @@ final class DocumentRouteHandler implements DynamicRouteHandlerInterface
      * Handle document redirects (pretty url, SEO without trailing slash)
      */
     private function handleDirectRouteRedirect(
-        Document\PageSnippet $document,
-        DocumentRoute $route,
-        DynamicRequestContext $context = null
-    ): ?DocumentRoute {
+        Document\PageSnippet   $document,
+        DocumentRoute          $route,
+        ?DynamicRequestContext $context = null
+    ): ?DocumentRoute
+    {
         $redirectTargetUrl = $context->getOriginalPath();
 
         // check for a pretty url, and if the document is called by that, otherwise redirect to pretty url

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ImporterService\Importer;
@@ -63,12 +64,11 @@ class DataObjectImporter extends AbstractElementImporter
 
             /** @var array $blockData */
             $blockData = $element->{'get' . $blockName}($targetLanguage);
-            $blockItem =  isset($blockData[$blockIndex]) ? $blockData[$blockIndex] : $originalBlockItem;
+            $blockItem = $blockData[$blockIndex] ?? $originalBlockItem;
+
             /** @var DataObject\Data\BlockElement $blockItemData */
             $blockItemData = !empty($blockData) ? clone $blockItem[$fieldname] : clone $originalBlockItemData;
-
             $blockItemData->setLanguage($targetLanguage);
-
             $blockItemData->setData($attribute->getContent());
 
             $blockItem[$fieldname] = $blockItemData;
@@ -91,7 +91,7 @@ class DataObjectImporter extends AbstractElementImporter
             $fieldCollection = $element->{'get' . $fieldCollectionName}();
 
             if ($fieldCollection) {
-                $item = $fieldCollection->get((int) $fieldCollectionItemIndex);
+                $item = $fieldCollection->get((int)$fieldCollectionItemIndex);
                 /** @var DataObject\Localizedfield $localizedFields */
                 if ($item) {
                     /** @var array $originalBlockData */
@@ -101,13 +101,11 @@ class DataObjectImporter extends AbstractElementImporter
 
                     /** @var array $blockData */
                     $blockData = $item->{'get' . $blockName}($targetLanguage);
-                    $blockItem = isset($blockData[$blockIndex]) ? $blockData[$blockIndex] : $originalBlockItem;
+                    $blockItem = $blockData[$blockIndex] ?? $originalBlockItem;
 
                     /** @var DataObject\Data\BlockElement $blockItemData */
                     $blockItemData = !empty($blockData) ? clone $blockItem[$fieldname] : clone $originalBlockItemData;
-
                     $blockItemData->setLanguage($targetLanguage);
-
                     $blockItemData->setData($attribute->getContent());
 
                     $blockItem[$fieldname] = $blockItemData;
@@ -151,7 +149,7 @@ class DataObjectImporter extends AbstractElementImporter
             /** @var DataObject\Fieldcollection|null $fieldCollection */
             $fieldCollection = $element->{'get' . $fieldCollectionField}();
             if ($fieldCollection) {
-                $item = $fieldCollection->get((int) $index);
+                $item = $fieldCollection->get((int)$index);
                 /** @var DataObject\Localizedfield $localizedFields */
                 if (
                     $item &&

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ImportDataExtractor;
@@ -27,14 +28,11 @@ use SimpleXMLElement;
 
 class Xliff12DataExtractor implements ImportDataExtractorInterface
 {
-    protected Xliff12Escaper $xliffEscaper;
-
-    protected TranslationItemResolverInterface $translationItemResolver;
-
-    public function __construct(Xliff12Escaper $xliffEscaper, TranslationItemResolverInterface $translationItemResolver)
+    public function __construct(
+        protected Xliff12Escaper                   $xliffEscaper,
+        protected TranslationItemResolverInterface $translationItemResolver
+    )
     {
-        $this->xliffEscaper = $xliffEscaper;
-        $this->translationItemResolver = $translationItemResolver;
     }
 
     public function extractElement(string $importId, int $stepId): ?AttributeSet
@@ -50,6 +48,7 @@ class Xliff12DataExtractor implements ImportDataExtractorInterface
         if (!Tool::isValidLanguage($target)) {
             $target = Locale::getPrimaryLanguage($target);
         }
+
         if (!Tool::isValidLanguage($target)) {
             throw new Exception(sprintf('invalid language %s', $file['target-language']));
         }
@@ -64,16 +63,17 @@ class Xliff12DataExtractor implements ImportDataExtractorInterface
 
         $attributeSet = new AttributeSet($translationItem);
         $attributeSet->setTargetLanguages([$target]);
+
         if (!empty($file['source-language'])) {
             $attributeSet->setSourceLanguage((string)$file['source-language']);
         }
 
         foreach ($file->body->{'trans-unit'} as $transUnit) {
-            [$type, $name] = explode(Xliff12Exporter::DELIMITER, (string)$transUnit['id']);
-
             if (!isset($transUnit->target)) {
                 continue;
             }
+
+            [$type, $name] = explode(Xliff12Exporter::DELIMITER, (string)$transUnit['id']);
 
             $content = $transUnit->target->asXml();
             $content = $this->xliffEscaper->unescapeXliff($content);

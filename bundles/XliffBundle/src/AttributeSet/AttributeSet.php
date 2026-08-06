@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\AttributeSet;
@@ -36,7 +37,6 @@ class AttributeSet
 
     /**
      * DataExtractorResult constructor.
-     *
      */
     public function __construct(TranslationItem $translationItem)
     {
@@ -77,7 +77,6 @@ class AttributeSet
 
     /**
      * @param string[] $targetLanguages
-     *
      */
     public function setTargetLanguages(array $targetLanguages): AttributeSet
     {
@@ -100,13 +99,7 @@ class AttributeSet
             return true;
         }
 
-        foreach ($this->attributes as $attribute) {
-            if (!$attribute->isReadonly()) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($this->attributes, static fn(Attribute $attribute) => $attribute->isReadonly());
     }
 
     /**

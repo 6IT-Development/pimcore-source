@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Asset;
@@ -72,7 +73,7 @@ class GenerateChecksumCommand extends AbstractCommand
         $conditions = [];
 
         if ($input->getOption('parent')) {
-            $parent = Asset::getById((int) $input->getOption('parent'));
+            $parent = Asset::getById((int)$input->getOption('parent'));
             if ($parent instanceof Asset\Folder) {
                 $conditions[] = "path LIKE '" . Helper::escapeLike($parent->getRealFullPath()) . "/%'";
             } else {
@@ -111,7 +112,7 @@ class GenerateChecksumCommand extends AbstractCommand
 
                     $this->output->writeln(' generating checksum for asset: ' . $asset->getRealFullPath() . ' | ' . $asset->getId());
                     $asset->generateChecksum();
-                } catch (Exception $e) {
+                } catch (Exception) {
                     $this->output->writeln(' error generating checksum for asset: ' . $asset->getRealFullPath() . ' | ' . $asset->getId());
                 }
             }

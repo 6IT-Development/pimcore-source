@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Image\Adapter;
@@ -139,7 +140,7 @@ class Imagick extends Adapter
                     $i->setImageAlphaChannel(\Imagick::ALPHACHANNEL_TRANSPARENT);
                     $i->clipImage();
                     $i->setImageAlphaChannel(\Imagick::ALPHACHANNEL_OPAQUE);
-                } catch (Exception $e) {
+                } catch (Exception) {
                     Logger::info(sprintf('Although automatic clipping support is enabled, your current ImageMagick / Imagick version does not support this operation on the image %s', $imagePath));
                 }
                 //}
@@ -158,7 +159,7 @@ class Imagick extends Adapter
     private function has8BIMClippingPath(): bool
     {
         $handle = fopen($this->imagePath, 'rb');
-        $chunk = fread($handle, 1024*1000); // read the first 1MB
+        $chunk = fread($handle, 1024 * 1000); // read the first 1MB
         fclose($handle);
 
         // according to 8BIM format: https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577409_pgfId-1037504
@@ -181,7 +182,7 @@ class Imagick extends Adapter
         return $format;
     }
 
-    public function save(string $path, string $format = null, int $quality = null): static
+    public function save(string $path, ?string $format = null, ?int $quality = null): static
     {
         if (!$format) {
             $format = 'png32';
@@ -199,7 +200,6 @@ class Imagick extends Adapter
             $format = 'png32';
         }
 
-        $originalFilename = null;
         $i = $this->resource; // this is because of HHVM which has problems with $this->resource->writeImage();
 
         if (in_array($format, ['jpeg', 'pjpeg', 'jpg']) && $this->isAlphaPossible) {
@@ -282,7 +282,7 @@ class Imagick extends Adapter
         return $this;
     }
 
-    private function checkPreserveAnimation(string $format = '', \Imagick $i = null, bool $checkNumberOfImages = true): bool
+    private function checkPreserveAnimation(string $format = '', ?\Imagick $i = null, bool $checkNumberOfImages = true): bool
     {
         if (!$this->isPreserveAnimation()) {
             return false;
@@ -334,29 +334,29 @@ class Imagick extends Adapter
         return false;
     }
 
-    private function setColorspaceToRGB(): static
+    private function setColorspaceToRGB(): void
     {
         $imageColorspace = $this->resource->getImageColorspace();
 
         if (!$this->isForceProcessICCProfiles() &&
             in_array($imageColorspace, [\Imagick::COLORSPACE_RGB, \Imagick::COLORSPACE_SRGB])) {
             // no need to process (s)RGB images
-            return $this;
+            return;
         }
 
-        $profiles = $this->resource->getImageProfiles('icc', true);
+        $profiles = $this->resource->getImageProfiles('icc');
 
         if (!$this->isForceProcessICCProfiles() && isset($profiles['icc'])) {
             if (str_contains($profiles['icc'], 'RGB')) {
                 // no need to process (s)RGB images
-                return $this;
+                return;
             }
 
             // Workaround for ImageMagick (e.g. 6.9.10-23) bug, that lets it crash immediately if the tagged colorspace is
             // different from the colorspace of the embedded icc color profile
             // If that is the case we just ignore the color profiles
             if (str_contains($profiles['icc'], 'CMYK') && $imageColorspace !== \Imagick::COLORSPACE_CMYK) {
-                return $this;
+                return;
             }
         }
 
@@ -384,7 +384,7 @@ class Imagick extends Adapter
                     $this->resource->profileImage('icc', self::getRGBColorProfile());
                     $this->resource->setImageColorspace(\Imagick::COLORSPACE_SRGB);
                 } catch (Exception $e) {
-                    Logger::warn((string) $e);
+                    Logger::warn((string)$e);
                 }
             }
         }
@@ -409,7 +409,6 @@ class Imagick extends Adapter
         setlocale(LC_ALL, $currentLocale); // see setlocale() above, for details ;-)
         */
 
-        return $this;
     }
 
     /**
@@ -513,11 +512,11 @@ class Imagick extends Adapter
 
         if ($this->getWidth() !== $width || $this->getHeight() !== $height) {
             if ($this->checkPreserveAnimation()) {
-                foreach ($this->resource as $i => $frame) {
-                    $frame->resizeimage($width, $height, \Imagick::FILTER_UNDEFINED, 1, false);
+                foreach ($this->resource as $frame) {
+                    $frame->resizeimage($width, $height, \Imagick::FILTER_UNDEFINED, 1);
                 }
             } else {
-                $this->resource->resizeimage($width, $height, \Imagick::FILTER_UNDEFINED, 1, false);
+                $this->resource->resizeimage($width, $height, \Imagick::FILTER_UNDEFINED, 1);
             }
             $this->setWidth($width);
             $this->setHeight($height);
@@ -537,7 +536,7 @@ class Imagick extends Adapter
         $this->preModify();
 
         if ($this->checkPreserveAnimation()) {
-            foreach ($this->resource as $i => $frame) {
+            foreach ($this->resource as $frame) {
                 $frame->cropImage($width, $height, $x, $y);
                 $frame->setImagePage($width, $height, 0, 0);
             }
@@ -620,7 +619,7 @@ class Imagick extends Adapter
     {
         $newImage = null;
         if ($this->checkPreserveAnimation()) {
-            foreach ($this->resource as $i => $frame) {
+            foreach ($this->resource as $frame) {
                 $imageFrame = $this->createImage($width, $height, $color);
                 $imageFrame->compositeImage($frame, $composite, $x, $y);
                 if (!$newImage) {
@@ -684,7 +683,7 @@ class Imagick extends Adapter
         $this->resource->compositeImage($mask, \Imagick::COMPOSITE_DSTIN, 0, 0);
     }
 
-    public function setBackgroundImage(string $image, string $mode = null): static
+    public function setBackgroundImage(string $image, ?string $mode = null): static
     {
         $this->preModify();
 
@@ -704,7 +703,7 @@ class Imagick extends Adapter
                     $newImage->cropImage($this->getWidth(), $this->getHeight(), 0, 0);
                 } else {
                     // default behavior (fit)
-                    $newImage->resizeimage($this->getWidth(), $this->getHeight(), \Imagick::FILTER_UNDEFINED, 1, false);
+                    $newImage->resizeimage($this->getWidth(), $this->getHeight(), \Imagick::FILTER_UNDEFINED, 1);
                 }
             }
 
@@ -797,7 +796,7 @@ class Imagick extends Adapter
 
         $newImage = new \Imagick();
         $newImage->readimage($image);
-        $newImage->resizeimage($this->getWidth(), $this->getHeight(), \Imagick::FILTER_UNDEFINED, 1, false);
+        $newImage->resizeimage($this->getWidth(), $this->getHeight(), \Imagick::FILTER_UNDEFINED, 1);
 
         $this->addOverlay($newImage, 0, 0, 100, $composite);
 
@@ -814,7 +813,7 @@ class Imagick extends Adapter
             $this->resource->setImageMatte(true);
             $newImage = new \Imagick();
             $newImage->readimage($image);
-            $newImage->resizeimage($this->getWidth(), $this->getHeight(), \Imagick::FILTER_UNDEFINED, 1, false);
+            $newImage->resizeimage($this->getWidth(), $this->getHeight(), \Imagick::FILTER_UNDEFINED, 1);
             $this->resource->compositeImage($newImage, \Imagick::COMPOSITE_COPYOPACITY, 0, 0, \Imagick::CHANNEL_ALPHA);
         }
 
@@ -894,7 +893,7 @@ class Imagick extends Adapter
 
         // we need to do this check first, because ImageMagick using the inkscape delegate returns "PNG" when calling
         // getimageformat() onto SVG graphics, this is a workaround to avoid problems
-        if (preg_match("@\.(svgz?|eps|pdf|ps|ai|indd)$@i", $imagePath)) {
+        if (preg_match('@\.(svgz?|eps|pdf|ps|ai|indd)$@i', $imagePath)) {
             return true;
         }
 
@@ -927,7 +926,7 @@ class Imagick extends Adapter
                 }
             }
         } catch (Exception $e) {
-            Logger::err((string) $e);
+            Logger::err((string)$e);
         }
 
         return false;
@@ -955,8 +954,8 @@ class Imagick extends Adapter
             while (($eps_line = fgets($epsFile)) && ($i < 100)) {
                 if (preg_match('/%ImageData: ([0-9]+) ([0-9]+)/i', $eps_line, $matches)) {
                     return [
-                        'width' => (int) $matches[1],
-                        'height' => (int) $matches[2],
+                        'width' => (int)$matches[1],
+                        'height' => (int)$matches[2],
                     ];
                 }
                 $i++;
@@ -986,12 +985,12 @@ class Imagick extends Adapter
             // in-process caching (static variable) and the shared cache
             $cacheKey = 'imagick_format_' . $format;
             if (($cachedValue = Cache::load($cacheKey)) !== false) {
-                self::$supportedFormatsCache[$format] = (bool) $cachedValue;
+                self::$supportedFormatsCache[$format] = (bool)$cachedValue;
             } else {
                 self::$supportedFormatsCache[$format] = $this->checkFormatSupport($format);
 
                 // we cache the status as an int, so that we know if the status was cached or not, with bool that wouldn't be possible, since load() returns false if item doesn't exists
-                Cache::save((int) self::$supportedFormatsCache[$format], $cacheKey, [], null, 999, true);
+                Cache::save((int)self::$supportedFormatsCache[$format], $cacheKey, [], null, 999, true);
             }
         }
 
@@ -1022,8 +1021,8 @@ class Imagick extends Adapter
                 $imageHeight - $newImageHeight - $y,
             ],
             'center' => [
-                (int) round($imageWidth / 2 - $newImageWidth / 2) + $x,
-                (int) round($imageHeight / 2 - $newImageHeight / 2) + $y,
+                (int)round($imageWidth / 2 - $newImageWidth / 2) + $x,
+                (int)round($imageHeight / 2 - $newImageHeight / 2) + $y,
             ],
             default => [
                 $x,
@@ -1041,7 +1040,7 @@ class Imagick extends Adapter
             $image->writeImageFile(tmpfile(), $format);
 
             return true;
-        } catch (Exception $e) {
+        } catch (Exception) {
             return false;
         }
     }

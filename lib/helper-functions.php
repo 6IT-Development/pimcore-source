@@ -9,9 +9,13 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
+
+use Symfony\Component\VarDumper\Cloner\VarCloner;
+use Symfony\Component\VarDumper\Dumper\CliDumper;
+use Symfony\Component\VarDumper\Dumper\HtmlDumper;
 
 /**
  * @return array<string, mixed>
@@ -19,19 +23,17 @@
 function xmlToArray(string $file): array
 {
     $xml = simplexml_load_file($file, null, LIBXML_NOCDATA);
-    $json = json_encode((array) $xml);
-    $array = json_decode($json, true);
-
-    return $array;
+    $json = json_encode((array)$xml);
+    return json_decode($json, true);
 }
 
-function gzcompressfile(string $source, int $level = null, string $target = null): false|string
+function gzcompressfile(string $source, ?int $level = null, ?string $target = null): false|string
 {
     // this is a very memory efficient way of gzipping files
     if ($target) {
         $dest = $target;
     } else {
-        $dest = $source.'.gz';
+        $dest = $source . '.gz';
     }
 
     $mode = 'wb' . $level;
@@ -59,9 +61,7 @@ function gzcompressfile(string $source, int $level = null, string $target = null
 function is_json(mixed $string): bool
 {
     if (is_string($string)) {
-        json_decode($string);
-
-        return json_last_error() == JSON_ERROR_NONE;
+        return json_validate($string);
     }
 
     return false;
@@ -71,7 +71,7 @@ function foldersize(string $path): int
 {
     $total_size = 0;
     $files = scandir($path);
-    $cleanPath = rtrim($path, '/'). '/';
+    $cleanPath = rtrim($path, '/') . '/';
 
     foreach ($files as $t) {
         if ($t != '.' && $t != '..') {
@@ -99,18 +99,16 @@ function replace_pcre_backreferences(string $string, array $values): string
     $string = str_replace('\$', '###PCRE_PLACEHOLDER###', $string);
 
     foreach ($values as $key => $value) {
-        $string = str_replace('$'.$key, $value, $string);
+        $string = str_replace('$' . $key, $value, $string);
     }
 
-    $string = str_replace('###URLENCODE_PLACEHOLDER###', '$', $string);
-
-    return $string;
+    return str_replace('###URLENCODE_PLACEHOLDER###', '$', $string);
 }
 
 /**
- * @param mixed[] $array
+ * @param array $array
  *
- * @return mixed[]
+ * @return array
  */
 function array_htmlspecialchars(array $array): array
 {
@@ -150,7 +148,7 @@ function object2array(object $node): array
     $paj = json_encode($node);
 
     if (JSON_ERROR_NONE !== json_last_error()) {
-        throw new \InvalidArgumentException(json_last_error_msg());
+        throw new InvalidArgumentException(json_last_error_msg());
     }
 
     return @json_decode($paj, true);
@@ -206,9 +204,7 @@ function urlencode_ignore_slash(string $var): string
     }
 
     // allow @2x for retina thumbnails, ...
-    $var = preg_replace("/%40([\d]+)x\./", '@$1x.', $var);
-
-    return $var;
+    return preg_replace('/%40([\d]+)x\./', '@$1x.', $var);
 }
 
 function return_bytes(string $val): int
@@ -219,10 +215,10 @@ function return_bytes(string $val): int
     switch ($last) {
         case 'g':
             $bytes *= 1024;
-            // no break
+        // no break
         case 'm':
             $bytes *= 1024;
-            // no break
+        // no break
         case 'k':
             $bytes *= 1024;
     }
@@ -255,13 +251,11 @@ function filesize2bytes(string $str): int
 
     $bytes = (float)$str;
 
-    if (preg_match('#([KMGTP])?B?$#si', $str, $matches) && (array_key_exists(1, $matches) && !empty($bytes_array[$matches[1]]))) {
+    if (preg_match('#([KMGTP])?B?$#i', $str, $matches) && (array_key_exists(1, $matches) && !empty($bytes_array[$matches[1]]))) {
         $bytes *= $bytes_array[$matches[1]];
     }
 
-    $bytes = (int)round($bytes, 2);
-
-    return $bytes;
+    return (int)round($bytes, 2);
 }
 
 /**
@@ -337,7 +331,7 @@ function recursiveDelete(string $directory, bool $empty = true): bool
 
             closedir($directoryHandle);
 
-            if ($empty == true) {
+            if ($empty) {
                 if (!rmdir($directory)) {
                     return false;
                 }
@@ -354,8 +348,8 @@ function recursiveDelete(string $directory, bool $empty = true): bool
 
 function p_r(): void
 {
-    $cloner = new \Symfony\Component\VarDumper\Cloner\VarCloner();
-    $dumper = 'cli' === PHP_SAPI ? new \Symfony\Component\VarDumper\Dumper\CliDumper() : new \Symfony\Component\VarDumper\Dumper\HtmlDumper();
+    $cloner = new VarCloner();
+    $dumper = 'cli' === PHP_SAPI ? new CliDumper() : new HtmlDumper();
 
     foreach (func_get_args() as $var) {
         $dumper->dump($cloner->cloneVar($var));
@@ -370,7 +364,7 @@ function p_r(): void
 function wrapArrayElements(array $array, string $prefix = "'", string $suffix = "'"): array
 {
     foreach ($array as $key => $value) {
-        $array[$key] = $prefix . trim($value). $suffix;
+        $array[$key] = $prefix . trim($value) . $suffix;
     }
 
     return $array;
@@ -414,9 +408,7 @@ function resolvePath(string $filename): string
         $out[] = $part;
     }
 
-    $finalPath = $protocol . implode('/', $out);
-
-    return $finalPath;
+    return $protocol . implode('/', $out);
 }
 
 function closureHash(Closure $closure): string
@@ -430,12 +422,10 @@ function closureHash(Closure $closure): string
         $file->next();
     }
 
-    $hash = md5(json_encode([
+    return md5(json_encode([
         $content,
         $ref->getStaticVariables(),
     ]));
-
-    return $hash;
 }
 
 /**
@@ -492,7 +482,7 @@ function to_php_data_file_format(mixed $contents, ?string $comments = null): str
         $export .= "\n";
     }
 
-    $export .= "\n\nreturn ".$contents.";\n";
+    $export .= "\n\nreturn " . $contents . ";\n";
 
     return $export;
 }
@@ -514,7 +504,5 @@ function implode_recursive(array $array, string $glue): string
         }
     }
 
-    $ret = substr($ret, 0, 0 - strlen($glue));
-
-    return $ret;
+    return substr($ret, 0, 0 - strlen($glue));
 }

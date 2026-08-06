@@ -12,7 +12,7 @@ declare(strict_types=1);
  * LICENSE.md which is distributed with this source code.
  *
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Handler;
@@ -32,15 +32,16 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
 
     public function __construct(
         private readonly Connection $db,
-        int|string|Level $level = Level::Debug,
-        bool $bubble = true
-    ) {
+        int|string|Level            $level = Level::Debug,
+        bool                        $bubble = true
+    )
+    {
         parent::__construct($level, $bubble);
     }
 
-    public function write(LogRecord $record): void
+    protected function write(LogRecord $record): void
     {
-        $data = [
+        $this->db->insert(self::TABLE_NAME, [
             'pid' => getmypid(),
             'priority' => $record->level->toPsrLogLevel(),
             'message' => $record->message,
@@ -50,9 +51,7 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
             'relatedobject' => $record->context['relatedObject'] ?? null,
             'relatedobjecttype' => $record->context['relatedObjectType'] ?? null,
             'source' => $record->context['source'] ?? null,
-        ];
-
-        $this->db->insert(self::TABLE_NAME, $data);
+        ]);
     }
 
     /**
@@ -60,9 +59,7 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
      */
     public static function getComponents(): array
     {
-        $db = Db::get();
-
-        return $db->fetchFirstColumn('SELECT component FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(component) GROUP BY component;');
+        return Db::get()->fetchFirstColumn('SELECT component FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(component) GROUP BY component;');
     }
 
     /**
@@ -82,10 +79,7 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
             'emergency' => 'EMERG',
         ];
 
-        $db = Db::get();
-
-        $priorityNumbers = $db->fetchFirstColumn('SELECT priority FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(priority) GROUP BY priority;');
-        foreach ($priorityNumbers as $priorityNumber) {
+        foreach (Db::get()->fetchFirstColumn('SELECT priority FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(priority) GROUP BY priority;') as $priorityNumber) {
             $priorities[$priorityNumber] = $priorityNames[$priorityNumber];
         }
 

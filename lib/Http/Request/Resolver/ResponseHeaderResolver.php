@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Http\Request\Resolver;
@@ -25,7 +25,7 @@ use Symfony\Component\HttpFoundation\Request;
  */
 class ResponseHeaderResolver extends AbstractRequestResolver
 {
-    const ATTRIBUTE_RESPONSE_HEADER = '_response_header';
+    public const string ATTRIBUTE_RESPONSE_HEADER = '_response_header';
 
     /**
      * Get response headers which were added to the request either by annotation
@@ -34,7 +34,7 @@ class ResponseHeaderResolver extends AbstractRequestResolver
      *
      * @return ResponseHeader[]
      */
-    public function getResponseHeaders(Request $request = null): array
+    public function getResponseHeaders(?Request $request = null): array
     {
         if (null === $request) {
             $request = $this->getCurrentRequest();

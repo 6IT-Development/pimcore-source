@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\Tag;
@@ -23,7 +23,7 @@ use Pimcore\Model\Element\Tag;
 /**
  * @internal
  *
- * @property \Pimcore\Model\Element\Tag $model
+ * @property Tag $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -64,18 +64,11 @@ class Dao extends Model\Dao\AbstractDao
                 $originalIdPath = $this->db->fetchOne('SELECT idPath FROM tags WHERE id = ?', [$this->model->getId()]);
             }
 
-            $data = [];
-            foreach ($dataAttributes as $key => $value) {
-                if (in_array($key, $this->getValidTableColumns('tags'))) {
-                    $data[$key] = $value;
-                }
-            }
-
-            Helper::upsert($this->db, 'tags', $data, $this->getPrimaryKey('tags'));
+            Helper::upsert($this->db, 'tags', array_filter($dataAttributes, fn($key) => in_array($key, $this->getValidTableColumns('tags'), true), ARRAY_FILTER_USE_KEY), $this->getPrimaryKey('tags'));
 
             $lastInsertId = $this->db->lastInsertId();
             if (!$this->model->getId() && $lastInsertId) {
-                $this->model->setId((int) $lastInsertId);
+                $this->model->setId((int)$lastInsertId);
             }
 
             //check for id-path and update it, if path has changed -> update all other tags that have idPath == idPath/id
@@ -122,7 +115,7 @@ class Dao extends Model\Dao\AbstractDao
 
     /**
      *
-     * @return Model\Element\Tag[]
+     * @return Tag[]
      */
     public function getTagsForElement(string $cType, int $cId): array
     {
@@ -130,7 +123,7 @@ class Dao extends Model\Dao\AbstractDao
         $tagIds = $this->db->fetchFirstColumn('SELECT tagid FROM tags_assignment WHERE cid = ? AND ctype = ?', [$cId, $cType]);
 
         foreach ($tagIds as $tagId) {
-            $tags[] = Model\Element\Tag::getById($tagId);
+            $tags[] = Tag::getById($tagId);
         }
 
         $tags = array_filter($tags);
@@ -208,20 +201,21 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * Retrieves all elements that have a specific tag or one of its child tags assigned
      *
-     * @param Tag    $tag               The tag to search for
-     * @param string $type              The type of elements to search for: 'document', 'asset' or 'object'
-     * @param array  $subtypes          Filter by subtypes, eg. page, object, email, folder etc.
-     * @param array  $classNames        For objects only: filter by classnames
+     * @param Tag $tag The tag to search for
+     * @param string $type The type of elements to search for: 'document', 'asset' or 'object'
+     * @param array $subtypes Filter by subtypes, eg. page, object, email, folder etc.
+     * @param array $classNames For objects only: filter by classnames
      * @param bool $considerChildTags Look for elements having one of $tag's children assigned
      *
      */
     public function getElementsForTag(
-        Tag $tag,
+        Tag    $tag,
         string $type,
-        array $subtypes = [],
-        array $classNames = [],
-        bool $considerChildTags = false
-    ): array {
+        array  $subtypes = [],
+        array  $classNames = [],
+        bool   $considerChildTags = false
+    ): array
+    {
         $elements = [];
 
         $map = [
@@ -231,8 +225,8 @@ class Dao extends Model\Dao\AbstractDao
         ];
 
         $select = $this->db->createQueryBuilder()->select('*')
-                           ->from('tags_assignment')
-                           ->andWhere('tags_assignment.ctype = :ctype')->setParameter('ctype', $type);
+            ->from('tags_assignment')
+            ->andWhere('tags_assignment.ctype = :ctype')->setParameter('ctype', $type);
 
         if (true === $considerChildTags) {
             $select->innerJoin('tags_assignment', 'tags', 'tags', 'tags.id = tags_assignment.tagid');
@@ -248,21 +242,25 @@ class Dao extends Model\Dao\AbstractDao
 
         $select->innerJoin('tags_assignment', $map[$type][0], 'el', 'tags_assignment.cId = el.id');
 
-        if (! empty($subtypes)) {
+        if (!empty($subtypes)) {
+            $quotedSubTypes = [];
             foreach ($subtypes as $subType) {
                 $quotedSubTypes[] = $this->db->quote($subType);
             }
+
             $select->andWhere('`type` IN (' . implode(',', $quotedSubTypes) . ')');
         }
 
-        if ('object' === $type && ! empty($classNames)) {
+        if ('object' === $type && !empty($classNames)) {
+            $quotedClassNames = [];
             foreach ($classNames as $cName) {
                 $quotedClassNames[] = $this->db->quote($cName);
             }
-            $select->andWhere('className IN ( ' .  implode(',', $quotedClassNames) . ' )');
+
+            $select->andWhere('className IN ( ' . implode(',', $quotedClassNames) . ' )');
         }
 
-        $res = $this->db->executeQuery((string) $select, $select->getParameters());
+        $res = $this->db->executeQuery((string)$select, $select->getParameters());
 
         while ($row = $res->fetchAssociative()) {
             $el = $map[$type][1]::getById($row['cid']);
@@ -315,6 +313,6 @@ class Dao extends Model\Dao\AbstractDao
             return false;
         }
 
-        return (bool) $this->db->fetchOne('SELECT COUNT(*) FROM tags WHERE id = ?', [$this->model->getId()]);
+        return (bool)$this->db->fetchOne('SELECT COUNT(*) FROM tags WHERE id = ?', [$this->model->getId()]);
     }
 }

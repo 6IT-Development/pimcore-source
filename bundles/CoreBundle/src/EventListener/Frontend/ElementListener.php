@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
@@ -49,9 +49,10 @@ class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
     public function __construct(
         protected DocumentResolver $documentResolver,
         protected EditmodeResolver $editmodeResolver,
-        protected RequestHelper $requestHelper,
-        protected UserLoader $userLoader
-    ) {
+        protected RequestHelper    $requestHelper,
+        protected UserLoader       $userLoader
+    )
+    {
     }
 
     public static function getSubscribedEvents(): array

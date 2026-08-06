@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassBuilder;
@@ -75,7 +76,7 @@ class ObjectBrickClassBuilder implements ObjectBrickClassBuilderInterface
 
         $cd .= "\n\n";
 
-        $cd .= '/**' ."\n";
+        $cd .= '/**' . "\n";
         $cd .= '* ' . ucfirst($definition->getKey()) . ' constructor.' . "\n";
         $cd .= '* @param DataObject\Concrete $object' . "\n";
         $cd .= '*/' . "\n";
@@ -83,7 +84,7 @@ class ObjectBrickClassBuilder implements ObjectBrickClassBuilderInterface
         $cd .= 'public function __construct(DataObject\Concrete $object)' . "\n";
         $cd .= '{' . "\n";
         $cd .= "\t" . 'parent::__construct($object);' . "\n";
-        $cd .= "\t" .'$this->markFieldDirty("_self");' . "\n";
+        $cd .= "\t" . '$this->markFieldDirty("_self");' . "\n";
         $cd .= '}' . "\n";
 
         $cd .= "\n\n";

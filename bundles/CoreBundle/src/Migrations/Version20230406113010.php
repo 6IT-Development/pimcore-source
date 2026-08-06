@@ -11,21 +11,22 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use Pimcore\Db;
 use Pimcore\Model\Tool\SettingsStore;
 
 final class Version20230406113010 extends AbstractMigration
 {
-    protected const USER_PERMISSION_CATEGORY = 'Pimcore Newsletter Bundle';
+    protected const string USER_PERMISSION_CATEGORY = 'Pimcore Newsletter Bundle';
 
-    protected const USER_PERMISSION = 'newsletters';
+    protected const string USER_PERMISSION = 'newsletters';
 
     public function getDescription(): string
     {
@@ -34,7 +35,7 @@ final class Version20230406113010 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         // check if there are any existing newsletters, if found, it was in use and we activate bundle by default
         $newsletters = $db->fetchFirstColumn('SELECT id FROM documents WHERE type = ?', ['newsletter']);

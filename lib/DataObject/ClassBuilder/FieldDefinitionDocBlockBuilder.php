@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassBuilder;
@@ -22,7 +23,7 @@ class FieldDefinitionDocBlockBuilder implements FieldDefinitionDocBlockBuilderIn
 {
     public function buildFieldDefinitionDocBlock(ClassDefinition\Data $fieldDefinition, int $level = 1): string
     {
-        $text = str_pad('', $level, '-').' '.$fieldDefinition->getName().' ['.$fieldDefinition->getFieldtype()."]\n";
+        $text = str_pad('', $level, '-') . ' ' . $fieldDefinition->getName() . ' [' . $fieldDefinition->getFieldtype() . "]\n";
 
         if (method_exists($fieldDefinition, 'getFieldDefinitions')) {
             foreach ($fieldDefinition->getFieldDefinitions() as $subDefinition) {

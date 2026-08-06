@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Service\Element;
@@ -197,7 +198,7 @@ class VersionTest extends TestCase
     {
         $this->setStorageAdapter($this->mockFileSystemStorageAdapter());
         $randomText = TestHelper::generateRandomString(100);
-        $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText, true, 'assets/images/image5.jpg');
+        $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText);
         $cid = $asset->getId();
 
         $result = $this->getVersionDataFromDb($cid, 'asset', 1);
@@ -228,7 +229,7 @@ class VersionTest extends TestCase
     {
         $this->setStorageAdapter($this->mockDbStorageAdapter());
         $randomText = TestHelper::generateRandomString(100);
-        $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText, true, 'assets/images/image5.jpg');
+        $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText);
         $cid = $asset->getId();
 
         $result = $this->getVersionDataFromDb($cid, 'asset', 1);
@@ -268,7 +269,7 @@ class VersionTest extends TestCase
     {
         $this->setStorageAdapter($this->mockDelegateStorageAdapter(10));
         $randomText = TestHelper::generateRandomString(100);
-        $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText, true, 'assets/images/image5.jpg');
+        $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText);
         $cid = $asset->getId();
 
         $result = $this->getVersionDataFromDb($cid, 'asset', 1);
@@ -328,8 +329,6 @@ class VersionTest extends TestCase
         $list->setOrderKey('id');
         $list->setOrder('DESC');
         $list = $list->load();
-        $version = $list[0];
-
-        return $version;
+        return $list[0];
     }
 }

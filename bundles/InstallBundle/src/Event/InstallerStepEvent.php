@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\InstallBundle\Event;
@@ -35,9 +35,10 @@ class InstallerStepEvent extends Event
     public function __construct(
         string $type,
         string $message,
-        int $step,
-        int $totalSteps
-    ) {
+        int    $step,
+        int    $totalSteps
+    )
+    {
         $this->type = $type;
         $this->message = $message;
         $this->step = $step;

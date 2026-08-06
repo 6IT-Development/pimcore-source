@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -27,16 +28,14 @@ use Pimcore\Tool;
 
 class Text
 {
-    public const PIMCORE_WYSIWYG_SANITIZER_ID = 'html_sanitizer.sanitizer.pimcore.wysiwyg_sanitizer';
+    public const string PIMCORE_WYSIWYG_SANITIZER_ID = 'html_sanitizer.sanitizer.pimcore.wysiwyg_sanitizer';
 
-    public const PIMCORE_TRANSLATION_SANITIZER_ID = 'html_sanitizer.sanitizer.pimcore.translation_sanitizer';
+    public const string PIMCORE_TRANSLATION_SANITIZER_ID = 'html_sanitizer.sanitizer.pimcore.translation_sanitizer';
 
     public static function removeLineBreaks(string $text = ''): string
     {
         $text = str_replace(["\r\n", "\n", "\r", "\t"], ' ', $text);
-        $text = preg_replace('#[ ]+#', ' ', $text);
-
-        return $text;
+        return preg_replace('#[ ]+#', ' ', $text);
     }
 
     public static function wysiwygText(?string $text, array $params = []): ?string
@@ -55,7 +54,7 @@ class Text
                 $linkAttr = null;
                 $path = null;
                 $additionalAttributes = [];
-                $id = (int) $idMatches[0];
+                $id = (int)$idMatches[0];
                 $type = $typeMatches[0];
                 $element = Element\Service::getElementById($type, $id);
                 $oldTag = $matches[0][$i];
@@ -117,8 +116,8 @@ class Text
 
                         if ((isset($widthAttr[1]) && $widthAttr[1]) || (isset($heightAttr[1]) && $heightAttr[1])) {
                             $config = [
-                                'width' => (int)(isset($widthAttr[1]) ? $widthAttr[1] : null),
-                                'height' => (int)(isset($heightAttr[1]) ? $heightAttr[1] : null),
+                                'width' => (int)($widthAttr[1] ?? null),
+                                'height' => (int)($heightAttr[1] ?? null),
                             ];
                         }
 
@@ -234,7 +233,7 @@ class Text
     private static function extractPimcoreAttributes(string $html): array
     {
         //getting all links and images with pimcore_id and pimcore_type attribute with ignoring the order
-        $pattern = '@<(a|img)[^>]*\bpimcore_id="([\d]+)"[^>]*\bpimcore_type="(asset|document|object)"|<(a|img)[^>]*\bpimcore_type="(asset|document|object)"[^>]*\bpimcore_id="([\d]+)"@msUi';
+        $pattern = '@<(a|img)[^>]*\bpimcore_id="(\d+)"[^>]*\bpimcore_type="(asset|document|object)"|<(a|img)[^>]*\bpimcore_type="(asset|document|object)"[^>]*\bpimcore_id="(\d+)"@mUi';
 
         preg_match_all($pattern, $html, $matches, PREG_SET_ORDER);
 
@@ -253,7 +252,7 @@ class Text
             $results[0][$i] = $match[0];
             $results[1][$i] = $tag;
             $results[2][$i] = 'pimcore_id="' . $pimcore_id . '"';
-            $results[3][$i] = 'pimcore_type="' .$pimcore_type . '"';
+            $results[3][$i] = 'pimcore_type="' . $pimcore_type . '"';
         }
 
         return $results;
@@ -276,7 +275,7 @@ class Text
 
                 if (isset($idMatches[0], $typeMatches[0])) {
                     $elements[] = [
-                        'id' => (int) $idMatches[0],
+                        'id' => (int)$idMatches[0],
                         'type' => $typeMatches[0],
                     ];
                 }
@@ -375,9 +374,7 @@ class Text
         $string = str_replace("\n", ' ', $string);
         $string = str_replace("\r", ' ', $string);
         $string = str_replace("\t", '', $string);
-        $string = preg_replace('#[ ]+#', ' ', $string);
-
-        return $string;
+        return preg_replace('#[ ]+#', ' ', $string);
     }
 
     public static function cutStringRespectingWhitespace(string $string, int $length): string

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -45,12 +46,12 @@ class ThumbnailsVideoCommand extends AbstractCommand
         self::configureCommand($this);
 
         $this
-           ->addOption(
-               'parent',
-               null,
-               InputOption::VALUE_OPTIONAL,
-               'only create thumbnails of images in this folder (ID)'
-           )
+            ->addOption(
+                'parent',
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'only create thumbnails of images in this folder (ID)'
+            )
             ->addOption(
                 'thumbnails',
                 't',
@@ -71,7 +72,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
         // get only videos
         $conditions = ["type = 'video'"];
         if ($parentId = $input->getOption('parent')) {
-            $parent = Asset::getById((int) $parentId);
+            $parent = Asset::getById((int)$parentId);
             if ($parent instanceof Asset\Folder) {
                 $conditions[] = "path LIKE '" . $list->escapeLike($parent->getRealFullPath()) . "/%'";
             } else {
@@ -111,7 +112,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
 
         [$assetId, $thumbnailConfigName] = explode('~~~', $item, 2);
 
-        $video = Asset\Video::getById((int) $assetId);
+        $video = Asset\Video::getById((int)$assetId);
         if (!$video) {
             $this->writeError('No video with ID=' . $assetId . ' found. Has the video been deleted or is the asset of another type?');
 
@@ -144,7 +145,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
         $video = Asset\Video::getById($videoId);
 
         if (!$video instanceof Asset\Video) {
-            $message = 'video ['.$videoId.'] could not be found. Skipping ...';
+            $message = 'video [' . $videoId . '] could not be found. Skipping ...';
             Logger::error($message);
 
             return;
@@ -163,7 +164,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
             $thumb = $video->getThumbnail($thumbnail);
 
             if ($thumb === null) {
-                $message = 'video ['.$videoId.'] with thumbnail ['.(is_string($thumbnail) ? $thumbnail : $thumbnail->getName()).'] is invalid. Skipping ...';
+                $message = 'video [' . $videoId . '] with thumbnail [' . (is_string($thumbnail) ? $thumbnail : $thumbnail->getName()) . '] is invalid. Skipping ...';
                 Logger::error($message);
                 $this->output->writeln($message);
 

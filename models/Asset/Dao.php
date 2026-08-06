@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset;
@@ -21,14 +21,16 @@ use Pimcore\Db\Helper;
 use Pimcore\Loader\ImplementationLoader\Exception\UnsupportedException;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Data;
 use Pimcore\Model\User;
+use Pimcore\Tool\Admin;
 use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Asset $model
+ * @property Asset $model
  */
 class Dao extends Model\Element\Dao
 {
@@ -70,7 +72,7 @@ class Dao extends Model\Element\Dao
                         /** @var Data $instance */
                         $instance = $loader->build($md['type']);
                         $transformedData = $instance->getDataFromResource($md['data'], $md);
-                    } catch (UnsupportedException $e) {
+                    } catch (UnsupportedException) {
                     }
 
                     $md['data'] = $transformedData;
@@ -110,7 +112,7 @@ class Dao extends Model\Element\Dao
             'parentId' => $this->model->getParentId(),
         ]);
 
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
     }
 
     public function update(): void
@@ -150,12 +152,12 @@ class Dao extends Model\Element\Dao
                     /** @var Data $instance */
                     $instance = $loader->build($metadataItem['type']);
                     $dataForResource = $instance->getDataForResource($metadataItem['data'], $metadataItem);
-                } catch (UnsupportedException $e) {
+                } catch (UnsupportedException) {
                 }
 
                 $metadataItem['data'] = $dataForResource;
 
-                $metadataItem['language'] = (string) $metadataItem['language']; // language column cannot be NULL -> see SQL schema
+                $metadataItem['language'] = (string)$metadataItem['language']; // language column cannot be NULL -> see SQL schema
 
                 if (is_scalar($metadataItem['data'])) {
                     $data['hasMetaData'] = 1;
@@ -207,7 +209,7 @@ class Dao extends Model\Element\Dao
         $assets = $this->db->fetchFirstColumn('SELECT id FROM assets WHERE `path` like ' . $this->db->quote(Helper::escapeLike($oldPath) . '%'));
 
         $userId = '0';
-        if ($user = \Pimcore\Tool\Admin::getCurrentUser()) {
+        if ($user = Admin::getCurrentUser()) {
             $userId = $user->getId();
         }
 
@@ -300,7 +302,7 @@ class Dao extends Model\Element\Dao
 
         try {
             $path = $this->db->fetchOne('SELECT CONCAT(`path`,filename) as `path` FROM assets WHERE id = ?', [$this->model->getId()]);
-        } catch (Exception $e) {
+        } catch (Exception) {
             Logger::error('could not get  current asset path from DB');
         }
 
@@ -313,23 +315,20 @@ class Dao extends Model\Element\Dao
             return 0;
         }
 
-        $versionCount = (int) $this->db->fetchOne('SELECT versionCount FROM assets WHERE id = ? FOR UPDATE', [$this->model->getId()]);
+        $versionCount = (int)$this->db->fetchOne('SELECT versionCount FROM assets WHERE id = ? FOR UPDATE', [$this->model->getId()]);
 
         if (!$this->model instanceof Folder) {
-            $versionCount2 = (int) $this->db->fetchOne("SELECT MAX(versionCount) FROM versions WHERE cid = ? AND ctype = 'asset'", [$this->model->getId()]);
+            $versionCount2 = (int)$this->db->fetchOne("SELECT MAX(versionCount) FROM versions WHERE cid = ? AND ctype = 'asset'", [$this->model->getId()]);
             $versionCount = max($versionCount, $versionCount2);
         }
 
-        return (int) $versionCount;
+        return (int)$versionCount;
     }
 
     /**
      * quick test if there are children
-     *
-     * @param Model\User|null $user
-     *
      */
-    public function hasChildren(User $user = null): bool
+    public function hasChildren(?User $user = null): bool
     {
         if (!$this->model->getId()) {
             return false;
@@ -384,11 +383,8 @@ class Dao extends Model\Element\Dao
 
     /**
      * returns the amount of directly children (not recursivly)
-     *
-     * @param Model\User|null $user
-     *
      */
-    public function getChildAmount(User $user = null): int
+    public function getChildAmount(?User $user = null): int
     {
         if (!$this->model->getId()) {
             return 0;
@@ -410,7 +406,7 @@ class Dao extends Model\Element\Dao
             $query .= ' AND IF(' . $anyAllowedRowOrChildren . ',1,IF(' . $inheritedPermission . ', ' . $isDisallowedCurrentRow . ' = 0, 0)) = 1';
         }
 
-        return (int) $this->db->fetchOne($query, [$this->model->getId()]);
+        return (int)$this->db->fetchOne($query, [$this->model->getId()]);
     }
 
     public function isLocked(): bool
@@ -441,8 +437,6 @@ class Dao extends Model\Element\Dao
     }
 
     /**
-     *
-     *
      * @throws \Doctrine\DBAL\Exception
      */
     public function isInheritingPermission(string $type, array $userIds): int
@@ -489,7 +483,7 @@ class Dao extends Model\Element\Dao
                     return true;
                 }
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             Logger::warn('Unable to get permission ' . $type . ' for asset ' . $this->model->getId());
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Concrete\Dao;
 
 use Doctrine\DBAL\Connection;
 use Exception;
+use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\Model\DataObject;
 
@@ -26,15 +28,15 @@ use Pimcore\Model\DataObject;
  */
 class InheritanceHelper
 {
-    const STORE_TABLE = 'object_store_';
+    public const string STORE_TABLE = 'object_store_';
 
-    const QUERY_TABLE = 'object_query_';
+    public const string QUERY_TABLE = 'object_query_';
 
-    const RELATION_TABLE = 'object_relations_';
+    public const string RELATION_TABLE = 'object_relations_';
 
-    const ID_FIELD = 'oo_id';
+    public const string ID_FIELD = 'oo_id';
 
-    const DEFAULT_QUERY_ID_COLUMN = 'ooo_id';
+    public const string DEFAULT_QUERY_ID_COLUMN = 'ooo_id';
 
     protected Connection $db;
 
@@ -66,9 +68,9 @@ class InheritanceHelper
 
     protected ?string $queryIdField = null;
 
-    public function __construct(string $classId, string $idField = null, string $storetable = null, string $querytable = null, string $relationtable = null, string $queryIdField = null)
+    public function __construct(string $classId, ?string $idField = null, ?string $storetable = null, ?string $querytable = null, ?string $relationtable = null, ?string $queryIdField = null)
     {
-        $this->db = \Pimcore\Db::get();
+        $this->db = Db::get();
         $this->classId = $classId;
 
         if ($storetable === null) {
@@ -136,7 +138,7 @@ class InheritanceHelper
         $this->fieldDefinitions[$fieldname] = $fieldDefinition;
     }
 
-    public function addRelationToCheck(string $fieldname, DataObject\ClassDefinition\Data $fieldDefinition, array $queryfields = null): void
+    public function addRelationToCheck(string $fieldname, DataObject\ClassDefinition\Data $fieldDefinition, ?array $queryfields = null): void
     {
         if ($queryfields === null) {
             $this->relations[$fieldname] = $fieldname;
@@ -227,9 +229,9 @@ class InheritanceHelper
                         INNER JOIN cte on (p.parentid = cte.id)
                     ) select x.id
                     FROM cte x
-                    LEFT JOIN {$this->querytable} l on (x.id = l.{$this->idField})
+                    LEFT JOIN $this->querytable l on (x.id = l.$this->idField)
                     where x.classId = {$this->db->quote($classId)}
-                    AND l.{$this->queryIdField} is null;
+                    AND l.$this->queryIdField is null;
                 ";
 
                 $missingIds = $this->db->fetchFirstColumn($query);
@@ -291,7 +293,7 @@ class InheritanceHelper
 
         $affectedIds = [];
 
-        foreach ($this->deletionFieldIds as $fieldname => $ids) {
+        foreach ($this->deletionFieldIds as $ids) {
             foreach ($ids as $id) {
                 $affectedIds[$id] = $id;
             }
@@ -349,14 +351,14 @@ class InheritanceHelper
         return array_values($filteredResult);
     }
 
-    protected function buildTree(int $currentParentId, string $fields = '', array $parentIdGroups = null, array $params = []): array
+    protected function buildTree(int $currentParentId, string $fields = '', ?array $parentIdGroups = null, array $params = []): array
     {
         $objects = [];
         $storeTable = $this->storetable;
         $idfield = $this->idField;
 
         if (!$parentIdGroups) {
-            $object = DataObject::getById($currentParentId);
+            DataObject::getById($currentParentId);
             if (isset($params['language'])) {
                 $language = $params['language'];
 
@@ -377,7 +379,7 @@ class InheritanceHelper
                     FROM cte x
                     LEFT JOIN $storeTable l ON x.id = l.$idfield
                    WHERE COALESCE(`language`, " . $this->db->quote($language) . ') = ' . $this->db->quote($language) .
-                   ' ORDER BY x.path ASC';
+                    ' ORDER BY x.path ASC';
             } else {
                 $query = "
                     WITH RECURSIVE cte(id, classId, parentId, path) as (
@@ -397,7 +399,7 @@ class InheritanceHelper
                         GROUP BY x.id
                         ORDER BY x.path ASC";
             }
-            $queryCacheKey = 'tree_'.md5($query);
+            $queryCacheKey = 'tree_' . md5($query);
 
             if (self::$useRuntimeCache) {
                 $parentIdGroups = self::$runtimeCache[$queryCacheKey] ?? null;
@@ -538,14 +540,11 @@ class InheritanceHelper
     protected function getIdsToCheckForDeletionForRelationfields(array $currentNode, string $fieldname): void
     {
         $this->getRelationsForNode($currentNode);
-        if (isset($currentNode['relations'][$fieldname])) {
-            $value = $currentNode['relations'][$fieldname];
-        } else {
-            $value = null;
-        }
-        if (!$this->fieldDefinitions[$fieldname]->isEmpty($value)) {
+
+        if (!$this->fieldDefinitions[$fieldname]->isEmpty($currentNode['relations'][$fieldname] ?? null)) {
             return;
         }
+
         $this->deletionFieldIds[$fieldname][] = $currentNode['id'];
 
         if (!empty($currentNode['children'])) {
@@ -558,12 +557,8 @@ class InheritanceHelper
     protected function getIdsToUpdateForRelationfields(array $currentNode, string $fieldname, array $params = []): void
     {
         $this->getRelationsForNode($currentNode, $params);
-        if (isset($currentNode['relations'][$fieldname])) {
-            $value = $currentNode['relations'][$fieldname];
-        } else {
-            $value = null;
-        }
-        if ($this->fieldDefinitions[$fieldname]->isEmpty($value)) {
+
+        if ($this->fieldDefinitions[$fieldname]->isEmpty($currentNode['relations'][$fieldname] ?? null)) {
             $this->fieldIds[$fieldname][] = $currentNode['id'];
             if (!empty($currentNode['children'])) {
                 foreach ($currentNode['children'] as $c) {
@@ -581,7 +576,7 @@ class InheritanceHelper
     {
         if (!empty($ids)) {
             $value = $this->db->fetchOne("SELECT `$fieldname` FROM " . $this->querytable . ' WHERE ' . $this->idField . ' = ?', [$oo_id]);
-            $this->db->executeStatement('UPDATE ' . $this->querytable .' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')', [$value]);
+            $this->db->executeStatement('UPDATE ' . $this->querytable . ' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')', [$value]);
         }
     }
 
@@ -589,7 +584,7 @@ class InheritanceHelper
     {
         if (!empty($ids)) {
             $value = null;
-            $this->db->executeStatement('UPDATE ' . $this->querytable .' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')', [$value]);
+            $this->db->executeStatement('UPDATE ' . $this->querytable . ' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')', [$value]);
         }
     }
 }

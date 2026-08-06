@@ -9,24 +9,25 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CustomReportsBundle\Tool\Config;
 
 use Exception;
 use Pimcore;
+use Pimcore\Bundle\CustomReportsBundle\Tool\Config;
 use Pimcore\Model;
 
 /**
  * @internal
  *
- * @property \Pimcore\Bundle\CustomReportsBundle\Tool\Config $model
+ * @property Config $model
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
-    private const CONFIG_KEY = 'custom_reports';
+    private const string CONFIG_KEY = 'custom_reports';
 
     public function configure(): void
     {
@@ -47,7 +48,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getByName(string $id = null): void
+    public function getByName(?string $id = null): void
     {
         if ($id != null) {
             $this->model->setName($id);
@@ -85,7 +86,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $data = [];
         $allowedProperties = ['name', 'sql', 'dataSourceConfig', 'columnConfiguration', 'niceName', 'group', 'xAxis',
             'groupIconClass', 'iconClass', 'reportClass', 'creationDate', 'modificationDate', 'menuShortcut', 'chartType', 'pieColumn',
-            'pieLabelColumn', 'yAxis', 'shareGlobally', 'sharedUserNames', 'sharedRoleNames', ];
+            'pieLabelColumn', 'yAxis', 'shareGlobally', 'sharedUserNames', 'sharedRoleNames',];
 
         foreach ($dataRaw as $key => $value) {
             if (in_array($key, $allowedProperties)) {
@@ -103,7 +104,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $this->deleteData($this->model->getName());
     }
 
-    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
+    protected function prepareDataStructureForYaml(string $id, mixed $data): array
     {
         return [
             'pimcore_custom_reports' => [

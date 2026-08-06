@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event\Model\Document;
@@ -50,12 +50,13 @@ class EditableNameEvent extends Event
     private Document $document;
 
     public function __construct(
-        string $type,
-        string $inputName,
+        string     $type,
+        string     $inputName,
         BlockState $blockState,
-        string $editableName,
-        Document $document
-    ) {
+        string     $editableName,
+        Document   $document
+    )
+    {
         $this->type = $type;
         $this->inputName = $inputName;
         $this->blockState = $blockState;

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\Model\Search\Backend\Data;
@@ -40,17 +41,17 @@ class Dao extends AbstractDao
             } elseif ($element instanceof Model\DataObject\AbstractObject) {
                 $maintype = 'object';
             } else {
-                throw new Exception('unknown type of element with id [ '.$element->getId().' ] ');
+                throw new Exception('unknown type of element with id [ ' . $element->getId() . ' ] ');
             }
 
             $data = $this->db->fetchAssociative('SELECT * FROM search_backend_data WHERE id = ? AND maintype = ? ', [$element->getId(), $maintype]);
             if (is_array($data)) {
                 unset($data['id']);
-                $data['published'] = (bool) $data['published'];
+                $data['published'] = (bool)$data['published'];
                 $this->assignVariablesToModel($data);
                 $this->model->setId(new Backend\Data\Id($element));
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
         }
     }
 
@@ -108,8 +109,8 @@ class Dao extends AbstractDao
     public function getMinWordLengthForFulltextIndex(): int
     {
         try {
-            return (int) $this->db->fetchOne('SELECT @@innodb_ft_min_token_size');
-        } catch (Exception $e) {
+            return (int)$this->db->fetchOne('SELECT @@innodb_ft_min_token_size');
+        } catch (Exception) {
             return 3;
         }
     }
@@ -117,8 +118,8 @@ class Dao extends AbstractDao
     public function getMaxWordLengthForFulltextIndex(): int
     {
         try {
-            return (int) $this->db->fetchOne('SELECT @@innodb_ft_max_token_size');
-        } catch (Exception $e) {
+            return (int)$this->db->fetchOne('SELECT @@innodb_ft_max_token_size');
+        } catch (Exception) {
             return 84;
         }
     }

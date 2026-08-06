@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -66,15 +67,9 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
 {
     use WebLinksTrait;
 
-    /**#@+
-     * Script type contants
-     * @const string
-     */
-    const FILE = 'FILE';
+    public const string FILE = 'FILE';
 
-    const SCRIPT = 'SCRIPT';
-
-    // #@-
+    public const string SCRIPT = 'SCRIPT';
 
     /**
      * Registry key for placeholder
@@ -139,7 +134,8 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
     public function __construct(
         ContainerService $containerService,
         WebLinkExtension $webLinkExtension
-    ) {
+    )
+    {
         parent::__construct($containerService);
 
         $this->webLinkExtension = $webLinkExtension;
@@ -155,12 +151,12 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
      * @param string $mode Script or file
      * @param string|null $spec Script/url
      * @param string $placement Append, prepend, or set
-     * @param  array $attrs Array of script attributes
+     * @param array $attrs Array of script attributes
      * @param string $type Script type and/or array of script attributes
      *
      * @return $this
      */
-    public function __invoke(string $mode = self::FILE, string $spec = null, string $placement = 'APPEND', array $attrs = [], string $type = 'text/javascript'): static
+    public function __invoke(string $mode = self::FILE, ?string $spec = null, string $placement = 'APPEND', array $attrs = [], string $type = 'text/javascript'): static
     {
         if (is_string($spec)) {
             $action = ucfirst(strtolower($mode));
@@ -222,18 +218,11 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
         $this->_captureScriptAttrs = null;
         $this->_captureLock = false;
 
-        switch ($this->_captureType) {
-            case Container::SET:
-            case Container::PREPEND:
-            case Container::APPEND:
-                $action = strtolower($this->_captureType) . 'Script';
+        $action = match ($this->_captureType) {
+            Container::SET, Container::PREPEND, Container::APPEND => strtolower($this->_captureType) . 'Script',
+            default => 'appendScript',
+        };
 
-                break;
-            default:
-                $action = 'appendScript';
-
-                break;
-        }
         $this->$action($content, $type, $attrs);
     }
 
@@ -275,13 +264,13 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
                 }
             }
 
-            $content = is_null($args[0]) ? null : (string) $args[0];
+            $content = is_null($args[0]) ? null : (string)$args[0];
 
             if (isset($args[1])) {
-                $type = (string) $args[1];
+                $type = (string)$args[1];
             }
             if (isset($args[2])) {
-                $attrs = (array) $args[2];
+                $attrs = (array)$args[2];
             }
 
             switch ($mode) {
@@ -352,7 +341,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
     /**
      * Override append
      *
-     * @param  string $value
+     * @param string $value
      *
      */
     public function append($value): void
@@ -367,7 +356,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
     /**
      * Override prepend
      *
-     * @param  string $value
+     * @param string $value
      *
      */
     public function prepend($value): void
@@ -382,7 +371,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
     /**
      * Override set
      *
-     * @param  string $value
+     * @param string $value
      *
      */
     public function set($value): void
@@ -397,7 +386,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
     /**
      * Override offsetSet
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      */
     public function offsetSet($offset, mixed $value): void
@@ -474,7 +463,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
 
         $html = '<script' . $attrString . '>';
         if (!empty($item->source)) {
-            $html .= PHP_EOL ;
+            $html .= PHP_EOL;
 
             if ($addScriptEscape) {
                 $html .= $indent . '    ' . $escapeStart . PHP_EOL;
@@ -510,7 +499,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
      *
      *
      */
-    public function toString(int|string $indent = null): string
+    public function toString(int|string|null $indent = null): string
     {
         $this->prepareEntries();
 
@@ -518,7 +507,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
             ? $this->getWhitespace($indent)
             : $this->getIndent();
 
-        $useCdata = $this->useCdata ? true : false;
+        $useCdata = $this->useCdata;
         $escapeStart = ($useCdata) ? '//<![CDATA[' : '//<!--';
         $escapeEnd = ($useCdata) ? '//]]>' : '//-->';
 
@@ -532,9 +521,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
             $items[] = $this->itemToString($item, $indent, $escapeStart, $escapeEnd);
         }
 
-        $return = implode($this->getSeparator(), $items);
-
-        return $return;
+        return implode($this->getSeparator(), $items);
     }
 
     protected function prepareEntries(): void
@@ -581,7 +568,7 @@ class HeadScript extends CacheBusterAware implements RuntimeExtensionInterface
      *
      *
      */
-    public function createData(string $type, array $attributes, string $content = null): stdClass
+    public function createData(string $type, array $attributes, ?string $content = null): stdClass
     {
         $data = new stdClass();
         $data->type = $type;

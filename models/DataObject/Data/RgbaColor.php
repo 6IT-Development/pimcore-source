@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data;
@@ -36,7 +37,7 @@ class RgbaColor implements OwnerAwareFieldInterface
      * RgbaColor constructor.
      *
      */
-    public function __construct(int $r = null, int $g = null, int $b = null, int $a = null)
+    public function __construct(?int $r = null, ?int $g = null, ?int $b = null, ?int $a = null)
     {
         $this->setR($r);
         $this->setG($g);
@@ -151,7 +152,7 @@ class RgbaColor implements OwnerAwareFieldInterface
         $this->markMeDirty();
     }
 
-    public function setRgba(int $r = null, int $g = null, int $b = null, int $a = null): void
+    public function setRgba(?int $r = null, ?int $g = null, ?int $b = null, ?int $a = null): void
     {
         $this->setR($r);
         $this->setG($g);
@@ -162,6 +163,6 @@ class RgbaColor implements OwnerAwareFieldInterface
 
     public function __toString(): string
     {
-        return $this->getHex(true, true);
+        return $this->getHex(true);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset;
@@ -27,7 +28,7 @@ use RuntimeException;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
- * @method \Pimcore\Model\Asset\Dao getDao()
+ * @method Dao getDao()
  */
 class Video extends Model\Asset
 {
@@ -60,9 +61,9 @@ class Video extends Model\Asset
     }
 
     /**
+     * @throws Model\Exception\NotFoundException
      * @internal
      *
-     * @throws Model\Exception\NotFoundException
      */
     public function getThumbnailConfig(null|string|Video\Thumbnail\Config $config): ?Video\Thumbnail\Config
     {
@@ -138,9 +139,9 @@ class Video extends Model\Asset
         return $event->getArgument('frontendPath');
     }
 
-    public function getImageThumbnail(array|string|Image\Thumbnail\Config $thumbnailName, int $timeOffset = null, Image $imageAsset = null): Video\ImageThumbnailInterface
+    public function getImageThumbnail(array|string|Image\Thumbnail\Config $thumbnailName, ?int $timeOffset = null, ?Image $imageAsset = null): Video\ImageThumbnailInterface
     {
-        if (!\Pimcore\Video::isAvailable()) {
+        if (!Pimcore\Video::isAvailable()) {
             Logger::error("Couldn't create image-thumbnail of video " . $this->getRealFullPath() . ' no video adapter is available');
 
             return new Video\ImageThumbnail(null); // returns error image
@@ -156,12 +157,12 @@ class Video extends Model\Asset
      */
     public function getDurationFromBackend(?string $filePath = null): ?float
     {
-        if (\Pimcore\Video::isAvailable()) {
+        if (Pimcore\Video::isAvailable()) {
             if (!$filePath) {
                 $filePath = $this->getLocalFile();
             }
 
-            $converter = \Pimcore\Video::getInstance();
+            $converter = Pimcore\Video::getInstance();
             $converter->load($filePath, ['asset' => $this]);
 
             return $converter->getDuration();
@@ -176,8 +177,8 @@ class Video extends Model\Asset
      */
     public function getDimensionsFromBackend(): ?array
     {
-        if (\Pimcore\Video::isAvailable()) {
-            $converter = \Pimcore\Video::getInstance();
+        if (Pimcore\Video::isAvailable()) {
+            $converter = Pimcore\Video::getInstance();
             $converter->load($this->getLocalFile(), ['asset' => $this]);
 
             return $converter->getDimensions();
@@ -221,8 +222,8 @@ class Video extends Model\Asset
         } elseif (!$this->getCustomSetting(self::CUSTOM_SETTING_PROCESSING_FAILED)) {
             $dimensions = $this->getDimensionsFromBackend();
             if ($dimensions) {
-                $this->setCustomSetting('videoWidth', (int) $dimensions['width']);
-                $this->setCustomSetting('videoHeight', (int) $dimensions['height']);
+                $this->setCustomSetting('videoWidth', (int)$dimensions['width']);
+                $this->setCustomSetting('videoHeight', (int)$dimensions['height']);
             } else {
                 $this->setCustomSetting(self::CUSTOM_SETTING_PROCESSING_FAILED, true);
             }
@@ -239,7 +240,7 @@ class Video extends Model\Asset
     {
         $dimensions = $this->getDimensions();
         if ($dimensions) {
-            return (int) $dimensions['width'];
+            return (int)$dimensions['width'];
         }
 
         return null;
@@ -249,7 +250,7 @@ class Video extends Model\Asset
     {
         $dimensions = $this->getDimensions();
         if ($dimensions) {
-            return (int) $dimensions['height'];
+            return (int)$dimensions['height'];
         }
 
         return null;
@@ -302,7 +303,7 @@ class Video extends Model\Asset
                 $tagLength = strlen($tag);
                 $offset = 0;
                 while (($position = strpos($buffer, $tag, $offset)) === false && ($chunk = fread($file_pointer,
-                    $chunkSize)) !== false && !empty($chunk)) {
+                        $chunkSize)) !== false && !empty($chunk)) {
                     $offset = strlen($buffer) - $tagLength; //subtract the tag size for case it's split between chunks
                     $buffer .= $chunk;
                 }

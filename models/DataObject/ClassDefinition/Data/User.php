@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -31,9 +32,9 @@ class User extends Model\DataObject\ClassDefinition\Data\Select
     public bool $unique = false;
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     protected function init(): static
     {
@@ -48,36 +49,30 @@ class User extends Model\DataObject\ClassDefinition\Data\Select
 
     /**
      * @see ResourcePersistenceAwareInterface::getDataFromResource
-     *
-     * @param null|Model\DataObject\Concrete $object
-     *
      */
-    public function getDataFromResource(mixed $data, Concrete $object = null, array $params = []): ?string
+    public function getDataFromResource(mixed $data, ?Concrete $object = null, array $params = []): ?string
     {
         if (!empty($data)) {
             try {
                 $this->checkValidity($data, true, $params);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 $data = null;
             }
         }
 
-        return $data ? (string) $data : null;
+        return $data ? (string)$data : null;
     }
 
     /**
      * @see ResourcePersistenceAwareInterface::getDataForResource
-     *
-     * @param Model\DataObject\Concrete|null $object
-     *
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         $this->init();
         if (!empty($data)) {
             try {
                 $this->checkValidity($data, true, $params);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 $data = null;
             }
         }
@@ -116,7 +111,7 @@ class User extends Model\DataObject\ClassDefinition\Data\Select
     public function checkValidity(mixed $data, bool $omitMandatoryCheck = false, array $params = []): void
     {
         if (!$omitMandatoryCheck && $this->getMandatory() && empty($data)) {
-            throw new Model\Element\ValidationException('Empty mandatory field [ '.$this->getName().' ]');
+            throw new Model\Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
 
         if (!empty($data)) {

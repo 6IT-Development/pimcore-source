@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassificationstoreDataMarshaller;
 
 use Defuse\Crypto\Crypto;
+use Defuse\Crypto\Exception\BadFormatException;
+use Defuse\Crypto\Exception\EnvironmentIsBrokenException;
 use Defuse\Crypto\Key;
 use Exception;
 use Pimcore;
@@ -42,14 +45,14 @@ class EncryptedField implements MarshallerInterface
         $this->marshallerService = $marshallerService;
     }
 
-    public function marshal(mixed $value, array $params = []): mixed
+    public function marshal(mixed $value, array $params = []): ?array
     {
         if ($value !== null) {
             $encryptedValue = null;
             $encryptedValue2 = null;
 
             if (is_array($value)) {
-                /** @var \Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField $fd */
+                /** @var Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField $fd */
                 $fd = $params['fieldDefinition'];
                 $delegateFd = $fd->getDelegate();
 
@@ -66,12 +69,10 @@ class EncryptedField implements MarshallerInterface
                 $encryptedValue = $this->encrypt($value, $params);
             }
 
-            $result = [
+            return [
                 'value' => $encryptedValue,
                 'value2' => $encryptedValue2,
             ];
-
-            return $result;
         }
 
         return null;
@@ -80,7 +81,7 @@ class EncryptedField implements MarshallerInterface
     public function unmarshal(mixed $value, array $params = []): mixed
     {
         if (is_array($value)) {
-            /** @var \Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField $fd */
+            /** @var Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField $fd */
             $fd = $params['fieldDefinition'];
             $delegateFd = $fd->getDelegate();
             if ($this->marshallerService->supportsFielddefinition('classificationstore', $delegateFd->getFieldtype())) {
@@ -89,16 +90,12 @@ class EncryptedField implements MarshallerInterface
                 $encryptedValue = $this->decrypt($value['value'], $params);
                 $encryptedValue2 = $this->decrypt($value['value2'], $params);
 
-                $decodedData = $marshaller->unmarshal([
+                return $marshaller->unmarshal([
                     'value' => $encryptedValue,
                     'value2' => $encryptedValue2,
                 ], ['fieldDefinition' => $delegateFd, 'format' => 'classificationstore']);
-
-                return $decodedData;
             } else {
-                $value = $this->decrypt($value['value'], $params);
-
-                return $value;
+                return $this->decrypt($value['value'], $params);
             }
         }
 
@@ -108,8 +105,8 @@ class EncryptedField implements MarshallerInterface
     /**
      *
      *
-     * @throws \Defuse\Crypto\Exception\BadFormatException
-     * @throws \Defuse\Crypto\Exception\EnvironmentIsBrokenException
+     * @throws BadFormatException
+     * @throws EnvironmentIsBrokenException
      */
     public function encrypt(mixed $data, array $params = []): string
     {
@@ -120,7 +117,7 @@ class EncryptedField implements MarshallerInterface
 
             try {
                 $key = Key::loadFromAsciiSafeString($key);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 throw new Exception('could not load key');
             }
             // store it in raw binary mode to preserve space
@@ -155,7 +152,7 @@ class EncryptedField implements MarshallerInterface
 
                 try {
                     $key = Key::loadFromAsciiSafeString($key);
-                } catch (Exception $e) {
+                } catch (Exception) {
                     throw new Exception('could not load key');
                 }
 
@@ -169,7 +166,7 @@ class EncryptedField implements MarshallerInterface
 
                 return $data;
             } catch (Exception $e) {
-                Logger::error((string) $e);
+                Logger::error((string)$e);
 
                 throw new Exception('encrypted field ' . $delegateFd->getName() . ' cannot be decoded');
             }

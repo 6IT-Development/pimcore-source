@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Templating\Renderer;
@@ -35,9 +36,10 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 class IncludeRenderer
 {
     public function __construct(
-        protected ActionRenderer $actionRenderer,
+        protected ActionRenderer           $actionRenderer,
         protected EventDispatcherInterface $eventDispatcher,
-    ) {
+    )
+    {
     }
 
     /**
@@ -57,13 +59,13 @@ class IncludeRenderer
         if (is_numeric($include)) {
             try {
                 $include = Model\Document::getById($include);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 $include = $originalInclude;
             }
         } elseif (is_string($include)) {
             try {
                 $include = Model\Document::getByPath($include);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 $include = $originalInclude;
             }
         }
@@ -149,13 +151,13 @@ class IncludeRenderer
             foreach ($children as $child) {
                 $child->setAttribute('class', $child->getAttribute('class') . $editmodeClass);
                 $child->setAttribute('pimcore_type', $include->getType());
-                $child->setAttribute('pimcore_id', (string) $include->getId());
+                $child->setAttribute('pimcore_id', (string)$include->getId());
             }
             $content = $html->html();
 
             $html->clear();
             unset($html);
-        } catch (Exception $e) {
+        } catch (Exception) {
             // add a div container if the include doesn't contain markup/html
             $content = '<div class="' . $editmodeClass . '" pimcore_id="' . $include->getId() . '" pimcore_type="' . $include->getType() . '">' . $content . '</div>';
         }

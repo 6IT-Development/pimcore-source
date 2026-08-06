@@ -11,15 +11,17 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Redirect;
 
 use DateTime;
 use InvalidArgumentException;
+use League\Csv\CannotInsertRecord;
 use League\Csv\EncloseField;
+use League\Csv\Exception;
 use League\Csv\Reader;
 use League\Csv\Statement;
 use League\Csv\Writer;
@@ -62,8 +64,8 @@ class Csv
     /**
      *
      *
-     * @throws \League\Csv\CannotInsertRecord
-     * @throws \League\Csv\Exception
+     * @throws CannotInsertRecord
+     * @throws Exception
      */
     public function createExportWriter(Redirect\Listing $list): Writer
     {
@@ -89,7 +91,7 @@ class Csv
 
             $expiry = null;
             if ($redirect->getExpiry()) {
-                $expiry = (new DateTime('@' . $redirect->getExpiry()))->format('c');
+                $expiry = new DateTime('@' . $redirect->getExpiry())->format('c');
             }
 
             $data = [
@@ -117,7 +119,7 @@ class Csv
     /**
      *
      *
-     * @throws \League\Csv\Exception
+     * @throws Exception
      */
     public function import(string $filename): array
     {
@@ -174,9 +176,7 @@ class Csv
         $data = $this->getImportNormalizer()->normalize($record);
 
         // validate data
-        $data = $this->getImportResolver()->resolve($data);
-
-        return $data;
+        return $this->getImportResolver()->resolve($data);
     }
 
     private function processImportData(array $data, array &$stats): void

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -21,9 +22,13 @@ use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Exception;
 use IntlDateFormatter;
+use Pimcore\Document\Adapter\Ghostscript;
+use Pimcore\Document\Adapter\LibreOffice;
 use Pimcore\Helper\GotenbergHelper;
 use Pimcore\Image;
+use Pimcore\Image\HtmlToImage;
 use Pimcore\Tool\Requirements\Check;
+use Pimcore\Video\Adapter\Ffmpeg;
 use ReflectionClass;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
@@ -42,33 +47,31 @@ final class Requirements
         $checks = [];
 
         // filesystem checks
-        foreach ([PIMCORE_PRIVATE_VAR] as $varDir) {
-            $varWritable = true;
+        $varWritable = true;
 
-            try {
-                if (!is_dir($varDir)) {
-                    $filesystem->mkdir($varDir, 0775);
-                }
-
-                $files = self::rscandir($varDir);
-
-                foreach ($files as $file) {
-                    if (!is_writable($file)) {
-                        $varWritable = false;
-                    }
-                }
-
-                $checks[] = new Check([
-                    'name' => str_replace(PIMCORE_PROJECT_ROOT, '', $varDir) . ' writeable',
-                    'state' => $varWritable ? Check::STATE_OK : Check::STATE_ERROR,
-                    'message' => str_replace(PIMCORE_PROJECT_ROOT, '', $varDir) . ' needs to be writable by PHP',
-                ]);
-            } catch (Exception $e) {
-                $checks[] = new Check([
-                    'name' => str_replace(PIMCORE_PROJECT_ROOT, '', $varDir) . ' (not checked - too many files)',
-                    'state' => Check::STATE_WARNING,
-                ]);
+        try {
+            if (!is_dir(PIMCORE_PRIVATE_VAR)) {
+                $filesystem->mkdir(PIMCORE_PRIVATE_VAR, 0775);
             }
+
+            $files = self::rscandir(PIMCORE_PRIVATE_VAR);
+
+            foreach ($files as $file) {
+                if (!is_writable($file)) {
+                    $varWritable = false;
+                }
+            }
+
+            $checks[] = new Check([
+                'name' => str_replace(PIMCORE_PROJECT_ROOT, '', PIMCORE_PRIVATE_VAR) . ' writeable',
+                'state' => $varWritable ? Check::STATE_OK : Check::STATE_ERROR,
+                'message' => str_replace(PIMCORE_PROJECT_ROOT, '', PIMCORE_PRIVATE_VAR) . ' needs to be writable by PHP',
+            ]);
+        } catch (Exception) {
+            $checks[] = new Check([
+                'name' => str_replace(PIMCORE_PROJECT_ROOT, '', PIMCORE_PRIVATE_VAR) . ' (not checked - too many files)',
+                'state' => Check::STATE_WARNING,
+            ]);
         }
 
         return $checks;
@@ -108,7 +111,7 @@ final class Requirements
         $largePrefix = $db->fetchAssociative("SHOW GLOBAL VARIABLES LIKE 'innodb\_large\_prefix';");
         $checks[] = new Check([
             'name' => 'innodb_large_prefix = ON ',
-            'state' => ($largePrefix && !in_arrayi(strtolower((string) $largePrefix['Value']), ['on', '1', ''])) ? Check::STATE_ERROR : Check::STATE_OK,
+            'state' => ($largePrefix && !in_arrayi(strtolower((string)$largePrefix['Value']), ['on', '1', ''])) ? Check::STATE_ERROR : Check::STATE_OK,
         ]);
 
         $fileFormat = $db->fetchAssociative("SHOW GLOBAL VARIABLES LIKE 'innodb\_file\_format';");
@@ -120,7 +123,7 @@ final class Requirements
         $fileFilePerTable = $db->fetchAssociative("SHOW GLOBAL VARIABLES LIKE 'innodb\_file\_per\_table';");
         $checks[] = new Check([
             'name' => 'innodb_file_per_table = ON',
-            'state' => ($fileFilePerTable && !in_arrayi(strtolower((string) $fileFilePerTable['Value']), ['on', '1'])) ? Check::STATE_ERROR : Check::STATE_OK,
+            'state' => ($fileFilePerTable && !in_arrayi(strtolower((string)$fileFilePerTable['Value']), ['on', '1'])) ? Check::STATE_ERROR : Check::STATE_OK,
         ]);
 
         // create table
@@ -132,7 +135,7 @@ final class Requirements
                   field varchar(190) DEFAULT NULL,
                   PRIMARY KEY (id)
                 ) DEFAULT CHARSET=utf8mb4;');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -146,7 +149,7 @@ final class Requirements
 
         try {
             $db->executeQuery('ALTER TABLE __pimcore_req_check ADD COLUMN alter_field varchar(190) NULL DEFAULT NULL');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -161,7 +164,7 @@ final class Requirements
         try {
             $db->executeQuery('CREATE INDEX field_alter_field ON __pimcore_req_check (field, alter_field);');
             $db->executeQuery('DROP INDEX field_alter_field ON __pimcore_req_check;');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -175,7 +178,7 @@ final class Requirements
 
         try {
             $db->executeQuery('ALTER TABLE __pimcore_req_check ADD FULLTEXT INDEX `fulltextFieldIndex` (`field`)');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -192,7 +195,7 @@ final class Requirements
                 'field' => uniqid(),
                 'alter_field' => uniqid(),
             ]);
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -209,7 +212,7 @@ final class Requirements
                 'field' => uniqid(),
                 'alter_field' => uniqid(),
             ]);
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -223,7 +226,7 @@ final class Requirements
 
         try {
             $db->fetchAllAssociative('SELECT * FROM __pimcore_req_check');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -237,7 +240,7 @@ final class Requirements
 
         try {
             $db->executeQuery('CREATE OR REPLACE VIEW __pimcore_req_check_view AS SELECT * FROM __pimcore_req_check');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -251,7 +254,7 @@ final class Requirements
 
         try {
             $db->fetchAllAssociative('SELECT * FROM __pimcore_req_check_view');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -265,7 +268,7 @@ final class Requirements
 
         try {
             $db->executeQuery('DELETE FROM __pimcore_req_check');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -279,7 +282,7 @@ final class Requirements
 
         try {
             $db->executeQuery('SHOW CREATE VIEW __pimcore_req_check_view');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -293,7 +296,7 @@ final class Requirements
 
         try {
             $db->executeQuery('SHOW CREATE TABLE __pimcore_req_check');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -307,7 +310,7 @@ final class Requirements
 
         try {
             $db->executeQuery('DROP VIEW __pimcore_req_check_view');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -321,7 +324,7 @@ final class Requirements
 
         try {
             $db->executeQuery('DROP TABLE __pimcore_req_check');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -340,7 +343,7 @@ final class Requirements
                 )
                 SELECT * from counter'
             );
-        } catch (Exception $e) {
+        } catch (Exception) {
             $queryCheck = false;
         }
 
@@ -361,8 +364,8 @@ final class Requirements
 
         // PHP CLI BIN
         try {
-            $phpCliBin = (bool) \Pimcore\Tool\Console::getPhpCli();
-        } catch (Exception $e) {
+            $phpCliBin = (bool)Console::getPhpCli();
+        } catch (Exception) {
             $phpCliBin = false;
         }
 
@@ -374,13 +377,13 @@ final class Requirements
         // Composer
         $checks[] = new Check([
             'name' => 'Composer',
-            'state' => (bool) \Pimcore\Tool\Console::getExecutable('composer') ? Check::STATE_OK : Check::STATE_ERROR,
+            'state' => Console::getExecutable('composer') ? Check::STATE_OK : Check::STATE_ERROR,
         ]);
 
         // FFMPEG BIN
         try {
-            $ffmpegBin = (bool) \Pimcore\Video\Adapter\Ffmpeg::getFfmpegCli();
-        } catch (Exception $e) {
+            $ffmpegBin = (bool)Ffmpeg::getFfmpegCli();
+        } catch (Exception) {
             $ffmpegBin = false;
         }
 
@@ -391,8 +394,8 @@ final class Requirements
 
         // Chromium or Gotenberg
         try {
-            $htmlToImage = \Pimcore\Image\HtmlToImage::isSupported();
-        } catch (Exception $e) {
+            $htmlToImage = HtmlToImage::isSupported();
+        } catch (Exception) {
             $htmlToImage = false;
         }
 
@@ -403,8 +406,8 @@ final class Requirements
 
         // ghostscript BIN
         try {
-            $ghostscriptBin = (bool) \Pimcore\Document\Adapter\Ghostscript::getGhostscriptCli();
-        } catch (Exception $e) {
+            $ghostscriptBin = (bool)Ghostscript::getGhostscriptCli();
+        } catch (Exception) {
             $ghostscriptBin = false;
         }
 
@@ -417,8 +420,8 @@ final class Requirements
         $libreofficeGotenberg = GotenbergHelper::isAvailable();
         if (!$libreofficeGotenberg) {
             try {
-                $libreofficeGotenberg = (bool)\Pimcore\Document\Adapter\LibreOffice::getLibreOfficeCli();
-            } catch (Exception $e) {
+                $libreofficeGotenberg = (bool)LibreOffice::getLibreOfficeCli();
+            } catch (Exception) {
                 $libreofficeGotenberg = false;
             }
         }
@@ -431,8 +434,8 @@ final class Requirements
         // image optimizer
         foreach (['jpegoptim', 'pngquant', 'optipng', 'exiftool'] as $optimizerName) {
             try {
-                $optimizerAvailable = \Pimcore\Tool\Console::getExecutable($optimizerName);
-            } catch (Exception $e) {
+                $optimizerAvailable = Console::getExecutable($optimizerName);
+            } catch (Exception) {
                 $optimizerAvailable = false;
             }
 
@@ -444,8 +447,8 @@ final class Requirements
 
         // timeout binary
         try {
-            $timeoutBin = (bool) \Pimcore\Tool\Console::getTimeoutBinary();
-        } catch (Exception $e) {
+            $timeoutBin = (bool)Console::getTimeoutBinary();
+        } catch (Exception) {
             $timeoutBin = false;
         }
 
@@ -456,8 +459,8 @@ final class Requirements
 
         // pdftotext binary
         try {
-            $pdftotextBin = (bool) \Pimcore\Document\Adapter\Ghostscript::getPdftotextCli();
-        } catch (Exception $e) {
+            $pdftotextBin = (bool)Ghostscript::getPdftotextCli();
+        } catch (Exception) {
             $pdftotextBin = false;
         }
 
@@ -467,8 +470,8 @@ final class Requirements
         ]);
 
         try {
-            $graphvizAvailable = \Pimcore\Tool\Console::getExecutable('dot');
-        } catch (Exception $e) {
+            $graphvizAvailable = Console::getExecutable('dot');
+        } catch (Exception) {
             $graphvizAvailable = false;
         }
 
@@ -604,10 +607,10 @@ final class Requirements
             'name' => 'locales-utf8',
             'link' => 'https://packages.debian.org/en/stable/locales-all',
             'state' => setlocale(LC_ALL, [
-                           'en.utf8', 'en.UTF-8', 'en_US.utf8', 'en_US.UTF-8', 'en_GB.utf8', 'en_GB.UTF-8',
-                       ]) === false
-                       ? Check::STATE_ERROR
-                       : Check::STATE_OK,
+                'en.utf8', 'en.UTF-8', 'en_US.utf8', 'en_US.UTF-8', 'en_GB.utf8', 'en_GB.UTF-8',
+            ]) === false
+                ? Check::STATE_ERROR
+                : Check::STATE_OK,
             'message' => 'It is recommended to install UTF-8 locale, otherwise all CLI calls which use escapeshellarg() will strip multibyte characters',
         ]);
 
@@ -619,8 +622,8 @@ final class Requirements
         ]);
 
         if (class_exists('Imagick')) {
-            $convertExecutablePath = \Pimcore\Tool\Console::getExecutable('convert');
-            $imageMagickLcmsDelegateInstalledProcess = Process::fromShellCommandline($convertExecutablePath.' -list configure');
+            $convertExecutablePath = Console::getExecutable('convert');
+            $imageMagickLcmsDelegateInstalledProcess = Process::fromShellCommandline($convertExecutablePath . ' -list configure');
             $imageMagickLcmsDelegateInstalledProcess->run();
 
             $lcmsInstalled = false;
@@ -728,10 +731,10 @@ final class Requirements
     public static function checkAll(Connection $db): array
     {
         return [
-            'checksPHP' => static::checkPhp(),
-            'checksFS' => static::checkFilesystem(),
-            'checksApps' => static::checkExternalApplications(),
-            'checksMySQL' => static::checkMysql($db),
+            'checksPHP' => Requirements::checkPhp(),
+            'checksFS' => Requirements::checkFilesystem(),
+            'checksApps' => Requirements::checkExternalApplications(),
+            'checksMySQL' => Requirements::checkMysql($db),
         ];
     }
 }

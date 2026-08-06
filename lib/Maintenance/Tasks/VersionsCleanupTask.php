@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance\Tasks;
 
+use Carbon\Carbon;
 use Pimcore;
 use Pimcore\Maintenance\TaskInterface;
 use Pimcore\Model\Asset;
@@ -29,7 +31,7 @@ use Psr\Log\LoggerInterface;
 /**
  * @internal
  */
-class VersionsCleanupTask implements TaskInterface
+readonly class VersionsCleanupTask implements TaskInterface
 {
     public function __construct(private LoggerInterface $logger, private SystemSettingsConfig $config)
     {
@@ -43,7 +45,7 @@ class VersionsCleanupTask implements TaskInterface
 
     private function doAutoSaveVersionCleanup(): void
     {
-        $date = \Carbon\Carbon::now();
+        $date = Carbon::now();
         $date->subHours(72);
 
         $list = new Version\Listing();
@@ -52,7 +54,7 @@ class VersionsCleanupTask implements TaskInterface
             ->loadIdList();
 
         $this->logger->debug('Auto-save versions to delete: ' . count($ids));
-        foreach ($ids as $i => $id) {
+        foreach ($ids as $id) {
             $this->logger->debug('Deleting auto-save version: ' . $id);
             $version = Version::getById($id);
             $version->delete();

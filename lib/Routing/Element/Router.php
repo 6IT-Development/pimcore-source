@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Routing\Element;
@@ -90,13 +91,13 @@ class Router implements RouterInterface, RequestMatcherInterface, VersatileGener
                 if ('' !== $host || ('' !== $scheme && 'http' !== $scheme && 'https' !== $scheme)) {
                     $port = '';
                     if ('http' === $scheme && 80 !== $this->context->getHttpPort()) {
-                        $port = ':'.$this->context->getHttpPort();
+                        $port = ':' . $this->context->getHttpPort();
                     } elseif ('https' === $scheme && 443 !== $this->context->getHttpsPort()) {
-                        $port = ':'.$this->context->getHttpsPort();
+                        $port = ':' . $this->context->getHttpsPort();
                     }
 
                     $schemeAuthority = self::NETWORK_PATH === $referenceType || '' === $scheme ? '//' : "$scheme://";
-                    $schemeAuthority .= $host.$port;
+                    $schemeAuthority .= $host . $port;
                 }
             }
 

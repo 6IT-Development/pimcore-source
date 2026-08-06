@@ -9,19 +9,20 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Fieldcollection\Definition;
 
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\Fieldcollection\Definition;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Fieldcollection\Definition $model
+ * @property Definition $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -56,7 +57,7 @@ class Dao extends Model\Dao\AbstractDao
           PRIMARY KEY (`id`,`index`,`fieldname`(190)),
           INDEX `index` (`index`),
           INDEX `fieldname` (`fieldname`),
-          CONSTRAINT `".self::getForeignKeyName($table, 'id').'` FOREIGN KEY (`id`) REFERENCES objects (`id`) ON DELETE CASCADE
+          CONSTRAINT `" . self::getForeignKeyName($table, 'id') . '` FOREIGN KEY (`id`) REFERENCES objects (`id`) ON DELETE CASCADE
 		) DEFAULT CHARSET=utf8mb4;');
 
         $existingColumns = $this->getValidTableColumns($table, false); // no caching of table definition
@@ -85,7 +86,7 @@ class Dao extends Model\Dao\AbstractDao
                 $this->addIndexToField($value, $table, 'getColumnType', true, false, true);
             }
 
-            if ($value instanceof  DataObject\ClassDefinition\Data\Localizedfields) {
+            if ($value instanceof DataObject\ClassDefinition\Data\Localizedfields) {
                 $value->classSaved(
                     $class,
                     [

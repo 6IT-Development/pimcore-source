@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Translation;
@@ -20,20 +20,22 @@ use Exception;
 use Pimcore\Db\Helper;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Translation;
 use Pimcore\Model\User;
+use Pimcore\Tool\Admin;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Translation $model
+ * @property Translation $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
     /**
      * @var string
      */
-    const TABLE_PREFIX = 'translations_';
+    public const string TABLE_PREFIX = 'translations_';
 
     public function getDatabaseTableName(): string
     {
@@ -45,13 +47,13 @@ class Dao extends Model\Dao\AbstractDao
      * @throws NotFoundResourceException
      * @throws \Doctrine\DBAL\Exception
      */
-    public function getByKey(string $key, array $languages = null): void
+    public function getByKey(string $key, ?array $languages = null): void
     {
         if (is_array($languages)) {
             $sql = 'SELECT * FROM ' . $this->getDatabaseTableName() . ' WHERE `key` = :key
             AND `language` IN (:languages) ORDER BY `creationDate` ';
         } else {
-            $sql ='SELECT * FROM ' . $this->getDatabaseTableName() . ' WHERE `key` = :key ORDER BY `creationDate` ';
+            $sql = 'SELECT * FROM ' . $this->getDatabaseTableName() . ' WHERE `key` = :key ORDER BY `creationDate` ';
         }
 
         $data = $this->db->fetchAllAssociative($sql,
@@ -85,8 +87,10 @@ class Dao extends Model\Dao\AbstractDao
         $this->updateModificationInfos();
         $sanitizer = $this->model->getTranslationSanitizer();
 
+        $user = null;
+
         $editableLanguages = [];
-        if ($this->model->getDomain() != Model\Translation::DOMAIN_ADMIN) {
+        if ($this->model->getDomain() != Translation::DOMAIN_ADMIN) {
             if ($user = User::getById($this->model->getUserModification())) {
                 $editableLanguages = $user->getAllowedLanguagesForEditingWebsiteTranslations();
             }
@@ -95,7 +99,7 @@ class Dao extends Model\Dao\AbstractDao
         if ($this->model->getKey() !== '') {
             foreach ($this->model->getTranslations() as $language => $text) {
                 if (count($editableLanguages) && !in_array($language, $editableLanguages)) {
-                    Logger::warning(sprintf('User %s not allowed to edit %s translation', $user->getUsername(), $language)); // @phpstan-ignore-line
+                    Logger::warning(sprintf('User %s not allowed to edit %s translation', $user?->getUsername() ?? 'N/A', $language)); // @phpstan-ignore-line
 
                     continue;
                 }
@@ -106,14 +110,14 @@ class Dao extends Model\Dao\AbstractDao
                 }
 
                 $data = [
-                'key' => $this->model->getKey(),
-                'type' => $this->model->getType(),
-                'language' => $language,
-                'text' => $text,
-                'modificationDate' => $this->model->getModificationDate(),
-                'creationDate' => $this->model->getCreationDate(),
-                'userOwner' => $this->model->getUserOwner(),
-                'userModification' => $this->model->getUserModification(),
+                    'key' => $this->model->getKey(),
+                    'type' => $this->model->getType(),
+                    'language' => $language,
+                    'text' => $text,
+                    'modificationDate' => $this->model->getModificationDate(),
+                    'creationDate' => $this->model->getCreationDate(),
+                    'userOwner' => $this->model->getUserOwner(),
+                    'userModification' => $this->model->getUserModification(),
                 ];
                 Helper::upsert($this->db, $this->getDatabaseTableName(), $data, $this->getPrimaryKey($this->getDatabaseTableName()));
             }
@@ -134,7 +138,7 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function getAvailableLanguages(): array
     {
-        $l = $this->db->fetchAllAssociative('SELECT * FROM ' . $this->getDatabaseTableName()  . '  GROUP BY `language`;');
+        $l = $this->db->fetchAllAssociative('SELECT * FROM ' . $this->getDatabaseTableName() . '  GROUP BY `language`;');
         $languages = [];
 
         foreach ($l as $values) {
@@ -154,7 +158,7 @@ class Dao extends Model\Dao\AbstractDao
         $domains = [];
 
         foreach ($domainTables as $domainTable) {
-            $domain =  str_replace('translations_', '', $domainTable[array_key_first($domainTable)]);
+            $domain = str_replace('translations_', '', $domainTable[array_key_first($domainTable)]);
             if ($this->isAValidDomain($domain)) {
                 $domains[] = $domain;
             }
@@ -171,7 +175,7 @@ class Dao extends Model\Dao\AbstractDao
     public function isAValidDomain(string $domain): bool
     {
         try {
-            $translationDomains = $this->model->getRegisteredDomains();
+            $translationDomains = $this->model::getRegisteredDomains();
             if (!in_array($domain, $translationDomains)) {
                 return false;
             }
@@ -179,7 +183,7 @@ class Dao extends Model\Dao\AbstractDao
             $this->db->fetchOne(sprintf('SELECT * FROM translations_%s LIMIT 1;', $domain));
 
             return true;
-        } catch (Exception $e) {
+        } catch (Exception) {
             return false;
         }
     }
@@ -216,7 +220,7 @@ class Dao extends Model\Dao\AbstractDao
         }
 
         // auto assign user if possible, if no user present, use ID=0 which represents the "system" user
-        $userId = \Pimcore\Tool\Admin::getCurrentUser()?->getId() ?? 0;
+        $userId = Admin::getCurrentUser()?->getId() ?? 0;
         $this->model->setUserModification($userId);
 
         if ($this->model->getUserOwner() === null) {

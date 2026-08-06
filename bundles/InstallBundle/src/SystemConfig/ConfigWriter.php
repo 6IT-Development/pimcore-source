@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\InstallBundle\SystemConfig;
@@ -36,7 +36,7 @@ final class ConfigWriter
     {
         if (count($config)) {
             $content = Yaml::dump($config);
-            $configFile = PIMCORE_PROJECT_ROOT .'/config/local/database.yaml';
+            $configFile = PIMCORE_PROJECT_ROOT . '/config/local/database.yaml';
             $this->filesystem->dumpFile($configFile, $content);
         }
     }

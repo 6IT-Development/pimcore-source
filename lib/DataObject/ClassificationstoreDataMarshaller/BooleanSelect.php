@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassificationstoreDataMarshaller;
@@ -23,7 +24,7 @@ use Pimcore\Marshaller\MarshallerInterface;
  */
 class BooleanSelect implements MarshallerInterface
 {
-    public function marshal(mixed $value, array $params = []): mixed
+    public function marshal(mixed $value, array $params = []): ?array
     {
         if ($value === true) {
             return ['value' => \Pimcore\Model\DataObject\ClassDefinition\Data\BooleanSelect::YES_VALUE];
@@ -34,7 +35,7 @@ class BooleanSelect implements MarshallerInterface
         return null;
     }
 
-    public function unmarshal(mixed $value, array $params = []): mixed
+    public function unmarshal(mixed $value, array $params = []): ?bool
     {
         if (is_array($value)) {
             if ($value['value'] == \Pimcore\Model\DataObject\ClassDefinition\Data\BooleanSelect::YES_VALUE) {

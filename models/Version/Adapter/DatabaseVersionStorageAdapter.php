@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Version\Adapter;
 
 use Doctrine\DBAL;
+use Doctrine\DBAL\Exception;
 use Pimcore\Model\Version;
 
 /**
@@ -24,7 +26,7 @@ use Pimcore\Model\Version;
  */
 class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 {
-    const versionsTableName = 'versionsData';
+    public const string versionsTableName = 'versionsData';
 
     public function __construct(protected DBAL\Connection $databaseConnection)
     {
@@ -57,12 +59,12 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
     /**
      *
      *
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
-    protected function loadData(int $id,
-        int $cId,
-        string $cType,
-        bool $binaryData = false): mixed
+    protected function loadData(int    $id,
+                                int    $cId,
+                                string $cType,
+                                bool   $binaryData = false): mixed
     {
         $dataColumn = $binaryData ? 'binaryData' : 'metaData';
 
@@ -79,7 +81,7 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
         return $this->loadData($version->getId(), $version->getCid(), $version->getCtype());
     }
 
-    protected function getStream(string $data): mixed
+    protected function getStream(string $data): ?false
     {
         if ($data) {
             $fileName = tmpfile();
@@ -101,10 +103,10 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
     public function delete(Version $version, bool $isBinaryHashInUse): void
     {
         $this->databaseConnection->delete(self::versionsTableName, [
-                                                'id' => $version->getId(),
-                                                'cid' => $version->getCid(),
-                                                'ctype' => $version->getCtype(),
-                                            ]);
+            'id' => $version->getId(),
+            'cid' => $version->getCid(),
+            'ctype' => $version->getCtype(),
+        ]);
     }
 
     public function getBinaryFileStream(Version $version): mixed
@@ -119,8 +121,8 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
         return $this->getStream($metaData);
     }
 
-    public function getStorageType(int $metaDataSize = null,
-        int $binaryDataSize = null): string
+    public function getStorageType(?int $metaDataSize = null,
+                                   ?int $binaryDataSize = null): string
     {
         return 'db';
     }

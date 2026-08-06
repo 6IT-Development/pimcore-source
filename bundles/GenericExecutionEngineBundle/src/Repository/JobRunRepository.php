@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Repository;
@@ -32,20 +33,21 @@ use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Translation\Translator;
 use Psr\Log\LoggerInterface;
 
-final class JobRunRepository implements JobRunRepositoryInterface
+final readonly class JobRunRepository implements JobRunRepositoryInterface
 {
     public function __construct(
-        private readonly Connection $db,
-        private readonly CurrentMessageProviderInterface $currentMessageProvider,
-        private readonly EntityManagerInterface $pimcoreEntityManager,
-        private readonly ExecutionContextInterface $executionContext,
-        private readonly LoggerInterface $genericExecutionEngineLogger,
-        private readonly PermissionServiceInterface $permissionService,
-        private readonly Translator $translator,
-    ) {
+        private Connection                      $db,
+        private CurrentMessageProviderInterface $currentMessageProvider,
+        private EntityManagerInterface          $pimcoreEntityManager,
+        private ExecutionContextInterface       $executionContext,
+        private LoggerInterface                 $genericExecutionEngineLogger,
+        private PermissionServiceInterface      $permissionService,
+        private Translator                      $translator,
+    )
+    {
     }
 
-    public function createFromJob(Job $job, int $ownerId = null): JobRun
+    public function createFromJob(Job $job, ?int $ownerId = null): JobRun
     {
         $jobRun = new JobRun($ownerId);
 
@@ -74,11 +76,12 @@ final class JobRunRepository implements JobRunRepositoryInterface
     public function updateLogLocalizedWithDomain(
         JobRun $jobRun,
         string $message,
-        array $params = [],
-        bool $updateCurrentMessage = true,
+        array  $params = [],
+        bool   $updateCurrentMessage = true,
         string $defaultLocale = 'en',
         string $domain = 'admin'
-    ): void {
+    ): void
+    {
         if ($updateCurrentMessage) {
             $jobRun->setCurrentMessageLocalized(
                 $this->currentMessageProvider->getTranslationMessages($message, $params, $domain)
@@ -93,10 +96,11 @@ final class JobRunRepository implements JobRunRepositoryInterface
     public function updateLogLocalized(
         JobRun $jobRun,
         string $message,
-        array $params = [],
-        bool $updateCurrentMessage = true,
+        array  $params = [],
+        bool   $updateCurrentMessage = true,
         string $defaultLocale = 'en'
-    ): void {
+    ): void
+    {
         $domain = $this->executionContext->getTranslationDomain($jobRun->getExecutionContext());
 
         $this->updateLogLocalizedWithDomain(
@@ -121,7 +125,7 @@ final class JobRunRepository implements JobRunRepositoryInterface
             ' SET log = IF(ISNULL(log),:message,CONCAT(log, "\n", :message)) WHERE id = :id',
             [
                 'id' => $jobRun->getId(),
-                'message' => (new DateTimeImmutable())->format('c') . ': ' . trim($message),
+                'message' => new DateTimeImmutable()->format('c') . ': ' . trim($message),
             ]
         );
 
@@ -158,11 +162,12 @@ final class JobRunRepository implements JobRunRepositoryInterface
      *
      */
     public function getJobRunsByUserId(
-        int $ownerId = null,
+        ?int  $ownerId = null,
         array $orderBy = [],
-        int $limit = 100,
-        int $offset = 0
-    ): array {
+        int   $limit = 100,
+        int   $offset = 0
+    ): array
+    {
         $params = [];
         if ($ownerId !== null && !$this->permissionService->isAllowedToSeeAllJobRuns()) {
             $params['ownerId'] = $ownerId;
@@ -178,14 +183,15 @@ final class JobRunRepository implements JobRunRepositoryInterface
 
     public function getTotalCount(): int
     {
-        return $this->pimcoreEntityManager->getRepository(JobRun::class)->count([]);
+        return $this->pimcoreEntityManager->getRepository(JobRun::class)->count();
     }
 
     public function getRunningJobsByUserId(
-        int $ownerId,
+        int   $ownerId,
         array $orderBy = [],
-        int $limit = 10,
-    ): array {
+        int   $limit = 10,
+    ): array
+    {
         return $this->pimcoreEntityManager
             ->getRepository(JobRun::class)
             ->findBy(

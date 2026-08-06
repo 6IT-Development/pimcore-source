@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,20 +11,21 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Translation;
 
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Model\Translation;
 
 /**
  * @method \Pimcore\Model\Translation\Listing\Dao getDao()
- * @method Model\Translation[] load()
- * @method list<array<string,mixed>> loadRaw()
- * @method Model\Translation|false current()
+ * @method Translation[] load()
+ * @method list<array<string, mixed>> loadRaw()
+ * @method Translation|false current()
  * @method int getTotalCount()
  * @method void onCreateQueryBuilder(?callable $callback)
  * @method void cleanup()
@@ -42,7 +44,7 @@ class Listing extends Model\Listing\AbstractListing
      * @internal
      *
      */
-    protected string $domain = Model\Translation::DOMAIN_DEFAULT;
+    protected string $domain = Translation::DOMAIN_DEFAULT;
 
     /**
      * @internal
@@ -63,7 +65,7 @@ class Listing extends Model\Listing\AbstractListing
 
     public function setDomain(string $domain): void
     {
-        if (!Model\Translation::isAValidDomain($domain)) {
+        if (!Translation::isAValidDomain($domain)) {
             throw new NotFoundException(
                 sprintf(
                     'Either translation domain %s is not registered in config `pimcore.translations.domains` or table "%s" does not exist',
@@ -93,7 +95,7 @@ class Listing extends Model\Listing\AbstractListing
     }
 
     /**
-     * @return \Pimcore\Model\Translation[]
+     * @return Translation[]
      */
     public function getTranslations(): array
     {

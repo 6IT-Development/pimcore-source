@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Video\Thumbnail;
@@ -24,6 +25,7 @@ use Pimcore\Messenger\VideoConvertMessage;
 use Pimcore\Model;
 use Pimcore\Model\Tool\TmpStore;
 use Pimcore\Tool\Storage;
+use Pimcore\Video;
 use Pimcore\Video\Adapter;
 use Symfony\Component\Lock\LockFactory;
 
@@ -33,17 +35,17 @@ use Symfony\Component\Lock\LockFactory;
 class Processor
 {
     protected static array $argumentMapping = [
-        'resize'            => ['width', 'height'],
-        'scaleByWidth'      => ['width'],
-        'scaleByHeight'     => ['height'],
-        'cut'               => ['start', 'duration'],
-        'setFramerate'      => ['fps'],
+        'resize' => ['width', 'height'],
+        'scaleByWidth' => ['width'],
+        'scaleByHeight' => ['height'],
+        'cut' => ['start', 'duration'],
+        'setFramerate' => ['fps'],
         'colorChannelMixer' => ['effect'],
-        'mute'              => [],
+        'mute' => [],
     ];
 
     /**
-     * @var \Pimcore\Video\Adapter[]
+     * @var Adapter[]
      */
     protected array $queue = [];
 
@@ -62,7 +64,7 @@ class Processor
      */
     public static function process(Model\Asset\Video $asset, Config $config, array $onlyFormats = []): ?Processor
     {
-        if (!\Pimcore\Video::isAvailable()) {
+        if (!Video::isAvailable()) {
             throw new Exception('No ffmpeg executable found, please configure the correct path in the system settings');
         }
 
@@ -111,12 +113,12 @@ class Processor
         }
 
         foreach ($formats as $format) {
-            $thumbDir = $asset->getRealPath().'/'.$asset->getId().'/video-thumb__'.$asset->getId().'__'.$config->getName();
-            $filename = preg_replace("/\." . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '/', '', $asset->getFilename()) . '.' . $format;
+            $thumbDir = $asset->getRealPath() . '/' . $asset->getId() . '/video-thumb__' . $asset->getId() . '__' . $config->getName();
+            $filename = preg_replace('/\.' . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '/', '', $asset->getFilename()) . '.' . $format;
             $storagePath = $thumbDir . '/' . $filename;
             $tmpPath = File::getLocalTempFilePath($format);
 
-            if ($converter = \Pimcore\Video::getInstance()) {
+            if ($converter = Video::getInstance()) {
                 $converter->setAudioBitrate($config->getAudioBitrate());
                 $converter->setVideoBitrate($config->getVideoBitrate());
                 $converter->setFormat($format);
@@ -128,7 +130,7 @@ class Processor
                     $medias = $config->getMedias();
                     foreach ($medias as $media => $transformations) {
                         //used just to generate arguments for medias
-                        if ($subConverter = \Pimcore\Video::getInstance()) {
+                        if ($subConverter = Video::getInstance()) {
                             self::applyTransformations($subConverter, $transformations);
                             $medias[$media]['converter'] = $subConverter;
                         }
@@ -262,7 +264,7 @@ class Processor
                         $parentPath = dirname($converter->getStorageFile());
 
                         foreach ($streams as $steam) {
-                            $storagePath = $parentPath.'/'.basename($steam);
+                            $storagePath = $parentPath . '/' . basename($steam);
                             $source = fopen($steam, 'rb');
                             Storage::get('thumbnail')->writeStream($storagePath, $source);
 
@@ -273,7 +275,7 @@ class Processor
                     }
 
                     $formats[$converter->getFormat()] = preg_replace(
-                        '/'.preg_quote($asset->getRealPath(), '/').'/',
+                        '/' . preg_quote($asset->getRealPath(), '/') . '/',
                         '',
                         $converter->getStorageFile(),
                         1
@@ -284,7 +286,7 @@ class Processor
 
                 $converter->destroy();
             } catch (Exception $e) {
-                Logger::error((string) $e);
+                Logger::error((string)$e);
             }
         }
 
@@ -323,7 +325,7 @@ class Processor
         return true;
     }
 
-    protected function getJobStoreId(string $processId = null): string
+    protected function getJobStoreId(?string $processId = null): string
     {
         if (!$processId) {
             $processId = $this->getProcessId();

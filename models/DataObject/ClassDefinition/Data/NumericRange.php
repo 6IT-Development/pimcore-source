@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -33,9 +34,9 @@ class NumericRange extends Data implements
 {
     use DataObject\Traits\DataWidthTrait;
 
-    public const DECIMAL_SIZE_DEFAULT = 64;
+    public const int DECIMAL_SIZE_DEFAULT = 64;
 
-    public const DECIMAL_PRECISION_DEFAULT = 0;
+    public const int DECIMAL_PRECISION_DEFAULT = 0;
 
     /**
      * @internal
@@ -182,11 +183,11 @@ class NumericRange extends Data implements
         $scale = self::DECIMAL_PRECISION_DEFAULT;
 
         if (null !== $this->decimalSize) {
-            $precision = (int) $this->decimalSize;
+            $precision = (int)$this->decimalSize;
         }
 
         if (null !== $this->decimalPrecision) {
-            $scale = (int) $this->decimalPrecision;
+            $scale = (int)$this->decimalPrecision;
         }
 
         if ($precision < 1 || $precision > 65) {
@@ -216,7 +217,7 @@ class NumericRange extends Data implements
      * @see ResourcePersistenceAwareInterface::getDataForResource
      *
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         if ($data instanceof DataObject\Data\NumericRange) {
             return [
@@ -237,18 +238,18 @@ class NumericRange extends Data implements
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\NumericRange
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\NumericRange
     {
         if (isset($data[$this->getName() . '__minimum'], $data[$this->getName() . '__maximum'])) {
             $minimum = $data[$this->getName() . '__minimum'];
             $maximum = $data[$this->getName() . '__maximum'];
 
             if (is_string($minimum)) {
-                $minimum = (float) $minimum;
+                $minimum = (float)$minimum;
             }
 
             if (is_string($maximum)) {
-                $maximum = (float) $maximum;
+                $maximum = (float)$maximum;
             }
 
             $numericRange = new DataObject\Data\NumericRange($minimum, $maximum);
@@ -266,22 +267,17 @@ class NumericRange extends Data implements
     }
 
     /**
-     * @param null|DataObject\Concrete $object
-     *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, Concrete $object = null, array $params = []): array
+    public function getDataForQueryResource(mixed $data, ?Concrete $object = null, array $params = []): array
     {
         return $this->getDataForResource($data, $object, $params);
     }
 
     /**
-     *
-     *
      * @see Data::getDataForEditmode
-     *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if ($data instanceof DataObject\Data\NumericRange) {
             return [
@@ -298,7 +294,7 @@ class NumericRange extends Data implements
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\NumericRange
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\NumericRange
     {
         if (is_array($data) && (isset($data['minimum']) || isset($data['maximum']))) {
             return new DataObject\Data\NumericRange($data['minimum'], $data['maximum']);
@@ -307,7 +303,7 @@ class NumericRange extends Data implements
         return null;
     }
 
-    public function getDataFromGridEditor(array $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\NumericRange
+    public function getDataFromGridEditor(array $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\NumericRange
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
@@ -318,7 +314,7 @@ class NumericRange extends Data implements
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if ($data instanceof DataObject\Data\NumericRange) {
             return $data->__toString();
@@ -373,9 +369,10 @@ class NumericRange extends Data implements
 
     public function getDataForGrid(
         ?DataObject\Data\NumericRange $data,
-        DataObject\Concrete $object = null,
-        array $params = []
-    ): ?array {
+        ?DataObject\Concrete          $object = null,
+        array                         $params = []
+    ): ?array
+    {
         return $this->getDataForEditmode($data, $object, $params);
     }
 
@@ -405,7 +402,7 @@ class NumericRange extends Data implements
                 throw new ValidationException('Value exceeds PHP_INT_MAX');
             }
 
-            if ($this->getInteger() && str_contains((string) $data, '.')) {
+            if ($this->getInteger() && str_contains((string)$data, '.')) {
                 throw new ValidationException(
                     sprintf('Either the minimum or maximum value in field [ %s ] is not an integer', $fieldName)
                 );

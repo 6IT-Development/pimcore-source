@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data;
@@ -423,14 +424,7 @@ class Link implements OwnerAwareFieldInterface
 
     public function isEmpty(): bool
     {
-        $vars = $this->getObjectVars();
-        foreach ($vars as $value) {
-            if (!empty($value)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($this->getObjectVars(), static fn($value) => empty($value));
     }
 
     /**
@@ -466,7 +460,7 @@ class Link implements OwnerAwareFieldInterface
     public function __unserialize(array $data): void
     {
         foreach (get_object_vars($this) as $property => $value) {
-            $this->$property = $data["\0*\0".$property] ?? $value;
+            $this->$property = $data["\0*\0" . $property] ?? $value;
         }
     }
 }

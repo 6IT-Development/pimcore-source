@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Version\Adapter;
@@ -38,12 +39,10 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
     public function loadMetaData(Version $version): ?string
     {
         try {
-            $data = $this->storage->read($this->getStorageFilename($version->getId(), $version->getCid(), $version->getCtype()));
-        } catch (UnableToReadFile $e) {
-            $data = null;
+            return $this->storage->read($this->getStorageFilename($version->getId(), $version->getCid(), $version->getCtype()));
+        } catch (UnableToReadFile) {
+            return null;
         }
-
-        return $data;
     }
 
     public function loadBinaryData(Version $version): mixed
@@ -67,9 +66,9 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
         return $this->storage->readStream($this->getStorageFilename($version->getId(), $version->getCid(), $version->getCtype()));
     }
 
-    public function getStorageFilename(int $id,
-        int $cId,
-        string $cType): string
+    public function getStorageFilename(int    $id,
+                                       int    $cId,
+                                       string $cType): string
     {
         $group = floor($cId / 10000) * 10000;
 
@@ -111,7 +110,7 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
     }
 
     public function delete(Version $version,
-        bool $isBinaryHashInUse): void
+                           bool    $isBinaryHashInUse): void
     {
         $binaryStoragePath = $this->getBinaryStoragePath($version);
         $storageFileName = $this->getStorageFilename($version->getId(), $version->getCid(), $version->getCtype());
@@ -127,8 +126,8 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
         }
     }
 
-    public function getStorageType(int $metaDataSize = null,
-        int $binaryDataSize = null): string
+    public function getStorageType(?int $metaDataSize = null,
+                                   ?int $binaryDataSize = null): string
     {
         return 'fs';
     }

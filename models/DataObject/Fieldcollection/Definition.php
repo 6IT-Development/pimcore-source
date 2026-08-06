@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Fieldcollection;
@@ -46,7 +47,7 @@ class Definition extends Model\AbstractModel
     /**
      * @var string[]
      */
-    protected const FORBIDDEN_NAMES = [
+    protected const array FORBIDDEN_NAMES = [
         'abstract', 'abstractdata', 'class', 'concrete', 'dao', 'data', 'default', 'folder', 'interface', 'items',
         'list', 'object', 'permissions', 'resource',
     ];
@@ -205,7 +206,7 @@ class Definition extends Model\AbstractModel
 
             $data = '<?php';
             $data .= "\n\n";
-            $data .=  $this->getInfoDocBlock();
+            $data .= $this->getInfoDocBlock();
             $data .= "\n\n";
 
             $data .= 'return ' . $exportedClass . ";\n";
@@ -261,13 +262,13 @@ class Definition extends Model\AbstractModel
      */
     public function isWritable(): bool
     {
-        return (bool) ($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? !str_starts_with($this->getDefinitionFile(), PIMCORE_CUSTOM_CONFIGURATION_DIRECTORY));
+        return (bool)($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? !str_starts_with($this->getDefinitionFile(), PIMCORE_CUSTOM_CONFIGURATION_DIRECTORY));
     }
 
     /**
      * @internal
      */
-    public function getDefinitionFile(string $key = null): string
+    public function getDefinitionFile(?string $key = null): string
     {
         return $this->locateDefinitionFile($key ?? $this->getKey(), 'fieldcollections/%s.php');
     }

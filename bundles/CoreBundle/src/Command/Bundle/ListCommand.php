@@ -11,18 +11,18 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
 
-use const JSON_PRETTY_PRINT;
 use Pimcore\Extension\Bundle\Exception\BundleNotFoundException;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use const JSON_PRETTY_PRINT;
 
 /**
  * @internal
@@ -46,8 +46,7 @@ class ListCommand extends AbstractBundleCommand
                 InputOption::VALUE_NONE,
                 'Show more details of pimcore bundles e.g. version, description etc.'
             )
-            ->addOption('json', null, InputOption::VALUE_NONE, 'Return data as JSON')
-        ;
+            ->addOption('json', null, InputOption::VALUE_NONE, 'Return data as JSON');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -84,7 +83,7 @@ class ListCommand extends AbstractBundleCommand
                 $row[] = $this->bundleManager->canBeInstalled($bundle);
                 $row[] = $this->bundleManager->canBeUninstalled($bundle);
                 $row[] = $this->bundleManager->getManuallyRegisteredBundleState($bundleClass)['priority'];
-            } catch (BundleNotFoundException $e) {
+            } catch (BundleNotFoundException) {
                 if ($details) {
                     $row[] = '';
                     $row[] = '';
@@ -97,7 +96,7 @@ class ListCommand extends AbstractBundleCommand
         }
 
         if ($input->getOption('json')) {
-            $jsonData = array_map(fn ($row) => array_combine($returnData['headers'], $row), $returnData['rows']);
+            $jsonData = array_map(fn($row) => array_combine($returnData['headers'], $row), $returnData['rows']);
             $output->write(json_encode($jsonData, JSON_PRETTY_PRINT));
         } else {
             $table = new Table($output);

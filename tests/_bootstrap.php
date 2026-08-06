@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,10 +11,11 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
+use Pimcore\Bootstrap;
 use Pimcore\Tests\Support\Util\Autoloader;
 
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
@@ -24,15 +26,15 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     if (file_exists(getenv('PIMCORE_PROJECT_ROOT') . '/vendor/autoload.php')) {
         define('PIMCORE_PROJECT_ROOT', getenv('PIMCORE_PROJECT_ROOT'));
     } else {
-        throw new \Exception('Invalid Pimcore project root "' . getenv('PIMCORE_PROJECT_ROOT') . '"');
+        throw new Exception('Invalid Pimcore project root "' . getenv('PIMCORE_PROJECT_ROOT') . '"');
     }
 } else {
-    throw new \Exception('Unknown configuration! Pimcore project root not found, please set env variable PIMCORE_PROJECT_ROOT.');
+    throw new Exception('Unknown configuration! Pimcore project root not found, please set env variable PIMCORE_PROJECT_ROOT.');
 }
 
 include PIMCORE_PROJECT_ROOT . '/vendor/autoload.php';
-\Pimcore\Bootstrap::setProjectRoot();
-\Pimcore\Bootstrap::bootstrap();
+Bootstrap::setProjectRoot();
+Bootstrap::bootstrap();
 
 Autoloader::addNamespace('Pimcore\Model\DataObject', __DIR__ . '/_output/var/classes/DataObject');
 Autoloader::addNamespace('Pimcore\Tests', __DIR__);

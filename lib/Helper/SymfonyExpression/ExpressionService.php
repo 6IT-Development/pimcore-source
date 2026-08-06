@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Helper\SymfonyExpression;
@@ -26,8 +27,9 @@ final class ExpressionService implements ExpressionServiceInterface
 {
     public function evaluate(
         string $condition,
-        array $contentVariables
-    ): bool {
+        array  $contentVariables
+    ): bool
+    {
         $expressionLanguage = new ExpressionLanguage();
         //overwrite constant function to avoid exposing internal information
         $expressionLanguage->register('constant', function () {

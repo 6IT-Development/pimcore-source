@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -44,8 +45,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                 's',
                 InputOption::VALUE_OPTIONAL,
                 'Do not delete specified locale tables (comma separated eg.: en, en_AT)'
-            )
-        ;
+            );
 
         $this->configureDryRunOption('Just output the delete localized queries to be executed.');
     }
@@ -71,14 +71,14 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
             $table = current($table);
             $classId = str_replace('object_localized_data_', '', $table);
 
-            $result = $db->fetchAllAssociative('SELECT DISTINCT `language` FROM ' . $table . ' WHERE `language` NOT IN(' . implode(',', $languageList) .')');
-            $result = ($result ? $result : []);
+            $result = $db->fetchAllAssociative('SELECT DISTINCT `language` FROM ' . $table . ' WHERE `language` NOT IN(' . implode(',', $languageList) . ')');
+            $result = ($result ?: []);
 
             //delete data from object_localized_data_classID tables
             foreach ($result as $res) {
                 $language = $res['language'];
                 if (!in_arrayi($language, $skipLocales) && !in_arrayi($language, $validLanguages)) {
-                    $sqlDeleteData = 'Delete FROM object_localized_data_' . $classId  . ' WHERE `language` = ' . $db->quote($language);
+                    $sqlDeleteData = 'Delete FROM object_localized_data_' . $classId . ' WHERE `language` = ' . $db->quote($language);
                     $printLine = true;
                     if (!$this->isDryRun()) {
                         $output->writeln($sqlDeleteData);
@@ -90,13 +90,13 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
             }
 
             //drop unused localized view e.g. object_localized_classId_*
-            $existingViews = $db->fetchAllAssociative("SHOW TABLES LIKE 'object\_localized\_{$classId}\_%'");
+            $existingViews = $db->fetchAllAssociative("SHOW TABLES LIKE 'object\_localized\_$classId\_%'");
             foreach ($existingViews as $existingView) {
                 $localizedView = current($existingView);
-                $existingLanguage = str_replace('object_localized_'.$classId.'_', '', $localizedView);
+                $existingLanguage = str_replace('object_localized_' . $classId . '_', '', $localizedView);
 
                 if (!in_arrayi($existingLanguage, $validLanguages)) {
-                    $sqlDropView = 'DROP VIEW IF EXISTS object_localized_' . $classId . '_' .$existingLanguage;
+                    $sqlDropView = 'DROP VIEW IF EXISTS object_localized_' . $classId . '_' . $existingLanguage;
                     $printLine = true;
 
                     if (!$this->isDryRun()) {
@@ -109,13 +109,13 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
             }
 
             //drop unused localized table e.g. object_localized_query_classId_*
-            $existingTables = $db->fetchAllAssociative("SHOW TABLES LIKE 'object\_localized\_query\_{$classId}\_%'");
+            $existingTables = $db->fetchAllAssociative("SHOW TABLES LIKE 'object\_localized\_query\_$classId\_%'");
             foreach ($existingTables as $existingTable) {
                 $localizedTable = current($existingTable);
-                $existingLanguage = str_replace('object_localized_query_'.$classId.'_', '', $localizedTable);
+                $existingLanguage = str_replace('object_localized_query_' . $classId . '_', '', $localizedTable);
 
                 if (!in_arrayi($existingLanguage, $validLanguages)) {
-                    $sqlDropTable = 'DROP TABLE IF EXISTS object_localized_query_' . $classId . '_' .$existingLanguage;
+                    $sqlDropTable = 'DROP TABLE IF EXISTS object_localized_query_' . $classId . '_' . $existingLanguage;
                     $printLine = true;
 
                     if (!$this->isDryRun()) {
@@ -127,7 +127,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                 }
             }
 
-            if ($printLine == true) {
+            if ($printLine) {
                 $output->writeln('------------');
             }
         }

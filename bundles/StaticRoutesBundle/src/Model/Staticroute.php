@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\StaticRoutesBundle\Model;
 
 use Exception;
 use Pimcore;
+use Pimcore\Cache\RuntimeCache;
 use Pimcore\Event\FrontendEvents;
 use Pimcore\Model\AbstractModel;
 use Pimcore\Model\Exception\NotFoundException;
@@ -97,17 +99,17 @@ final class Staticroute extends AbstractModel
         $cacheKey = 'staticroute_' . $id;
 
         try {
-            $route = \Pimcore\Cache\RuntimeCache::get($cacheKey);
+            $route = RuntimeCache::get($cacheKey);
             if (!$route) {
                 throw new Exception('Route in registry is null');
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             try {
                 $route = new self();
                 $route->setId($id);
                 $route->getDao()->getById();
-                \Pimcore\Cache\RuntimeCache::set($cacheKey, $route);
-            } catch (NotFoundException $e) {
+                RuntimeCache::set($cacheKey, $route);
+            } catch (NotFoundException) {
                 return null;
             }
         }
@@ -118,7 +120,7 @@ final class Staticroute extends AbstractModel
     /**
      * @throws Exception
      */
-    public static function getByName(string $name, int $siteId = null): ?Staticroute
+    public static function getByName(string $name, ?int $siteId = null): ?Staticroute
     {
         $cacheKey = $name . '~~~' . $siteId;
 
@@ -132,7 +134,7 @@ final class Staticroute extends AbstractModel
 
         try {
             $route->getDao()->getByName($name, $siteId);
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             return null;
         }
 
@@ -206,7 +208,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setId(string $id): static
+    public function setId(string $id): Staticroute
     {
         $this->id = $id;
 
@@ -216,7 +218,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setPattern(string $pattern): static
+    public function setPattern(string $pattern): Staticroute
     {
         $this->pattern = $pattern;
 
@@ -226,7 +228,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setController(?string $controller): static
+    public function setController(?string $controller): Staticroute
     {
         $this->controller = $controller;
 
@@ -236,7 +238,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setVariables(string $variables): static
+    public function setVariables(string $variables): Staticroute
     {
         $this->variables = $variables;
 
@@ -246,7 +248,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setDefaults(string $defaults): static
+    public function setDefaults(string $defaults): Staticroute
     {
         $this->defaults = $defaults;
 
@@ -256,7 +258,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setPriority(int $priority): static
+    public function setPriority(int $priority): Staticroute
     {
         $this->priority = $priority;
 
@@ -271,7 +273,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setName(string $name): static
+    public function setName(string $name): Staticroute
     {
         $this->name = $name;
 
@@ -286,7 +288,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setReverse(string $reverse): static
+    public function setReverse(string $reverse): Staticroute
     {
         $this->reverse = $reverse;
 
@@ -303,7 +305,7 @@ final class Staticroute extends AbstractModel
      *
      * @return $this
      */
-    public function setSiteId(array|string|null $siteId): static
+    public function setSiteId(array|string|null $siteId): Staticroute
     {
         $result = [];
 
@@ -324,7 +326,7 @@ final class Staticroute extends AbstractModel
                 continue;
             }
 
-            if ($site = Site::getById($siteId)) {
+            if (Site::getById($siteId)) {
                 $result[] = $siteId;
             }
         }
@@ -374,7 +376,7 @@ final class Staticroute extends AbstractModel
         $tmpReversePattern = $this->getReverse();
         foreach ($urlParams as $key => $param) {
             if (str_contains($tmpReversePattern, '%' . $key)) {
-                $parametersInReversePattern[$key] = (string) $param;
+                $parametersInReversePattern[$key] = (string)$param;
 
                 // we need to replace the found variable to that it cannot match again a placeholder
                 // eg. %abcd prior %ab if %abcd matches already %ab shouldn't match again on the same placeholder
@@ -408,7 +410,7 @@ final class Staticroute extends AbstractModel
         }
 
         // remove optional parts
-        $url = preg_replace("/\{([^\}]+)?%[^\}]+\}/", '', $url);
+        $url = preg_replace('/\{([^\}]+)?%[^\}]+\}/', '', $url);
         $url = str_replace(['{', '}'], '', $url);
 
         // optional get parameters
@@ -430,15 +432,13 @@ final class Staticroute extends AbstractModel
             'encode' => $encode,
         ]);
         Pimcore::getEventDispatcher()->dispatch($event, FrontendEvents::STATICROUTE_PATH);
-        $url = $event->getArgument('frontendPath');
-
-        return $url;
+        return $event->getArgument('frontendPath');
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function match(string $path, array $params = []): false|array
     {
@@ -487,7 +487,7 @@ final class Staticroute extends AbstractModel
      *
      * @return $this
      */
-    public function setMethods(array|string $methods): static
+    public function setMethods(array|string $methods): Staticroute
     {
         if (is_string($methods)) {
             $methods = strlen($methods) ? explode(',', $methods) : [];
@@ -504,7 +504,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setModificationDate(int $modificationDate): static
+    public function setModificationDate(int $modificationDate): Staticroute
     {
         $this->modificationDate = $modificationDate;
 
@@ -519,7 +519,7 @@ final class Staticroute extends AbstractModel
     /**
      * @return $this
      */
-    public function setCreationDate(int $creationDate): static
+    public function setCreationDate(int $creationDate): Staticroute
     {
         $this->creationDate = $creationDate;
 

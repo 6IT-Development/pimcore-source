@@ -11,14 +11,16 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document;
 
 use Exception;
+use League\Flysystem\FilesystemException;
 use Pimcore;
+use Pimcore\Config;
 use Pimcore\Document\Renderer\DocumentRendererInterface;
 use Pimcore\Http\Request\Resolver\StaticPageResolver;
 use Pimcore\Logger;
@@ -32,9 +34,10 @@ class StaticPageGenerator
 {
     public function __construct(
         protected DocumentRendererInterface $documentRenderer,
-        private LockFactory $lockFactory,
-        protected SystemSettingsConfig $settingsConfig
-    ) {
+        private readonly LockFactory        $lockFactory,
+        protected SystemSettingsConfig      $settingsConfig
+    )
+    {
     }
 
     public function getStoragePath(Document\PageSnippet $document): string
@@ -47,7 +50,7 @@ class StaticPageGenerator
             $path = '/%home';
         }
 
-        $useMainDomain = \Pimcore\Config::getSystemConfiguration('documents')['static_page_generator']['use_main_domain'];
+        $useMainDomain = Config::getSystemConfiguration('documents')['static_page_generator']['use_main_domain'];
         if ($useMainDomain) {
             $systemConfig = $this->settingsConfig->getSystemSettingsConfig();
             $mainDomain = '/' . $systemConfig['general']['domain'];
@@ -101,7 +104,7 @@ class StaticPageGenerator
 
             $storage->write($storagePath, $response);
         } catch (Exception $e) {
-            Logger::debug('Error generating static Page ' . $storagePath .': ' . $e->getMessage());
+            Logger::debug('Error generating static Page ' . $storagePath . ': ' . $e->getMessage());
 
             return false;
         }
@@ -118,7 +121,7 @@ class StaticPageGenerator
 
     /**
      *
-     * @throws \League\Flysystem\FilesystemException
+     * @throws FilesystemException
      */
     public function remove(Document\PageSnippet $document): void
     {

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data\AbstractMetadata;
@@ -27,7 +27,7 @@ class Dao extends Model\Dao\AbstractDao
 {
     use DataObject\ClassDefinition\Helper\Dao;
 
-    protected const UNIQUE_COLUMNS = ['id', 'dest_id', 'type', 'fieldname', 'column', 'ownertype', 'ownername', 'position', 'index'];
+    protected const array UNIQUE_COLUMNS = ['id', 'dest_id', 'type', 'fieldname', 'column', 'ownertype', 'ownername', 'position', 'index'];
 
     protected ?array $tableDefinitions = null;
 
@@ -74,7 +74,7 @@ class Dao extends Model\Dao\AbstractDao
               INDEX `ownername` (`ownername`),
               INDEX `position` (`position`),
               INDEX `index` (`index`),
-              CONSTRAINT `".self::getForeignKeyName($table, 'id').'` FOREIGN KEY (`id`)
+              CONSTRAINT `" . self::getForeignKeyName($table, 'id') . '` FOREIGN KEY (`id`)
               REFERENCES objects (`id`) ON DELETE CASCADE
 		) DEFAULT CHARSET=utf8mb4;');
 

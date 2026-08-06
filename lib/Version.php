@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -24,11 +25,11 @@ use OutOfBoundsException;
  */
 final class Version
 {
-    const PACKAGE_NAME = 'six-it/pimcore-source';
+    public const string PACKAGE_NAME = 'six-it/pimcore-source';
 
-    private const PLATFORM_VERSION_PACKAGE_NAME = 'six-it/platform-version';
+    private const string PLATFORM_VERSION_PACKAGE_NAME = 'six-it/platform-version';
 
-    private const MAJOR_VERSION = 1;
+    private const int MAJOR_VERSION = 1;
 
     public static function getMajorVersion(): int
     {
@@ -49,7 +50,7 @@ final class Version
     {
         try {
             return InstalledVersions::getPrettyVersion(self::PLATFORM_VERSION_PACKAGE_NAME);
-        } catch (OutOfBoundsException $e) {
+        } catch (OutOfBoundsException) {
             return null;
         }
     }

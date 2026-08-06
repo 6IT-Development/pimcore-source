@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\QuantityValue\Unit\Listing;
@@ -18,11 +18,12 @@ namespace Pimcore\Model\DataObject\QuantityValue\Unit\Listing;
 use Exception;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\QuantityValue\Unit\Listing;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\QuantityValue\Unit\Listing $model
+ * @property Listing $model
  */
 class Dao extends Model\Listing\Dao\AbstractDao
 {
@@ -47,8 +48,8 @@ class Dao extends Model\Listing\Dao\AbstractDao
     public function getTotalCount(): int
     {
         try {
-            return (int) $this->db->fetchOne('SELECT COUNT(*) FROM '.DataObject\QuantityValue\Unit\Dao::TABLE_NAME.' ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception $e) {
+            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM ' . DataObject\QuantityValue\Unit\Dao::TABLE_NAME . ' ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
+        } catch (Exception) {
             return 0;
         }
     }

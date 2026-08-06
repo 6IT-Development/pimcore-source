@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\Model\Search\Backend;
@@ -42,7 +43,7 @@ class Data extends AbstractModel
     use RecursionBlockingEventDispatchHelperTrait;
 
     // if a word occures more often than this number it will get stripped to keep the search_backend_data table from getting too big
-    const MAX_WORD_OCCURENCES = 3;
+    public const int MAX_WORD_OCCURENCES = 3;
 
     protected ?Data\Id $id = null;
 
@@ -104,7 +105,7 @@ class Data extends AbstractModel
 
     protected string $properties;
 
-    public function __construct(Element\ElementInterface $element = null)
+    public function __construct(?Element\ElementInterface $element = null)
     {
         if ($element instanceof Element\ElementInterface) {
             $this->setDataFromElement($element);
@@ -340,12 +341,12 @@ class Data extends AbstractModel
         $this->properties = '';
         $properties = $element->getProperties();
         foreach ($properties as $nextProperty) {
-            $pData = (string) $nextProperty->getData();
+            $pData = (string)$nextProperty->getData();
             if ($nextProperty->getName() === 'bool') {
                 $pData = $pData ? 'true' : 'false';
             }
 
-            $this->properties .= $nextProperty->getName() . ':' . $pData .' ';
+            $this->properties .= $nextProperty->getName() . ':' . $pData . ' ';
         }
 
         $this->data = '';
@@ -367,13 +368,13 @@ class Data extends AbstractModel
                         }
 
                         ob_start();
-                        $this->data .= strip_tags((string) $editable->frontend()).' ';
+                        $this->data .= strip_tags((string)$editable->frontend()) . ' ';
                         $this->data .= ob_get_clean();
                     }
                 }
                 if ($element instanceof Document\Page) {
                     $this->published = $element->isPublished();
-                    $this->data .= ' '.$element->getTitle().' '.$element->getDescription().' ' . $element->getPrettyUrl();
+                    $this->data .= ' ' . $element->getTitle() . ' ' . $element->getDescription() . ' ' . $element->getPrettyUrl();
                 }
             }
         } elseif ($element instanceof Asset) {
@@ -382,20 +383,20 @@ class Data extends AbstractModel
                 foreach ($elementMetadata as $md) {
                     try {
                         $loader = Pimcore::getContainer()->get('pimcore.implementation_loader.asset.metadata.data');
-                        /** @var \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Data $instance */
+                        /** @var Asset\MetaData\ClassDefinition\Data\Data $instance */
                         $instance = $loader->build($md['type']);
                         $dataForSearchIndex = $instance->getDataForSearchIndex($md['data'], $md);
                         if ($dataForSearchIndex) {
                             $this->data .= ' ' . $dataForSearchIndex;
                         }
-                    } catch (UnsupportedException $e) {
+                    } catch (UnsupportedException) {
                         Logger::error('asset metadata type ' . $md['type'] . ' could not be resolved');
                     }
                 }
             }
 
-            if ($element instanceof Asset\Document && \Pimcore\Document::isAvailable()) {
-                if (\Pimcore\Document::isFileTypeSupported($element->getFilename())) {
+            if ($element instanceof Asset\Document && Pimcore\Document::isAvailable()) {
+                if (Pimcore\Document::isFileTypeSupported($element->getFilename())) {
                     try {
                         $contentText = $element->getText();
                         if ($contentText) {
@@ -405,7 +406,7 @@ class Data extends AbstractModel
                             $this->data .= ' ' . $contentText;
                         }
                     } catch (Exception $e) {
-                        Logger::error((string) $e);
+                        Logger::error((string)$e);
                     }
                 }
             } elseif ($element instanceof Asset\Text) {
@@ -417,7 +418,7 @@ class Data extends AbstractModel
                         $this->data .= ' ' . $contentText;
                     }
                 } catch (Exception $e) {
-                    Logger::error((string) $e);
+                    Logger::error((string)$e);
                 }
             } elseif ($element instanceof Asset\Image) {
                 try {
@@ -430,7 +431,7 @@ class Data extends AbstractModel
                         }
                     }
                 } catch (Exception $e) {
-                    Logger::error((string) $e);
+                    Logger::error((string)$e);
                 }
             }
 
@@ -441,7 +442,7 @@ class Data extends AbstractModel
                 DataObject::setGetInheritedValues(true);
 
                 $this->published = $element->isPublished();
-                foreach ($element->getClass()->getFieldDefinitions() as $key => $value) {
+                foreach ($element->getClass()->getFieldDefinitions() as $value) {
                     $this->data .= ' ' . $value->getDataForSearchIndex($element);
                 }
 
@@ -456,9 +457,9 @@ class Data extends AbstractModel
         // replace all occurrences of @ to # because when using InnoDB @ is reserved for the @distance operator
         $this->data = str_replace('@', '#', $this->data);
 
-        $pathWords = str_replace([ '-', '_', '/', '.', '(', ')'], ' ', $this->getFullPath());
+        $pathWords = str_replace(['-', '_', '/', '.', '(', ')'], ' ', $this->getFullPath());
         $this->data .= ' ' . $pathWords;
-        $this->data = 'ID: ' . $element->getId() . "  \nPath: " . $this->getKey() . "  \n"  . $this->cleanupData($this->data);
+        $this->data = 'ID: ' . $element->getId() . "  \nPath: " . $this->getKey() . "  \n" . $this->cleanupData($this->data);
 
         return $this;
     }
@@ -494,9 +495,7 @@ class Data extends AbstractModel
             }
         }
 
-        $data = implode(' ', $words);
-
-        return $data;
+        return implode(' ', $words);
     }
 
     public static function getForElement(Element\ElementInterface $element): self
@@ -535,7 +534,7 @@ class Data extends AbstractModel
                         $this->rollBack();
                     } catch (Exception $er) {
                         // PDO adapter throws exceptions if rollback fails
-                        Logger::error((string) $er);
+                        Logger::error((string)$er);
                     }
 
                     // we try to start the transaction $maxRetries times again (deadlocks, ...)

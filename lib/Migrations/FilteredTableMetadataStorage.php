@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Migrations;
@@ -34,7 +35,7 @@ final class FilteredTableMetadataStorage implements MetadataStorage
     /**
      * @return $this
      */
-    public function __invoke(DependencyFactory $dependencyFactory): static
+    public function __invoke(DependencyFactory $dependencyFactory): FilteredTableMetadataStorage
     {
         $storage = new TableMetadataStorage(
             $dependencyFactory->getConnection(),
@@ -80,9 +81,9 @@ final class FilteredTableMetadataStorage implements MetadataStorage
         return new ExecutedMigrationsList($filteredMigrations);
     }
 
-    public function complete(ExecutionResult $migration): void
+    public function complete(ExecutionResult $result): void
     {
-        $this->storage->complete($migration);
+        $this->storage->complete($result);
     }
 
     public function reset(): void

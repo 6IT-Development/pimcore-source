@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Console\Traits;
@@ -31,7 +32,7 @@ trait DryRun
      *
      * @return $this
      */
-    protected function configureDryRunOption(string $description = null): static
+    protected function configureDryRunOption(?string $description = null): static
     {
         /** @var Command $command */
         $command = $this;
@@ -55,7 +56,7 @@ trait DryRun
         /** @var Input $input */
         $input = $this->input;
 
-        return (bool) $input->getOption('dry-run');
+        return (bool)$input->getOption('dry-run');
     }
 
     /**

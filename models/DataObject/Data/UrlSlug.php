@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data;
@@ -36,7 +37,7 @@ class UrlSlug implements OwnerAwareFieldInterface
     use ObjectVarTrait;
     use OwnerAwareFieldTrait;
 
-    public const TABLE_NAME = 'object_url_slugs';
+    public const string TABLE_NAME = 'object_url_slugs';
 
     protected int $objectId;
 
@@ -232,7 +233,7 @@ class UrlSlug implements OwnerAwareFieldInterface
                 $slug = self::createFromDataRow($rawItem);
             }
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
 
         RuntimeCache::set($cacheKey, $slug);
@@ -241,9 +242,9 @@ class UrlSlug implements OwnerAwareFieldInterface
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function getAction(): string
     {
@@ -292,7 +293,7 @@ class UrlSlug implements OwnerAwareFieldInterface
                             $fc = $object->$getter();
                             if ($fc instanceof Fieldcollection) {
                                 $index = explode('/', $objectFieldnameParts);
-                                $index = (int) $index[1];
+                                $index = (int)$index[1];
                                 $item = $fc->get($index);
                                 if ($item instanceof AbstractData) {
                                     if ($colDef = Fieldcollection\Definition::getByKey($item->getType())) {
@@ -313,9 +314,7 @@ class UrlSlug implements OwnerAwareFieldInterface
                 }
             } elseif ($this->getOwnertype() === 'objectbrick') {
                 $brickDef = Definition::getByKey($this->getPosition());
-                if ($brickDef) {
-                    $fd = $brickDef->getFieldDefinition($this->getFieldname());
-                }
+                $fd = $brickDef?->getFieldDefinition($this->getFieldname());
             } elseif ($this->getOwnertype() == 'fieldcollection') {
                 $ownerName = $this->getOwnername();
                 $getter = 'get' . ucfirst($ownerName);
@@ -342,7 +341,7 @@ class UrlSlug implements OwnerAwareFieldInterface
             // slug could not be resolved which means that the data model has changed in the meantime, delete me.
             $this->delete();
 
-            throw new Exception('Could not resolve field definition for slug: ' . $this->getSlug(). '. Remove it!');
+            throw new Exception('Could not resolve field definition for slug: ' . $this->getSlug() . '. Remove it!');
         }
 
         return $fd->getAction();
@@ -386,6 +385,6 @@ class UrlSlug implements OwnerAwareFieldInterface
      */
     protected static function getCacheKey(string $path, int $siteId): string
     {
-        return "UrlSlug~~{$path}~~{$siteId}";
+        return "UrlSlug~~$path~~$siteId";
     }
 }

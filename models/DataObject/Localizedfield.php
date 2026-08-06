@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
@@ -50,12 +51,12 @@ final class Localizedfield extends Model\AbstractModel implements
     /**
      * @internal
      */
-    const STRICT_DISABLED = 0;
+    public const int STRICT_DISABLED = 0;
 
     /**
      * @internal
      */
-    const STRICT_ENABLED = true;
+    public const true STRICT_ENABLED = true;
 
     private static bool $getFallbackValues = false;
 
@@ -131,7 +132,7 @@ final class Localizedfield extends Model\AbstractModel implements
         return self::$getFallbackValues;
     }
 
-    public function __construct(array $items = null)
+    public function __construct(?array $items = null)
     {
         if ($items) {
             $this->setItems($items);
@@ -152,7 +153,7 @@ final class Localizedfield extends Model\AbstractModel implements
         return $this->items;
     }
 
-    public function setItems(array $items): static
+    public function setItems(array $items): Localizedfield
     {
         $this->items = $items;
         $this->markFieldDirty('_self');
@@ -233,8 +234,8 @@ final class Localizedfield extends Model\AbstractModel implements
 
         $this->markAllLanguagesAsDirty();
         $this->object = $object;
-        $this->objectId = $object ? $object->getId() : null;
-        $this->setClass($object ? $object->getClass() : null);
+        $this->objectId = $object?->getId();
+        $this->setClass($object?->getClass());
 
         return $this;
     }
@@ -244,7 +245,7 @@ final class Localizedfield extends Model\AbstractModel implements
         return $this->object;
     }
 
-    public function setClass(?ClassDefinition $class): static
+    public function setClass(?ClassDefinition $class): Localizedfield
     {
         $this->class = $class;
 
@@ -265,7 +266,7 @@ final class Localizedfield extends Model\AbstractModel implements
      *
      *
      */
-    public function getLanguage(string $language = null): string
+    public function getLanguage(?string $language = null): string
     {
         if ($language) {
             return $language;
@@ -281,14 +282,14 @@ final class Localizedfield extends Model\AbstractModel implements
 
             if (Pimcore::inAdmin()) {
                 foreach (Tool::getValidLanguages() as $validLocale) {
-                    if (str_starts_with($validLocale, $locale.'_')) {
+                    if (str_starts_with($validLocale, $locale . '_')) {
                         return $validLocale;
                     }
                 }
             }
 
             throw new Exception('Not supported language');
-        } catch (Exception $e) {
+        } catch (Exception) {
             return Tool::getDefaultLanguage();
         }
     }
@@ -319,11 +320,8 @@ final class Localizedfield extends Model\AbstractModel implements
         /** @var Model\DataObject\ClassDefinition\Data\Localizedfields|null $localizedFields */
         $localizedFields = $container->getFieldDefinition('localizedfields');
 
-        if ($localizedFields) {
-            return $localizedFields->getFieldDefinition($name);
-        }
+        return $localizedFields?->getFieldDefinition($name);
 
-        return null;
     }
 
     /**
@@ -391,7 +389,7 @@ final class Localizedfield extends Model\AbstractModel implements
      * @throws Exception
      * @throws Model\Exception\NotFoundException
      */
-    public function getLocalizedValue(string $name, string $language = null, bool $ignoreFallbackLanguage = false): mixed
+    public function getLocalizedValue(string $name, ?string $language = null, bool $ignoreFallbackLanguage = false): mixed
     {
         $data = null;
         $language = $this->getLanguage($language);
@@ -406,9 +404,7 @@ final class Localizedfield extends Model\AbstractModel implements
         if ($fieldDefinition instanceof Model\DataObject\ClassDefinition\Data\CalculatedValue) {
             $valueData = new Model\DataObject\Data\CalculatedValue($fieldDefinition->getName());
             $valueData->setContextualData('localizedfield', 'localizedfields', null, $language, null, null, $fieldDefinition);
-            $data = Service::getCalculatedFieldValue($this->getObject(), $valueData);
-
-            return $data;
+            return Service::getCalculatedFieldValue($this->getObject(), $valueData);
         }
 
         if ($fieldDefinition instanceof LazyLoadingSupportInterface && $fieldDefinition->getLazyLoading() && !$this->_loadedAllLazyData) {
@@ -507,7 +503,7 @@ final class Localizedfield extends Model\AbstractModel implements
      *
      * @throws Exception
      */
-    public function setLocalizedValue(string $name, mixed $value, string $language = null, bool $markFieldAsDirty = true): static
+    public function setLocalizedValue(string $name, mixed $value, ?string $language = null, bool $markFieldAsDirty = true): Localizedfield
     {
         if ($markFieldAsDirty) {
             $this->markFieldDirty('_self');
@@ -515,7 +511,7 @@ final class Localizedfield extends Model\AbstractModel implements
 
         if (self::$strictMode) {
             if (!$language || !in_array($language, Tool::getValidLanguages())) {
-                throw new Exception('Language '.$language.' not accepted in strict mode');
+                throw new Exception('Language ' . $language . ' not accepted in strict mode');
             }
         }
 
@@ -751,9 +747,9 @@ final class Localizedfield extends Model\AbstractModel implements
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     protected function getLazyLoadedFieldNames(): array
     {

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -21,7 +22,7 @@ use Pimcore\Model;
 use Pimcore\Model\Element;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Relation extends Model\Document\Editable implements IdRewriterInterface, EditmodeDataInterface, LazyLoadingInterface
 {
@@ -63,7 +64,7 @@ class Relation extends Model\Document\Editable implements IdRewriterInterface, E
         return 'relation';
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         return [
             'id' => $this->id,
@@ -213,7 +214,7 @@ class Relation extends Model\Document\Editable implements IdRewriterInterface, E
             $el = Element\Service::getElementById($this->type, $this->id);
             if (!$el instanceof Element\ElementInterface) {
                 $sane = false;
-                Logger::notice('Detected insane relation, removing reference to non existent '.$this->type.' with id ['.$this->id.']');
+                Logger::notice('Detected insane relation, removing reference to non existent ' . $this->type . ' with id [' . $this->id . ']');
                 $this->id = null;
                 $this->type = null;
                 $this->subtype = null;
@@ -254,7 +255,7 @@ class Relation extends Model\Document\Editable implements IdRewriterInterface, E
 
     public function getId(): int
     {
-        return (int) $this->id;
+        return (int)$this->id;
     }
 
     public function setSubtype(string $subtype): static

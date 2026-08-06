@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
@@ -51,7 +52,7 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
     /**
      * @param TItem[] $items
      */
-    public function __construct(array $items = [], string $fieldname = null)
+    public function __construct(array $items = [], ?string $fieldname = null)
     {
         if (!empty($items)) {
             $this->setItems($items);
@@ -60,7 +61,7 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
             $this->setFieldname($fieldname);
         }
 
-        $this->markFieldDirty('_self', true);
+        $this->markFieldDirty('_self');
     }
 
     /**
@@ -79,7 +80,7 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
     public function setItems(array $items): static
     {
         $this->items = $items;
-        $this->markFieldDirty('_self', true);
+        $this->markFieldDirty('_self');
 
         return $this;
     }
@@ -97,9 +98,9 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
     }
 
     /**
+     * @return Fieldcollection\Definition[]
      * @internal
      *
-     * @return Fieldcollection\Definition[]
      */
     public function getItemDefinitions(): array
     {
@@ -152,7 +153,7 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
     {
         $this->items[] = $item;
 
-        $this->markFieldDirty('_self', true);
+        $this->markFieldDirty('_self');
     }
 
     public function remove(int $index): void
@@ -160,7 +161,7 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
         if (isset($this->items[$index])) {
             array_splice($this->items, $index, 1);
 
-            $this->markFieldDirty('_self', true);
+            $this->markFieldDirty('_self');
         }
     }
 
@@ -181,13 +182,7 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
             return null;
         }
 
-        foreach ($this->items as $item) {
-            if ($item->getIndex() === $index) {
-                return $item;
-            }
-        }
-
-        return null;
+        return array_find($this->items, fn($item) => $item->getIndex() === $index);
     }
 
     public function getCount(): int
@@ -249,7 +244,7 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
                         'containerKey' => $type,
                         'fieldname' => $fcField,
                         'index' => $index,
-                    ], ];
+                    ],];
 
                 $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
                 DataObject::disableDirtyDetection();

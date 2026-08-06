@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset;
@@ -22,13 +23,14 @@ use Pimcore;
 use Pimcore\Config;
 use Pimcore\Event\FrontendEvents;
 use Pimcore\File;
+use Pimcore\Image\Adapter;
 use Pimcore\Model;
 use Pimcore\Tool;
 use Pimcore\Tool\Storage;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
- * @method \Pimcore\Model\Asset\Dao getDao()
+ * @method Dao getDao()
  */
 class Image extends Model\Asset
 {
@@ -131,9 +133,7 @@ EOT;
             'frontendPath' => $path,
         ]);
         Pimcore::getEventDispatcher()->dispatch($event, FrontendEvents::ASSET_IMAGE_THUMBNAIL);
-        $path = $event->getArgument('frontendPath');
-
-        return $path;
+        return $event->getArgument('frontendPath');
     }
 
     private function getLowQualityPreviewStoragePath(): string
@@ -154,7 +154,7 @@ EOT;
 
         try {
             $dataUri = 'data:image/svg+xml;base64,' . base64_encode(Storage::get('thumbnail')->read($this->getLowQualityPreviewStoragePath()));
-        } catch (Exception $e) {
+        } catch (Exception) {
             $dataUri = null;
         }
 
@@ -192,20 +192,20 @@ EOT;
     }
 
     /**
-     * @internal
-     *
      * @throws Exception
      *
+     * @internal
+     *
      */
-    public static function getImageTransformInstance(): ?\Pimcore\Image\Adapter
+    public static function getImageTransformInstance(): ?Adapter
     {
         try {
-            $image = \Pimcore\Image::getInstance();
-        } catch (Exception $e) {
+            $image = Pimcore\Image::getInstance();
+        } catch (Exception) {
             $image = null;
         }
 
-        if (!$image instanceof \Pimcore\Image\Adapter) {
+        if (!$image instanceof Adapter) {
             throw new Exception("Couldn't get instance of image tranform processor.");
         }
 
@@ -228,7 +228,7 @@ EOT;
     /**
      * @throws Exception
      */
-    public function getDimensions(string $path = null, bool $force = false): ?array
+    public function getDimensions(?string $path = null, bool $force = false): ?array
     {
         if (!$force) {
             $width = $this->getCustomSetting('imageWidth');
@@ -343,7 +343,7 @@ EOT;
     public function isVectorGraphic(): bool
     {
         // we use a simple file-extension check, for performance reasons
-        if (preg_match("@\.(svgz?|eps|pdf|ps|ai|indd)$@", $this->getFilename())) {
+        if (preg_match('@\.(svgz?|eps|pdf|ps|ai|indd)$@', $this->getFilename())) {
             return true;
         }
 
@@ -392,7 +392,7 @@ EOT;
              *
              * @see http://it.php.net/manual/en/function.imagecreatefromgif.php#104473
              */
-            $numberOfFrames = preg_match_all('#\x00\x21\xF9\x04.{4}\x00(\x2C|\x21)#s', $fileContent, $matches);
+            $numberOfFrames = preg_match_all('#\x00\x21\xF9\x04.{4}\x00([\x2C\x21])#s', $fileContent);
 
             $isAnimated = $numberOfFrames > 1;
         }

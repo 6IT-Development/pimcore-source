@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Helper;
@@ -19,6 +20,9 @@ namespace Pimcore\Tests\Support\Helper;
 use Exception;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields;
+use Pimcore\Model\DataObject\ClassDefinition\Layout\Panel;
+use Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel;
 use Pimcore\Model\DataObject\Fieldcollection\Definition;
 
 class Model extends AbstractDefinitionHelper
@@ -38,9 +42,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $csField = $this->createDataChild('classificationstore', 'csstore');
@@ -65,9 +69,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('input'));
@@ -87,17 +91,17 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $panel->addChild($this->createDataChild('advancedManyToManyRelation', 'advancedRelations')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
 
             $lFields->addChild($this->createDataChild('manyToManyObjectRelation', 'lobjects')
@@ -116,14 +120,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $lFields->addChild($this->createDataChild('advancedManyToManyRelation', 'ladvancedRelations')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $lFields->addChild($this->createDataChild('manyToManyObjectRelation', 'lobjects')
@@ -149,14 +153,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $block->addChild($this->createDataChild('advancedManyToManyRelation', 'blockadvancedRelations')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $blockLazyLoaded = new ClassDefinition\Data\Block();
@@ -179,14 +183,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $blockLazyLoaded->addChild($this->createDataChild('advancedManyToManyRelation', 'blockadvancedRelationsLazyLoaded')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $panel->addChild($lFields);
@@ -216,9 +220,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('input', 'someAttribute'));
@@ -227,7 +231,7 @@ class Model extends AbstractDefinitionHelper
             $panel->addChild($this->createDataChild('input', 'someAttribute3'));
             $panel->addChild($this->createDataChild('input', 'someAttribute4'));
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
             $lFields->addChild($this->createDataChild('input', 'xsomeAttribute'));
             $lFields->addChild($this->createDataChild('input', 'xsomeAttribute1'));
@@ -254,37 +258,37 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('advancedManyToManyRelation', 'onlyOneManyToMany')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses([])
                 ->setDocumentsAllowed(true)->setAssetsAllowed(true)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $panel->addChild($this->createDataChild('advancedManyToManyRelation', 'multipleManyToMany')
                 ->setAllowMultipleAssignments(true)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses([])
                 ->setDocumentsAllowed(true)->setAssetsAllowed(true)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $panel->addChild($this->createDataChild('advancedManyToManyObjectRelation', 'onlyOneManyToManyObject')
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $panel->addChild($this->createDataChild('advancedManyToManyObjectRelation', 'multipleManyToManyObject')
                 ->setAllowMultipleAssignments(true)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $root->addChild($rootPanel);
@@ -305,9 +309,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $block = new ClassDefinition\Data\Block();
@@ -321,10 +325,10 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
 
             $lblock = new ClassDefinition\Data\Block();
@@ -338,7 +342,7 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['unittest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'meta', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $lFields->addChild($lblock);
@@ -363,15 +367,15 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new ClassDefinition\Layout\Panel();
-            $panel = (new ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel();
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $link = new ClassDefinition\Data\Link();
             $link->setName('testlink');
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
 
             $llink = new ClassDefinition\Data\Link();
@@ -399,9 +403,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $calculatedValue = $this->createDataChild('calculatedValue');
@@ -441,10 +445,10 @@ class Model extends AbstractDefinitionHelper
 
             $panel->addChild($this->createDataChild('gender'));
 
-            $panel->addChild($this->createDataChild('geopoint', 'point', false));
-            $panel->addChild($this->createDataChild('geobounds', 'bounds', false));
-            $panel->addChild($this->createDataChild('geopolygon', 'polygon', false));
-            $panel->addChild($this->createDataChild('geopolyline', 'polyline', false));
+            $panel->addChild($this->createDataChild('geopoint', 'point'));
+            $panel->addChild($this->createDataChild('geobounds', 'bounds'));
+            $panel->addChild($this->createDataChild('geopolygon', 'polygon'));
+            $panel->addChild($this->createDataChild('geopolyline', 'polyline'));
 
             $panel->addChild($this->createDataChild('imageGallery'));
             $panel->addChild($this->createDataChild('input'));
@@ -485,8 +489,8 @@ class Model extends AbstractDefinitionHelper
             $panel->addChild($this->createDataChild('advancedManyToManyObjectRelation', 'objectswithmetadata')
                 ->setAllowedClassId($name)
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'meta1', 'type' => 'text', 'label' => 'label1'],
-                    ['position' => 2, 'key' => 'meta2', 'type' => 'text', 'label' => 'label2'], ]));
+                ->setColumns([['position' => 1, 'key' => 'meta1', 'type' => 'text', 'label' => 'label1'],
+                    ['position' => 2, 'key' => 'meta2', 'type' => 'text', 'label' => 'label2'],]));
 
             $panel->addChild($this->createDataChild('lastname'));
 
@@ -496,11 +500,11 @@ class Model extends AbstractDefinitionHelper
             $passwordField->setAlgorithm(ClassDefinition\Data\Password::HASH_FUNCTION_PASSWORD_HASH);
             $panel->addChild($passwordField);
 
-            $panel->addChild($this->createDataChild('rgbaColor', 'rgbaColor', false));
+            $panel->addChild($this->createDataChild('rgbaColor', 'rgbaColor'));
 
             $panel->addChild($this->createDataChild('select')->setOptions([
                 ['key' => 'Selection 1', 'value' => '1'],
-                ['key' => 'Selection 2', 'value' => '2'], ]));
+                ['key' => 'Selection 2', 'value' => '2'],]));
 
             $panel->addChild($this->createDataChild('slider'));
 
@@ -509,7 +513,7 @@ class Model extends AbstractDefinitionHelper
 
             $panel->addChild($this->createDataChild('wysiwyg'));
 
-            $panel->addChild($this->createDataChild('video', 'video', false));
+            $panel->addChild($this->createDataChild('video', 'video'));
 
             $panel->addChild($this->createDataChild('multiselect')->setOptions([
                 ['key' => 'Katze', 'value' => 'cat'],
@@ -530,7 +534,7 @@ class Model extends AbstractDefinitionHelper
             $panel->addChild($this->createDataChild('checkbox'));
             $panel->addChild($this->createDataChild('booleanSelect'));
             $panel->addChild($this->createDataChild('table'));
-            $panel->addChild($this->createDataChild('structuredTable', 'structuredtable', false)
+            $panel->addChild($this->createDataChild('structuredTable', 'structuredtable')
                 ->setCols([
                     ['position' => 1, 'key' => 'col1', 'type' => 'number', 'label' => 'collabel1'],
                     ['position' => 2, 'key' => 'col2', 'type' => 'text', 'label' => 'collabel2'],
@@ -550,7 +554,7 @@ class Model extends AbstractDefinitionHelper
             $panel->addChild($this->createDataChild('urlSlug')->setAction('MyController::myAction'));
             $panel->addChild($this->createDataChild('urlSlug', 'urlSlug2')->setAction('MyController::myAction'));
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
             $lFields->addChild($this->createDataChild('input', 'linput'));
             $lFields->addChild($this->createDataChild('textarea', 'ltextarea'));
@@ -562,11 +566,11 @@ class Model extends AbstractDefinitionHelper
             $lFields->addChild($this->createDataChild('time', 'ltime'));
             $lFields->addChild($this->createDataChild('select', 'lselect')->setOptions([
                 ['key' => 'one', 'value' => '1'],
-                ['key' => 'two', 'value' => '2'], ]));
+                ['key' => 'two', 'value' => '2'],]));
 
             $lFields->addChild($this->createDataChild('multiselect', 'lmultiselect')->setOptions([
                 ['key' => 'one', 'value' => '1'],
-                ['key' => 'two', 'value' => '2'], ]));
+                ['key' => 'two', 'value' => '2'],]));
             $lFields->addChild($this->createDataChild('countrymultiselect', 'lcountries'));
             $lFields->addChild($this->createDataChild('languagemultiselect', 'llanguages'));
             $lFields->addChild($this->createDataChild('table', 'ltable'));
@@ -603,18 +607,18 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$class = $cm->getClass($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
             $lFields->addChild($this->createDataChild('input'));
             $lFields->addChild($this->createDataChild('textarea'));
             $lFields->addChild($this->createDataChild('wysiwyg'));
 
-            $otherPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('Layout');
+            $otherPanel = new Panel()->setName('Layout');
             $otherPanel->addChild($this->createDataChild('input', 'normalinput'));
             $otherPanel->addChild($this->createDataChild('image', 'yx'));
             $otherPanel->addChild($this->createDataChild('slider'));
@@ -667,9 +671,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$definition = $cm->getFieldcollection($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('input', 'fieldinput1'));
@@ -687,14 +691,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses([])
                 ->setDocumentsAllowed(true)->setAssetsAllowed(true)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $panel->addChild($this->createDataChild('manyToManyRelation', 'fieldLazyRelation')
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses([])
                 ->setDocumentsAllowed(true)->setAssetsAllowed(true)->setObjectsAllowed(true));
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
 
             $lFields->addChild($this->createDataChild('Input', 'linput'));
@@ -723,9 +727,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$definition = $cm->getFieldcollection($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('manyToManyObjectRelation', 'objects')
@@ -744,14 +748,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $panel->addChild($this->createDataChild('advancedManyToManyRelation', 'advancedRelations')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $root->addChild($rootPanel);
@@ -772,14 +776,14 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$definition = $cm->getFieldcollection($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('input', 'normalInput'));
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
 
             $lFields->addChild($this->createDataChild('input', 'linput'));
@@ -800,14 +804,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $lFields->addChild($this->createDataChild('advancedManyToManyRelation', 'ladvancedRelations')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $panel->addChild($lFields);
@@ -830,9 +834,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$definition = $cm->getObjectbrick($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('manyToManyObjectRelation', 'objects')
@@ -851,14 +855,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $panel->addChild($this->createDataChild('advancedManyToManyRelation', 'advancedRelations')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'metadataUpper', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $root->addChild($rootPanel);
@@ -882,12 +886,12 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$definition = $cm->getObjectbrick($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
-            $lFields = new \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields();
+            $lFields = new Localizedfields();
             $lFields->setName('localizedfields');
 
             $lFields->addChild($this->createDataChild('manyToManyObjectRelation', 'lobjects')
@@ -908,14 +912,14 @@ class Model extends AbstractDefinitionHelper
                 ->setAllowMultipleAssignments(false)
                 ->setAllowedClassId('RelationTest')
                 ->setClasses([])
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'metadata'],
                 ]));
 
             $lFields->addChild($this->createDataChild('advancedManyToManyRelation', 'ladvancedRelations')
                 ->setAllowMultipleAssignments(false)
                 ->setDocumentTypes([])->setAssetTypes([])->setClasses(['RelationTest'])
                 ->setDocumentsAllowed(false)->setAssetsAllowed(false)->setObjectsAllowed(true)
-                ->setColumns([ ['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'meta'],
+                ->setColumns([['position' => 1, 'key' => 'metadata', 'type' => 'text', 'label' => 'meta'],
                 ]));
 
             $panel->addChild($lFields);
@@ -940,9 +944,9 @@ class Model extends AbstractDefinitionHelper
         $cm = $this->getClassManager();
 
         if (!$definition = $cm->getObjectbrick($name)) {
-            $root = new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel('root');
-            $panel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Panel())->setName('MyLayout');
-            $rootPanel = (new \Pimcore\Model\DataObject\ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $root = new Panel('root');
+            $panel = new Panel()->setName('MyLayout');
+            $rootPanel = new Tabpanel()->setName('Layout');
             $rootPanel->addChild($panel);
 
             $panel->addChild($this->createDataChild('input', 'brickinput'));
@@ -1006,7 +1010,7 @@ class Model extends AbstractDefinitionHelper
     {
         $this->setupQuantityValueUnits();
 
-        $cm = $this->getClassManager();
+        $this->getClassManager();
 
         $this->setupUnitDefinitions();
         $this->setupFieldcollection_Unittestfieldcollection();

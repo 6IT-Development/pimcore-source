@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -36,7 +37,7 @@ final class ElementDescriptor
         return $this->type;
     }
 
-    public function setType(string $type): static
+    public function setType(string $type): ElementDescriptor
     {
         $this->type = $type;
 
@@ -48,7 +49,7 @@ final class ElementDescriptor
         return $this->id;
     }
 
-    public function setId(int $id): static
+    public function setId(int $id): ElementDescriptor
     {
         $this->id = $id;
 

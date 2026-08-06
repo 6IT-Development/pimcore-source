@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection;
@@ -66,35 +67,35 @@ final class ConfigurationHelper
                 ->end()
                 ->end()
                 ->arrayNode(LocationAwareConfigRepository::READ_TARGET)
-                    ->addDefaultsIfNotSet()
-                    ->children()
-                        ->enumNode(LocationAwareConfigRepository::TYPE)
-                            ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE])
-                            ->defaultValue(null)
-                        ->end()
-                        ->arrayNode(LocationAwareConfigRepository::OPTIONS)
-                            ->defaultValue([LocationAwareConfigRepository::DIRECTORY => null])
-                            ->variablePrototype()->end()
-                        ->end()
-                    ->end()
+                ->addDefaultsIfNotSet()
+                ->children()
+                ->enumNode(LocationAwareConfigRepository::TYPE)
+                ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE])
+                ->defaultValue(null)
                 ->end()
-            ->end();
+                ->arrayNode(LocationAwareConfigRepository::OPTIONS)
+                ->defaultValue([LocationAwareConfigRepository::DIRECTORY => null])
+                ->variablePrototype()->end()
+                ->end()
+                ->end()
+                ->end()
+                ->end();
         } else {
             $node->
             arrayNode($name)
                 ->addDefaultsIfNotSet()
                 ->children()
-                    ->arrayNode(LocationAwareConfigRepository::WRITE_TARGET)
-                    ->addDefaultsIfNotSet()
-                    ->children()
-                        ->enumNode(LocationAwareConfigRepository::TYPE)
-                        ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE, LocationAwareConfigRepository::LOCATION_DISABLED])
-                        ->defaultValue('symfony-config')
-                    ->end()
-                    ->arrayNode(LocationAwareConfigRepository::OPTIONS)
-                    ->defaultValue([LocationAwareConfigRepository::DIRECTORY => $folder])
-                    ->variablePrototype()->end()
-                    ->end()
+                ->arrayNode(LocationAwareConfigRepository::WRITE_TARGET)
+                ->addDefaultsIfNotSet()
+                ->children()
+                ->enumNode(LocationAwareConfigRepository::TYPE)
+                ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE, LocationAwareConfigRepository::LOCATION_DISABLED])
+                ->defaultValue('symfony-config')
+                ->end()
+                ->arrayNode(LocationAwareConfigRepository::OPTIONS)
+                ->defaultValue([LocationAwareConfigRepository::DIRECTORY => $folder])
+                ->variablePrototype()->end()
+                ->end()
                 ->end();
         }
     }
@@ -106,7 +107,7 @@ final class ConfigurationHelper
         $finder = new Finder();
 
         if (is_dir($configPath)) {
-            $dirs[]= $configPath;
+            $dirs[] = $configPath;
         }
 
         if (empty($dirs)) {

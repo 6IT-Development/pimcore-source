@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -100,7 +101,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
      *
      *
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         $result = [];
 
@@ -150,9 +151,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
                 $result[] = $resultElement;
             }
         }
-        $result = Serialize::serialize($result);
-
-        return $result;
+        return Serialize::serialize($result);
     }
 
     /**
@@ -160,7 +159,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
      *
      *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if ($data) {
             $count = 0;
@@ -169,7 +168,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
             //https://github.com/pimcore/pimcore/issues/9973
             if (str_contains($data, ':" * ')) {
                 $data = preg_replace_callback('!s:(\d+):" \* (.*?)";!', function ($match) {
-                    return ($match[1] == strlen($match[2])) ? $match[0] : 's:' . strlen($match[2]) .   ':"' . $match[2] . '";';
+                    return ($match[1] == strlen($match[2])) ? $match[0] : 's:' . strlen($match[2]) . ':"' . $match[2] . '";';
                 }, $data);
             }
 
@@ -223,7 +222,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
                                 'fieldname' => $this->getName(),
                                 'index' => $count,
                                 'containerKey' => $this->getName(),
-                                'classId' => $object ? $object->getClassId() : null, ]);
+                                'classId' => $object?->getClassId(),]);
                             $blockElementRaw['data'] = $data;
                         }
                     }
@@ -249,7 +248,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
      *
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
 
         $result = [];
@@ -293,7 +292,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
      *
      *
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         $result = [];
         $count = 0;
@@ -382,9 +381,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
                                 $item = $items[$originalIndex];
 
                                 $getter = 'get' . ucfirst($this->getName());
-                                $data = $item->$getter();
-
-                                return $data;
+                                return $item->$getter();
                             }
                         } else {
                             return null;
@@ -406,9 +403,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
 
                         if ($brickData) {
                             $blockGetter = $params['blockGetter'];
-                            $data = $brickData->$blockGetter();
-
-                            return $data;
+                            return $brickData->$blockGetter();
                         }
                     }
                 }
@@ -423,7 +418,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
      *
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return $this->getDiffVersionPreview($data, $object, $params)['html'];
     }
@@ -438,13 +433,11 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
         return true;
     }
 
-    /** Generates a pretty version preview (similar to getVersionPreview) can be either HTML or
+    /**
+     * Generates a pretty version preview (similar to getVersionPreview) can be either HTML or
      * a image URL. See the https://github.com/pimcore/object-merger bundle documentation for details
-     *
-     * @param DataObject\Concrete|null $object
-     *
      */
-    public function getDiffVersionPreview(?array $data, Concrete $object = null, array $params = []): array
+    public function getDiffVersionPreview(?array $data, ?Concrete $object = null, array $params = []): array
     {
         $html = '';
         if (is_array($data)) {
@@ -455,11 +448,11 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
                     continue;
                 }
 
-                $html .= '<tr><th><b>'.$index.'</b></th><th>&nbsp;</th><th>&nbsp;</th></tr>';
+                $html .= '<tr><th><b>' . $index . '</b></th><th>&nbsp;</th><th>&nbsp;</th></tr>';
 
                 foreach ($this->getFieldDefinitions() as $fieldDefinition) {
                     $title = !empty($fieldDefinition->title) ? $fieldDefinition->title : $fieldDefinition->getName();
-                    $html .= '<tr><td>&nbsp;</td><td>'.$title.'</td><td>';
+                    $html .= '<tr><td>&nbsp;</td><td>' . $title . '</td><td>';
 
                     $blockElement = $item[$fieldDefinition->getName()] ?? null;
                     if ($blockElement instanceof DataObject\Data\BlockElement) {
@@ -721,7 +714,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
 
                             // the localized field needs at least the containerType as this is important
                             // for lazy loading
-                            $context = $itemElementData->getContext() ? $itemElementData->getContext() : [];
+                            $context = $itemElementData->getContext() ?: [];
                             $context['containerType'] = 'block';
                             $context['containerKey'] = $this->getName();
                             $itemElementData->setContext($context);
@@ -734,11 +727,11 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
         return $data;
     }
 
-    public function save(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function save(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
     }
 
-    public function load(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): mixed
+    public function load(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): ?array
     {
         $field = $this->getName();
         $db = Db::get();
@@ -790,11 +783,11 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
         return $data;
     }
 
-    public function delete(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function delete(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
     }
 
-    public function preGetData(mixed $container, array $params = []): mixed
+    public function preGetData(mixed $container, array $params = []): array
     {
         $data = null;
         $params['owner'] = $container;
@@ -887,7 +880,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
                             $data = $blockElement->getData();
 
                             if ($data instanceof DataObject\Localizedfield && $fd instanceof Localizedfields) {
-                                foreach ($data->getInternalData() as $language => $fields) {
+                                foreach ($data->getInternalData() as $fields) {
                                     foreach ($fields as $fieldName => $values) {
                                         $lfd = $fd->getFieldDefinition($fieldName);
                                         if ($lfd instanceof ManyToManyRelation || $lfd instanceof ManyToManyObjectRelation) {
@@ -984,7 +977,7 @@ class Block extends Data implements CustomResourcePersistingInterface, ResourceP
 
     public function getPhpdocReturnType(): ?string
     {
-        return '\\' .DataObject\Data\BlockElement::class . '[][]';
+        return '\\' . DataObject\Data\BlockElement::class . '[][]';
     }
 
     public function normalize(mixed $value, array $params = []): ?array

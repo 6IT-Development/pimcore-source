@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\HttpKernel\BundleCollection;
@@ -85,10 +85,10 @@ class BundleCollection
         $items = array_values($this->items);
 
         if (null !== $environment) {
-            $items = array_filter($items, static fn (ItemInterface $item) => $item->matchesEnvironment($environment));
+            $items = array_filter($items, static fn(ItemInterface $item) => $item->matchesEnvironment($environment));
         }
 
-        usort($items, static fn (ItemInterface $a, ItemInterface $b) => $b->getPriority() <=> $a->getPriority());
+        usort($items, static fn(ItemInterface $a, ItemInterface $b) => $b->getPriority() <=> $a->getPriority());
 
         return $items;
     }
@@ -101,7 +101,7 @@ class BundleCollection
     public function getIdentifiers(?string $environment = null): array
     {
         return array_map(
-            static fn (ItemInterface $item): string => $item->getBundleIdentifier(),
+            static fn(ItemInterface $item): string => $item->getBundleIdentifier(),
             $this->getItems($environment),
         );
     }
@@ -114,7 +114,7 @@ class BundleCollection
     public function getBundles(string $environment): array
     {
         return array_map(
-            static fn (ItemInterface $item): BundleInterface => $item->getBundle(),
+            static fn(ItemInterface $item): BundleInterface => $item->getBundle(),
             $this->getItems($environment),
         );
     }
@@ -122,9 +122,9 @@ class BundleCollection
     /**
      * Adds a bundle
      *
+     * @return $this
      * @throws InvalidArgumentException
      *
-     * @return $this
      */
     public function addBundle(BundleInterface|string $bundle, int $priority = 0, array $environments = []): static
     {

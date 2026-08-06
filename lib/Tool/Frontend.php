@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -63,15 +64,7 @@ final class Frontend
 
     public static function getSiteIdForDocument(Document $document): ?int
     {
-        $siteMapping = self::getSiteMapping();
-
-        foreach ($siteMapping as $sitePath => $id) {
-            if (str_starts_with($document->getRealFullPath() . '/', $sitePath . '/')) {
-                return $id;
-            }
-        }
-
-        return null;
+        return array_find(self::getSiteMapping(), fn($id, $sitePath) => str_starts_with($document->getRealFullPath() . '/', $sitePath . '/'));
     }
 
     private static function getSiteMapping(): array

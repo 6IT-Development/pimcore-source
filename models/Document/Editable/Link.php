@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -23,7 +24,7 @@ use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Link extends Model\Document\Editable implements IdRewriterInterface, EditmodeDataInterface
 {
@@ -40,7 +41,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
         return 'link';
     }
 
-    public function getData(): mixed
+    public function getData(): ?array
     {
         // update path if internal link
         $this->updatePathFromInternal(true);
@@ -60,15 +61,13 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
     {
         // we don't want the class attribute being applied to the editable container element (<div>, only to the <a> tag inside
         // the default behavior of the parent method is to include the "class" attribute
-        $classes = [
+        return [
             'pimcore_editable',
             'pimcore_editable_' . $this->getType(),
         ];
-
-        return $classes;
     }
 
-    public function frontend()
+    public function frontend(): string
     {
         $url = $this->getHref();
 
@@ -88,7 +87,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 unset($this->config['textSuffix']);
             }
 
-            if (isset($this->config['noText']) && $this->config['noText'] == true) {
+            if (isset($this->config['noText']) && $this->config['noText']) {
                 $noText = true;
                 unset($this->config['noText']);
             }
@@ -106,7 +105,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
             foreach ($availableAttribs as $key => $value) {
                 if (is_string($value) || is_numeric($value)) {
                     if (!empty($this->data[$key]) && !empty($this->config[$key])) {
-                        $attribs[] = $key.'="'. htmlspecialchars($this->data[$key]) .' '. htmlspecialchars($this->config[$key]) .'"';
+                        $attribs[] = $key . '="' . htmlspecialchars($this->data[$key]) . ' ' . htmlspecialchars($this->config[$key]) . '"';
                     } elseif ($value) {
                         $attribs[] = (is_string($value)) ?
                             $key . '="' . htmlspecialchars($value) . '"' :
@@ -121,7 +120,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 $text = htmlspecialchars($disabledText ? $url : ($this->data['text'] ?? $url));
             }
 
-            return '<a href="'.$url.'" '.implode(' ', $attribs).'>' . $prefix . $text . $suffix . '</a>';
+            return '<a href="' . $url . '" ' . implode(' ', $attribs) . '>' . $prefix . $text . $suffix . '</a>';
         }
 
         return '';
@@ -136,8 +135,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 if (!$doc) {
                     $sane = false;
                     Logger::notice(
-                        'Detected insane relation, removing reference to non existent document with id ['.$this->getDocumentId(
-                        ).']'
+                        'Detected insane relation, removing reference to non existent document with id [' . $this->getDocumentId() . ']'
                     );
                     $this->data = null;
                 }
@@ -146,8 +144,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 if (!$asset) {
                     $sane = false;
                     Logger::notice(
-                        'Detected insane relation, removing reference to non existent asset with id ['.$this->getDocumentId(
-                        ).']'
+                        'Detected insane relation, removing reference to non existent asset with id [' . $this->getDocumentId() . ']'
                     );
                     $this->data = null;
                 }
@@ -156,8 +153,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 if (!$object) {
                     $sane = false;
                     Logger::notice(
-                        'Detected insane relation, removing reference to non existent object with id ['.$this->getDocumentId(
-                        ).']'
+                        'Detected insane relation, removing reference to non existent object with id [' . $this->getDocumentId() . ']'
                     );
                     $this->data = null;
                 }
@@ -359,7 +355,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
             if ((int)$this->data['internalId'] > 0) {
                 if ($this->data['internalType'] == 'document') {
                     if ($doc = Document::getById($this->data['internalId'])) {
-                        $key = 'document_'.$doc->getId();
+                        $key = 'document_' . $doc->getId();
 
                         $dependencies[$key] = [
                             'id' => $doc->getId(),

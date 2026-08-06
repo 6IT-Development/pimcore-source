@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Extension\Bundle;
@@ -56,11 +56,12 @@ class PimcoreBundleManager
     protected ?array $manuallyRegisteredBundles = null;
 
     public function __construct(
-        PimcoreBundleLocator $bundleLocator,
-        Kernel $kernel,
+        PimcoreBundleLocator     $bundleLocator,
+        Kernel                   $kernel,
         EventDispatcherInterface $dispatcher,
-        RouterInterface $router
-    ) {
+        RouterInterface          $router
+    )
+    {
         $this->bundleLocator = $bundleLocator;
         $this->kernel = $kernel;
         $this->dispatcher = $dispatcher;
@@ -109,7 +110,7 @@ class PimcoreBundleManager
     public function getAvailableBundles(): array
     {
         if (null === $this->availableBundles) {
-            $bundles = $this->getManuallyRegisteredBundleNames(false);
+            $bundles = $this->getManuallyRegisteredBundleNames();
 
             foreach ($this->bundleLocator->findBundles() as $locatedBundle) {
                 if (!in_array($locatedBundle, $bundles)) {
@@ -217,10 +218,10 @@ class PimcoreBundleManager
 
         $resolver->setNormalizer('environments', function (Options $options, $value) {
             // normalize to string and trim
-            $value = array_map(fn ($item) => trim((string) $item), $value);
+            $value = array_map(fn($item) => trim((string)$item), $value);
 
             // remove empty values
-            return array_filter($value, fn ($item) => !empty($item));
+            return array_filter($value, fn($item) => !empty($item));
         });
 
         self::$optionsResolver = $resolver;
@@ -282,7 +283,7 @@ class PimcoreBundleManager
 
         $this->validateBundleIdentifier($identifier);
 
-        return in_array($identifier, $this->getManuallyRegisteredBundleNames(false));
+        return in_array($identifier, $this->getManuallyRegisteredBundleNames());
     }
 
     protected function loadBundleInstaller(PimcoreBundleInterface $bundle, bool $throwException = false): ?Installer\InstallerInterface
@@ -454,7 +455,7 @@ class PimcoreBundleManager
      *
      * @return string[]
      */
-    protected function resolvePaths(string $type, string $mode = null): array
+    protected function resolvePaths(string $type, ?string $mode = null): array
     {
         $type = ucfirst($type);
 

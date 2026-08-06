@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance\Tasks;
@@ -39,11 +40,7 @@ class HousekeepingTask implements TaskInterface
 
     public function execute(): void
     {
-        foreach (['dev'] as $environment) {
-            $profilerDir = sprintf('%s/%s/profiler', PIMCORE_SYMFONY_CACHE_DIRECTORY, $environment);
-
-            $this->deleteFilesInFolderOlderThanSeconds($profilerDir, $this->profilerTime);
-        }
+        $this->deleteFilesInFolderOlderThanSeconds(sprintf('%s/dev/profiler', PIMCORE_SYMFONY_CACHE_DIRECTORY), $this->profilerTime);
     }
 
     private function deleteFilesInFolderOlderThanSeconds(string $folder, int $seconds): void
@@ -53,7 +50,7 @@ class HousekeepingTask implements TaskInterface
         }
 
         $directory = new RecursiveDirectoryIterator($folder);
-        $filter = new RecursiveCallbackFilterIterator($directory, function (SplFileInfo $current, $key, $iterator) use ($seconds) {
+        $filter = new RecursiveCallbackFilterIterator($directory, function (SplFileInfo $current) use ($seconds) {
             if (strpos($current->getFilename(), '-low-quality-preview.svg')) {
                 // do not delete low quality image previews
                 return false;

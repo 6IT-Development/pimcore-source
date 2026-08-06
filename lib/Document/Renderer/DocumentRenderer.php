@@ -11,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Renderer;
 
 use Exception;
+use Pimcore\Config;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
 use Pimcore\Http\RequestHelper;
@@ -48,13 +49,14 @@ class DocumentRenderer implements DocumentRendererInterface
     private LocaleServiceInterface $localeService;
 
     public function __construct(
-        RequestHelper $requestHelper,
-        ActionRenderer $actionRenderer,
+        RequestHelper             $requestHelper,
+        ActionRenderer            $actionRenderer,
         FragmentRendererInterface $fragmentRenderer,
-        DocumentRouteHandler $documentRouteHandler,
-        EventDispatcherInterface $eventDispatcher,
-        LocaleServiceInterface $localeService
-    ) {
+        DocumentRouteHandler      $documentRouteHandler,
+        EventDispatcherInterface  $eventDispatcher,
+        LocaleServiceInterface    $localeService
+    )
+    {
         $this->requestHelper = $requestHelper;
         $this->actionRenderer = $actionRenderer;
         $this->fragmentRenderer = $fragmentRenderer;
@@ -91,7 +93,7 @@ class DocumentRenderer implements DocumentRendererInterface
 
         try {
             $request = $this->requestHelper->getCurrentRequest();
-        } catch (Exception $e) {
+        } catch (Exception) {
 
             $host = null;
             $url = $document->getFullPath();
@@ -107,7 +109,7 @@ class DocumentRenderer implements DocumentRendererInterface
         }
 
         if ($isStaticPageGenerator) {
-            $headers = \Pimcore\Config::getSystemConfiguration('documents')['static_page_generator']['headers'];
+            $headers = Config::getSystemConfiguration('documents')['static_page_generator']['headers'];
             foreach ($headers as $header) {
                 $request->headers->set($header['name'], $header['value']);
             }

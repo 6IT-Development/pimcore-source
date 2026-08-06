@@ -9,12 +9,13 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\UuidBundle;
 
+use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 
 class Installer extends SettingsStoreAwareInstaller
@@ -34,10 +35,10 @@ class Installer extends SettingsStoreAwareInstaller
     private function runSqlQueries(array $sqlFileNames): void
     {
         $sqlPath = __DIR__ . '/Resources/';
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath.$fileName);
+            $statement = file_get_contents($sqlPath . $fileName);
             $db->executeQuery($statement);
         }
     }

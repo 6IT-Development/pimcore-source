@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\HttpKernel\CacheWarmer;
@@ -86,7 +87,7 @@ class PimcoreCoreCacheWarmer implements CacheWarmerInterface
     private function dataObjectClasses(array &$classes): void
     {
         $objectClassesFolder = PIMCORE_CLASS_DEFINITION_DIRECTORY;
-        $files = glob($objectClassesFolder.'/*.php');
+        $files = glob($objectClassesFolder . '/*.php');
 
         foreach ($files as $file) {
             $className = DataObject::class . '\\' . preg_replace('/^definition_(.*)\.php$/', '$1', basename($file));

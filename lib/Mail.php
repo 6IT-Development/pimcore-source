@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -30,6 +31,7 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\Header\Headers;
 use Symfony\Component\Mime\Header\MailboxListHeader;
 use Symfony\Component\Mime\Part\AbstractPart;
+use Twig\Environment;
 use Twig\Extension\EscaperExtension;
 use Twig\Sandbox\SecurityError;
 
@@ -57,7 +59,7 @@ class Mail extends Email
     /**
      * Contains the dynamic Params for the Twig engine
      *
-     * @var mixed[]
+     * @var array
      */
     private array $params = [];
 
@@ -124,7 +126,7 @@ class Mail extends Email
      * @param array|Headers|null $headers
      * @param AbstractPart|null $body
      */
-    public function __construct($headers = null, $body = null, string $contentType = null)
+    public function __construct($headers = null, ?AbstractPart $body = null, ?string $contentType = null)
     {
         if (is_array($headers)) {
             $options = $headers;
@@ -315,7 +317,7 @@ class Mail extends Email
     /**
      * Returns the parameters which were set with "setParams" or "setParam"
      *
-     * @return mixed[]
+     * @return array
      */
     public function getParams(): array
     {
@@ -372,30 +374,30 @@ class Mail extends Email
     /**
      * Sets the settings which are defined in the Document Settings (from,to,cc,bcc,replyTo)
      *
-     * @return $this Provides fluent interface
+     * @return void Provides fluent interface
      */
-    private function setDocumentSettings(): static
+    private function setDocumentSettings(): void
     {
         $document = $this->getDocument();
 
         if ($document instanceof Model\Document\Email) {
             if (!$this->recipientsCleared) {
-                $to = \Pimcore\Helper\Mail::parseEmailAddressField($document->getTo());
+                $to = MailHelper::parseEmailAddressField($document->getTo());
                 foreach ($to as $toEntry) {
                     $this->addTo(new Address($toEntry['email'], $toEntry['name']));
                 }
 
-                $cc = \Pimcore\Helper\Mail::parseEmailAddressField($document->getCc());
+                $cc = MailHelper::parseEmailAddressField($document->getCc());
                 foreach ($cc as $ccEntry) {
                     $this->addCc(new Address($ccEntry['email'], $ccEntry['name']));
                 }
 
-                $bcc = \Pimcore\Helper\Mail::parseEmailAddressField($document->getBcc());
+                $bcc = MailHelper::parseEmailAddressField($document->getBcc());
                 foreach ($bcc as $bccEntry) {
                     $this->addBcc(new Address($bccEntry['email'], $bccEntry['name']));
                 }
 
-                $replyTo = \Pimcore\Helper\Mail::parseEmailAddressField($document->getReplyTo());
+                $replyTo = MailHelper::parseEmailAddressField($document->getReplyTo());
                 foreach ($replyTo as $replyToEntry) {
                     $this->addReplyTo(new Address($replyToEntry['email'], $replyToEntry['name']));
                 }
@@ -404,14 +406,13 @@ class Mail extends Email
 
         if ($document instanceof Model\Document\Email) {
             //if more than one "from" email address is defined -> we set the first one
-            $fromArray = \Pimcore\Helper\Mail::parseEmailAddressField($document->getFrom());
+            $fromArray = MailHelper::parseEmailAddressField($document->getFrom());
             if ($fromArray) {
                 [$from] = $fromArray;
                 $this->from(new Address($from['email'], $from['name']));
             }
         }
 
-        return $this;
     }
 
     /**
@@ -420,13 +421,10 @@ class Mail extends Email
      * IMPORTANT: If the debug mode is enabled in "Settings" -> "System" -> "Debug" all emails will be sent to the
      * debug email addresses that are given in "Settings" -> "System" -> "Email Settings" -> "Debug email addresses"
      *
-     * set DefaultTransport or the internal mail function if no
+     * Set DefaultTransport or the internal mail function if no
      * default transport had been set.
-     *
-     *
-     * @return $this Provides fluent interface
      */
-    public function send(MailerInterface $mailer = null): static
+    public function send(?MailerInterface $mailer = null): static
     {
         $bodyHtmlRendered = $this->getBodyHtmlRendered();
         if ($bodyHtmlRendered) {
@@ -461,7 +459,7 @@ class Mail extends Email
      *
      * @throws Exception
      */
-    public function sendWithoutRendering(MailerInterface $mailer = null): static
+    public function sendWithoutRendering(?MailerInterface $mailer = null): static
     {
         // filter email addresses
 
@@ -480,9 +478,7 @@ class Mail extends Email
                 $addresses = $this->filterLogAddresses($addresses);
                 /** @var MailboxListHeader|null $header */
                 $header = $this->getHeaders()->get(strtolower($key));
-                if ($header) {
-                    $header->setAddresses($addresses);
-                }
+                $header?->setAddresses($addresses);
             }
 
             $addresses = $this->$getterName();
@@ -528,8 +524,8 @@ class Mail extends Email
             Pimcore::getEventDispatcher()->dispatch($event, MailEvents::PRE_LOG);
 
             try {
-                $this->lastLogEntry = MailHelper::logEmail($this, $recipients, $sendingFailedException === null ? null : $sendingFailedException->getMessage());
-            } catch (Exception $e) {
+                $this->lastLogEntry = MailHelper::logEmail($this, $recipients, $sendingFailedException?->getMessage());
+            } catch (Exception) {
                 Logger::emerg("Couldn't log Email");
             }
         }
@@ -614,13 +610,13 @@ class Mail extends Email
 
             return $template->render($this->getParams());
         } catch (SecurityError $e) {
-            Logger::err((string) $e);
+            Logger::err((string)$e);
 
             throw new Exception(sprintf('Failed rendering the %s: %s. Please check your twig sandbox security policy or contact the administrator.',
                 $context, substr($e->getMessage(), 0, strpos($e->getMessage(), ' in "__string'))));
         } finally {
             // Restore the default escaping strategy (HTML) after rendering the subject
-            if ($twig instanceof \Twig\Environment && $defaultStrategy !== null) {
+            if ($twig instanceof Environment && $defaultStrategy !== null) {
                 $twig->getExtension(EscaperExtension::class)->setDefaultStrategy($defaultStrategy);
             }
 
@@ -716,7 +712,7 @@ class Mail extends Email
 
                 $content = $this->html2Text($htmlContent);
             } catch (Exception $e) {
-                Logger::err((string) $e);
+                Logger::err((string)$e);
                 $content = '';
             }
         }
@@ -773,9 +769,9 @@ class Mail extends Email
     /**
      * Prevents appending of debug information (used for resending emails)
      *
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function preventDebugInformationAppending(): static
     {
@@ -804,7 +800,7 @@ class Mail extends Email
                 $converter = new HtmlConverter();
                 $converter->getConfig()->merge($this->getHtml2TextOptions());
                 $content = $converter->convert($htmlContent);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 Logger::warning('Converting HTML to plain text failed, no plain text part will be attached to the sent email');
             }
         }

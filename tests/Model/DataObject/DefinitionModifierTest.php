@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\DataObject;
@@ -19,23 +20,24 @@ namespace Pimcore\Tests\Model\DataObject;
 use Pimcore;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\DefinitionModifier;
+use Pimcore\Model\DataObject\Objectbrick\Definition;
 use Pimcore\Tests\Support\Test\ModelTestCase;
 use ReflectionClass;
 use ReflectionMethod;
 
 class DefinitionModifierTest extends ModelTestCase
 {
-    const _CLASS = 'class';
+    public const string _CLASS = 'class';
 
-    const _FIELDCOLLECTION = 'fieldcollection';
+    public const string _FIELDCOLLECTION = 'fieldcollection';
 
-    const _OBJECTBRICK = 'objectbrick';
+    public const string _OBJECTBRICK = 'objectbrick';
 
-    const LOOP_COUNT = 2;
+    public const int LOOP_COUNT = 2;
 
-    const PANEL_NAME_PREFIX = 'panel';
+    public const string PANEL_NAME_PREFIX = 'panel';
 
-    const DATA_NAME_PREFIX = 'input';
+    public const string DATA_NAME_PREFIX = 'input';
 
     private function getDataToAdd(string $dataName = (self::DATA_NAME_PREFIX . '1')): ClassDefinition\Data\Input
     {
@@ -111,7 +113,7 @@ class DefinitionModifierTest extends ModelTestCase
 
     private function getLayoutDefinitionOfFieldcollection(): ClassDefinition\Layout
     {
-        $fieldcollection = \Pimcore\Model\DataObject\Fieldcollection\Definition::getByKey('unittestfieldcollection');
+        $fieldcollection = Pimcore\Model\DataObject\Fieldcollection\Definition::getByKey('unittestfieldcollection');
         /** @var ClassDefinition\Layout\Panel $panel */
         $panel = $fieldcollection->getLayoutDefinitions();
 
@@ -120,7 +122,7 @@ class DefinitionModifierTest extends ModelTestCase
 
     private function getLayoutDefinitionOfObjectbrick(): ClassDefinition\Layout
     {
-        $objectbrick = \Pimcore\Model\DataObject\Objectbrick\Definition::getByKey('unittestBrick');
+        $objectbrick = Definition::getByKey('unittestBrick');
         /** @var ClassDefinition\Layout\Panel $panel */
         $panel = $objectbrick->getLayoutDefinitions();
 
@@ -400,7 +402,7 @@ class DefinitionModifierTest extends ModelTestCase
         for ($i = 0; $i < 5; $i++) {
             $delElement = new ClassDefinition\Data\Input();
             $delElement->setName('delete' . $i);
-            array_push($delElements, $delElement);
+            $delElements[] = $delElement;
         }
 
         $classDef->setDeletedDataComponents($delElements);
@@ -409,13 +411,13 @@ class DefinitionModifierTest extends ModelTestCase
         for ($i = 0; $i < 3; $i++) {
             $keepElement = new ClassDefinition\Data\Input();
             $keepElement->setName('keep' . $i);
-            array_push($keepElements, $keepElement);
+            $keepElements[] = $keepElement;
         }
 
         $layoutDef = new ClassDefinition\Layout\Panel();
 
         $panel1 = new ClassDefinition\Layout\Panel();
-        $panel1->setChildren([$delElements[0], $delElements[1], $delElements[2], $keepElements[0], $delElements[3], $delElements[4], $keepElements[1], $keepElements[2], ]);
+        $panel1->setChildren([$delElements[0], $delElements[1], $delElements[2], $keepElements[0], $delElements[3], $delElements[4], $keepElements[1], $keepElements[2],]);
 
         $layoutDef->setChildren([$panel1]);
 

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\StaticRoutesBundle\DependencyInjection;
@@ -32,28 +32,28 @@ class Configuration implements ConfigurationInterface
 
         $rootNode
             ->children()
-                ->arrayNode('definitions')
-                ->normalizeKeys(false)
-                    ->prototype('array')
-                        ->children()
-                            ->scalarNode('name')->end()
-                            ->scalarNode('pattern')->end()
-                            ->scalarNode('reverse')->end()
-                            ->scalarNode('controller')->end()
-                            ->scalarNode('variables')->end()
-                            ->scalarNode('defaults')->end()
-                            ->arrayNode('siteId')
-                                ->integerPrototype()->end()
-                            ->end()
-                            ->arrayNode('methods')
-                                ->scalarPrototype()->end()
-                            ->end()
-                            ->integerNode('priority')->end()
-                            ->integerNode('creationDate')->end()
-                            ->integerNode('modificationDate')->end()
-                        ->end()
-                    ->end()
-                ->end()
+            ->arrayNode('definitions')
+            ->normalizeKeys(false)
+            ->prototype('array')
+            ->children()
+            ->scalarNode('name')->end()
+            ->scalarNode('pattern')->end()
+            ->scalarNode('reverse')->end()
+            ->scalarNode('controller')->end()
+            ->scalarNode('variables')->end()
+            ->scalarNode('defaults')->end()
+            ->arrayNode('siteId')
+            ->integerPrototype()->end()
+            ->end()
+            ->arrayNode('methods')
+            ->scalarPrototype()->end()
+            ->end()
+            ->integerNode('priority')->end()
+            ->integerNode('creationDate')->end()
+            ->integerNode('modificationDate')->end()
+            ->end()
+            ->end()
+            ->end()
             ->end();
 
         ConfigurationHelper::addConfigLocationWithWriteTargetNodes($rootNode, ['staticroutes' => PIMCORE_CONFIGURATION_DIRECTORY . '/staticroutes']);

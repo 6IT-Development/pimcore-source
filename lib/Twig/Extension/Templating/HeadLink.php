@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -108,7 +109,8 @@ class HeadLink extends CacheBusterAware
     public function __construct(
         ContainerService $containerService,
         WebLinkExtension $webLinkExtension
-    ) {
+    )
+    {
         parent::__construct($containerService);
 
         $this->webLinkExtension = $webLinkExtension;
@@ -225,7 +227,7 @@ class HeadLink extends CacheBusterAware
     /**
      * append()
      *
-     * @param  stdClass $value
+     * @param stdClass $value
      *
      */
     public function append($value): void
@@ -240,7 +242,7 @@ class HeadLink extends CacheBusterAware
     /**
      * offsetSet()
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      */
     public function offsetSet($offset, mixed $value): void
@@ -287,7 +289,7 @@ class HeadLink extends CacheBusterAware
      */
     public function itemToString(stdClass $item): string
     {
-        $attributes = (array) $item;
+        $attributes = (array)$item;
         $link = '<link ';
 
         foreach ($this->_itemKeys as $itemKey) {
@@ -325,7 +327,7 @@ class HeadLink extends CacheBusterAware
      *
      *
      */
-    public function toString(int|string $indent = null): string
+    public function toString(int|string|null $indent = null): string
     {
         $this->prepareEntries();
 
@@ -364,7 +366,7 @@ class HeadLink extends CacheBusterAware
             Pimcore::getEventDispatcher()->dispatch($event, FrontendEvents::VIEW_HELPER_HEAD_LINK);
 
             $source = $item->href ?? '';
-            $itemAttributes = isset($item->extras) ? $item->extras : [];
+            $itemAttributes = $item->extras ?? [];
 
             if (isset($item->extras) && is_array($item->extras) && isset($item->extras['webLink'])) {
                 unset($item->extras['webLink']);
@@ -383,9 +385,7 @@ class HeadLink extends CacheBusterAware
      */
     public function createData(array $attributes): stdClass
     {
-        $data = (object) $attributes;
-
-        return $data;
+        return (object)$attributes;
     }
 
     /**
@@ -411,7 +411,7 @@ class HeadLink extends CacheBusterAware
             if (is_array($media)) {
                 $media = implode(',', $media);
             } else {
-                $media = (string) $media;
+                $media = (string)$media;
             }
         }
         if (0 < count($args)) {
@@ -423,7 +423,7 @@ class HeadLink extends CacheBusterAware
 
         if (0 < count($args) && is_array($args[0])) {
             $extras = array_shift($args);
-            $extras = (array) $extras;
+            $extras = (array)$extras;
         }
 
         $attributes = compact('rel', 'type', 'href', 'media', 'conditionalStylesheet', 'extras');
@@ -466,16 +466,16 @@ class HeadLink extends CacheBusterAware
 
         if (0 < count($args) && is_array($args[0])) {
             $extras = array_shift($args);
-            $extras = (array) $extras;
+            $extras = (array)$extras;
 
             if (isset($extras['media']) && is_array($extras['media'])) {
                 $extras['media'] = implode(',', $extras['media']);
             }
         }
 
-        $href = (string) $href;
-        $type = (string) $type;
-        $title = (string) $title;
+        $href = (string)$href;
+        $type = (string)$type;
+        $title = (string)$title;
 
         $attributes = compact('rel', 'href', 'type', 'title', 'extras');
 

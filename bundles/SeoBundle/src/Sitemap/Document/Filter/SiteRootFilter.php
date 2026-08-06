@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Sitemap\Document\Filter;
@@ -55,10 +55,10 @@ class SiteRootFilter implements FilterInterface
         return $this->canBeAdded($element, $context);
     }
 
-    private function isExcludedSiteRoot(Document $document, Site $site = null): bool
+    private function isExcludedSiteRoot(Document $document, ?Site $site = null): bool
     {
         if (null === $this->siteRoots) {
-            $sites = (new Site\Listing())->load();
+            $sites = new Site\Listing()->load();
 
             $this->siteRoots = array_map(function (Site $site) {
                 return $site->getRootId();

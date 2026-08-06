@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -94,7 +95,7 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         $editmodeData = [];
         $idx = -1;
@@ -144,7 +145,7 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): DataObject\Fieldcollection
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): DataObject\Fieldcollection
     {
         $values = [];
         $count = 0;
@@ -208,9 +209,7 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
             }
         }
 
-        $container = new DataObject\Fieldcollection($values, $this->getName());
-
-        return $container;
+        return new DataObject\Fieldcollection($values, $this->getName());
     }
 
     /**
@@ -219,7 +218,7 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return $this->getDiffVersionPreview($data, $object, $params)['html'];
     }
@@ -250,7 +249,7 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
         return $dataString;
     }
 
-    public function save(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function save(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         $container = $this->getDataFromObjectParam($object);
 
@@ -269,11 +268,11 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
 
             $container->save($object, $params);
         } else {
-            throw new Exception('Invalid value for field "' . $this->getName()."\" provided. You have to pass a DataObject\\Fieldcollection or 'null'");
+            throw new Exception('Invalid value for field "' . $this->getName() . "\" provided. You have to pass a DataObject\\Fieldcollection or 'null'");
         }
     }
 
-    public function load(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): ?DataObject\Fieldcollection
+    public function load(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): ?DataObject\Fieldcollection
     {
         $container = new DataObject\Fieldcollection([], $this->getName());
         $container->load($object);
@@ -285,7 +284,7 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
         return $container;
     }
 
-    public function delete(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function delete(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         $container = new DataObject\Fieldcollection([], $this->getName());
         $container->delete($object);
@@ -443,7 +442,7 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
         return $data;
     }
 
-    public function getDataForGrid(?DataObject\Fieldcollection $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(?DataObject\Fieldcollection $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if (null === $data) {
             return null;
@@ -462,14 +461,14 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
                 foreach ($collectionDef->getFieldDefinitions() as $fd) {
                     if ($fd instanceof DataObject\ClassDefinition\Data\Localizedfields) {
                         foreach ($fd->getFieldDefinitions() as $localizedFieldDefinition) {
-                            $getter = 'get'.ucfirst($localizedFieldDefinition->getName());
+                            $getter = 'get' . ucfirst($localizedFieldDefinition->getName());
                             $itemData[$localizedFieldDefinition->getName()] = [
                                 'title' => $localizedFieldDefinition->getTitle(),
                                 'value' => $localizedFieldDefinition->getVersionPreview($item->$getter(), $object, $params),
                             ];
                         }
                     } else {
-                        $getter = 'get'.ucfirst($fd->getName());
+                        $getter = 'get' . ucfirst($fd->getName());
                         $itemData[$fd->getName()] = [
                             'title' => $fd->getTitle(),
                             'value' => $fd->getVersionPreview($item->$getter(), $object, $params),
@@ -539,13 +538,11 @@ class Fieldcollections extends Data implements CustomResourcePersistingInterface
         return true;
     }
 
-    /** Generates a pretty version preview (similar to getVersionPreview) can be either HTML or
+    /**
+     * Generates a pretty version preview (similar to getVersionPreview) can be either HTML or
      * a image URL. See the https://github.com/pimcore/object-merger bundle documentation for details
-     *
-     * @param DataObject\Concrete|null $object
-     *
      */
-    public function getDiffVersionPreview(?DataObject\Fieldcollection $data, Concrete $object = null, array $params = []): array
+    public function getDiffVersionPreview(?DataObject\Fieldcollection $data, ?Concrete $object = null, array $params = []): array
     {
         $html = '';
         if ($data instanceof DataObject\Fieldcollection) {

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Translation\Listing;
@@ -19,11 +19,12 @@ use Doctrine\DBAL\Query\QueryBuilder as DoctrineQueryBuilder;
 use Pimcore\Cache;
 use Pimcore\Model;
 use Pimcore\Model\Listing\Dao\QueryBuilderHelperTrait;
+use Pimcore\Model\Translation\Listing;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Translation\Listing $model
+ * @property Listing $model
  */
 class Dao extends Model\Listing\Dao\AbstractDao
 {
@@ -41,10 +42,8 @@ class Dao extends Model\Listing\Dao\AbstractDao
         $queryBuilder->setMaxResults(null);
         $queryBuilder->setFirstResult(0);
 
-        $query = sprintf('SELECT COUNT(*) as amount FROM (%s) AS a', (string) $queryBuilder);
-        $amount = (int) $this->db->fetchOne($query, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-
-        return $amount;
+        $query = sprintf('SELECT COUNT(*) as amount FROM (%s) AS a', $queryBuilder);
+        return (int)$this->db->fetchOne($query, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 
     public function getCount(): int
@@ -55,15 +54,15 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
         $queryBuilder = $this->getQueryBuilder($this->getDatabaseTableName() . '.key');
 
-        $query = sprintf('SELECT COUNT(*) as amount FROM (%s) AS a', (string) $queryBuilder);
+        $query = sprintf('SELECT COUNT(*) as amount FROM (%s) AS a', $queryBuilder);
 
-        return (int) $this->db->fetchOne($query, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
+        return (int)$this->db->fetchOne($query, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 
     public function getAllTranslations(): array
     {
         $queryBuilder = $this->getQueryBuilder('*');
-        $cacheKey = $this->getDatabaseTableName().'_data_' . md5((string)$queryBuilder);
+        $cacheKey = $this->getDatabaseTableName() . '_data_' . md5((string)$queryBuilder);
         if (!empty($this->model->getConditionParams()) || !$translations = Cache::load($cacheKey)) {
             $translations = [];
             $queryBuilder->setMaxResults(null); //retrieve all results
@@ -102,9 +101,7 @@ class Dao extends Model\Listing\Dao\AbstractDao
     public function loadRaw(): array
     {
         $queryBuilder = $this->getQueryBuilder('*');
-        $translationsData = $this->db->fetchAllAssociative($queryBuilder->getSql(), $queryBuilder->getParameters(), $queryBuilder->getParameterTypes());
-
-        return $translationsData;
+        return $this->db->fetchAllAssociative($queryBuilder->getSql(), $queryBuilder->getParameters(), $queryBuilder->getParameterTypes());
     }
 
     public function load(): array
@@ -112,7 +109,7 @@ class Dao extends Model\Listing\Dao\AbstractDao
         $this->model->setGroupBy($this->getDatabaseTableName() . '.key', false);
 
         $queryBuilder = $this->getQueryBuilder($this->getDatabaseTableName() . '.key');
-        $cacheKey = $this->getDatabaseTableName().'_data_' . md5((string)$queryBuilder);
+        $cacheKey = $this->getDatabaseTableName() . '_data_' . md5((string)$queryBuilder);
 
         if (!empty($this->model->getConditionParams()) || !$translations = Cache::load($cacheKey)) {
             $translations = [];
@@ -138,7 +135,7 @@ class Dao extends Model\Listing\Dao\AbstractDao
     public function isCacheable(): bool
     {
         $count = $this->db->fetchOne('SELECT COUNT(*) FROM ' . $this->getDatabaseTableName());
-        $cacheLimit = Model\Translation\Listing::getCacheLimit();
+        $cacheLimit = Listing::getCacheLimit();
         if ($count > $cacheLimit) {
             return false;
         }

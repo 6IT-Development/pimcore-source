@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Element;
@@ -126,7 +127,7 @@ class ModelDocumentPermissionsTest extends ModelTestCase
 
     protected function createPage(string $key, int $parentId): Document
     {
-        $document =  new Page();
+        $document = new Page();
 
         $document->setKey($key);
         $document->setParentId($parentId);
@@ -146,14 +147,14 @@ class ModelDocumentPermissionsTest extends ModelTestCase
         $role = new User\Role();
         $role->setName('Testrole');
         $role->setWorkspacesDocument([
-            (new User\Workspace\Document())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => true, 'view' => true, 'save'=>true, 'publish'=>false]),
+            new User\Workspace\Document()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => true, 'view' => true, 'save' => true, 'publish' => false]),
         ]);
         $role->save();
 
         $role2 = new User\Role();
         $role2->setName('dummyRole');
         $role2->setWorkspacesDocument([
-            (new User\Workspace\Document())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save'=>false, 'publish'=>false, 'unpublish' => true ]),
+            new User\Workspace\Document()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save' => false, 'publish' => false, 'unpublish' => true]),
         ]);
         $role2->save();
 
@@ -163,13 +164,13 @@ class ModelDocumentPermissionsTest extends ModelTestCase
         $this->userPermissionTest1->setPermissions(['documents']);
         $this->userPermissionTest1->setRoles([$role->getId(), $role2->getId()]);
         $this->userPermissionTest1->setWorkspacesDocument([
-            (new User\Workspace\Document())->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true, 'create'=> true, 'rename'=> true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->c->getId(), 'cPath' => $this->c->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->abcdefghjkl->getId(), 'cPath' => $this->abcdefghjkl->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\Document()->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\Document()->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true, 'create' => true, 'rename' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->c->getId(), 'cPath' => $this->c->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->abcdefghjkl->getId(), 'cPath' => $this->abcdefghjkl->getFullpath(), 'list' => true, 'view' => true]),
         ]);
         $this->userPermissionTest1->save();
 
@@ -179,12 +180,12 @@ class ModelDocumentPermissionsTest extends ModelTestCase
         $this->userPermissionTest2->setPermissions(['documents']);
         $this->userPermissionTest2->setRoles([$role->getId(), $role2->getId()]);
         $this->userPermissionTest2->setWorkspacesDocument([
-            (new User\Workspace\Document())->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save'=>true, 'publish'=>true, 'unpublish' => false]),
+            new User\Workspace\Document()->setValues(['cId' => $this->permissionfoo->getId(), 'cPath' => $this->permissionfoo->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->permissionbar->getId(), 'cPath' => $this->permissionbar->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->foo->getId(), 'cPath' => $this->foo->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\Document()->setValues(['cId' => $this->bars->getId(), 'cPath' => $this->bars->getFullpath(), 'list' => false, 'view' => false]),
+            new User\Workspace\Document()->setValues(['cId' => $this->userfolder->getId(), 'cPath' => $this->userfolder->getFullpath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getFullpath(), 'list' => false, 'view' => false, 'save' => true, 'publish' => true, 'unpublish' => false]),
         ]);
         $this->userPermissionTest2->save();
     }
@@ -413,7 +414,7 @@ class ModelDocumentPermissionsTest extends ModelTestCase
 
     protected function buildController(string $classname, User $user): mixed
     {
-        $DocumentController = Stub::construct($classname, [], [
+        return Stub::construct($classname, [], [
             'getPimcoreUser' => function () use ($user) {
                 return $user;
             },
@@ -424,8 +425,6 @@ class ModelDocumentPermissionsTest extends ModelTestCase
                 return $params;
             },
         ]);
-
-        return $DocumentController;
     }
 
     protected function doTestSearch(string $searchText, User $user, array $expectedResultPaths, int $limit = 100): void
@@ -535,8 +534,8 @@ class ModelDocumentPermissionsTest extends ModelTestCase
         //update role
         $role = User\Role::getByName('Testrole');
         $role->setWorkspacesDocument([
-            (new User\Workspace\Document())->setValues(['cId' => $manyElementX->getId(), 'cPath' => $manyElementX->getRealFullPath(), 'list' => true, 'view' => true]),
-            (new User\Workspace\Document())->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getRealFullPath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $manyElementX->getId(), 'cPath' => $manyElementX->getRealFullPath(), 'list' => true, 'view' => true]),
+            new User\Workspace\Document()->setValues(['cId' => $this->groupfolder->getId(), 'cPath' => $this->groupfolder->getRealFullPath(), 'list' => true, 'view' => true]),
         ]);
         $role->save();
 
@@ -545,7 +544,7 @@ class ModelDocumentPermissionsTest extends ModelTestCase
             array_map(function ($item) {
                 return $item->getRealFullPath();
             }, $manyElementList),
-            [ $manyElementX->getRealFullPath() ]
+            [$manyElementX->getRealFullPath()]
         ), $elementCount + 1
         );
         $this->doTestSearch('manyelement', $this->userPermissionTest1, [$manyElementX->getRealFullPath()], $elementCount + 1);

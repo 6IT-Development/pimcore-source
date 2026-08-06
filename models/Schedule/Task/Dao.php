@@ -9,18 +9,20 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Schedule\Task;
 
 use Pimcore\Model;
+use Pimcore\Model\Schedule\Task;
+use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Schedule\Task $model
+ * @property Task $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -52,7 +54,7 @@ class Dao extends Model\Dao\AbstractDao
     public function create(): void
     {
         $this->db->insert('schedule_tasks', []);
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
     }
 
     /**
@@ -66,7 +68,7 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($site as $key => $value) {
             if (in_array($key, $this->getValidTableColumns('schedule_tasks'))) {
                 if (is_array($value) || is_object($value)) {
-                    $value = \Pimcore\Tool\Serialize::serialize($value);
+                    $value = Serialize::serialize($value);
                 } elseif (is_bool($value)) {
                     $value = (int)$value;
                 }

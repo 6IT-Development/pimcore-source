@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,19 +11,20 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle;
 
+use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 
 class Installer extends SettingsStoreAwareInstaller
 {
-    protected const USER_PERMISSIONS_CATEGORY = 'Pimcore Seo Bundle';
+    protected const string USER_PERMISSIONS_CATEGORY = 'Pimcore Seo Bundle';
 
-    protected const USER_PERMISSIONS = [
+    protected const array USER_PERMISSIONS = [
         'robots.txt',
         'seo_document_editor',
         'http_errors',
@@ -44,7 +46,7 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function addUserPermission(): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
             $db->insert('users_permission_definitions', [
@@ -56,7 +58,7 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function removeUserPermission(): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
             $db->delete('users_permission_definitions', [
@@ -69,10 +71,10 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $sqlPath = __DIR__ . '/Resources/install/';
         $sqlFileNames = ['install.sql'];
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath.$fileName);
+            $statement = file_get_contents($sqlPath . $fileName);
             $db->executeQuery($statement);
         }
     }
@@ -81,10 +83,10 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $sqlPath = __DIR__ . '/Resources/uninstall/';
         $sqlFileNames = ['uninstall.sql'];
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath.$fileName);
+            $statement = file_get_contents($sqlPath . $fileName);
             $db->executeQuery($statement);
         }
     }

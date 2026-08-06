@@ -9,23 +9,25 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 
 use Exception;
 use Pimcore\Model;
+use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
+use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Classificationstore\KeyConfig $model
+ * @property KeyConfig $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
-    const TABLE_NAME_KEYS = 'classificationstore_keys';
+    public const string TABLE_NAME_KEYS = 'classificationstore_keys';
 
     /**
      * Get the data for the object from database for the given id, or from the ID which is set in the object
@@ -33,7 +35,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getById(int $id = null): void
+    public function getById(?int $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -53,7 +55,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      * @throws Exception
      */
-    public function getByName(string $name = null): void
+    public function getByName(?string $name = null): void
     {
         if ($name != null) {
             $this->model->setName($name);
@@ -108,7 +110,7 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($type as $key => $value) {
             if (in_array($key, $this->getValidTableColumns(self::TABLE_NAME_KEYS))) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
 
                     if (!$value && $key === 'enabled') {
                         $this->db->delete(
@@ -120,7 +122,7 @@ class Dao extends Model\Dao\AbstractDao
                     if ($this->model->getType() == 'select') {
                         $value = json_encode($value);
                     } else {
-                        $value = \Pimcore\Tool\Serialize::serialize($value);
+                        $value = Serialize::serialize($value);
                     }
                 }
 
@@ -139,6 +141,6 @@ class Dao extends Model\Dao\AbstractDao
 
         $this->db->insert(self::TABLE_NAME_KEYS, []);
 
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
     }
 }

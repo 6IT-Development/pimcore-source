@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Entity;
@@ -40,7 +41,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 #[HasLifecycleCallbacks]
 class JobRun
 {
-    public const DEFAULT_EXECUTION_CONTEXT = 'default';
+    public const string DEFAULT_EXECUTION_CONTEXT = 'default';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -87,7 +88,7 @@ class JobRun
     #[ORM\Column(type: 'integer')]
     private int $processedElementsForStep = 0;
 
-    public function __construct(int $ownerId = null)
+    public function __construct(?int $ownerId = null)
     {
         $this->creationDate = time();
         $this->ownerId = $ownerId;
@@ -161,7 +162,7 @@ class JobRun
             try {
                 $logLine = new LogLine($line);
                 $parsed[] = $logLine;
-            } catch (InvalidArgumentException $e) {
+            } catch (InvalidArgumentException) {
                 // not starting with a date, append to last parsed log line
                 if (!empty($parsed)) {
                     $lastKey = array_key_last($parsed);

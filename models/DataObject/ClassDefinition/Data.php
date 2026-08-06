@@ -9,18 +9,21 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition;
 
+use Carbon\Carbon;
 use Closure;
 use Exception;
 use JsonSerializable;
+use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Exception\InheritanceParentNotFoundException;
 use Pimcore\Model\DataObject\Fieldcollection\Data\AbstractData;
@@ -79,7 +82,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
     /**
      * @var string[]
      */
-    protected const FORBIDDEN_NAMES = [
+    protected const array FORBIDDEN_NAMES = [
         'apipluginbroker', 'baseobject', 'byid', 'bypath', 'cachekey', 'cachetag', 'cachetags', 'childamount',
         'childpermissions', 'children', 'childrensortby', 'childrensortorder', 'childs', 'class', 'classid',
         'classname', 'classtitle', 'closestparentofclass', 'creationdate', 'currentfullpath', 'dao', 'data',
@@ -96,12 +99,12 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
     /**
      * Returns the data for the editmode
      */
-    abstract public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): mixed;
+    abstract public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): mixed;
 
     /**
      * Converts data from editmode to internal eg. Image-Id to Asset\Image object
      */
-    abstract public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): mixed;
+    abstract public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): mixed;
 
     /**
      * Checks if data is valid for current data field
@@ -391,12 +394,12 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
             return '';
         }
 
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $name = $params['name'] ?: $this->name;
         $key = $db->quoteIdentifier($name);
         $isNumeric = false;
         if (!empty($params['brickPrefix'])) {
-            $key = $params['brickPrefix'].$key;
+            $key = $params['brickPrefix'] . $key;
         }
 
         if ($operator === 'in') {
@@ -405,13 +408,13 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
             return $key . ' ' . $operator . ' (' . $formattedValues . ')';
         }
 
-        if ($this instanceof \Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue) {
+        if ($this instanceof CalculatedValue) {
             if ($this->elementType === 'date') {
                 $dateFormat = 'Y-m-d H:i:s';
-                $startDate = new \Carbon\Carbon($value);
+                $startDate = new Carbon($value);
                 if ($operator === '=') {
                     $maxTime = $startDate->addDay();
-                    $endDate = new \Carbon\Carbon($maxTime);
+                    $endDate = new Carbon($maxTime);
                     $operator = ' BETWEEN ' . $db->quote($startDate->format($dateFormat));
                     $operator .= ' AND ' . $db->quote($endDate->format($dateFormat));
 
@@ -622,8 +625,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
             $typeDeclaration = '';
         }
 
-        $code = '';
-        $code .= '/**' . "\n";
+        $code = '/**' . "\n";
         $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
@@ -707,11 +709,11 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
             $code .= "\t\t" . '$currentData = \\Pimcore\\Model\\DataObject\\Service::useInheritedValues(false, function() {' . "\n";
             $code .= "\t\t\t" . 'return $this->get' . ucfirst($this->getName()) . '();' . "\n";
             $code .= "\t\t" . '});' . "\n";
-            $code .= "\t" . '}'."\n";
+            $code .= "\t" . '}' . "\n";
             $code .= "\t" . 'else {' . "\n";
             $code .= "\t\t" . '$currentData = $this->get' . ucfirst($this->getName()) . '();' . "\n";
             $code .= "\t" . '}';
-            $code .= "\t" . '' . "\n";
+            $code .= "\t\n";
 
             $code .= "\t" . '\\Pimcore\\Model\\DataObject\\Concrete::setHideUnpublished($hideUnpublished);' . "\n";
 
@@ -974,20 +976,20 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         $reflectionMethod = new ReflectionMethod($this, 'addListingFilter');
         $docComment = $reflectionMethod->getDocComment();
         if ($docComment && preg_match('/@param\s+([^\s]+)\s+\$data(.*)/', $docComment, $dataParam)) {
-            $dataParamDoc = $dataParam[1].' $data '.$dataParam[2];
+            $dataParamDoc = $dataParam[1] . ' $data ' . $dataParam[2];
         }
 
         $operatorParamDoc = 'string $operator SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"';
         if ($docComment && preg_match('/@param\s+([^\s]+)\s+\$operator(.*)/', $docComment, $dataParam)) {
-            $operatorParamDoc = $dataParam[1].' $operator '.$dataParam[2];
+            $operatorParamDoc = $dataParam[1] . ' $operator ' . $dataParam[2];
         }
 
-        $code .= '* @param '.$dataParamDoc."\n";
-        $code .= '* @param '.$operatorParamDoc."\n";
-        $code .= '* @return $this'."\n";
+        $code .= '* @param ' . $dataParamDoc . "\n";
+        $code .= '* @param ' . $operatorParamDoc . "\n";
+        $code .= '* @return $this' . "\n";
         $code .= '*/' . "\n";
 
-        $code .= 'public function filterBy' . ucfirst($key) .' ($data, $operator = \'=\'): static' . "\n";
+        $code .= 'public function filterBy' . ucfirst($key) . ' ($data, $operator = \'=\'): static' . "\n";
         $code .= '{' . "\n";
         $code .= "\t" . '$this->getClass()->getFieldDefinition("' . $key . '")->addListingFilter($this, $data, $operator);' . "\n";
         $code .= "\treturn " . '$this' . ";\n";
@@ -1008,7 +1010,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
             __METHOD__
         );
 
-        return strlen((string) $number) === 0 ? null : (int)$number;
+        return strlen((string)$number) === 0 ? null : (int)$number;
     }
 
     /**
@@ -1023,10 +1025,10 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
             __METHOD__
         );
 
-        return strlen((string) $number) === 0 ? null : (float)$number;
+        return strlen((string)$number) === 0 ? null : (float)$number;
     }
 
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return 'no preview';
     }
@@ -1050,11 +1052,9 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
      *  - "key" => the key of the data element
      *  - "data" => the data
      */
-    public function getDiffDataFromEditmode(array $data, DataObject\Concrete $object = null, array $params = []): mixed
+    public function getDiffDataFromEditmode(array $data, ?DataObject\Concrete $object = null, array $params = []): mixed
     {
-        $thedata = $this->getDataFromEditmode($data[0]['data'], $object, $params);
-
-        return $thedata;
+        return $this->getDataFromEditmode($data[0]['data'], $object, $params);
     }
 
     /**
@@ -1069,7 +1069,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
      *      - "disabled" => whether the data element can be edited or not
      *      - "title" => pretty name describing the data element
      */
-    public function getDiffDataForEditMode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDiffDataForEditMode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         $diffdata = [];
         $diffdata['data'] = $this->getDataForEditmode($data, $object, $params);
@@ -1125,7 +1125,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
                             if ($object->getClass()->getAllowInherit()) {
                                 try {
                                     $container = $object->getValueFromParent($fieldname);
-                                } catch (InheritanceParentNotFoundException $e) {
+                                } catch (InheritanceParentNotFoundException) {
                                     //nothing to do here - just no parent data available
                                 }
                             }
@@ -1148,9 +1148,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
                                     if ($context['containerType'] === 'block') {
                                         $data = $item[$this->getName()] ?? null;
                                         if ($data instanceof DataObject\Data\BlockElement) {
-                                            $data = $data->getData();
-
-                                            return $data;
+                                            return $data->getData();
                                         }
                                     } else {
                                         $getter = 'get' . ucfirst($this->getName());
@@ -1168,9 +1166,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
                             return null;
                         }
                     } elseif ($object instanceof DataObject\Localizedfield) {
-                        $data = $object->getLocalizedValue($this->getName(), $params['language'], true);
-
-                        return $data;
+                        return $object->getLocalizedValue($this->getName(), $params['language'], true);
                     }
                 }
             } elseif ($context['containerType'] === 'objectbrick' && ($this instanceof DataObject\ClassDefinition\Data\Localizedfields || $object instanceof DataObject\Localizedfield)) {
@@ -1190,9 +1186,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
 
                     return null;
                 } elseif ($object instanceof DataObject\Localizedfield) {
-                    $data = $object->getLocalizedValue($this->getName(), $params['language'], true);
-
-                    return $data;
+                    return $object->getLocalizedValue($this->getName(), $params['language'], true);
                 }
             } elseif ($context['containerType'] === 'classificationstore') {
                 $fieldname = $context['fieldname'];
@@ -1204,9 +1198,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
 
                     /** @var DataObject\Classificationstore $classificationStoreData */
                     $classificationStoreData = $object->$getter();
-                    $data = $classificationStoreData->getLocalizedKeyValue($groupId, $keyId, $language, true, true);
-
-                    return $data;
+                    return $classificationStoreData->getLocalizedKeyValue($groupId, $keyId, $language, true, true);
                 }
             }
         }
@@ -1260,7 +1252,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
     /**
      * TODO Change return type to array in Pimcore 12
      */
-    public function removeData(?array $existingData, array $removeData): mixed
+    public function removeData(?array $existingData, array $removeData): ?array
     {
         return $existingData;
     }
@@ -1321,7 +1313,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
 
     public function jsonSerialize(): mixed
     {
-        $data = Closure::bind(fn ($obj) => get_object_vars($obj), null, null)($this); // only get public properties
+        $data = Closure::bind(fn($obj) => get_object_vars($obj), null, null)($this); // only get public properties
         $data['fieldtype'] = $this->getFieldType();
         $data['datatype'] = 'data';
         unset($data['blockedVarsForExport']);

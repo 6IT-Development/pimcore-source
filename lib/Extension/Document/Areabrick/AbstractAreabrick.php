@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Extension\Document\Areabrick;
@@ -21,13 +22,10 @@ use Pimcore\Model\Document\Editable;
 use Pimcore\Model\Document\Editable\Area\Info;
 use Pimcore\Model\Document\PageSnippet;
 use Pimcore\Templating\Renderer\EditableRenderer;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
-use Symfony\Component\DependencyInjection\ContainerAwareTrait;
+use Symfony\Component\HttpFoundation\Response;
 
-abstract class AbstractAreabrick implements AreabrickInterface, TemplateAreabrickInterface, ContainerAwareInterface
+abstract class AbstractAreabrick implements AreabrickInterface, TemplateAreabrickInterface
 {
-    use ContainerAwareTrait;
-
     protected EditableRenderer $editableRenderer;
 
     /**
@@ -85,13 +83,13 @@ abstract class AbstractAreabrick implements AreabrickInterface, TemplateAreabric
         return true;
     }
 
-    public function action(Info $info): ?\Symfony\Component\HttpFoundation\Response
+    public function action(Info $info): ?Response
     {
         // noop - implement as needed
         return null;
     }
 
-    public function postRenderAction(Info $info): ?\Symfony\Component\HttpFoundation\Response
+    public function postRenderAction(Info $info): ?Response
     {
         // noop - implement as needed
         return null;
@@ -99,7 +97,7 @@ abstract class AbstractAreabrick implements AreabrickInterface, TemplateAreabric
 
     public function getHtmlTagOpen(Info $info): string
     {
-        return '<div class="pimcore_area_' . $info->getId() . ' pimcore_area_content '. $this->getOpenTagCssClass($info) .'">';
+        return '<div class="pimcore_area_' . $info->getId() . ' pimcore_area_content ' . $this->getOpenTagCssClass($info) . '">';
     }
 
     protected function getOpenTagCssClass(Info $info): ?string

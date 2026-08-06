@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -23,14 +24,14 @@ use Pimcore\Model;
 use Pimcore\Tool\HtmlUtils;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Block extends Model\Document\Editable implements BlockInterface
 {
     /**
      * @internal
      */
-    const ATTRIBUTE_IGNORE_EDITMODE_INDICES = '_block_ignore_extra_editmode_indices';
+    public const string ATTRIBUTE_IGNORE_EDITMODE_INDICES = '_block_ignore_extra_editmode_indices';
 
     /**
      * Contains an array of indices, which represent the order of the elements in the block
@@ -53,18 +54,18 @@ class Block extends Model\Document\Editable implements BlockInterface
         return 'block';
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         return $this->indices;
     }
 
-    public function admin()
+    public function admin(): string
     {
         // nothing to do
         return '';
     }
 
-    public function frontend()
+    public function frontend(): string
     {
         // nothing to do
         return '';
@@ -86,9 +87,9 @@ class Block extends Model\Document\Editable implements BlockInterface
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     protected function setDefault(): static
     {
@@ -150,7 +151,7 @@ class Block extends Model\Document\Editable implements BlockInterface
     public function loop(): bool
     {
         $manual = false;
-        if (($this->config['manual'] ?? false) == true) {
+        if (($this->config['manual'] ?? false)) {
             $manual = true;
         }
 
@@ -187,12 +188,10 @@ class Block extends Model\Document\Editable implements BlockInterface
     {
         $attributes = parent::getEditmodeElementAttributes();
 
-        $attributes = array_merge($attributes, [
+        return array_merge($attributes, [
             'name' => $this->getName(),
             'type' => $this->getType(),
         ]);
-
-        return $attributes;
     }
 
     public function start()
@@ -225,7 +224,7 @@ class Block extends Model\Document\Editable implements BlockInterface
     {
         // set the current block suffix for the child elements (0, 1, 3, ...)
         // this will be removed in blockDestruct
-        $this->getBlockState()->pushIndex((int) ($this->indices[$this->current] ?? 0));
+        $this->getBlockState()->pushIndex((int)($this->indices[$this->current] ?? 0));
     }
 
     public function blockDestruct(): void
@@ -340,7 +339,7 @@ EOT;
 
     public function getCurrentIndex(): int
     {
-        return (int) ($this->indices[$this->getCurrent()] ?? 0);
+        return (int)($this->indices[$this->getCurrent()] ?? 0);
     }
 
     public function getIndices(): array
@@ -358,7 +357,7 @@ EOT;
 
     public function isEmpty(): bool
     {
-        return !(bool) count($this->indices);
+        return !count($this->indices);
     }
 
     /**

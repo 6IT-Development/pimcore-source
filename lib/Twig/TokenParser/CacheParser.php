@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\TokenParser;
@@ -62,7 +62,7 @@ class CacheParser extends AbstractTokenParser
             switch ($k) {
                 case 'ttl':
                     $ttl = $node->getAttribute('value');
-                    if (!is_int($ttl) && ! is_null($ttl)) {
+                    if (!is_int($ttl) && !is_null($ttl)) {
                         $this->throwSyntaxError(
                             'The "ttl" modifier requires an integer or null.',
                             $stream
@@ -76,7 +76,7 @@ class CacheParser extends AbstractTokenParser
                         $tags = $this->getArrayValue($node);
                         $tags = new ArrayOfStrings($tags);
                         $tags = $tags->getValue();
-                    } catch (ValueError|LogicException $e) {
+                    } catch (ValueError|LogicException) {
                         $this->throwSyntaxError(
                             'The "tags" modifier requires a string or an array of strings.',
                             $stream
@@ -86,7 +86,7 @@ class CacheParser extends AbstractTokenParser
                     break;
 
                 case 'force':
-                    $force = (bool) $node->getAttribute('value');
+                    $force = (bool)$node->getAttribute('value');
 
                     break;
             }
@@ -114,7 +114,7 @@ class CacheParser extends AbstractTokenParser
         if ($node instanceof ArrayExpression) {
             $tags = $node->getKeyValuePairs();
 
-            return array_map(static fn ($pair) => $pair['value']->getAttribute('value'), $tags);
+            return array_map(static fn($pair) => $pair['value']->getAttribute('value'), $tags);
         }
 
         return [$node->getAttribute('value')];

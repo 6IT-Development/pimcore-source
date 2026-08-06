@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CustomReportsBundle\Tool;
@@ -19,6 +20,8 @@ namespace Pimcore\Bundle\CustomReportsBundle\Tool;
 use Exception;
 use JsonSerializable;
 use Pimcore;
+use Pimcore\Bundle\CustomReportsBundle\Tool\Adapter\CustomReportAdapterFactoryInterface;
+use Pimcore\Bundle\CustomReportsBundle\Tool\Config\Dao;
 use Pimcore\Model;
 use RuntimeException;
 use stdClass;
@@ -89,17 +92,17 @@ class Config extends Model\AbstractModel implements JsonSerializable
         try {
             $report = new self();
 
-            /** @var \Pimcore\Bundle\CustomReportsBundle\Tool\Config\Dao $dao */
+            /** @var Dao $dao */
             $dao = $report->getDao();
             $dao->getByName($name);
 
             return $report;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
 
-    public static function getReportsList(Model\User $user = null): array
+    public static function getReportsList(?Model\User $user = null): array
     {
         $reports = [];
 
@@ -127,7 +130,7 @@ class Config extends Model\AbstractModel implements JsonSerializable
      *
      * @deprecated Use ServiceLocator with id 'pimcore.custom_report.adapter.factories' to determine the factory for the adapter instead
      */
-    public static function getAdapter(?stdClass $configuration, Config $fullConfig = null): Adapter\CustomReportAdapterInterface
+    public static function getAdapter(?stdClass $configuration, ?Config $fullConfig = null): Adapter\CustomReportAdapterInterface
     {
         if ($configuration === null) {
             $configuration = new stdClass();
@@ -140,7 +143,7 @@ class Config extends Model\AbstractModel implements JsonSerializable
             throw new RuntimeException(sprintf('Could not find Custom Report Adapter with type %s', $type));
         }
 
-        /** @var \Pimcore\Bundle\CustomReportsBundle\Tool\Adapter\CustomReportAdapterFactoryInterface $factory */
+        /** @var CustomReportAdapterFactoryInterface $factory */
         $factory = $serviceLocator->get($type);
 
         return $factory->create($configuration, $fullConfig);

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -38,16 +38,16 @@ final class Version20221222181745 extends AbstractMigration
                 continue;
             }
 
-            $this->addSql("DELETE `object_classificationstore_groups_{$tableNumber}`
-            FROM `object_classificationstore_groups_{$tableNumber}`
-            LEFT JOIN `classificationstore_groups` ON object_classificationstore_groups_{$tableNumber}.groupId = classificationstore_groups.id
+            $this->addSql("DELETE `object_classificationstore_groups_$tableNumber`
+            FROM `object_classificationstore_groups_$tableNumber`
+            LEFT JOIN `classificationstore_groups` ON object_classificationstore_groups_$tableNumber.groupId = classificationstore_groups.id
             WHERE classificationstore_groups.id IS NULL;");
 
-            $this->addSql("DELETE `object_classificationstore_data_{$tableNumber}`
-            FROM `object_classificationstore_data_{$tableNumber}`
-            LEFT JOIN `$theTableGroups` ON object_classificationstore_data_{$tableNumber}.id = $theTableGroups.id AND
-            object_classificationstore_data_{$tableNumber}.fieldname = $theTableGroups.fieldname AND
-            object_classificationstore_data_{$tableNumber}.groupId = $theTableGroups.groupId
+            $this->addSql("DELETE `object_classificationstore_data_$tableNumber`
+            FROM `object_classificationstore_data_$tableNumber`
+            LEFT JOIN `$theTableGroups` ON object_classificationstore_data_$tableNumber.id = $theTableGroups.id AND
+            object_classificationstore_data_$tableNumber.fieldname = $theTableGroups.fieldname AND
+            object_classificationstore_data_$tableNumber.groupId = $theTableGroups.groupId
             WHERE $theTableGroups.id IS NULL AND  $theTableGroups.fieldname IS NULL AND $theTableGroups.groupId IS NULL;");
 
             $this->addSql("ALTER TABLE `$theTableGroups` MODIFY COLUMN groupId INT(11) UNSIGNED NOT NULL;");

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document;
@@ -146,9 +147,7 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
 
     private function wrapEditmodeContainerCodeForDialogBox(string $id, string $code): string
     {
-        $code = '<template id="template__' . $id . '">' . $code . '</template>';
-
-        return $code;
+        return '<template id="template__' . $id . '">' . $code . '</template>';
     }
 
     /**
@@ -158,7 +157,7 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
      */
     public function getEditmodeDefinition(): array
     {
-        $config = [
+        return [
             // we don't use : and . in IDs (although it's allowed in HTML spec)
             // because they are used in CSS syntax and therefore can't be used in querySelector()
             'id' => 'pimcore_editable_' . str_replace([':', '.'], '_', $this->getName()),
@@ -170,8 +169,6 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
             'inherited' => $this->getInherited(),
             'inDialogBox' => $this->getInDialogBox(),
         ];
-
-        return $config;
     }
 
     /**
@@ -204,12 +201,10 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
             throw new RuntimeException(sprintf('Expected an "id" option to be set on the "%s" editable config array', $this->getName()));
         }
 
-        $attributes = array_merge($this->getEditmodeBlockStateAttributes(), [
+        return array_merge($this->getEditmodeBlockStateAttributes(), [
             'id' => $config['id'],
             'class' => implode(' ', $this->getEditmodeElementClasses()),
         ]);
-
-        return $attributes;
     }
 
     /**
@@ -222,15 +217,13 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
             return $blockName->getRealName();
         }, $blockState->getBlocks());
 
-        $attributes = [
+        return [
             'data-name' => $this->getName(),
             'data-real-name' => $this->getRealName(),
             'data-type' => $this->getType(),
             'data-block-names' => implode(', ', $blockNames),
             'data-block-indexes' => implode(', ', $blockState->getIndexes()),
         ];
-
-        return $attributes;
     }
 
     /**
@@ -312,7 +305,7 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
     public function setDocument(Document\PageSnippet $document): static
     {
         $this->document = $document;
-        $this->documentId = (int) $document->getId();
+        $this->documentId = (int)$document->getId();
 
         return $this;
     }
@@ -426,7 +419,7 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
         $this->document = null;
     }
 
-    final public function render(): mixed
+    final public function render(): ?string
     {
         if ($this->editmode) {
             if ($collector = $this->getEditableDefinitionCollector()) {
@@ -444,14 +437,12 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
      */
     public function __toString(): string
     {
-        $result = '';
-
         try {
             $result = $this->render();
         } catch (Throwable $e) {
             if (Pimcore::inDebugMode()) {
                 // the __toString method isn't allowed to throw exceptions
-                $result = '<b style="color:#f00">' . $e->getMessage().' File: ' . $e->getFile().' Line: '. $e->getLine().'</b><br/>'.$e->getTraceAsString();
+                $result = '<b style="color:#f00">' . $e->getMessage() . ' File: ' . $e->getFile() . ' Line: ' . $e->getLine() . '</b><br/>' . $e->getTraceAsString();
 
                 return '<pre class="pimcore_editable_error">' . $result . '</pre>';
             }
@@ -465,7 +456,7 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
 
         if (is_string($result) || is_numeric($result)) {
             // we have to cast to string, because int/float is not auto-converted and throws an exception
-            return (string) $result;
+            return (string)$result;
         }
 
         return '';
@@ -540,15 +531,15 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
      * Builds an editable name for an editable, taking current
      * block state (block, index) and targeting into account.
      *
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
-    public static function buildEditableName(string $type, string $name, Document $document = null): string
+    public static function buildEditableName(string $type, string $name, ?Document $document = null): string
     {
         // do NOT allow dots (.) and colons (:) here as they act as delimiters
         // for block hierarchy in the new naming scheme (see #1467)!
-        if (!preg_match("@^[a-zA-Z0-9\-_]+$@", $name)) {
+        if (!preg_match('@^[a-zA-Z0-9\-_]+$@', $name)) {
             throw new InvalidArgumentException(
                 'Only valid CSS class selectors are allowed as the name for an editable (which is basically [a-zA-Z0-9\-_]+). Your name was: ' . $name
             );
@@ -647,9 +638,9 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public static function buildChildEditableName(string $name, string $type, array $parentBlockNames, int $index): string
     {
@@ -686,7 +677,7 @@ abstract class Editable extends Model\AbstractModel implements Model\Document\Ed
 
     public function isInDialogBox(): bool
     {
-        return (bool) $this->inDialogBox;
+        return (bool)$this->inDialogBox;
     }
 
     public function getInDialogBox(): ?string

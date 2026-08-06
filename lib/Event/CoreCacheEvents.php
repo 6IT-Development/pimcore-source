@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -23,19 +24,19 @@ final class CoreCacheEvents
      *
      * @var string
      */
-    const INIT = 'pimcore.cache.core.init';
+    public const string INIT = 'pimcore.cache.core.init';
 
     /**
      * @Event("Symfony\Contracts\EventDispatcher\Event")
      *
      * @var string
      */
-    const ENABLE = 'pimcore.cache.core.enable';
+    public const string ENABLE = 'pimcore.cache.core.enable';
 
     /**
      * @Event("Symfony\Contracts\EventDispatcher\Event")
      *
      * @var string
      */
-    const DISABLE = 'pimcore.cache.core.disable';
+    public const string DISABLE = 'pimcore.cache.core.disable';
 }

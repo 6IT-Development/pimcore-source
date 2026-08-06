@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -55,7 +55,7 @@ final class Version20211018104331 extends AbstractMigration
             foreach ($foreignKeys as $table => $objectIdColumn) {
                 try {
                     $tableSchema = $schema->getTable($table);
-                } catch (SchemaException $e) {
+                } catch (SchemaException) {
                     continue;
                 }
 
@@ -76,7 +76,7 @@ final class Version20211018104331 extends AbstractMigration
             foreach ($foreignKeys as $table => $objectIdColumn) {
                 try {
                     $tableSchema = $schema->getTable($table);
-                } catch (SchemaException $e) {
+                } catch (SchemaException) {
                     continue;
                 }
 
@@ -94,30 +94,30 @@ final class Version20211018104331 extends AbstractMigration
     private function getForeignKeys(DataObject\ClassDefinitionInterface $class): array
     {
         $foreignKeys = [
-            'object_query_'.$class->getId() => 'oo_id',
-            'object_store_'.$class->getId() => 'oo_id',
-            'object_relations_'.$class->getId() => 'src_id',
-            'object_classificationstore_groups_'.$class->getId() => 'o_id',
-            'object_classificationstore_data_'.$class->getId() => 'o_id',
-            'object_metadata_'.$class->getId() => 'o_id',
-            'object_localized_data_'.$class->getId() => 'ooo_id',
+            'object_query_' . $class->getId() => 'oo_id',
+            'object_store_' . $class->getId() => 'oo_id',
+            'object_relations_' . $class->getId() => 'src_id',
+            'object_classificationstore_groups_' . $class->getId() => 'o_id',
+            'object_classificationstore_data_' . $class->getId() => 'o_id',
+            'object_metadata_' . $class->getId() => 'o_id',
+            'object_localized_data_' . $class->getId() => 'ooo_id',
         ];
 
         foreach (Tool::getValidLanguages() as $language) {
-            $foreignKeys['object_localized_query_'.$class->getId().'_'.$language] = 'ooo_id';
+            $foreignKeys['object_localized_query_' . $class->getId() . '_' . $language] = 'ooo_id';
         }
 
         $brickList = new DataObject\Objectbrick\Definition\Listing();
         foreach ($brickList->loadNames() as $brickName) {
-            $foreignKeys['object_brick_query_'.$brickName.'_'.$class->getId()] = 'o_id';
-            $foreignKeys['object_brick_localized_'.$brickName.'_'.$class->getId()] = 'ooo_id';
-            $foreignKeys['object_brick_store_'.$brickName.'_'.$class->getId()] = 'o_id';
+            $foreignKeys['object_brick_query_' . $brickName . '_' . $class->getId()] = 'o_id';
+            $foreignKeys['object_brick_localized_' . $brickName . '_' . $class->getId()] = 'ooo_id';
+            $foreignKeys['object_brick_store_' . $brickName . '_' . $class->getId()] = 'o_id';
         }
 
         $fieldCollectionList = new DataObject\Fieldcollection\Definition\Listing();
         foreach ($fieldCollectionList->loadNames() as $fieldCollectionName) {
-            $foreignKeys['object_collection_'.$fieldCollectionName.'_'.$class->getId()] = 'o_id';
-            $foreignKeys['object_collection_'.$fieldCollectionName.'_localized_'.$class->getId()] = 'ooo_id';
+            $foreignKeys['object_collection_' . $fieldCollectionName . '_' . $class->getId()] = 'o_id';
+            $foreignKeys['object_collection_' . $fieldCollectionName . '_localized_' . $class->getId()] = 'ooo_id';
         }
 
         return $foreignKeys;

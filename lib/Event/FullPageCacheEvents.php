@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -28,7 +28,7 @@ final class FullPageCacheEvents
      *
      * @var string
      */
-    const IGNORED_SESSION_KEYS = 'pimcore.cache.full_page.ignored_session_keys';
+    public const string IGNORED_SESSION_KEYS = 'pimcore.cache.full_page.ignored_session_keys';
 
     /**
      * Fired to determine if a response should be cached.
@@ -37,7 +37,7 @@ final class FullPageCacheEvents
      *
      * @var string
      */
-    const CACHE_RESPONSE = 'pimcore.cache.full_page.cache_response';
+    public const string CACHE_RESPONSE = 'pimcore.cache.full_page.cache_response';
 
     /**
      * Fired before the response is written to cache. Can be used to set or purge
@@ -47,7 +47,7 @@ final class FullPageCacheEvents
      *
      * @var string
      */
-    const PREPARE_RESPONSE = 'pimcore.cache.full_page.prepare_response';
+    public const string PREPARE_RESPONSE = 'pimcore.cache.full_page.prepare_response';
 
     /**
      * Fired before the response is written to cache. Can be used to add tags
@@ -57,5 +57,5 @@ final class FullPageCacheEvents
      *
      * @var string
      */
-    const PREPARE_TAGS = 'pimcore.cache.full_page.prepare_tags';
+    public const string PREPARE_TAGS = 'pimcore.cache.full_page.prepare_tags';
 }

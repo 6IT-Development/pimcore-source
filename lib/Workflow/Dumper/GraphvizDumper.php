@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\Dumper;
@@ -59,7 +60,7 @@ class GraphvizDumper implements DumperInterface
      *  * node: The default options for nodes (places + transitions)
      *  * edge: The default options for edges
      */
-    public function dump(Definition $definition, Marking $marking = null, array $options = []): string
+    public function dump(Definition $definition, ?Marking $marking = null, array $options = []): string
     {
         $places = $this->findPlaces($definition, $marking, $options['workflowName']);
         $transitions = $this->findTransitions($definition);
@@ -68,16 +69,16 @@ class GraphvizDumper implements DumperInterface
         $options = array_replace_recursive(self::$defaultOptions, $options);
 
         return $this->startDot($options)
-            .$this->addPlaces($places)
-            .$this->addTransitions($transitions)
-            .$this->addEdges($edges)
-            .$this->endDot();
+            . $this->addPlaces($places)
+            . $this->addTransitions($transitions)
+            . $this->addEdges($edges)
+            . $this->endDot();
     }
 
     /**
      * @internal
      */
-    protected function findPlaces(Definition $definition, Marking $marking = null, string $workflowName = ''): array
+    protected function findPlaces(Definition $definition, ?Marking $marking = null, string $workflowName = ''): array
     {
         $places = [];
         foreach ($definition->getPlaces() as $place) {
@@ -231,7 +232,7 @@ class GraphvizDumper implements DumperInterface
             $code[] = sprintf('%s="%s"', $k, $v);
         }
 
-        return $code ? ', '.implode(', ', $code) : '';
+        return $code ? ', ' . implode(', ', $code) : '';
     }
 
     private function addOptions(array $options): string

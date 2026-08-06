@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Redirect;
@@ -42,7 +43,7 @@ final class RedirectHandler
 {
     use RecursionBlockingEventDispatchHelperTrait;
 
-    const RESPONSE_HEADER_NAME_ID = 'X-Pimcore-Redirect-ID';
+    public const string RESPONSE_HEADER_NAME_ID = 'X-Pimcore-Redirect-ID';
 
     private LoggerInterface $logger;
 
@@ -59,7 +60,7 @@ final class RedirectHandler
 
     private Config $config;
 
-    private ?LockInterface $lock = null;
+    private ?LockInterface $lock;
 
     public function __construct(RequestHelper $requestHelper, SiteResolver $siteResolver, Config $config, LockFactory $lockFactory, LoggerInterface $routingLogger, LoggerInterface $redirectLogger)
     {
@@ -76,7 +77,7 @@ final class RedirectHandler
      *
      * @throws Exception
      */
-    public function checkForRedirect(Request $request, bool $override = false, Site $sourceSite = null): ?Response
+    public function checkForRedirect(Request $request, bool $override = false, ?Site $sourceSite = null): ?Response
     {
         // not for admin requests
         if ($this->requestHelper->isFrontendRequestByAdmin($request)) {
@@ -108,11 +109,12 @@ final class RedirectHandler
      * @throws Exception
      */
     private function matchRegexRedirect(
-        Redirect $redirect,
-        Request $request,
+        Redirect                $redirect,
+        Request                 $request,
         RedirectUrlPartResolver $partResolver,
-        Site $sourceSite = null
-    ): ?Response {
+        ?Site                   $sourceSite = null
+    ): ?Response
+    {
         if (empty($redirect->getType())) {
             return null;
         }
@@ -120,7 +122,6 @@ final class RedirectHandler
         $matchPart = $partResolver->getRequestUriPart($redirect->getType());
         $matches = [];
 
-        $doesMatch = false;
         if ($redirect->isRegex()) {
             $doesMatch = (bool)@preg_match($redirect->getSource(), $matchPart, $matches);
         } else {
@@ -152,7 +153,7 @@ final class RedirectHandler
         $this->dispatchEvent(new RedirectEvent($redirect), RedirectEvents::PRE_BUILD);
         $target = $redirect->getTarget();
         if (is_numeric($target)) {
-            $d = Document::getById((int) $target);
+            $d = Document::getById((int)$target);
             if ($d instanceof Document\Page || $d instanceof Document\Link || $d instanceof Document\Hardlink) {
                 $target = $d->getFullPath();
             } else {
@@ -198,7 +199,7 @@ final class RedirectHandler
 
                 if ($redirectDomain) {
                     // prepend the host and scheme to avoid infinite loops when using "domain" redirects
-                    $url = $request->getScheme().'://'.$redirectDomain.$url;
+                    $url = $request->getScheme() . '://' . $redirectDomain . $url;
                 }
             }
         }
@@ -222,7 +223,7 @@ final class RedirectHandler
             $response = new RedirectResponse($url, $statusCode);
         }
 
-        $response->headers->set(self::RESPONSE_HEADER_NAME_ID, (string) $redirect->getId());
+        $response->headers->set(self::RESPONSE_HEADER_NAME_ID, (string)$redirect->getId());
 
         $this->redirectLogger->info(Tool::getAnonymizedClientIp() ?? 'Anonymous', ['Custom-Redirect ID: ' . $redirect->getId() . ', Source: ' . $request->getRequestUri() . ' -> ' . $url]);
 
@@ -258,7 +259,7 @@ final class RedirectHandler
                     $this->redirects = $list->load();
 
                     Cache::save($this->redirects, $cacheKey, ['system', 'redirect', 'route'], null, 998, true);
-                } catch (Exception $e) {
+                } catch (Exception) {
                     $this->logger->error('Failed to load redirects');
                 }
             }

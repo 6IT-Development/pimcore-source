@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -21,6 +22,7 @@ use Pimcore;
 use Pimcore\Event\Model\ModelEvent;
 use Pimcore\Event\NoteEvents;
 use Pimcore\Model;
+use Pimcore\Tool\Admin;
 
 /**
  * @method \Pimcore\Model\Element\Note\Dao getDao()
@@ -87,12 +89,12 @@ final class Note extends Model\AbstractModel
             $note->getDao()->getById($id);
 
             return $note;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
 
-    public function addData(string $name, string $type, mixed $data): static
+    public function addData(string $name, string $type, mixed $data): Note
     {
         $this->data[$name] = [
             'type' => $type,
@@ -102,7 +104,7 @@ final class Note extends Model\AbstractModel
         return $this;
     }
 
-    public function setElement(ElementInterface $element): static
+    public function setElement(ElementInterface $element): Note
     {
         $this->setCid($element->getId());
         $this->setCtype(Service::getElementType($element));
@@ -119,21 +121,20 @@ final class Note extends Model\AbstractModel
         if (!$this->getUser()) {
             // try to use the logged in user
             if (Pimcore::inAdmin()) {
-                if ($user = \Pimcore\Tool\Admin::getCurrentUser()) {
+                if ($user = Admin::getCurrentUser()) {
                     $this->setUser($user->getId());
                 }
             }
         }
 
-        $isUpdate = $this->getId() ? true : false;
         $this->getDao()->save();
 
-        if (!$isUpdate) {
+        if (!$this->getId()) {
             Pimcore::getEventDispatcher()->dispatch(new ModelEvent($this), NoteEvents::POST_ADD);
         }
     }
 
-    public function setCid(int $cid): static
+    public function setCid(int $cid): Note
     {
         $this->cid = $cid;
 
@@ -145,7 +146,7 @@ final class Note extends Model\AbstractModel
         return $this->cid;
     }
 
-    public function setCtype(string $ctype): static
+    public function setCtype(string $ctype): Note
     {
         $this->ctype = $ctype;
 
@@ -157,7 +158,7 @@ final class Note extends Model\AbstractModel
         return $this->ctype;
     }
 
-    public function setData(array $data): static
+    public function setData(array $data): Note
     {
         $this->data = $data;
 
@@ -169,7 +170,7 @@ final class Note extends Model\AbstractModel
         return $this->data;
     }
 
-    public function setDate(int $date): static
+    public function setDate(int $date): Note
     {
         $this->date = $date;
 
@@ -181,7 +182,7 @@ final class Note extends Model\AbstractModel
         return $this->date;
     }
 
-    public function setDescription(string $description): static
+    public function setDescription(string $description): Note
     {
         $this->description = $description;
 
@@ -193,7 +194,7 @@ final class Note extends Model\AbstractModel
         return $this->description;
     }
 
-    public function setId(int $id): static
+    public function setId(int $id): Note
     {
         $this->id = $id;
 
@@ -205,7 +206,7 @@ final class Note extends Model\AbstractModel
         return $this->id;
     }
 
-    public function setTitle(string $title): static
+    public function setTitle(string $title): Note
     {
         $this->title = $title;
 
@@ -217,7 +218,7 @@ final class Note extends Model\AbstractModel
         return $this->title;
     }
 
-    public function setType(string $type): static
+    public function setType(string $type): Note
     {
         $this->type = $type;
 
@@ -229,7 +230,7 @@ final class Note extends Model\AbstractModel
         return $this->type;
     }
 
-    public function setUser(int $user): static
+    public function setUser(int $user): Note
     {
         $this->user = $user;
 
@@ -244,7 +245,7 @@ final class Note extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setLocked(bool $locked): static
+    public function setLocked(bool $locked): Note
     {
         $this->locked = $locked;
 

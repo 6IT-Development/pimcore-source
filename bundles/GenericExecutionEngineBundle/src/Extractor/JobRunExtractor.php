@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Extractor;
@@ -27,12 +28,13 @@ use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Exception\NotFoundException;
 
-final class JobRunExtractor implements JobRunExtractorInterface
+final readonly class JobRunExtractor implements JobRunExtractorInterface
 {
     public function __construct(
-        private readonly ExpressionServiceInterface $symfonyExpressionService,
-        private readonly JobRunRepositoryInterface $jobRunRepository
-    ) {
+        private ExpressionServiceInterface $symfonyExpressionService,
+        private JobRunRepositoryInterface  $jobRunRepository
+    )
+    {
     }
 
     public function getJobRun(GenericExecutionEngineMessageInterface $message, bool $forceReload = false): JobRun
@@ -69,8 +71,9 @@ final class JobRunExtractor implements JobRunExtractorInterface
     public function logMessageToJobRun(
         JobRun $jobRun,
         string $translationKey,
-        array $params = []
-    ): void {
+        array  $params = []
+    ): void
+    {
         $this->jobRunRepository->updateLogLocalized(
             $jobRun,
             $translationKey,
@@ -96,7 +99,8 @@ final class JobRunExtractor implements JobRunExtractorInterface
     private function extractContentVariables(
         ?array $jobRunContext = null,
         ?array $environmentData = null
-    ): array {
+    ): array
+    {
         $variables = [];
         if (!empty($jobRunContext)) {
             $variables['context'] = $jobRunContext;
@@ -110,8 +114,9 @@ final class JobRunExtractor implements JobRunExtractorInterface
 
     public function getElementFromMessage(
         GenericExecutionEngineMessageInterface $message,
-        array $types = [JobRunExtractorInterface::ASSET_TYPE]
-    ): ?ElementInterface {
+        array                                  $types = [JobRunExtractorInterface::ASSET_TYPE]
+    ): ?ElementInterface
+    {
         $elementDescriptor = $message->getElement();
         if (!$elementDescriptor) {
             return null;
@@ -132,8 +137,9 @@ final class JobRunExtractor implements JobRunExtractorInterface
 
     public function getElementsFromMessage(
         GenericExecutionEngineMessageInterface $message,
-        array $types = [JobRunExtractorInterface::ASSET_TYPE]
-    ): array {
+        array                                  $types = [JobRunExtractorInterface::ASSET_TYPE]
+    ): array
+    {
 
         $elementsToProcess = [];
         $jobRun = $this->getJobRun($message);
@@ -168,8 +174,8 @@ final class JobRunExtractor implements JobRunExtractorInterface
 
     private function getElementByType(
         string $elementType,
-        int $elementId,
-        array $typesToLookFor = [JobRunExtractorInterface::ASSET_TYPE]): ?ElementInterface
+        int    $elementId,
+        array  $typesToLookFor = [JobRunExtractorInterface::ASSET_TYPE]): ?ElementInterface
     {
 
         if (!in_array($elementType, $typesToLookFor, true)) {

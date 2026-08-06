@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Image\Thumbnail;
@@ -35,19 +36,19 @@ final class Config extends Model\AbstractModel
     /**
      * @internal
      */
-    protected const PREVIEW_THUMBNAIL_NAME = 'pimcore-system-treepreview';
+    protected const string PREVIEW_THUMBNAIL_NAME = 'pimcore-system-treepreview';
 
     /**
      * format of array:
      * array(
-     array(
-     "method" => "myName",
-     "arguments" =>
-     array(
-     "width" => 345,
-     "height" => 200
-     )
-     )
+     * array(
+     * "method" => "myName",
+     * "arguments" =>
+     * array(
+     * "width" => 345,
+     * "height" => 200
+     * )
+     * )
      * )
      *
      * @internal
@@ -163,7 +164,7 @@ final class Config extends Model\AbstractModel
         if (is_string($config)) {
             try {
                 $thumbnail = self::getByName($config);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 Logger::error('requested thumbnail ' . $config . ' is not defined');
 
                 return null;
@@ -202,14 +203,14 @@ final class Config extends Model\AbstractModel
             }
 
             $thumbnail->setName($name);
-        } catch (Exception $e) {
+        } catch (Exception) {
             try {
                 $thumbnail = new self();
                 /** @var Model\Asset\Image\Thumbnail\Config\Dao $dao */
                 $dao = $thumbnail->getDao();
                 $dao->getByName($name);
                 RuntimeCache::set($cacheKey, $thumbnail);
-            } catch (Model\Exception\NotFoundException $e) {
+            } catch (Model\Exception\NotFoundException) {
                 return null;
             }
         }
@@ -218,9 +219,7 @@ final class Config extends Model\AbstractModel
         // sometimes, e.g. when using the cropping tools, the thumbnail configuration is modified on-the-fly, since
         // pass-by-reference this modifications would then go to the cache/registry (singleton), by cloning the config
         // we can bypass this problem in an elegant way without parsing the XML config again and again
-        $clone = clone $thumbnail;
-
-        return $clone;
+        return clone $thumbnail;
     }
 
     protected static function getCacheKey(string $name): string
@@ -239,7 +238,7 @@ final class Config extends Model\AbstractModel
             return true;
         }
 
-        return (bool) self::getByName($name);
+        return (bool)self::getByName($name);
     }
 
     /**
@@ -359,7 +358,7 @@ final class Config extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setDescription(string $description): static
+    public function setDescription(string $description): Config
     {
         $this->description = $description;
 
@@ -374,7 +373,7 @@ final class Config extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setItems(array $items): static
+    public function setItems(array $items): Config
     {
         $this->items = $items;
 
@@ -389,7 +388,7 @@ final class Config extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setName(string $name): static
+    public function setName(string $name): Config
     {
         $this->name = $name;
 
@@ -404,7 +403,7 @@ final class Config extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setFormat(string $format): static
+    public function setFormat(string $format): Config
     {
         $this->format = $format;
 
@@ -419,7 +418,7 @@ final class Config extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setQuality(int $quality): static
+    public function setQuality(int $quality): Config
     {
         if ($quality) {
             $this->quality = $quality;
@@ -520,49 +519,49 @@ final class Config extends Model\AbstractModel
             $pipe->addItem('cover', [
                 'width' => $config['width'],
                 'height' => $config['height'],
-                'positioning' => ((isset($config['positioning']) && !empty($config['positioning'])) ? (string)$config['positioning'] : 'center'),
-                'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                'positioning' => !empty($config['positioning']) ? (string)$config['positioning'] : 'center',
+                'forceResize' => !empty($config['forceResize']),
             ]);
         } elseif (isset($config['contain'])) {
             $pipe->addItem('contain', [
                 'width' => $config['width'],
                 'height' => $config['height'],
-                'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                'forceResize' => !empty($config['forceResize']),
             ]);
         } elseif (isset($config['frame'])) {
             $pipe->addItem('frame', [
                 'width' => $config['width'],
                 'height' => $config['height'],
-                'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                'forceResize' => !empty($config['forceResize']),
             ]);
         } elseif (isset($config['aspectratio']) && $config['aspectratio']) {
             if (isset($config['height']) && isset($config['width']) && $config['height'] > 0 && $config['width'] > 0) {
                 $pipe->addItem('contain', [
                     'width' => $config['width'],
                     'height' => $config['height'],
-                    'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                    'forceResize' => !empty($config['forceResize']),
                 ]);
             } elseif (isset($config['height']) && $config['height'] > 0) {
                 $pipe->addItem('scaleByHeight', [
                     'height' => $config['height'],
-                    'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                    'forceResize' => !empty($config['forceResize']),
                 ]);
             } else {
                 $pipe->addItem('scaleByWidth', [
                     'width' => $config['width'],
-                    'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                    'forceResize' => !empty($config['forceResize']),
                 ]);
             }
         } else {
             if (!isset($config['width']) && isset($config['height'])) {
                 $pipe->addItem('scaleByHeight', [
                     'height' => $config['height'],
-                    'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                    'forceResize' => !empty($config['forceResize']),
                 ]);
             } elseif (isset($config['width']) && !isset($config['height'])) {
                 $pipe->addItem('scaleByWidth', [
                     'width' => $config['width'],
-                    'forceResize' => (isset($config['forceResize']) ? (bool)$config['forceResize'] : false),
+                    'forceResize' => !empty($config['forceResize']),
                 ]);
             } elseif (isset($config['width']) && isset($config['height'])) {
                 $pipe->addItem('resize', [
@@ -617,12 +616,12 @@ final class Config extends Model\AbstractModel
                         ];
                     } elseif ($transformation['method'] == 'scaleByWidth') {
                         if ($arg['width'] <= $dimensions['width'] || $asset->isVectorGraphic() || $forceResize) {
-                            $dimensions['height'] = round(($arg['width'] / $dimensions['width']) * $dimensions['height'], 0);
+                            $dimensions['height'] = round(($arg['width'] / $dimensions['width']) * $dimensions['height']);
                             $dimensions['width'] = $arg['width'];
                         }
                     } elseif ($transformation['method'] == 'scaleByHeight') {
                         if ($arg['height'] < $dimensions['height'] || $asset->isVectorGraphic() || $forceResize) {
-                            $dimensions['width'] = round(($arg['height'] / $dimensions['height']) * $dimensions['width'], 0);
+                            $dimensions['width'] = round(($arg['height'] / $dimensions['height']) * $dimensions['width']);
                             $dimensions['height'] = $arg['height'];
                         }
                     } elseif ($transformation['method'] == 'contain') {
@@ -634,10 +633,10 @@ final class Config extends Model\AbstractModel
                         }
 
                         if ($x > $y) {
-                            $dimensions['height'] = round(($arg['width'] / $dimensions['width']) * $dimensions['height'], 0);
+                            $dimensions['height'] = round(($arg['width'] / $dimensions['width']) * $dimensions['height']);
                             $dimensions['width'] = $arg['width'];
                         } else {
-                            $dimensions['width'] = round(($arg['height'] / $dimensions['height']) * $dimensions['width'], 0);
+                            $dimensions['width'] = round(($arg['height'] / $dimensions['height']) * $dimensions['width']);
                             $dimensions['height'] = $arg['height'];
                         }
                     } elseif ($transformation['method'] == 'cropPercent') {
@@ -667,8 +666,8 @@ final class Config extends Model\AbstractModel
         }
 
         // ensure we return int's, sometimes $arg[...] contain strings
-        $dimensions['width'] = (int) $dimensions['width'] * ($this->getHighResolution() ?: 1);
-        $dimensions['height'] = (int) $dimensions['height'] * ($this->getHighResolution() ?: 1);
+        $dimensions['width'] = (int)$dimensions['width'] * ($this->getHighResolution() ?: 1);
+        $dimensions['height'] = (int)$dimensions['height'] * ($this->getHighResolution() ?: 1);
 
         return $dimensions;
     }
@@ -735,14 +734,7 @@ final class Config extends Model\AbstractModel
 
     public function isSvgTargetFormatPossible(): bool
     {
-        $supportedTransformations = ['resize', 'scaleByWidth', 'scaleByHeight'];
-        foreach ($this->getItems() as $item) {
-            if (!in_array($item['method'], $supportedTransformations)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($this->getItems(), static fn($item) => in_array($item['method'], ['resize', 'scaleByWidth', 'scaleByHeight'], true));
     }
 
     public function getGroup(): string
@@ -805,15 +797,15 @@ final class Config extends Model\AbstractModel
     }
 
     /**
+     * @return Config[]
      * @internal
      *
-     * @return Config[]
      */
     public function getAutoFormatThumbnailConfigs(): array
     {
         $autoFormatThumbnails = [];
 
-        foreach ($this->getAutoFormats() as $autoFormat => $autoFormatConfig) {
+        foreach (Config::getAutoFormats() as $autoFormat => $autoFormatConfig) {
             if ($autoFormatConfig['enabled'] && Model\Asset\Image\Thumbnail::supportsFormat($autoFormat)) {
                 $autoFormatThumbnail = clone $this;
                 $autoFormatThumbnail->setFormat($autoFormat);

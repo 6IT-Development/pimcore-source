@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
@@ -28,7 +28,7 @@ use Pimcore\Tool\Serialize;
  */
 class Dao extends AbstractDao
 {
-    public const TABLE_NAME_RELATIONS = 'classificationstore_relations';
+    public const string TABLE_NAME_RELATIONS = 'classificationstore_relations';
 
     /**
      *
@@ -86,7 +86,7 @@ class Dao extends AbstractDao
         foreach ($type as $key => $value) {
             if (in_array($key, $validTableColumns)) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 }
                 if (is_array($value) || is_object($value)) {
                     $value = Serialize::serialize($value);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -77,7 +78,7 @@ class Cache
      *
      *
      */
-    public static function save(mixed $data, string $key, array $tags = [], DateInterval|int $lifetime = null, int $priority = 0, bool $force = false): bool
+    public static function save(mixed $data, string $key, array $tags = [], DateInterval|int|null $lifetime = null, int $priority = 0, bool $force = false): bool
     {
         return static::getHandler()->save($key, $data, $tags, $lifetime, $priority, $force);
     }

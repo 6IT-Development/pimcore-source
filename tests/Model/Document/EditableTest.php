@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Document;
 
 use InvalidArgumentException;
+use Pimcore\Model\Document;
 use Pimcore\Model\Document\Page;
 use Pimcore\Tests\Support\Helper\Document\TestDataHelper;
 use Pimcore\Tests\Support\Test\ModelTestCase;
@@ -154,7 +156,7 @@ class EditableTest extends ModelTestCase
         $this->testDataHelper->assertScheduledblock($this->testPage, 'scheduledblock', $this->seed);
     }
 
-    protected function createTestPage(array|string $fields = [], array &$returnData = []): Page|\Pimcore\Model\Document
+    protected function createTestPage(array|string $fields = [], array &$returnData = []): Page|Document
     {
         $this->testPage = TestHelper::createEmptyDocumentPage();
         $this->assertInstanceOf(Page::class, $this->testPage);
@@ -191,7 +193,7 @@ class EditableTest extends ModelTestCase
             $method = $field['method'];
 
             if (!$method) {
-                throw new InvalidArgumentException(sprintf('Need a method to call'));
+                throw new InvalidArgumentException('Need a method to call');
             }
 
             if (!method_exists($this->testDataHelper, $method)) {
@@ -200,8 +202,7 @@ class EditableTest extends ModelTestCase
 
             $methodArguments = [$document, $field['field'], $this->seed];
 
-            $additionalArguments = isset($field['arguments']) ? $field['arguments'] : [];
-            foreach ($additionalArguments as $aa) {
+            foreach ($field['arguments'] ?? [] as $aa) {
                 $methodArguments[] = $aa;
             }
 

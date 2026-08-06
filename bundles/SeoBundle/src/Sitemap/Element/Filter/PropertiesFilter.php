@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Sitemap\Element\Filter;
@@ -26,9 +26,9 @@ use Pimcore\Model\Element\ElementInterface;
  */
 class PropertiesFilter implements FilterInterface
 {
-    const PROPERTY_EXCLUDE = 'sitemaps_exclude';
+    public const string PROPERTY_EXCLUDE = 'sitemaps_exclude';
 
-    const PROPERTY_EXCLUDE_CHILDREN = 'sitemaps_exclude_children';
+    public const string PROPERTY_EXCLUDE_CHILDREN = 'sitemaps_exclude_children';
 
     public function canBeAdded(ElementInterface $element, GeneratorContextInterface $context): bool
     {

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -29,7 +30,7 @@ use Pimcore\Model\Document;
 use Pimcore\Model\Element;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Renderlet extends Model\Document\Editable implements IdRewriterInterface, EditmodeDataInterface, LazyLoadingInterface
 {
@@ -38,7 +39,7 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
      * These are passed to the controller as attributes.
      * Everything else is passed to the controller as query parameters.
      */
-    private const CONFIG_KEYS = [
+    private const array CONFIG_KEYS = [
         'controller' => true,
         'template' => true,
         'className' => true,
@@ -86,7 +87,7 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
         return 'renderlet';
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         return [
             'id' => $this->id,
@@ -182,12 +183,12 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
 
         foreach (['id', 'type', 'subtype'] as $key) {
             if (!array_key_exists($key, $unserializedData)) {
-                throw new InvalidArgumentException("Key '{$key}' is missing in the data array.");
+                throw new InvalidArgumentException("Key '$key' is missing in the data array.");
             }
         }
 
         $this->id = $unserializedData['id'];
-        $this->type = (string) $unserializedData['type'];
+        $this->type = (string)$unserializedData['type'];
         $this->subtype = $unserializedData['subtype'];
 
         $this->setElement();
@@ -249,7 +250,7 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
     /**
      * get correct type of object as string
      */
-    private function getObjectType(Element\ElementInterface $object = null): ?string
+    private function getObjectType(?Element\ElementInterface $object = null): ?string
     {
         $this->load();
 
@@ -281,7 +282,7 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
             $el = Element\Service::getElementById($this->type, $this->id);
             if (!$el instanceof Element\ElementInterface) {
                 $sane = false;
-                Logger::notice('Detected insane relation, removing reference to non existent '.$this->type.' with id ['.$this->id.']');
+                Logger::notice('Detected insane relation, removing reference to non existent ' . $this->type . ' with id [' . $this->id . ']');
                 $this->id = null;
                 $this->type = null;
                 $this->o = null;
@@ -322,7 +323,7 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
 
     public function getId(): int
     {
-        return (int) $this->id;
+        return (int)$this->id;
     }
 
     /**
@@ -357,7 +358,7 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
 
     public function rewriteIds(array $idMapping): void
     {
-        $type = (string) $this->type;
+        $type = (string)$this->type;
         if ($type && array_key_exists($this->type, $idMapping) && array_key_exists($this->getId(), $idMapping[$this->type])) {
             $this->setId($idMapping[$this->type][$this->getId()]);
             $this->setO(null);

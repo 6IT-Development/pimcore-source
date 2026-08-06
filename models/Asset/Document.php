@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset;
@@ -27,7 +28,7 @@ use Pimcore\Model;
  */
 class Document extends Model\Asset
 {
-    public const CUSTOM_SETTING_PDF_SCAN_STATUS = 'document_pdf_scan_status';
+    public const string CUSTOM_SETTING_PDF_SCAN_STATUS = 'document_pdf_scan_status';
 
     protected string $type = 'document';
 
@@ -48,7 +49,7 @@ class Document extends Model\Asset
      *
      * @internal
      */
-    public function processPageCount(string $path = null): bool
+    public function processPageCount(?string $path = null): bool
     {
         if (!$this->isPageCountProcessingEnabled()) {
             return false;
@@ -73,7 +74,7 @@ class Document extends Model\Asset
             $pageCount = $converter->getPageCount();
             $this->setCustomSetting('document_page_count', $pageCount);
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
             $this->setCustomSetting('document_page_count', 'failed');
 
             return false;
@@ -93,7 +94,7 @@ class Document extends Model\Asset
             return null;
         }
 
-        return (int) $this->getCustomSetting('document_page_count');
+        return (int)$this->getCustomSetting('document_page_count');
     }
 
     /**
@@ -101,9 +102,10 @@ class Document extends Model\Asset
      */
     public function getImageThumbnail(
         array|string|Image\Thumbnail\Config $thumbnailName,
-        int $page = 1,
-        bool $deferred = false
-    ): Document\ImageThumbnailInterface {
+        int                                 $page = 1,
+        bool                                $deferred = false
+    ): Document\ImageThumbnailInterface
+    {
         if (!$this->isThumbnailsEnabled() || !\Pimcore\Document::isAvailable()) {
             return new Document\ImageThumbnail(null);
         }
@@ -114,7 +116,7 @@ class Document extends Model\Asset
     /**
      * @throws Exception
      */
-    public function getText(int $page = null): ?string
+    public function getText(?int $page = null): ?string
     {
         if (!$this->isTextProcessingEnabled()) {
             return null;
@@ -124,14 +126,14 @@ class Document extends Model\Asset
             return null;
         }
 
-        $cacheKey = 'asset_document_text_' . $this->getId() . '_' . ($page ? $page : 'all');
+        $cacheKey = 'asset_document_text_' . $this->getId() . '_' . ($page ?: 'all');
         if (!$text = Cache::load($cacheKey)) {
             $document = \Pimcore\Document::getInstance();
             $text = $document->getText($page, $this);
             Cache::save($text, $cacheKey, $this->getCacheTags(), null, 99, true);
         }
 
-        return (string) $text;
+        return (string)$text;
     }
 
     public function checkIfPdfContainsJS(): bool

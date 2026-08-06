@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -43,8 +44,7 @@ class MaintenanceModeCommand extends AbstractCommand
     {
         $this
             ->addOption('enable', null, InputOption::VALUE_NONE, 'Enable maintenance mode (default)')
-            ->addOption('disable', null, InputOption::VALUE_NONE, 'Disable maintenance mode')
-        ;
+            ->addOption('disable', null, InputOption::VALUE_NONE, 'Disable maintenance mode');
     }
 
     protected function initialize(InputInterface $input, OutputInterface $output): void

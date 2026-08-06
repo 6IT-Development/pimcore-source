@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CustomReportsBundle\DependencyInjection;
@@ -29,16 +30,10 @@ class PimcoreCustomReportsExtension extends ConfigurableExtension implements Pre
     private function configureAdapterFactories(ContainerBuilder $container, array $factories, string $serviceLocatorId): void
     {
         $serviceLocator = $container->getDefinition($serviceLocatorId);
-        $arguments = [];
-
-        foreach ($factories as $key => $serviceId) {
-            $arguments[$key] = new Reference($serviceId);
-        }
-
-        $serviceLocator->setArgument(0, $arguments);
+        $serviceLocator->setArgument(0, array_map(fn($serviceId) => new Reference($serviceId), $factories));
     }
 
-    public function loadInternal(array $config, ContainerBuilder $container): void
+    protected function loadInternal(array $config, ContainerBuilder $container): void
     {
         $loader = new YamlFileLoader(
             $container,

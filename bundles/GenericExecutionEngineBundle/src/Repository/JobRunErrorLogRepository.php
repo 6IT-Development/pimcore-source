@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Repository;
@@ -21,18 +22,20 @@ use Doctrine\ORM\EntityRepository;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRunErrorLog;
 
-final class JobRunErrorLogRepository implements JobRunErrorLogRepositoryInterface
+final readonly class JobRunErrorLogRepository implements JobRunErrorLogRepositoryInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $pimcoreEntityManager,
-    ) {
+        private EntityManagerInterface $pimcoreEntityManager,
+    )
+    {
     }
 
     public function createFromJobRun(
-        JobRun $jobRun,
-        ?int $elementId = null,
+        JobRun  $jobRun,
+        ?int    $elementId = null,
         ?string $message = null
-    ): void {
+    ): void
+    {
         $jobRunErrorLog = new JobRunErrorLog(
             $jobRun->getId(),
             $jobRun->getCurrentStep(),
@@ -54,12 +57,13 @@ final class JobRunErrorLogRepository implements JobRunErrorLogRepositoryInterfac
      * @return JobRunErrorLog[]
      */
     public function getLogsByJobRunId(
-        int $jobRunId,
-        int $step = null,
+        int   $jobRunId,
+        ?int  $step = null,
         array $orderBy = [],
-        int $limit = 100,
-        int $offset = 0
-    ): array {
+        int   $limit = 100,
+        int   $offset = 0
+    ): array
+    {
         $criteria = ['jobRunId' => $jobRunId];
         if ($step !== null && $step >= 0) {
             $criteria['step'] = $step;
@@ -75,7 +79,7 @@ final class JobRunErrorLogRepository implements JobRunErrorLogRepositoryInterfac
 
     public function getTotalCount(): int
     {
-        return $this->getLogRepository()->count([]);
+        return $this->getLogRepository()->count();
     }
 
     public function getTotalCountByJobRunId(int $jobRunId): int

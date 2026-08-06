@@ -9,19 +9,20 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\CustomLayout\Listing;
 
 use Exception;
 use Pimcore\Model;
+use Pimcore\Model\DataObject\ClassDefinition\CustomLayout\Listing;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\ClassDefinition\CustomLayout\Listing $model
+ * @property Listing $model
  */
 class Dao extends Model\DataObject\ClassDefinition\CustomLayout\Dao
 {
@@ -66,7 +67,7 @@ class Dao extends Model\DataObject\ClassDefinition\CustomLayout\Dao
             }
 
             return count($layouts);
-        } catch (Exception $e) {
+        } catch (Exception) {
             return 0;
         }
     }

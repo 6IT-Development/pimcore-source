@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -69,12 +70,12 @@ final class Tag extends Model\AbstractModel
 
         try {
             $tag = RuntimeCache::get($cacheKey);
-        } catch (Exception $ex) {
+        } catch (Exception) {
             try {
                 $tag = new self();
                 $tag->getDao()->getById($id);
                 RuntimeCache::set($cacheKey, $tag);
-            } catch (NotFoundException $e) {
+            } catch (NotFoundException) {
                 return null;
             }
         }
@@ -147,19 +148,20 @@ final class Tag extends Model\AbstractModel
     /**
      * Retrieves all elements that have a specific tag or one of its child tags assigned
      *
-     * @param Tag    $tag               The tag to search for
-     * @param string $type              The type of elements to search for: 'document', 'asset' or 'object'
-     * @param array  $subtypes          Filter by subtypes, eg. page, object, email, folder etc.
-     * @param array $classNames        For objects only: filter by classnames
+     * @param Tag $tag The tag to search for
+     * @param string $type The type of elements to search for: 'document', 'asset' or 'object'
+     * @param array $subtypes Filter by subtypes, eg. page, object, email, folder etc.
+     * @param array $classNames For objects only: filter by classnames
      * @param bool $considerChildTags Look for elements having one of $tag's children assigned
      */
     public static function getElementsForTag(
-        Tag $tag,
+        Tag    $tag,
         string $type,
-        array $subtypes = [],
-        array $classNames = [],
-        bool $considerChildTags = false
-    ): array {
+        array  $subtypes = [],
+        array  $classNames = [],
+        bool   $considerChildTags = false
+    ): array
+    {
         return $tag->getDao()->getElementsForTag($tag, $type, $subtypes, $classNames, $considerChildTags);
     }
 
@@ -169,7 +171,7 @@ final class Tag extends Model\AbstractModel
     public static function getByPath(string $path): ?Tag
     {
         try {
-            return (new self)->getDao()->getByPath($path);
+            return (new self())->getDao()->getByPath($path);
         } catch (Exception $e) {
             return null;
         }
@@ -203,7 +205,7 @@ final class Tag extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setId(?int $id): static
+    public function setId(?int $id): Tag
     {
         $this->id = $id;
 
@@ -218,7 +220,7 @@ final class Tag extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setName(string $name): static
+    public function setName(string $name): Tag
     {
         $this->name = $name;
 
@@ -233,7 +235,7 @@ final class Tag extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setParentId(int $parentId): static
+    public function setParentId(int $parentId): Tag
     {
         $this->parentId = $parentId;
         $this->parent = null;

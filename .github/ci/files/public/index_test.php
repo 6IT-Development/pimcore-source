@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -11,15 +12,16 @@ declare(strict_types=1);
  * LICENSE.md which is distributed with this source code.
  *
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 use Pimcore\Bootstrap;
+use Pimcore\Kernel;
 use Pimcore\Tool;
 use Symfony\Component\Debug\Debug;
 use Symfony\Component\HttpFoundation\Request;
 
-include __DIR__ . "/../vendor/autoload.php";
+include __DIR__ . '/../vendor/autoload.php';
 
 define('PIMCORE_PROJECT_ROOT', __DIR__ . '/..');
 define('APP_ENV', 'test');
@@ -33,11 +35,11 @@ $request = Request::createFromGlobals();
 // request stack available yet
 Tool::setCurrentRequest($request);
 
-/** @var \Pimcore\Kernel $kernel */
+/** @var Kernel $kernel */
 $kernel = Bootstrap::kernel();
 
 // reset current request - will be read from request stack from now on
-Tool::setCurrentRequest(null);
+Tool::setCurrentRequest();
 
 $response = $kernel->handle($request);
 $response->send();

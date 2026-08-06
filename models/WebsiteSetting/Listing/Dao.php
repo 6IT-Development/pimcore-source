@@ -9,23 +9,25 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\WebsiteSetting\Listing;
 
 use Pimcore\Model;
+use Pimcore\Model\WebsiteSetting;
+use Pimcore\Model\WebsiteSetting\Listing;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\WebsiteSetting\Listing $model
+ * @property Listing $model
  */
 class Dao extends Model\Listing\Dao\AbstractDao
 {
     /**
-     * @return \Pimcore\Model\WebsiteSetting[]
+     * @return WebsiteSetting[]
      */
     public function load(): array
     {
@@ -34,7 +36,7 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
         $settings = [];
         foreach ($settingsData as $settingData) {
-            $settings[] = Model\WebsiteSetting::getById($settingData);
+            $settings[] = WebsiteSetting::getById($settingData);
         }
 
         $this->model->setSettings($settings);
@@ -44,6 +46,6 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
     public function getTotalCount(): int
     {
-        return (int) $this->db->fetchOne('SELECT COUNT(*) as amount FROM website_settings ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
+        return (int)$this->db->fetchOne('SELECT COUNT(*) as amount FROM website_settings ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }

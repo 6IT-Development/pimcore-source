@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\HttpKernel\CacheWarmer;
@@ -49,7 +50,7 @@ class MkdirCacheWarmer implements CacheWarmerInterface
         ];
 
         // Since #12392, PIMCORE_CLASS_DEFINITION_WRITABLE = 0 doesn't allow creation in var/classes but is allowed when not set or 1.
-        if (true == ($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? true)) {
+        if (($_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE'] ?? true)) {
             $directories[] = PIMCORE_CLASS_DEFINITION_DIRECTORY;
         }
 

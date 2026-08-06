@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Tool\SettingsStore;
@@ -27,7 +27,7 @@ use Pimcore\Model\Tool\SettingsStore;
  */
 class Dao extends Model\Dao\AbstractDao
 {
-    const TABLE_NAME = 'settings_store';
+    public const string TABLE_NAME = 'settings_store';
 
     public function set(string $id, float|bool|int|string $data, string $type = SettingsStore::TYPE_STRING, ?string $scope = null): bool
     {
@@ -35,12 +35,12 @@ class Dao extends Model\Dao\AbstractDao
             Helper::upsert($this->db, self::TABLE_NAME, [
                 'id' => $id,
                 'data' => $data,
-                'scope' => (string) $scope,
+                'scope' => (string)$scope,
                 'type' => $type,
             ], $this->getPrimaryKey(self::TABLE_NAME));
 
             return true;
-        } catch (Exception $e) {
+        } catch (Exception) {
             return false;
         }
     }
@@ -49,7 +49,7 @@ class Dao extends Model\Dao\AbstractDao
     {
         return $this->db->delete(self::TABLE_NAME, [
             'id' => $id,
-            'scope' => (string) $scope,
+            'scope' => (string)$scope,
         ]);
     }
 
@@ -60,7 +60,7 @@ class Dao extends Model\Dao\AbstractDao
     {
         $item = $this->db->fetchAssociative('SELECT * FROM ' . self::TABLE_NAME . ' WHERE id = :id AND scope = :scope', [
             'id' => $id,
-            'scope' => (string) $scope,
+            'scope' => (string)$scope,
         ]);
 
         if (!$item) {

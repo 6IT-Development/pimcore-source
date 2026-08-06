@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
@@ -19,11 +20,14 @@ namespace Pimcore\Model;
 use Doctrine\DBAL\Exception\DeadlockException;
 use Exception;
 use Pimcore;
+use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\Config;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\FrontendEvents;
 use Pimcore\Event\Model\DocumentEvent;
 use Pimcore\Logger;
+use Pimcore\Model\Document\Dao;
 use Pimcore\Model\Document\Hardlink\Wrapper\WrapperInterface;
 use Pimcore\Model\Document\Listing;
 use Pimcore\Model\Element\DuplicateFullPathException;
@@ -37,7 +41,7 @@ use Symfony\Cmf\Bundle\RoutingBundle\Routing\DynamicRouter;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
- * @method \Pimcore\Model\Document\Dao getDao()
+ * @method Dao getDao()
  * @method bool __isBasedOnLatestData()
  * @method int getChildAmount($user = null)
  * @method string getCurrentFullPath()
@@ -104,14 +108,14 @@ class Document extends Element\AbstractElement
 
     public static function getTypes(): array
     {
-        $documentsConfig = \Pimcore\Config::getSystemConfiguration('documents');
+        $documentsConfig = Config::getSystemConfiguration('documents');
 
-        return  array_keys($documentsConfig['type_definitions']['map']);
+        return array_keys($documentsConfig['type_definitions']['map']);
     }
 
     public static function getTypesConfiguration(): array
     {
-        $documentsConfig = \Pimcore\Config::getSystemConfiguration('documents');
+        $documentsConfig = Config::getSystemConfiguration('documents');
 
         // remove unused class value
         return array_map(function ($item) {
@@ -156,7 +160,7 @@ class Document extends Element\AbstractElement
             $helperDoc->getDao()->getByPath($path);
             $doc = static::getById($helperDoc->getId(), $params);
             RuntimeCache::set($cacheKey, $doc);
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             $doc = null;
         }
 
@@ -188,7 +192,7 @@ class Document extends Element\AbstractElement
                 '11.0',
                 sprintf('Passing id as string to method %s is deprecated', __METHOD__)
             );
-            $id = is_numeric($id) ? (int) $id : 0;
+            $id = is_numeric($id) ? (int)$id : 0;
         }
         if ($id < 1) {
             return null;
@@ -204,7 +208,7 @@ class Document extends Element\AbstractElement
             }
         }
 
-        if ($params['force'] || !($document = \Pimcore\Cache::load($cacheKey))) {
+        if ($params['force'] || !($document = Cache::load($cacheKey))) {
             $reflectionClass = new ReflectionClass(static::class);
             if ($reflectionClass->isAbstract()) {
                 $document = new Document();
@@ -214,7 +218,7 @@ class Document extends Element\AbstractElement
 
             try {
                 $document->getDao()->getById($id);
-            } catch (NotFoundException $e) {
+            } catch (NotFoundException) {
                 return null;
             }
 
@@ -236,7 +240,7 @@ class Document extends Element\AbstractElement
 
             $document->resetDirtyMap();
 
-            \Pimcore\Cache::save($document, $cacheKey);
+            Cache::save($document, $cacheKey);
         } else {
             RuntimeCache::set($cacheKey, $document);
         }
@@ -344,7 +348,7 @@ class Document extends Element\AbstractElement
                         $this->rollBack();
                     } catch (Exception $er) {
                         // PDO adapter throws exceptions if rollback fails
-                        Logger::error((string) $er);
+                        Logger::error((string)$er);
                     }
 
                     // we try to start the transaction $maxRetries times again (deadlocks, ...)
@@ -515,9 +519,9 @@ class Document extends Element\AbstractElement
             $tags = [$this->getCacheTag(), 'document_properties', 'output'];
             $tags = array_merge($tags, $additionalTags);
 
-            \Pimcore\Cache::clearTags($tags);
+            Cache::clearTags($tags);
         } catch (Exception $e) {
-            Logger::crit((string) $e);
+            Logger::crit((string)$e);
         }
     }
 
@@ -610,9 +614,9 @@ class Document extends Element\AbstractElement
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     protected function doDelete(): void
     {
@@ -637,7 +641,7 @@ class Document extends Element\AbstractElement
         $d->cleanAllForElement($this);
 
         // remove translations
-        $service = new Document\Service;
+        $service = new Document\Service();
         $service->removeTranslation($this);
     }
 
@@ -670,7 +674,7 @@ class Document extends Element\AbstractElement
             $failureEvent = new DocumentEvent($this);
             $failureEvent->setArgument('exception', $e);
             $this->dispatchEvent($failureEvent, DocumentEvents::POST_DELETE_FAILURE);
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             throw $e;
         }
@@ -700,7 +704,7 @@ class Document extends Element\AbstractElement
                 }
             }
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
 
         $requestStack = Pimcore::getContainer()->get('request_stack');
@@ -780,9 +784,7 @@ class Document extends Element\AbstractElement
             $this->fullPathCache = $link;
         }
 
-        $link = $this->prepareFrontendPath($link);
-
-        return $link;
+        return $this->prepareFrontendPath($link);
     }
 
     private function prepareFrontendPath(string $path): string
@@ -815,14 +817,12 @@ class Document extends Element\AbstractElement
                     if ($site->getRootDocument() instanceof Document\Page && $site->getRootDocument() !== $this) {
                         $rootPath = $site->getRootPath();
                         $rootPath = preg_quote($rootPath, '@');
-                        $link = preg_replace('@^' . $rootPath . '@', '', $this->path);
-
-                        return $link;
+                        return preg_replace('@^' . $rootPath . '@', '', $this->path);
                     }
                 }
             }
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
 
         return $this->path;
@@ -835,9 +835,7 @@ class Document extends Element\AbstractElement
 
     public function getRealFullPath(): string
     {
-        $path = $this->getRealPath() . $this->getKey();
-
-        return $path;
+        return $this->getRealPath() . $this->getKey();
     }
 
     public function setKey(string $key): static

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Notification\Service;
@@ -26,27 +26,27 @@ use Symfony\Component\HttpFoundation\Request;
  */
 class NotificationServiceFilterParser
 {
-    const KEY_FILTER = 'filter';
+    public const string KEY_FILTER = 'filter';
 
-    const KEY_TYPE = 'type';
+    public const string KEY_TYPE = 'type';
 
-    const KEY_PROPERTY = 'property';
+    public const string KEY_PROPERTY = 'property';
 
-    const KEY_OPERATOR = 'operator';
+    public const string KEY_OPERATOR = 'operator';
 
-    const KEY_VALUE = 'value';
+    public const string KEY_VALUE = 'value';
 
-    const TYPE_STRING = 'string';
+    public const string TYPE_STRING = 'string';
 
-    const TYPE_DATE = 'date';
+    public const string TYPE_DATE = 'date';
 
-    const OPERATOR_LIKE = 'like';
+    public const string OPERATOR_LIKE = 'like';
 
-    const OPERATOR_EQ = 'eq';
+    public const string OPERATOR_EQ = 'eq';
 
-    const OPERATOR_GT = 'gt';
+    public const string OPERATOR_GT = 'gt';
 
-    const OPERATOR_LT = 'lt';
+    public const string OPERATOR_LT = 'lt';
 
     private Request $request;
 
@@ -106,16 +106,13 @@ class NotificationServiceFilterParser
         $property = $this->getDbProperty($item);
         $value = $item[self::KEY_VALUE] ?? '';
 
-        switch ($item[self::KEY_OPERATOR]) {
-            case self::OPERATOR_LIKE:
-                $key = $property . '_like';
-                $result = [
-                    $key,
-                    "{$property} LIKE :{$key}",
-                    [$key => "%{$value}%"],
-                ];
-
-                break;
+        if ($item[self::KEY_OPERATOR] == self::OPERATOR_LIKE) {
+            $key = $property . '_like';
+            $result = [
+                $key,
+                "$property LIKE :$key",
+                [$key => "%$value%"],
+            ];
         }
 
         if (is_null($result)) {
@@ -141,7 +138,7 @@ class NotificationServiceFilterParser
                 $key = $property . '_eq';
                 $result = [
                     $key,
-                    "{$property} BETWEEN :{$key}_start AND :{$key}_end",
+                    "$property BETWEEN :{$key}_start AND :{$key}_end",
                     [
                         $key . '_start' => $value->toDateTimeString(),
                         $key . '_end' => $value->addDay()->subSecond()->toDateTimeString(),
@@ -153,7 +150,7 @@ class NotificationServiceFilterParser
                 $key = $property . '_gt';
                 $result = [
                     $key,
-                    "{$property} > :{$key}",
+                    "$property > :$key",
                     [$key => $value->toDateTimeString()],
                 ];
 
@@ -162,7 +159,7 @@ class NotificationServiceFilterParser
                 $key = $property . '_lt';
                 $result = [
                     $key,
-                    "{$property} < :{$key}",
+                    "$property < :$key",
                     [$key => $value->addDay()->subSecond()->toDateTimeString()],
                 ];
 
@@ -180,6 +177,6 @@ class NotificationServiceFilterParser
     {
         $property = $item[self::KEY_PROPERTY];
 
-        return isset($this->properties[$property]) ? $this->properties[$property] : $property;
+        return $this->properties[$property] ?? $property;
     }
 }

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -28,7 +28,7 @@ use Pimcore\Templating\Renderer\EditableRenderer;
 use Pimcore\Tool\HtmlUtils;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Areablock extends Model\Document\Editable implements BlockInterface
 {
@@ -71,7 +71,7 @@ class Areablock extends Model\Document\Editable implements BlockInterface
         return 'areablock';
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         return $this->indices;
     }
@@ -84,13 +84,13 @@ class Areablock extends Model\Document\Editable implements BlockInterface
     public function frontend(): void
     {
         reset($this->indices);
-        while ($this->loop());
+        while ($this->loop()) ;
     }
 
     /**
+     * @return ($return is true ? string : void)
      * @internal
      *
-     * @return ($return is true ? string : void)
      */
     public function renderIndex(int $index, bool $return = false)
     {
@@ -208,12 +208,7 @@ class Areablock extends Model\Document\Editable implements BlockInterface
         return $info;
     }
 
-    /**
-     * @param null|Document\Editable\Area\Info $info
-     *
-     * @return string|void
-     */
-    public function content(Area\Info $info = null, array $templateParams = [], bool $return = false)
+    public function content(?Area\Info $info = null, array $templateParams = [], bool $return = false)
     {
         if (!$info) {
             $info = $this->buildInfoObject();
@@ -291,23 +286,19 @@ class Areablock extends Model\Document\Editable implements BlockInterface
         $config = array_merge($this->getToolBarDefaultConfig(), $this->getConfig());
 
         $options = parent::getEditmodeDefinition();
-        $options = array_merge($options, [
+        return array_merge($options, [
             'config' => $config,
         ]);
-
-        return $options;
     }
 
     protected function getEditmodeElementAttributes(): array
     {
         $attributes = parent::getEditmodeElementAttributes();
 
-        $attributes = array_merge($attributes, [
+        return array_merge($attributes, [
             'name' => $this->getName(),
             'type' => $this->getType(),
         ]);
-
-        return $attributes;
     }
 
     public function start(bool $return = false)
@@ -355,7 +346,7 @@ class Areablock extends Model\Document\Editable implements BlockInterface
         $this->outputEditmode($html);
     }
 
-    public function blockStart(Area\Info $info = null): array
+    public function blockStart(?Area\Info $info = null): array
     {
         $this->blockStarted = true;
         $attributes = [
@@ -576,9 +567,7 @@ class Areablock extends Model\Document\Editable implements BlockInterface
             });
         }
 
-        $result = array_merge($result['index'], $result['name']);
-
-        return $result;
+        return array_merge($result['index'], $result['name']);
     }
 
     public function getCount(): int
@@ -612,7 +601,7 @@ class Areablock extends Model\Document\Editable implements BlockInterface
 
     public function isEmpty(): bool
     {
-        return !(bool) count($this->indices);
+        return !count($this->indices);
     }
 
     /**

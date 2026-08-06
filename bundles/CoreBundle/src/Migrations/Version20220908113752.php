@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -33,14 +33,14 @@ final class Version20220908113752 extends AbstractMigration
         $tableList = $this->connection->fetchAllAssociative("SHOW TABLES LIKE '" . ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . "%'");
         foreach ($tableList as $table) {
             $tableName = current($table);
-            preg_match("/(\d{2})_(\d{4})$/", $tableName, $matches);
+            preg_match('/(\d{2})_(\d{4})$/', $tableName, $matches);
             $month = $matches[1];
             $year = $matches[2];
-            $newName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . "_{$year}_{$month}";
+            $newName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . "_{$year}_$month";
 
-            $this->write("Renaming {$tableName} to {$newName}");
+            $this->write("Renaming $tableName to $newName");
 
-            $this->addSql("RENAME TABLE {$tableName} TO {$newName};");
+            $this->addSql("RENAME TABLE $tableName TO $newName;");
         }
     }
 
@@ -49,14 +49,14 @@ final class Version20220908113752 extends AbstractMigration
         $tableList = $this->connection->fetchAllAssociative("SHOW TABLES LIKE '" . ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . "%'");
         foreach ($tableList as $table) {
             $tableName = current($table);
-            preg_match("/(\d{4})_(\d{2})$/", $tableName, $matches);
+            preg_match('/(\d{4})_(\d{2})$/', $tableName, $matches);
             $year = $matches[1];
             $month = $matches[2];
-            $oldName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . "_{$month}_{$year}";
+            $oldName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . "_{$month}_$year";
 
-            $this->write("Restoring {$tableName} to {$oldName}");
+            $this->write("Restoring $tableName to $oldName");
 
-            $this->addSql("RENAME TABLE {$tableName} TO {$oldName};");
+            $this->addSql("RENAME TABLE $tableName TO $oldName;");
         }
     }
 }

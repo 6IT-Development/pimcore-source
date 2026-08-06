@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Composer;
@@ -32,7 +32,7 @@ class PackageInfo
      *
      *
      */
-    public function getInstalledPackages(array|string $type = null): array
+    public function getInstalledPackages(array|string|null $type = null): array
     {
         $packages = $this->readInstalledPackages();
 
@@ -41,7 +41,7 @@ class PackageInfo
                 $type = [$type];
             }
 
-            $packages = array_filter($packages, static fn (array $package) => in_array($package['type'], $type, true));
+            $packages = array_filter($packages, static fn(array $package) => in_array($package['type'], $type, true));
         }
 
         return $packages;

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -68,44 +68,33 @@ class Input extends Data implements
     public bool $showCharCount = false;
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataForResource
      */
-    public function getDataForResource(mixed $data, Concrete $object = null, array $params = []): ?string
+    public function getDataForResource(mixed $data, ?Concrete $object = null, array $params = []): ?string
     {
-        $data = $this->handleDefaultValue($data, $object, $params);
-
-        return $data;
+        return $this->handleDefaultValue($data, $object, $params);
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $data;
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $this->getDataForResource($data, $object, $params);
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see Data::getDataForEditmode
-     *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -113,7 +102,7 @@ class Input extends Data implements
     /**
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         if ($data === '') {
             return null;
@@ -122,11 +111,7 @@ class Input extends Data implements
         return $this->getDataFromResource($data, $object, $params);
     }
 
-    /**
-     * @param Model\DataObject\Concrete|null $object
-     *
-     */
-    public function getDataFromGridEditor(string $data, Concrete $object = null, array $params = []): ?string
+    public function getDataFromGridEditor(string $data, ?Concrete $object = null, array $params = []): ?string
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
@@ -209,18 +194,18 @@ class Input extends Data implements
                         $throwException = true;
                     }
                 } else {
-                    if (!preg_match('#'.$this->getRegex().'#'.implode('', $this->getRegexFlags()), $data)) {
+                    if (!preg_match('#' . $this->getRegex() . '#' . implode('', $this->getRegexFlags()), $data)) {
                         $throwException = true;
                     }
                 }
 
                 if ($throwException) {
-                    throw new Model\Element\ValidationException('Value in field [ '.$this->getName()." ] doesn't match input validation '".$this->getRegex()."'");
+                    throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . " ] doesn't match input validation '" . $this->getRegex() . "'");
                 }
             }
 
             if ($this->getColumnLength() && mb_strlen($data) > $this->getColumnLength()) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is longer than '.$this->getColumnLength().' characters');
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is longer than ' . $this->getColumnLength() . ' characters');
             }
         }
 

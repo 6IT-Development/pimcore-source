@@ -9,19 +9,20 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\Editlock;
 
 use Pimcore\Db\Helper;
 use Pimcore\Model;
+use Pimcore\Model\Element\Editlock;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Element\Editlock $model
+ * @property Editlock $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -55,19 +56,12 @@ class Dao extends Model\Dao\AbstractDao
     public function save(): bool
     {
         $version = $this->model->getObjectVars();
-        $data = [];
 
-        foreach ($version as $key => $value) {
-            if (in_array($key, $this->getValidTableColumns('edit_lock'))) {
-                $data[$key] = $value;
-            }
-        }
-
-        Helper::upsert($this->db, 'edit_lock', $data, $this->getPrimaryKey('edit_lock'));
+        Helper::upsert($this->db, 'edit_lock', array_filter($version, fn($key) => in_array($key, $this->getValidTableColumns('edit_lock'), true), ARRAY_FILTER_USE_KEY), $this->getPrimaryKey('edit_lock'));
 
         $lastInsertId = $this->db->lastInsertId();
         if (!$this->model->getId() && $lastInsertId) {
-            $this->model->setId((int) $lastInsertId);
+            $this->model->setId((int)$lastInsertId);
         }
 
         return true;

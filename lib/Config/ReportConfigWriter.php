@@ -11,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Config;
 
 use Exception;
+use Pimcore\Config;
 use Pimcore\Event\Report\SettingsEvent;
 use Pimcore\Event\ReportEvents;
 use Pimcore\Model\Tool\SettingsStore;
@@ -30,9 +31,9 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class ReportConfigWriter
 {
-    const REPORT_SETTING_ID = 'reports';
+    public const string REPORT_SETTING_ID = 'reports';
 
-    const REPORT_SETTING_SCOPE = 'pimcore';
+    public const string REPORT_SETTING_SCOPE = 'pimcore';
 
     private EventDispatcherInterface $eventDispatcher;
 
@@ -66,7 +67,7 @@ final class ReportConfigWriter
     {
         // the config returned from getReportConfig is readonly
         // so we create a new writable one here
-        $config = \Pimcore\Config::getReportConfig();
+        $config = Config::getReportConfig();
         $config = array_merge($config, $values);
 
         $this->write($config);

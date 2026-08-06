@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\BlockDataMarshaller;
@@ -35,7 +36,7 @@ class Localizedfields implements MarshallerInterface
         $this->marshallerService = $marshallerService;
     }
 
-    public function marshal(mixed $value, array $params = []): mixed
+    public function marshal(mixed $value, array $params = []): ?array
     {
         $object = $params['object'] ?? null;
         /** @var \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields $fieldDefinition */
@@ -66,7 +67,7 @@ class Localizedfields implements MarshallerInterface
         return null;
     }
 
-    public function unmarshal(mixed $value, array $params = []): mixed
+    public function unmarshal(mixed $value, array $params = []): ?array
     {
         $object = $params['object'] ?? null;
         /** @var \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields $fieldDefinition */

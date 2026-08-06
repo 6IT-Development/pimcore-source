@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\Controller;
@@ -30,6 +31,7 @@ use Pimcore\Bundle\SimpleBackendSearchBundle\Model\Search\Backend\Data;
 use Pimcore\Config;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
+use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\Extension\Bundle\Exception\AdminClassicBundleNotFoundException;
 use Pimcore\Model\Asset;
@@ -40,6 +42,7 @@ use Pimcore\Model\Document;
 use Pimcore\Model\Element;
 use Pimcore\Model\Element\AdminStyle;
 use Pimcore\Model\Element\ElementInterface;
+use Pimcore\Tool;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -49,7 +52,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 /**
  * @internal
  */
-#[Route("/search")]
+#[Route('/search')]
 class SearchController extends UserAwareController
 {
     use JsonHelperTrait;
@@ -63,8 +66,12 @@ class SearchController extends UserAwareController
      *
      * @todo: $data could be undefined
      */
-    #[Route("/find", name: "pimcore_bundle_search_search_find", methods: ["GET", "POST"])]
-    public function findAction(Request $request, EventDispatcherInterface $eventDispatcher, GridHelperService $gridHelperService): JsonResponse
+    #[Route('/find', name: 'pimcore_bundle_search_search_find', methods: [Request::METHOD_GET, Request::METHOD_POST])]
+    public function findAction(
+        Request                  $request,
+        EventDispatcherInterface $eventDispatcher,
+        GridHelperService        $gridHelperService
+    ): JsonResponse
     {
         $allParams = array_merge($request->request->all(), $request->query->all());
 
@@ -91,12 +98,12 @@ class SearchController extends UserAwareController
         $offset = (int)$allParams['start'];
         $limit = (int)$allParams['limit'];
 
-        $offset = $offset ? $offset : 0;
-        $limit = $limit ? $limit : 50;
+        $offset = $offset ?: 0;
+        $limit = $limit ?: 50;
 
         $searcherList = new Data\Listing();
         $conditionParts = [];
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         $conditionParts[] = $this->getPermittedPaths($types);
 
@@ -118,7 +125,7 @@ class SearchController extends UserAwareController
         $bricks = [];
         if (!empty($allParams['fields'])) {
             $fields = $allParams['fields'];
-            //remove sql comments
+            //remove SQL comments
             $fields = str_replace('--', '', $fields);
 
             foreach ($fields as $f) {
@@ -155,12 +162,13 @@ class SearchController extends UserAwareController
                 }
             }
 
-            //get filter condition only when filters array is not empty
+            //get filter condition only when filter array is not empty
 
             //string statements for divided filters
             $conditionFilters = count($unlocalizedFieldsFilters)
                 ? $gridHelperService->getFilterCondition($this->encodeJson($unlocalizedFieldsFilters), $class)
                 : null;
+
             $localizedConditionFilters = count($localizedFieldsFilters)
                 ? $gridHelperService->getFilterCondition($this->encodeJson($localizedFieldsFilters), $class)
                 : null;
@@ -241,10 +249,10 @@ class SearchController extends UserAwareController
                     $tag = Element\Tag::getById((int)$tagId);
                     if ($tag) {
                         $tagPath = $tag->getFullIdPath();
-                        $conditionParts[] = 'id IN (SELECT cId FROM tags_assignment INNER JOIN tags ON tags.id = tags_assignment.tagid WHERE '.$tagsTypeCondition.' (id = ' .(int)$tagId. ' OR idPath LIKE ' . $db->quote(Helper::escapeLike($tagPath) . '%') . '))';
+                        $conditionParts[] = 'id IN (SELECT cId FROM tags_assignment INNER JOIN tags ON tags.id = tags_assignment.tagid WHERE ' . $tagsTypeCondition . ' (id = ' . (int)$tagId . ' OR idPath LIKE ' . $db->quote(Helper::escapeLike($tagPath) . '%') . '))';
                     }
                 } else {
-                    $conditionParts[] = 'id IN (SELECT cId FROM tags_assignment WHERE '.$tagsTypeCondition.' tagid = ' .(int)$tagId. ')';
+                    $conditionParts[] = 'id IN (SELECT cId FROM tags_assignment WHERE ' . $tagsTypeCondition . ' tagid = ' . (int)$tagId . ')';
                 }
             }
         }
@@ -332,7 +340,7 @@ class SearchController extends UserAwareController
 
         try {
             $hits = $searcherList->load();
-        } catch (SyntaxErrorException $syntaxErrorException) {
+        } catch (SyntaxErrorException) {
             throw new InvalidArgumentException('Check your arguments.');
         }
 
@@ -407,7 +415,7 @@ class SearchController extends UserAwareController
     protected function getPermittedPaths(array $types = ['asset', 'document', 'object']): string
     {
         $user = $this->getPimcoreUser();
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         $allowedTypes = [];
 
@@ -440,7 +448,7 @@ class SearchController extends UserAwareController
 
                         break;
                     }
-                    $allowedPathSql[] = ' fullpath LIKE ' . $db->quote($allowedPaths  . '%');
+                    $allowedPathSql[] = ' fullpath LIKE ' . $db->quote($allowedPaths . '%');
                 }
 
                 // this is to avoid query error when implode is empty.
@@ -459,7 +467,7 @@ class SearchController extends UserAwareController
                     $forbiddenAndAllowedSql .= ' )';
                 }
 
-                $forbiddenAndAllowedSql.= ' )';
+                $forbiddenAndAllowedSql .= ' )';
 
                 $allowedTypes[] = $forbiddenAndAllowedSql;
             }
@@ -471,7 +479,7 @@ class SearchController extends UserAwareController
             $allowedTypes = ['false'];
         }
 
-        return '('.implode(' OR ', $allowedTypes) .')';
+        return '(' . implode(' OR ', $allowedTypes) . ')';
     }
 
     protected function filterQueryParam(string $query): string
@@ -483,7 +491,7 @@ class SearchController extends UserAwareController
         $query = str_replace('&quot;', '"', $query);
         $query = str_replace('%', '*', $query);
         $query = str_replace('@', '#', $query);
-        $query = preg_replace("@([^ ])\-@", '$1 ', $query);
+        $query = preg_replace('@([^ ])\-@', '$1 ', $query);
 
         $query = str_replace(['<', '>', '(', ')', '~'], ' ', $query);
 
@@ -491,22 +499,23 @@ class SearchController extends UserAwareController
         $query = preg_replace('#[*]+#', '*', $query);
 
         // no boolean operators at the end of the query
-        $query = rtrim($query, '+- ');
-
-        return $query;
+        return rtrim($query, '+- ');
     }
 
-    #[Route("/quicksearch", name: "pimcore_bundle_search_search_quicksearch", methods: ["GET"])]
-    public function quickSearchAction(Request $request, EventDispatcherInterface $eventDispatcher): JsonResponse
+    #[Route('/quicksearch', name: 'pimcore_bundle_search_search_quicksearch', methods: [Request::METHOD_GET])]
+    public function quickSearchAction(
+        Request                  $request,
+        EventDispatcherInterface $eventDispatcher
+    ): JsonResponse
     {
         $query = $this->filterQueryParam($request->query->getString('query'));
-        if (!preg_match('/[\+\-\*"]/', $query)) {
+        if (!preg_match('/[+\-*"]/', $query)) {
             // check for a boolean operator (which was not filtered by filterQueryParam()),
             // if present, do not add asterisk at the end of the query
             $query = $query . '*';
         }
 
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $searcherList = new Data\Listing();
 
         $conditionParts = [];
@@ -564,8 +573,11 @@ class SearchController extends UserAwareController
         return $this->jsonResponse($result);
     }
 
-    #[Route("/quicksearch-get-by-id", name: "pimcore_bundle_search_search_quicksearch_by_id", methods: ["GET"])]
-    public function quickSearchByIdAction(Request $request, Config $config): JsonResponse
+    #[Route('/quicksearch-get-by-id', name: 'pimcore_bundle_search_search_quicksearch_by_id', methods: [Request::METHOD_GET])]
+    public function quickSearchByIdAction(
+        Request $request,
+        Config  $config
+    ): JsonResponse
     {
         $type = $request->query->getString('type');
         $id = $request->query->getInt('id');
@@ -594,7 +606,7 @@ class SearchController extends UserAwareController
 
                 $this->addAdminStyle($element, ElementAdminStyleEvent::CONTEXT_SEARCH, $data);
 
-                $validLanguages = \Pimcore\Tool::getValidLanguages();
+                $validLanguages = Tool::getValidLanguages();
 
                 $data['preview'] = $this->renderView(
                     '@PimcoreAdmin/searchadmin/search/quicksearch/' . $hit->getId()->getType() . '.html.twig', [
@@ -634,7 +646,7 @@ class SearchController extends UserAwareController
      *
      * @throws Exception
      */
-    protected function addAdminStyle(ElementInterface $element, int $context = null, array &$data = []): void
+    protected function addAdminStyle(ElementInterface $element, ?int $context = null, array &$data = []): void
     {
         $event = new ElementAdminStyleEvent($element, new AdminStyle($element), $context);
         Pimcore::getEventDispatcher()->dispatch($event, AdminEvents::RESOLVE_ELEMENT_ADMIN_STYLE);

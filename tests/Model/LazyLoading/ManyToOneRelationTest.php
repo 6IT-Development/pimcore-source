@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\LazyLoading;
@@ -131,7 +132,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             // inherited data isn't assigned to a property, it's only returned by the getter and therefore doesn't get serialized
-            $contentShouldBeIncluded = ($objectType === 'inherited') ? false : true;
+            $contentShouldBeIncluded = $objectType !== 'inherited';
 
             //serialize data object and check for (not) wanted content in serialized string
             $this->checkSerialization($object, $messagePrefix, $contentShouldBeIncluded);
@@ -225,7 +226,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $collection = $object->getFieldcollection();
@@ -236,7 +237,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             }
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($objectType, $relationObject, $messagePrefix) {
@@ -297,7 +298,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $collection = $object->getFieldcollection();
@@ -308,7 +309,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             }
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($objectType, $relationObject, $messagePrefix) {
@@ -346,7 +347,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $brick = $object->getBricks()->getLazyLoadingTest();
@@ -354,7 +355,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             $this->assertEquals($relationObject->getId(), $loadedRelation->getId(), $messagePrefix . 'relations not loaded properly');
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($relationObject, $messagePrefix) {
@@ -412,7 +413,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $brick = $object->getBricks()->getLazyLoadingLocalizedTest();
@@ -420,7 +421,7 @@ class ManyToOneRelationTest extends AbstractLazyLoadingTest
             $this->assertEquals($relation->getId(), $loadedRelation->getId(), $messagePrefix . 'relations not loaded properly');
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($relation, $messagePrefix) {

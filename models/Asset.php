@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
@@ -18,8 +18,10 @@ namespace Pimcore\Model;
 use Doctrine\DBAL\Exception\DeadlockException;
 use Exception;
 use InvalidArgumentException;
+use League\Flysystem\FileAttributes;
 use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
+use League\Flysystem\StorageAttributes;
 use League\Flysystem\UnableToMoveFile;
 use League\Flysystem\UnableToProvideChecksum;
 use League\Flysystem\UnableToRetrieveMetadata;
@@ -32,6 +34,7 @@ use Pimcore\Event\FrontendEvents;
 use Pimcore\Event\Model\AssetEvent;
 use Pimcore\File;
 use Pimcore\Helper\TemporaryFileHelperTrait;
+use Pimcore\Image;
 use Pimcore\Loader\ImplementationLoader\Exception\UnsupportedException;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Logger;
@@ -73,7 +76,7 @@ class Asset extends Element\AbstractElement
     use ScheduledTasksTrait;
     use TemporaryFileHelperTrait;
 
-    public const CUSTOM_SETTING_PROCESSING_FAILED = 'pimcore-asset-processing-failed';
+    public const string CUSTOM_SETTING_PROCESSING_FAILED = 'pimcore-asset-processing-failed';
 
     /**
      * @internal
@@ -228,7 +231,7 @@ class Asset extends Element\AbstractElement
                 $asset->getId(),
                 Service::prepareGetByIdParams($params)
             );
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             return null;
         }
     }
@@ -258,7 +261,7 @@ class Asset extends Element\AbstractElement
                 '11.0',
                 sprintf('Passing id as string to method %s is deprecated', __METHOD__)
             );
-            $id = is_numeric($id) ? (int) $id : 0;
+            $id = is_numeric($id) ? (int)$id : 0;
         }
         if ($id < 1) {
             return null;
@@ -298,7 +301,7 @@ class Asset extends Element\AbstractElement
                 $asset->resetDirtyMap();
 
                 Cache::save($asset, $cacheKey);
-            } catch (NotFoundException|UnsupportedException $e) {
+            } catch (NotFoundException|UnsupportedException) {
                 $asset = null;
             }
         } else {
@@ -419,7 +422,7 @@ class Asset extends Element\AbstractElement
         if ($maxPixels && $size = @getimagesize($localPath)) {
             $imagePixels = (int)($size[0] * $size[1]);
             if ($imagePixels > $maxPixels) {
-                Logger::error("Image to be created {$localPath} (temp. path) exceeds max pixel size of {$maxPixels}, you can change the value in config pimcore.assets.image.max_pixels");
+                Logger::error("Image to be created $localPath (temp. path) exceeds max pixel size of $maxPixels, you can change the value in config pimcore.assets.image.max_pixels");
 
                 $diff = sqrt(1 + $imagePixels / $maxPixels);
                 $suggestion_0 = (int)round($size[0] / $diff, -2, PHP_ROUND_HALF_DOWN);
@@ -430,8 +433,8 @@ class Asset extends Element\AbstractElement
                 unlink($localPath);
 
                 throw new ValidationException("<p>Image dimensions of <em>{$data['filename']}</em> are too large.</p>
-<p>Max size: <code>{$mp}</code> <abbr title='Million pixels'>Megapixels</abbr></p>
-<p>Suggestion: resize to <code>{$suggestion_0}&times;{$suggestion_1}</code> pixels or smaller.</p>");
+<p>Max size: <code>$mp</code> <abbr title='Million pixels'>Megapixels</abbr></p>
+<p>Suggestion: resize to <code>$suggestion_0&times;$suggestion_1</code> pixels or smaller.</p>");
             }
         }
     }
@@ -548,7 +551,7 @@ class Asset extends Element\AbstractElement
                         // on potentially a remote service.
                         try {
                             $storage->move($oldPath, $this->getRealFullPath());
-                        } catch (UnableToMoveFile $e) {
+                        } catch (UnableToMoveFile) {
                             //update children, if unable to move parent
                             $this->updateChildPaths($storage, $oldPath);
                         }
@@ -569,7 +572,7 @@ class Asset extends Element\AbstractElement
                         $this->rollBack();
                     } catch (Exception $er) {
                         // PDO adapter throws exceptions if rollback fails
-                        Logger::error((string) $er);
+                        Logger::error((string)$er);
                     }
 
                     // we try to start the transaction $maxRetries times again (deadlocks, ...)
@@ -580,7 +583,7 @@ class Asset extends Element\AbstractElement
 
                         usleep($waitTime); // wait specified time until we restart the transaction
                     } else {
-                        Logger::error('Unable to save Asset: ' . (string) $e);
+                        Logger::error('Unable to save Asset: ' . $e);
 
                         // if the transaction still fail after $maxRetries retries, we throw out the exception
                         throw $e;
@@ -643,9 +646,9 @@ class Asset extends Element\AbstractElement
     }
 
     /**
+     * @throws Exception|DuplicateFullPathException
      * @internal
      *
-     * @throws Exception|DuplicateFullPathException
      */
     public function correctPath(): void
     {
@@ -686,7 +689,7 @@ class Asset extends Element\AbstractElement
         }
 
         // do not allow PHP and .htaccess files
-        if (preg_match("@\.ph(p[\d+]?|t|tml|ps|ar)$@i", $this->getFilename()) || $this->getFilename() == '.htaccess') {
+        if (preg_match("@\\.ph(p[\\d+]?|t|tml|ps|ar)\$@i", $this->getFilename()) || $this->getFilename() == '.htaccess') {
             $this->setFilename($this->getFilename() . '.txt');
         }
 
@@ -760,7 +763,7 @@ class Asset extends Element\AbstractElement
 
                 try {
                     $mimeType = $storage->mimeType($path);
-                } catch (UnableToRetrieveMetadata $e) {
+                } catch (UnableToRetrieveMetadata) {
                     $mimeType = 'application/octet-stream';
                 }
                 $this->setMimeType($mimeType);
@@ -833,7 +836,7 @@ class Asset extends Element\AbstractElement
      *
      * @throws Exception
      */
-    public function saveVersion(bool $setModificationDate = true, bool $saveOnlyVersion = true, string $versionNote = null): ?Version
+    public function saveVersion(bool $setModificationDate = true, bool $saveOnlyVersion = true, ?string $versionNote = null): ?Version
     {
         try {
             // hook should be also called if "save only new version" is selected
@@ -927,9 +930,7 @@ class Asset extends Element\AbstractElement
 
     public function getRealFullPath(): string
     {
-        $path = $this->getRealPath() . $this->getFilename();
-
-        return $path;
+        return $this->getRealPath() . $this->getFilename();
     }
 
     public function getSiblings(): Listing
@@ -966,7 +967,7 @@ class Asset extends Element\AbstractElement
 
     public function getChildren(): Listing
     {
-        return (new Listing())->setAssets([]);
+        return new Listing()->setAssets([]);
     }
 
     /**
@@ -1026,7 +1027,7 @@ class Asset extends Element\AbstractElement
             if (!$isNested) {
                 $fullPath = $this->getRealFullPath();
                 if ($fullPath != '/..' && !strpos($fullPath,
-                    '/../') && $this->getKey() !== '.' && $this->getKey() !== '..') {
+                        '/../') && $this->getKey() !== '.' && $this->getKey() !== '..') {
                     $this->deletePhysicalFile();
                 }
 
@@ -1041,13 +1042,13 @@ class Asset extends Element\AbstractElement
                 $this->rollBack();
             } catch (Exception $er) {
                 // PDO adapter throws exceptions if rollback fails
-                Logger::info((string) $er);
+                Logger::info((string)$er);
             }
 
             $failureEvent = new AssetEvent($this);
             $failureEvent->setArgument('exception', $e);
             $this->dispatchEvent($failureEvent, AssetEvents::POST_DELETE_FAILURE);
-            Logger::crit((string) $e);
+            Logger::crit((string)$e);
 
             throw $e;
         }
@@ -1069,7 +1070,7 @@ class Asset extends Element\AbstractElement
 
             Cache::clearTags($tags);
         } catch (Exception $e) {
-            Logger::crit((string) $e);
+            Logger::crit((string)$e);
         }
     }
 
@@ -1151,7 +1152,7 @@ class Asset extends Element\AbstractElement
         if (!$this->stream && $this->getType() !== 'folder') {
             try {
                 $this->stream = Storage::get('asset')->readStream($this->getRealFullPath());
-            } catch (Exception $e) {
+            } catch (Exception) {
                 $this->stream = tmpfile();
             }
         }
@@ -1180,7 +1181,7 @@ class Asset extends Element\AbstractElement
         } catch (UnableToProvideChecksum $e) {
             // There are circumstances in which the adapter is unable to calculate the checksum for a given file.
             // In those cases, we ignore the exception.
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             return;
         }
@@ -1207,7 +1208,7 @@ class Asset extends Element\AbstractElement
             $isRewindable = @rewind($this->stream);
 
             if (!$isRewindable) {
-                $tempFile = $this->getLocalFileFromStream($this->stream);
+                $tempFile = static::getLocalFileFromStream($this->stream);
                 $dest = fopen($tempFile, 'rb', false, File::getContext());
                 $this->stream = $dest;
             }
@@ -1263,11 +1264,11 @@ class Asset extends Element\AbstractElement
     }
 
     /**
-     * @internal
-     *
      * @param bool $keep whether to delete this file on shutdown or not
      *
      * @throws Exception
+     * @internal
+     *
      */
     public function getTemporaryFile(bool $keep = false): string
     {
@@ -1275,9 +1276,9 @@ class Asset extends Element\AbstractElement
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function getLocalFile(): string
     {
@@ -1422,7 +1423,7 @@ class Asset extends Element\AbstractElement
      *
      * @return $this
      */
-    public function addMetadata(string $name, string $type, mixed $data = null, string $language = null): static
+    public function addMetadata(string $name, string $type, mixed $data = null, ?string $language = null): static
     {
         if ($name && $type) {
             $tmp = [];
@@ -1448,7 +1449,7 @@ class Asset extends Element\AbstractElement
                 $instance = $loader->build($item['type']);
                 $transformedData = $instance->transformSetterData($data, $item);
                 $item['data'] = $transformedData;
-            } catch (UnsupportedException $e) {
+            } catch (UnsupportedException) {
             }
 
             $tmp[] = $item;
@@ -1540,18 +1541,19 @@ class Asset extends Element\AbstractElement
             $instance = $loader->build($metaData['type']);
             $transformedData = $instance->transformGetterData($metaData['data'], $metaData);
         } catch (UnsupportedException $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
 
         return $transformedData;
     }
 
     protected function getMetadataByName(
-        string $name,
+        string  $name,
         ?string $language = null,
-        bool $strictMatchLanguage = false,
-        bool $raw = false
-    ): mixed {
+        bool    $strictMatchLanguage = false,
+        bool    $raw = false
+    ): mixed
+    {
         $result = null;
         $data = null;
         if ($language === null) {
@@ -1579,7 +1581,7 @@ class Asset extends Element\AbstractElement
     {
         try {
             $bytes = Storage::get('asset')->fileSize($this->getRealFullPath());
-        } catch (Exception $e) {
+        } catch (Exception) {
             $bytes = 0;
         }
 
@@ -1693,10 +1695,11 @@ class Asset extends Element\AbstractElement
      */
     private function updateChildPaths(
         FilesystemOperator $storage,
-        string $oldPath,
-        ?string $newPath = null,
-        bool $skipError = false
-    ): void {
+        string             $oldPath,
+        ?string            $newPath = null,
+        bool               $skipError = false
+    ): void
+    {
         if ($newPath === null) {
             $newPath = $this->getRealFullPath();
         }
@@ -1707,10 +1710,10 @@ class Asset extends Element\AbstractElement
             $totalChildren = iterator_count($children);
 
             if ($totalChildren > 0) {
-                /** @var \League\Flysystem\StorageAttributes $child */
+                /** @var StorageAttributes $child */
                 foreach ($children as $child) {
-                    if ($child instanceof \League\Flysystem\FileAttributes) {
-                        $src  = $child['path'];
+                    if ($child instanceof FileAttributes) {
+                        $src = $child['path'];
                         $dest = str_replace($oldPath, $newPath, '/' . $src);
                         $storage->move($src, $dest);
                         $movedFiles[$dest] = $src;
@@ -1722,7 +1725,7 @@ class Asset extends Element\AbstractElement
                 if ($movedCount === $totalChildren) {
                     $storage->deleteDirectory($oldPath);
                 } else {
-                    \Pimcore\Logger::info(
+                    Logger::info(
                         sprintf(
                             'Moved %d/%d files from %s to %s. No exception was thrown for %d files,
                             so the source directory was not deleted.',
@@ -1779,7 +1782,7 @@ class Asset extends Element\AbstractElement
 
                 try {
                     $storage->move($oldThumbnailsPath, $newThumbnailsPath);
-                } catch (UnableToMoveFile $e) {
+                } catch (UnableToMoveFile) {
                     //update children, if unable to move parent
                     //if there is an error, we can ignore it
                     $this->updateChildPaths($storage, $oldPath, null, true);
@@ -1802,9 +1805,9 @@ class Asset extends Element\AbstractElement
     public function clearThumbnail(string $name): void
     {
         try {
-            Storage::get('thumbnail')->deleteDirectory($this->getRealPath().'/'.$this->getId().'/image-thumb__'.$this->getId().'__'.$name);
+            Storage::get('thumbnail')->deleteDirectory($this->getRealPath() . '/' . $this->getId() . '/image-thumb__' . $this->getId() . '__' . $name);
             $this->getDao()->deleteFromThumbnailCache($name);
-        } catch (Exception $e) {
+        } catch (Exception) {
             // noting to do
         }
     }
@@ -1847,16 +1850,16 @@ class Asset extends Element\AbstractElement
     {
         $path = $this->getFullPath();
         if (!preg_match('@^(https?|data):@', $path)) {
-            $path = \Pimcore\Tool::getHostUrl() . $path;
+            $path = Tool::getHostUrl() . $path;
         }
 
         return $path;
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function addThumbnailFileToCache(string $localFile, string $filename, ThumbnailConfig $config): void
     {
@@ -1868,7 +1871,7 @@ class Asset extends Element\AbstractElement
             ];
         } else {
             //fallback to Default Adapter
-            $image = \Pimcore\Image::getInstance();
+            $image = Image::getInstance();
             if ($image->load($localFile)) {
                 $dimensions = [
                     'width' => $image->getWidth(),

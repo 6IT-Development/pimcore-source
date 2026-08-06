@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Dependency;
@@ -22,13 +22,14 @@ use Pimcore\Db\Helper;
 use Pimcore\Logger;
 use Pimcore\Messenger\SanityCheckMessage;
 use Pimcore\Model;
+use Pimcore\Model\Dependency;
 use Pimcore\Model\Element;
 use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Dependency $model
+ * @property Dependency $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -37,7 +38,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      *
      */
-    public function getBySourceId(int $id = null, string $type = null): void
+    public function getBySourceId(?int $id = null, ?string $type = null): void
     {
         if ($id && $type) {
             $this->model->setSourceId($id);
@@ -60,14 +61,14 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     public function getFilterRequiresByPath(
-        int $offset = null,
-        int $limit = null,
-        string $value = null,
-        string $orderBy = null,
-        string $orderDirection = null): array
+        ?int    $offset = null,
+        ?int    $limit = null,
+        ?string $value = null,
+        ?string $orderBy = null,
+        ?string $orderDirection = null): array
     {
 
-        $sourceId = (int)$this->model->getSourceId();
+        $sourceId = $this->model->getSourceId();
 
         if (in_array($this->model->getSourceType(), ['object', 'document', 'asset'])) {
             $sourceType = $this->model->getSourceType();
@@ -90,17 +91,17 @@ class Dao extends Model\Dao\AbstractDao
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN objects o ON o.id = d.targetid AND d.targettype= 'object'
-            WHERE d.sourcetype = '" . $sourceType. "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(o.path, o.key)) RLIKE '".$value."'
+            WHERE d.sourcetype = '" . $sourceType . "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(o.path, o.key)) RLIKE '" . $value . "'
             UNION
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN documents doc ON doc.id = d.targetid AND d.targettype= 'document'
-            WHERE d.sourcetype = '" . $sourceType. "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(doc.path, doc.key)) RLIKE '".$value."'
+            WHERE d.sourcetype = '" . $sourceType . "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(doc.path, doc.key)) RLIKE '" . $value . "'
             UNION
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN assets a ON a.id = d.targetid AND d.targettype= 'asset'
-            WHERE d.sourcetype = '" . $sourceType. "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(a.path, a.filename)) RLIKE '".$value."'
+            WHERE d.sourcetype = '" . $sourceType . "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(a.path, a.filename)) RLIKE '" . $value . "'
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
@@ -118,14 +119,15 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     public function getFilterRequiredByPath(
-        int $offset = null,
-        int $limit = null,
-        string $value = null,
-        string $orderBy = null,
-        string $orderDirection = null
-    ): array {
+        ?int    $offset = null,
+        ?int    $limit = null,
+        ?string $value = null,
+        ?string $orderBy = null,
+        ?string $orderDirection = null
+    ): array
+    {
 
-        $targetId = (int)$this->model->getSourceId();
+        $targetId = $this->model->getSourceId();
 
         if (in_array($this->model->getSourceType(), ['object', 'document', 'asset'])) {
             $targetType = $this->model->getSourceType();
@@ -148,17 +150,17 @@ class Dao extends Model\Dao\AbstractDao
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN objects o ON o.id = d.sourceid AND d.targettype= 'object'
-            WHERE d.targettype = '" . $targetType. "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(o.path, o.key)) RLIKE '".$value."'
+            WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(o.path, o.key)) RLIKE '" . $value . "'
             UNION
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN documents doc ON doc.id = d.sourceid AND d.targettype= 'document'
-            WHERE d.targettype = '" . $targetType. "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(doc.path, doc.key)) RLIKE '".$value."'
+            WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(doc.path, doc.key)) RLIKE '" . $value . "'
             UNION
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN assets a ON a.id = d.sourceid AND d.targettype= 'asset'
-            WHERE d.targettype = '" . $targetType. "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(a.path, a.filename)) RLIKE '".$value."'
+            WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(a.path, a.filename)) RLIKE '" . $value . "'
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
@@ -196,7 +198,7 @@ class Dao extends Model\Dao\AbstractDao
 
             Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'sourceid = ?', $id) . ' AND  ' . Helper::quoteInto($this->db, 'sourcetype = ?', $type));
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
     }
 
@@ -209,7 +211,7 @@ class Dao extends Model\Dao\AbstractDao
         try {
             Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'sourceid = ?', $this->model->getSourceId()) . ' AND  ' . Helper::quoteInto($this->db, 'sourcetype = ?', $this->model->getSourceType()));
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
     }
 
@@ -254,8 +256,8 @@ class Dao extends Model\Dao\AbstractDao
 
         // collect all IDs for deletion
         $idsForDeletion = [];
-        foreach ($existingDepencies as $targetType => $targetIds) {
-            foreach ($targetIds as $targetId => $rowId) {
+        foreach ($existingDepencies as $targetIds) {
+            foreach ($targetIds as $rowId) {
                 $idsForDeletion[] = $rowId;
             }
         }
@@ -274,7 +276,7 @@ class Dao extends Model\Dao\AbstractDao
                         'targetid' => $target['id'],
                         'targettype' => $target['type'],
                     ]);
-                } catch (UniqueConstraintViolationException $e) {
+                } catch (UniqueConstraintViolationException) {
                 }
             }
         }
@@ -285,7 +287,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      *
      */
-    public function getRequiredBy(int $offset = null, int $limit = null): array
+    public function getRequiredBy(?int $offset = null, ?int $limit = null): array
     {
         $query = '
             SELECT dependencies.sourceid, dependencies.sourcetype FROM dependencies
@@ -314,7 +316,7 @@ class Dao extends Model\Dao\AbstractDao
         return $requiredBy;
     }
 
-    public function getRequiredByWithPath(int $offset = null, int $limit = null, string $orderBy = null, string $orderDirection = null): array
+    public function getRequiredByWithPath(?int $offset = null, ?int $limit = null, ?string $orderBy = null, ?string $orderDirection = null): array
     {
         $targetId = $this->model->getSourceId();
 
@@ -338,17 +340,17 @@ class Dao extends Model\Dao\AbstractDao
                 SELECT d.sourceid as id, d.sourcetype as `type`, CONCAT(o.path, o.key) as `path`
                 FROM dependencies d
                 JOIN objects o ON o.id = d.sourceid
-                WHERE d.targettype = '" . $targetType. "' AND d.targetid = " . $targetId . " AND d.sourceType = 'object'
+                WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND d.sourceType = 'object'
                 UNION
                 SELECT d.sourceid as id, d.sourcetype as `type`, CONCAT(doc.path, doc.key) as `path`
                 FROM dependencies d
                 JOIN documents doc ON doc.id = d.sourceid
-                WHERE d.targettype = '" . $targetType. "' AND d.targetid = " . $targetId . " AND d.sourceType = 'document'
+                WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND d.sourceType = 'document'
                 UNION
                 SELECT d.sourceid as id, d.sourcetype as `type`, CONCAT(a.path, a.filename) as `path`
                 FROM dependencies d
                 JOIN assets a ON a.id = d.sourceid
-                WHERE d.targettype = '" . $targetType. "' AND d.targetid = " . $targetId . " AND d.sourceType = 'asset'
+                WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND d.sourceType = 'asset'
             ) dep
             ORDER BY " . $orderBy . ' ' . $orderDirection;
 
@@ -365,6 +367,6 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function getRequiredByTotalCount(): int
     {
-        return (int) $this->db->fetchOne('SELECT COUNT(*) FROM dependencies WHERE targettype = ? AND targetid = ?', [$this->model->getSourceType(), $this->model->getSourceId()]);
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM dependencies WHERE targettype = ? AND targetid = ?', [$this->model->getSourceType(), $this->model->getSourceId()]);
     }
 }

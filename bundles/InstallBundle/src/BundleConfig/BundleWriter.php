@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\InstallBundle\BundleConfig;
@@ -54,7 +54,7 @@ class BundleWriter
                 $booleanValue = var_export($value, true);
                 $contents .= "'$env' => $booleanValue, ";
             }
-            $contents = substr($contents, 0, -2)."],\n";
+            $contents = substr($contents, 0, -2) . "],\n";
         }
         $contents .= "];\n";
 

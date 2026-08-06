@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener;
@@ -40,8 +41,9 @@ class WorkflowManagementListener implements EventSubscriberInterface
     protected bool $enabled = true;
 
     public function __construct(
-        private Manager $workflowManager,
-    ) {
+        private readonly Manager $workflowManager,
+    )
+    {
     }
 
     public static function getSubscribedEvents(): array
@@ -91,7 +93,7 @@ class WorkflowManagementListener implements EventSubscriberInterface
          */
         $element = $e->getElement();
 
-        $list = new WorkflowState\Listing;
+        $list = new WorkflowState\Listing();
         $list->setCondition('cid = ? and ctype = ?', [$element->getId(), Service::getElementType($element)]);
 
         foreach ($list->load() as $item) {

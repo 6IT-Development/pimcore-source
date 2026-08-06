@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -40,11 +40,11 @@ final class Version20220725154615 extends AbstractMigration
             $translationsTable = current($table);
 
             if (!$schema->getTable($translationsTable)->hasColumn('userOwner')) {
-                $this->addSql('ALTER TABLE `'.$translationsTable.'` ADD COLUMN `userOwner` int(11) unsigned DEFAULT NULL');
+                $this->addSql('ALTER TABLE `' . $translationsTable . '` ADD COLUMN `userOwner` int(11) unsigned DEFAULT NULL');
             }
 
             if (!$schema->getTable($translationsTable)->hasColumn('userModification')) {
-                $this->addSql('ALTER TABLE `'.$translationsTable.'` ADD COLUMN `userModification` int(11) unsigned DEFAULT NULL');
+                $this->addSql('ALTER TABLE `' . $translationsTable . '` ADD COLUMN `userModification` int(11) unsigned DEFAULT NULL');
             }
         }
     }
@@ -58,11 +58,11 @@ final class Version20220725154615 extends AbstractMigration
             $translationsTable = current($table);
 
             if ($schema->getTable($translationsTable)->hasColumn('userOwner')) {
-                $this->addSql('ALTER TABLE `'.$translationsTable.'` DROP COLUMN `userOwner`');
+                $this->addSql('ALTER TABLE `' . $translationsTable . '` DROP COLUMN `userOwner`');
             }
 
             if ($schema->getTable($translationsTable)->hasColumn('userModification')) {
-                $this->addSql('ALTER TABLE `'.$translationsTable.'` DROP COLUMN `userModification`');
+                $this->addSql('ALTER TABLE `' . $translationsTable . '` DROP COLUMN `userModification`');
             }
         }
     }

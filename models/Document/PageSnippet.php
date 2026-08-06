@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document;
 
 use Exception;
 use Pimcore;
+use Pimcore\Config;
 use Pimcore\Document\Editable\EditableUsageResolver;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
@@ -28,6 +30,8 @@ use Pimcore\Model;
 use Pimcore\Model\Document;
 use Pimcore\Model\Document\Editable\Loader\EditableLoaderInterface;
 use Pimcore\SystemSettingsConfig;
+use Pimcore\Tool;
+use Pimcore\Tool\Frontend;
 
 /**
  * @method Model\Document\PageSnippet\Dao getDao()
@@ -72,12 +76,7 @@ abstract class PageSnippet extends Model\Document
      */
     protected ?int $contentMainDocumentId = null;
 
-    /**
-     * @internal
-     *
-     * @var null|int
-     */
-    protected $contentMasterDocumentId;
+    protected ?int $contentMasterDocumentId;
 
     /**
      * @internal
@@ -111,7 +110,7 @@ abstract class PageSnippet extends Model\Document
 
     public function __construct()
     {
-        $this->contentMasterDocumentId = & $this->contentMainDocumentId;
+        $this->contentMasterDocumentId = &$this->contentMainDocumentId;
     }
 
     public static function setGetInheritedValues(bool $getInheritedValues): void
@@ -162,7 +161,7 @@ abstract class PageSnippet extends Model\Document
      *
      * @throws Exception
      */
-    public function saveVersion(bool $setModificationDate = true, bool $saveOnlyVersion = true, string $versionNote = null, bool $isAutoSave = false): ?Model\Version
+    public function saveVersion(bool $setModificationDate = true, bool $saveOnlyVersion = true, ?string $versionNote = null, bool $isAutoSave = false): ?Model\Version
     {
         try {
             // hook should be also called if "save only new version" is selected
@@ -300,9 +299,9 @@ abstract class PageSnippet extends Model\Document
     /**
      * Set raw data of an editable (eg. for editmode)
      *
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function setRawEditable(string $name, string $type, mixed $data): static
     {
@@ -318,7 +317,7 @@ abstract class PageSnippet extends Model\Document
                 $this->editables[$name]->setName($name);
                 $this->editables[$name]->setDocument($this);
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             Logger::warning("can't set element " . $name . ' with the type ' . $type . ' to the document: ' . $this->getRealFullPath());
         }
 
@@ -419,7 +418,7 @@ abstract class PageSnippet extends Model\Document
             }
         }
 
-        $this->contentMainDocumentId = ($contentMainDocumentId ? (int) $contentMainDocumentId : null);
+        $this->contentMainDocumentId = ($contentMainDocumentId ? (int)$contentMainDocumentId : null);
 
         return $this;
     }
@@ -539,7 +538,7 @@ abstract class PageSnippet extends Model\Document
      *
      * @throws Exception
      */
-    public function getUrl(string $hostname = null, string $scheme = null): string
+    public function getUrl(?string $hostname = null, ?string $scheme = null): string
     {
         if (!$scheme) {
             $scheme = 'http://';
@@ -552,9 +551,9 @@ abstract class PageSnippet extends Model\Document
         }
 
         if (!$hostname) {
-            $hostname = \Pimcore\Config::getSystemConfiguration('general')['domain'];
+            $hostname = Config::getSystemConfiguration('general')['domain'];
             if (empty($hostname)) {
-                if (!$hostname = \Pimcore\Tool::getHostname()) {
+                if (!$hostname = Tool::getHostname()) {
                     throw new Exception('No hostname available');
                 }
             }
@@ -567,7 +566,7 @@ abstract class PageSnippet extends Model\Document
             $url .= $this->getFullPath();
         }
 
-        $site = \Pimcore\Tool\Frontend::getSiteForDocument($this);
+        $site = Frontend::getSiteForDocument($this);
         if ($site instanceof Model\Site && $site->getMainDomain()) {
             $url = $scheme . $site->getMainDomain() . preg_replace('@^' . $site->getRootPath() . '/?@', '/', $this->getRealFullPath());
         }
@@ -630,7 +629,7 @@ abstract class PageSnippet extends Model\Document
                         $editable = $documentCopy->getEditable($editableName);
                         if ($editable instanceof Editable && in_array($editable->getType(), $allowedTypes)) {
                             $editableConfig = $editable->getConfig();
-                            if ($editable->isEmpty() && isset($editableConfig['required']) && $editableConfig['required'] == true) {
+                            if ($editable->isEmpty() && isset($editableConfig['required']) && $editableConfig['required']) {
                                 $this->setMissingRequiredEditable(true);
 
                                 break;
@@ -638,7 +637,7 @@ abstract class PageSnippet extends Model\Document
                         }
                     }
                 }
-            } catch (Exception $e) {
+            } catch (Exception) {
                 // noting to do, as rendering the document failed for whatever reason
             }
         }
@@ -673,7 +672,7 @@ abstract class PageSnippet extends Model\Document
         foreach ($propertyMappings as $oldProperty => $newProperty) {
             if ($this->$newProperty === null) {
                 $this->$newProperty = $this->$oldProperty;
-                $this->$oldProperty = & $this->$newProperty;
+                $this->$oldProperty = &$this->$newProperty;
             }
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Console\Traits;
@@ -32,13 +33,14 @@ trait Parallelization
     use ParallelizationBase;
 
     protected function getParallelExecutableFactory(
-        callable $fetchItems,
-        callable $runSingleCommand,
-        callable $getItemName,
-        string $commandName,
+        callable        $fetchItems,
+        callable        $runSingleCommand,
+        callable        $getItemName,
+        string          $commandName,
         InputDefinition $commandDefinition,
-        ErrorHandler $errorHandler
-    ): ParallelExecutorFactory {
+        ErrorHandler    $errorHandler
+    ): ParallelExecutorFactory
+    {
         return ParallelExecutorFactory::create(...func_get_args())
             ->withRunBeforeFirstCommand($this->runBeforeFirstCommand(...))
             ->withRunAfterLastCommand($this->runAfterLastCommand(...))

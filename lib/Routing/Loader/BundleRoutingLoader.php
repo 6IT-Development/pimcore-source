@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Routing\Loader;
@@ -25,14 +26,13 @@ use Symfony\Component\Routing\RouteCollection;
  */
 class BundleRoutingLoader extends Loader
 {
-    private BundleConfigLocator $locator;
 
-    public function __construct(BundleConfigLocator $locator)
+    public function __construct(private readonly BundleConfigLocator $locator)
     {
-        $this->locator = $locator;
+        parent::__construct();
     }
 
-    public function load(mixed $resource, string $type = null): mixed
+    public function load(mixed $resource, ?string $type = null): RouteCollection
     {
         $collection = new RouteCollection();
         $files = $this->locator->locate('routing');
@@ -49,7 +49,7 @@ class BundleRoutingLoader extends Loader
         return $collection;
     }
 
-    public function supports(mixed $resource, string $type = null): bool
+    public function supports(mixed $resource, ?string $type = null): bool
     {
         return 'pimcore_bundle' === $type;
     }

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -25,9 +25,9 @@ use Doctrine\Migrations\AbstractMigration;
  */
 final class Version20221019042134 extends AbstractMigration
 {
-    const TABLE_NAME = 'users_permission_definitions';
+    public const string TABLE_NAME = 'users_permission_definitions';
 
-    const PERMISSION = 'plugins';
+    public const string PERMISSION = 'plugins';
 
     public function getDescription(): string
     {

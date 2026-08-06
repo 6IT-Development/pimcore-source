@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,21 +11,21 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 interface OptionsProviderInterface
 {
-    public const TYPE_CONFIGURE = 'configure';
+    public const string TYPE_CONFIGURE = 'configure';
 
-    public const TYPE_SELECT_OPTIONS = 'select_options';
+    public const string TYPE_SELECT_OPTIONS = 'select_options';
 
-    public const TYPE_CLASS = 'class';
+    public const string TYPE_CLASS = 'class';
 
-    public const TYPES = [
+    public const array TYPES = [
         self::TYPE_CONFIGURE,
         self::TYPE_SELECT_OPTIONS,
         self::TYPE_CLASS,

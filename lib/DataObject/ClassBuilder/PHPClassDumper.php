@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassBuilder;
@@ -23,10 +24,11 @@ use Symfony\Component\Filesystem\Filesystem;
 class PHPClassDumper implements PHPClassDumperInterface
 {
     public function __construct(
-        protected ClassBuilderInterface $classBuilder,
+        protected ClassBuilderInterface        $classBuilder,
         protected ListingClassBuilderInterface $listingClassBuilder,
-        protected Filesystem $filesystem
-    ) {
+        protected Filesystem                   $filesystem
+    )
+    {
     }
 
     public function dumpPHPClasses(ClassDefinition $classDefinition): void

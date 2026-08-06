@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Objectbrick;
@@ -21,11 +21,12 @@ use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data\CustomResourcePersistingInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\LazyLoadingSupportInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface;
+use Pimcore\Model\DataObject\Objectbrick;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Objectbrick $model
+ * @property Objectbrick $model
  */
 class Dao extends Model\DataObject\Fieldcollection\Dao
 {
@@ -43,11 +44,11 @@ class Dao extends Model\DataObject\Fieldcollection\Dao
                 continue;
             }
 
-            $tableName = $definition->getTableName($object->getClass(), false);
+            $tableName = $definition->getTableName($object->getClass());
 
             try {
-                $results = $this->db->fetchAllAssociative('SELECT * FROM '.$tableName.' WHERE id = ? AND fieldname = ?', [$object->getId(), $this->model->getFieldname()]);
-            } catch (Exception $e) {
+                $results = $this->db->fetchAllAssociative('SELECT * FROM ' . $tableName . ' WHERE id = ? AND fieldname = ?', [$object->getId(), $this->model->getFieldname()]);
+            } catch (Exception) {
                 $results = [];
             }
 

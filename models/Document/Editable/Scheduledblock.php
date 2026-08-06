@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -24,7 +25,7 @@ use Pimcore\Http\Request\Resolver\OutputTimestampResolver;
 use Pimcore\Tool\HtmlUtils;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Scheduledblock extends Block implements BlockInterface
 {
@@ -173,7 +174,7 @@ class Scheduledblock extends Block implements BlockInterface
         // this will be removed in blockDestruct
         $elements = $this->filterElements();
 
-        $this->getBlockState()->pushIndex((int) $elements[$this->current]['key']);
+        $this->getBlockState()->pushIndex((int)$elements[$this->current]['key']);
     }
 
     public function blockStart(bool $showControls = true, bool $return = false, string $additionalClass = ''): void
@@ -199,7 +200,7 @@ class Scheduledblock extends Block implements BlockInterface
 
     public function getCurrentIndex(): int
     {
-        return (int) $this->indices[$this->getCurrent()]['key'];
+        return (int)$this->indices[$this->getCurrent()]['key'];
     }
 
     public function getIterator(): Generator

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -24,9 +25,10 @@ use Pimcore\Model;
 use Pimcore\Model\Document;
 use Pimcore\Model\Site;
 use Pimcore\Tool\DeviceDetector;
+use Pimcore\Tool\Frontend;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Snippet extends Model\Document\Editable implements IdRewriterInterface, EditmodeDataInterface, LazyLoadingInterface
 {
@@ -49,7 +51,7 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
         return 'snippet';
     }
 
-    public function getData(): mixed
+    public function getData(): ?int
     {
         return $this->id;
     }
@@ -61,7 +63,7 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
 
     public function getId(): int
     {
-        return (int) $this->id;
+        return (int)$this->id;
     }
 
     public function getDataEditmode(): ?array
@@ -104,7 +106,7 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
 
         // check if output-cache is enabled, if so, we're also using the cache here
         $cacheKey = null;
-        $cacheConfig = \Pimcore\Tool\Frontend::isOutputCacheEnabled();
+        $cacheConfig = Frontend::isOutputCacheEnabled();
         if ((isset($params['cache']) && $params['cache'] === true) || $cacheConfig) {
             // cleanup params to avoid serializing Element\ElementInterface objects
             $cacheParams = $params;
@@ -145,7 +147,7 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
 
     public function setDataFromResource(mixed $data): static
     {
-        $data = (int) $data;
+        $data = (int)$data;
         if ($data > 0) {
             $this->id = $data;
             $this->snippet = Document\Snippet::getById($this->id);

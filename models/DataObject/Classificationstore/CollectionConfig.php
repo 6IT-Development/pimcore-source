@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore;
@@ -72,7 +73,7 @@ final class CollectionConfig extends Model\AbstractModel
             Cache::save($config, $cacheKey);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -99,14 +100,14 @@ final class CollectionConfig extends Model\AbstractModel
 
             $config = new self();
             $config->setName($name);
-            $config->setStoreId($storeId ? $storeId : 1);
+            $config->setStoreId($storeId ?: 1);
             $config->getDao()->getByName();
 
             RuntimeCache::set($cacheKey, $config);
             Cache::save($config, $cacheKey);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -119,7 +120,7 @@ final class CollectionConfig extends Model\AbstractModel
         return $config;
     }
 
-    public function setId(int $id): static
+    public function setId(int $id): CollectionConfig
     {
         $this->id = $id;
 
@@ -131,7 +132,7 @@ final class CollectionConfig extends Model\AbstractModel
         return $this->id;
     }
 
-    public function setName(string $name): static
+    public function setName(string $name): CollectionConfig
     {
         $this->name = $name;
 
@@ -158,7 +159,7 @@ final class CollectionConfig extends Model\AbstractModel
      *
      * @return Model\DataObject\Classificationstore\CollectionConfig
      */
-    public function setDescription(string $description): static
+    public function setDescription(string $description): CollectionConfig
     {
         $this->description = $description;
 
@@ -204,7 +205,7 @@ final class CollectionConfig extends Model\AbstractModel
         }
     }
 
-    public function setModificationDate(int $modificationDate): static
+    public function setModificationDate(int $modificationDate): CollectionConfig
     {
         $this->modificationDate = $modificationDate;
 
@@ -216,7 +217,7 @@ final class CollectionConfig extends Model\AbstractModel
         return $this->modificationDate;
     }
 
-    public function setCreationDate(int $creationDate): static
+    public function setCreationDate(int $creationDate): CollectionConfig
     {
         $this->creationDate = $creationDate;
 
@@ -237,9 +238,7 @@ final class CollectionConfig extends Model\AbstractModel
     {
         $list = new CollectionGroupRelation\Listing();
         $list->setCondition('colId = ' . $this->id);
-        $list = $list->load();
-
-        return $list;
+        return $list->load();
     }
 
     public function getStoreId(): int
@@ -255,7 +254,7 @@ final class CollectionConfig extends Model\AbstractModel
     /**
      * Calculate cache key
      */
-    private static function getCacheKey(int $id, string $name = null): string
+    private static function getCacheKey(int $id, ?string $name = null): string
     {
         $cacheKey = 'cs_collectionconfig_' . $id;
         if ($name !== null) {

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -21,7 +22,7 @@ use DateTimeInterface;
 use Pimcore\Model;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Date extends Model\Document\Editable implements EditmodeDataInterface
 {
@@ -31,30 +32,27 @@ class Date extends Model\Document\Editable implements EditmodeDataInterface
      * @internal
      *
      */
-    protected ?\Carbon\Carbon $date = null;
+    protected ?Carbon $date = null;
 
     public function getType(): string
     {
         return 'date';
     }
 
-    public function getData(): mixed
+    public function getData(): ?\Carbon
     {
         return $this->date;
     }
 
-    public function getDate(): ?\Carbon\Carbon
+    public function getDate(): ?Carbon
     {
         return $this->getData();
     }
 
     public function getDataEditmode(): ?int
     {
-        if ($this->date) {
-            return $this->date->getTimestamp();
-        }
+        return $this->date?->getTimestamp();
 
-        return null;
     }
 
     public function frontend()
@@ -85,13 +83,10 @@ class Date extends Model\Document\Editable implements EditmodeDataInterface
         return '';
     }
 
-    public function getDataForResource(): mixed
+    public function getDataForResource(): ?int
     {
-        if ($this->date) {
-            return $this->date->getTimestamp();
-        }
+        return $this->date?->getTimestamp();
 
-        return null;
     }
 
     public function setDataFromResource(mixed $data): static
@@ -105,7 +100,7 @@ class Date extends Model\Document\Editable implements EditmodeDataInterface
 
     public function setDataFromEditmode(mixed $data): static
     {
-        if (strlen((string) $data) > 5) {
+        if (strlen((string)$data) > 5) {
             $timestamp = strtotime($data);
             $this->setDateFromTimestamp($timestamp);
         }

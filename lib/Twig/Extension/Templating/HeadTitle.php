@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -62,7 +63,7 @@ class HeadTitle extends AbstractExtension implements RuntimeExtensionInterface
      *
      * @return $this
      */
-    public function __invoke(string $title = null, string $setType = null): static
+    public function __invoke(?string $title = null, ?string $setType = null): static
     {
         if (null === $setType) {
             $setType = (null === $this->getDefaultAttachOrder())
@@ -70,7 +71,7 @@ class HeadTitle extends AbstractExtension implements RuntimeExtensionInterface
                 : $this->getDefaultAttachOrder();
         }
 
-        $title = (string) $title;
+        $title = (string)$title;
 
         if ($title !== '') {
             if ($setType == Container::SET) {
@@ -120,7 +121,7 @@ class HeadTitle extends AbstractExtension implements RuntimeExtensionInterface
      *
      *
      */
-    public function toString(string $indent = null, string $locale = null): string
+    public function toString(?string $indent = null, ?string $locale = null): string
     {
         $indent = (null !== $indent)
             ? $this->getWhitespace($indent)

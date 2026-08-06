@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event\Traits;
@@ -30,7 +31,7 @@ trait RecursionBlockingEventDispatchHelperTrait
      *
      *
      */
-    protected function dispatchEvent(object $event, string $eventName = null): void
+    protected function dispatchEvent(object $event, ?string $eventName = null): void
     {
         $eventName ??= get_class($event);
         if (!isset($this->activeDispatchingEvents[$eventName])) {

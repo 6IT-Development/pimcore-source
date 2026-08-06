@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Editable\Block;
@@ -56,7 +56,7 @@ final class BlockState implements JsonSerializable
 
     public function pushBlock(BlockName $block): void
     {
-        array_push($this->blocks, $block);
+        $this->blocks[] = $block;
     }
 
     public function popBlock(): BlockName
@@ -88,7 +88,7 @@ final class BlockState implements JsonSerializable
 
     public function pushIndex(int $index): void
     {
-        array_push($this->indexes, $index);
+        $this->indexes[] = $index;
     }
 
     public function popIndex(): int

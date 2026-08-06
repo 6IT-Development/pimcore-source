@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Document;
 
+use Carbon\Carbon;
 use Exception;
+use Pimcore\Model\Document;
 use Pimcore\Model\Document\Editable\Input;
 use Pimcore\Model\Document\Email;
 use Pimcore\Model\Document\Link;
@@ -47,11 +50,11 @@ class DocumentTest extends ModelTestCase
         $this->reloadPage();
         $this->assertInstanceOf(Page::class, $this->testPage);
 
-        $this->testPage->setController("App\Controller\NewsController::listingAction");
+        $this->testPage->setController('App\Controller\NewsController::listingAction');
         $this->testPage->save();
         $this->reloadPage();
 
-        $this->assertEquals("App\Controller\NewsController::listingAction", $this->testPage->getController());
+        $this->assertEquals('App\Controller\NewsController::listingAction', $this->testPage->getController());
 
         // move and rename
         $newParent = Service::createFolderByPath(uniqid());
@@ -197,7 +200,7 @@ class DocumentTest extends ModelTestCase
      */
     public function testCustomModificationDate(): void
     {
-        $customDateTime = new \Carbon\Carbon();
+        $customDateTime = new Carbon();
         $customDateTime = $customDateTime->subHour();
 
         $document = TestHelper::createEmptyDocumentPage();
@@ -209,7 +212,7 @@ class DocumentTest extends ModelTestCase
 
         //auto generated modification date
         $currentTime = time();
-        $document = \Pimcore\Model\Document::getById($document->getId(), ['force' => true]);
+        $document = Document::getById($document->getId(), ['force' => true]);
         $document->save();
         $this->assertGreaterThanOrEqual($currentTime, $document->getModificationDate(), 'Expected auto assigned modification date');
     }
@@ -229,7 +232,7 @@ class DocumentTest extends ModelTestCase
         $this->assertEquals($userId, $document->getUserModification(), 'Expected custom user modification id');
 
         //auto generated user modification
-        $document = \Pimcore\Model\Document::getById($document->getId(), ['force' => true]);
+        $document = Document::getById($document->getId(), ['force' => true]);
         $document->save();
         $this->assertEquals(0, $document->getUserModification(), 'Expected auto assigned user modification id');
     }
@@ -239,9 +242,9 @@ class DocumentTest extends ModelTestCase
         /** @var Email $emailDocument */
         $emailDocument = TestHelper::createEmptyDocument('', true, true, '\\Pimcore\\Model\\Document\\Email');
         $subject = 'mysubject' . uniqid();
-        $to = 'john' . uniqid(). '@doe.com';
-        $cc = 'john' . uniqid(). '@doe.com';
-        $bcc = 'john' . uniqid(). '@doe.com';
+        $to = 'john' . uniqid() . '@doe.com';
+        $cc = 'john' . uniqid() . '@doe.com';
+        $bcc = 'john' . uniqid() . '@doe.com';
         $from = 'jane' . uniqid() . '@doe.com';
         $replyTo = 'jane' . uniqid() . '@doe.com';
 

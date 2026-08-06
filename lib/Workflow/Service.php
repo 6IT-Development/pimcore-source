@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,16 +11,19 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow;
 
 use DateTime;
 use Pimcore\Logger;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\Element;
 use Pimcore\Model\User;
+use Pimcore\Tool;
+use Pimcore\Tool\Admin;
 
 class Service
 {
@@ -35,7 +39,7 @@ class Service
         //supported types for notes are text, date, document, asset, object, bool
         if ($fc['fieldType'] === 'checkbox') {
             $data['type'] = 'bool';
-            $data['value'] = (bool) $value;
+            $data['value'] = (bool)$value;
         } elseif (in_array($fc['fieldType'], ['date', 'datetime'])) {
             $data['type'] = 'date';
 
@@ -48,19 +52,19 @@ class Service
             }
             $data['value'] = $dateTime;
             /**
-            } elseif (false) { //TODO
-
-                $data['type'] = 'document';
-                $data['value'] = $value;
-            } elseif (false) { //TODO
-
-                $data['type'] = 'asset';
-                $data['value'] = $value;
-            } elseif (false) { //TODO
-
-                $data['type'] = 'object';
-                $data['value'] = $value;
-            */
+             * } elseif (false) { //TODO
+             *
+             * $data['type'] = 'document';
+             * $data['value'] = $value;
+             * } elseif (false) { //TODO
+             *
+             * $data['type'] = 'asset';
+             * $data['value'] = $value;
+             * } elseif (false) { //TODO
+             *
+             * $data['type'] = 'object';
+             * $data['value'] = $value;
+             */
         } else {
             $data['type'] = 'text';
             $data['value'] = $value;
@@ -74,9 +78,9 @@ class Service
     public static function getDataFromEditmode(mixed $data, string $pimcoreTagName): mixed
     {
         $tagClass = '\\Pimcore\\Model\\DataObject\\ClassDefinition\\Data\\' . ucfirst($pimcoreTagName);
-        if (\Pimcore\Tool::classExists($tagClass)) {
+        if (Tool::classExists($tagClass)) {
             /**
-             * @var \Pimcore\Model\DataObject\ClassDefinition\Data $tag
+             * @var Data $tag
              */
             $tag = new $tagClass();
 
@@ -84,7 +88,7 @@ class Service
         }
 
         //purposely return null if there is no valid class, log a warning
-        Logger::warning("No valid pimcore tag found for fieldType ({$pimcoreTagName}), check 'fieldType' exists, and 'type' is not being used in config");
+        Logger::warning("No valid pimcore tag found for fieldType ($pimcoreTagName), check 'fieldType' exists, and 'type' is not being used in config");
 
         return null;
     }
@@ -95,11 +99,11 @@ class Service
      *
      * @return Element\Note $note
      */
-    public static function createActionNote(Element\ElementInterface $element, string $type, string $title, string $description, array $noteData, User $user = null): Element\Note
+    public static function createActionNote(Element\ElementInterface $element, string $type, string $title, string $description, array $noteData, ?User $user = null): Element\Note
     {
         //prepare some vars for creating the note
         if (!$user) {
-            $user = \Pimcore\Tool\Admin::getCurrentUser();
+            $user = Admin::getCurrentUser();
         }
 
         $note = new Element\Note();

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -32,7 +33,7 @@ use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 
 class Authentication
 {
-    public static function authenticateSession(Request $request = null): ?User
+    public static function authenticateSession(?Request $request = null): ?User
     {
         if (null === $request) {
             $request = Pimcore::getContainer()->get('request_stack')->getCurrentRequest();
@@ -55,7 +56,7 @@ class Authentication
             $token = static::refreshUser($token, Pimcore::getContainer()->get(UserProvider::class));
             $user = $token->getUser();
 
-            if ($user instanceof \Pimcore\Security\User\User && self::isValidUser($user->getUser())) {
+            if ($user instanceof Pimcore\Security\User\User && self::isValidUser($user->getUser())) {
                 $pimcoreUser = $user->getUser();
                 $pimcoreUser->setLastLoginDate(); //set user current login date
 
@@ -69,7 +70,7 @@ class Authentication
     protected static function safelyUnserialize(string $serializedToken): mixed
     {
         $token = null;
-        $prevUnserializeHandler = ini_set('unserialize_callback_func', __CLASS__.'::handleUnserializeCallback');
+        $prevUnserializeHandler = ini_set('unserialize_callback_func', __CLASS__ . '::handleUnserializeCallback');
         $prevErrorHandler = set_error_handler(static function (int $type, string $msg, string $file, int $line, array $context = []) use (&$prevErrorHandler) {
             if (__FILE__ === $file) {
                 throw new ErrorException($msg, 0x37313BC, $type, $file, $line);
@@ -98,7 +99,7 @@ class Authentication
      */
     public static function handleUnserializeCallback(string $class): never
     {
-        throw new ErrorException('Class not found: '.$class, 0x37313BC);
+        throw new ErrorException('Class not found: ' . $class, 0x37313BC);
     }
 
     protected static function refreshUser(TokenInterface $token, UserProvider $provider): ?TokenInterface
@@ -195,7 +196,7 @@ class Authentication
 
         try {
             $config = Config::getSystemConfiguration()['security']['password'];
-        } catch (Exception $e) {
+        } catch (Exception) {
             // default config in case kernel is not booted yet (e.g. in installer)
             $config = [
                 'algorithm' => PASSWORD_DEFAULT,

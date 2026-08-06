@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Service;
@@ -18,18 +18,19 @@ namespace Pimcore\Model\Document\Service;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Document;
+use Pimcore\Model\Document\Service;
 use Pimcore\Model\Site;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Document\Service $model
+ * @property Service $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
     public function getDocumentIdByPrettyUrlInSite(Site $site, string $path): int
     {
-        return (int) $this->db->fetchOne(
+        return (int)$this->db->fetchOne(
             'SELECT documents.id FROM documents
             LEFT JOIN documents_page ON documents.id = documents_page.id
             WHERE documents.path LIKE ? AND documents_page.prettyUrl = ?',
@@ -70,10 +71,10 @@ class Dao extends Model\Dao\AbstractDao
         $translations = [];
         foreach ($data as $translation) {
             if ($translation['language'] == 'source') {
-                $sourceDocument = Document::getById((int) $translation['id']);
+                $sourceDocument = Document::getById((int)$translation['id']);
                 $translations[$sourceDocument->getProperty('language')] = $sourceDocument->getId();
             } else {
-                $translations[$translation['language']] = (int) $translation['id'];
+                $translations[$translation['language']] = (int)$translation['id'];
             }
         }
 
@@ -86,7 +87,7 @@ class Dao extends Model\Dao\AbstractDao
         return $translations;
     }
 
-    public function addTranslation(Document $document, Document $translation, string $language = null): void
+    public function addTranslation(Document $document, Document $translation, ?string $language = null): void
     {
         $sourceId = $this->getTranslationSourceId($document);
 

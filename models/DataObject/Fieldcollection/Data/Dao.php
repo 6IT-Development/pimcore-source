@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Fieldcollection\Data;
@@ -24,7 +24,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterf
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Fieldcollection\Data\AbstractData $model
+ * @property AbstractData $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -63,7 +63,7 @@ class Dao extends Model\Dao\AbstractDao
                 ]);
 
                 if ($fd instanceof Model\DataObject\ClassDefinition\Data\Relations\AbstractRelations
-                            && ($params['saveRelationalData']['saveFieldcollectionRelations'] ?? false)) {
+                    && ($params['saveRelationalData']['saveFieldcollectionRelations'] ?? false)) {
                     $params['forceSave'] = true;
                 }
 

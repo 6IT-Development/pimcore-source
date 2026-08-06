@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Console\Traits;
@@ -24,8 +25,7 @@ use Webmozarts\Console\Parallelization\Input\ParallelizationInput;
 if (trait_exists('\Webmozarts\Console\Parallelization\Parallelization')) {
     trait ParallelizationBase
     {
-        use \Webmozarts\Console\Parallelization\Parallelization
-        {
+        use \Webmozarts\Console\Parallelization\Parallelization {
             \Webmozarts\Console\Parallelization\Parallelization::execute as parentExecute;
         }
 

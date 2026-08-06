@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
@@ -47,12 +48,13 @@ class DocumentFallbackListener implements EventSubscriberInterface
     private ?Document $fallbackDocument = null;
 
     public function __construct(
-        protected RequestStack $requestStack,
+        protected RequestStack     $requestStack,
         protected DocumentResolver $documentResolver,
-        protected SiteResolver $siteResolver,
+        protected SiteResolver     $siteResolver,
         protected Document\Service $documentService,
-        array $options = []
-    ) {
+        array                      $options = []
+    )
+    {
         $optionsResolver = new OptionsResolver();
         $this->configureOptions($optionsResolver);
 
@@ -98,7 +100,6 @@ class DocumentFallbackListener implements EventSubscriberInterface
             // no document found yet - try to find the nearest document by request path
             // this is only done on the main request as a sub-request's pathInfo is _fragment when
             // rendered via actions helper
-            $path = null;
             if ($this->siteResolver->isSiteRequest($request)) {
                 $path = $this->siteResolver->getSitePath($request);
             } else {

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension\Templating;
@@ -85,16 +85,17 @@ class Navigation implements RuntimeExtensionInterface
     /**
      * Renders a navigation with the given renderer
      *
-     * @param string $renderMethod     Optional render method to use (e.g. menu -> renderMenu)
-     * @param array<int, mixed> $rendererArguments      Option arguments to pass to the render method after the container
+     * @param string $renderMethod Optional render method to use (e.g. menu -> renderMenu)
+     * @param array<int, mixed> $rendererArguments Option arguments to pass to the render method after the container
      *
      */
     public function render(
         Container $container,
-        string $rendererName = 'menu',
-        string $renderMethod = 'render',
-        ...$rendererArguments
-    ): string {
+        string    $rendererName = 'menu',
+        string    $renderMethod = 'render',
+                  ...$rendererArguments
+    ): string
+    {
         $renderer = $this->getRenderer($rendererName);
 
         if (!method_exists($renderer, $renderMethod)) {

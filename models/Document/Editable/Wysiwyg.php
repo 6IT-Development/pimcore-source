@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -24,7 +25,7 @@ use Pimcore\Tool\Text;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Wysiwyg extends Model\Document\Editable implements IdRewriterInterface, EditmodeDataInterface
 {
@@ -47,9 +48,9 @@ class Wysiwyg extends Model\Document\Editable implements IdRewriterInterface, Ed
         return 'wysiwyg';
     }
 
-    public function getData(): mixed
+    public function getData(): string
     {
-        return (string) $this->text;
+        return (string)$this->text;
     }
 
     public function getText(): string
@@ -72,9 +73,9 @@ class Wysiwyg extends Model\Document\Editable implements IdRewriterInterface, Ed
         $document = $this->getDocument();
 
         return Text::wysiwygText($this->text, [
-                'document' => $document,
-                'context' => $this,
-            ]);
+            'document' => $document,
+            'context' => $this,
+        ]);
     }
 
     public function setDataFromResource(mixed $data): static

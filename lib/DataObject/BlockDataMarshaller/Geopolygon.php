@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\BlockDataMarshaller;
@@ -23,7 +24,7 @@ use Pimcore\Marshaller\MarshallerInterface;
  */
 class Geopolygon implements MarshallerInterface
 {
-    public function marshal(mixed $value, array $params = []): mixed
+    public function marshal(mixed $value, array $params = []): ?array
     {
         if (is_array($value)) {
             $resultItems = [];
@@ -31,15 +32,13 @@ class Geopolygon implements MarshallerInterface
                 $resultItems[] = [$p['latitude'], $p['longitude']];
             }
 
-            $result = ['value' => json_encode($resultItems)];
-
-            return $result;
+            return ['value' => json_encode($resultItems)];
         }
 
         return null;
     }
 
-    public function unmarshal(mixed $value, array $params = []): mixed
+    public function unmarshal(mixed $value, array $params = []): ?array
     {
         if ($value['value'] ?? null) {
             $value = json_decode($value['value'], true);

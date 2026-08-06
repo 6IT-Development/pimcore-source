@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Image\Thumbnail;
@@ -27,6 +28,7 @@ use Pimcore\Logger;
 use Pimcore\Messenger\OptimizeImageMessage;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Tool\TmpStore;
+use Pimcore\Tool;
 use Pimcore\Tool\Storage;
 use Symfony\Component\Lock\LockFactory;
 
@@ -89,12 +91,13 @@ class Processor
      * @throws Exception
      */
     public static function process(
-        Asset $asset,
+        Asset  $asset,
         Config $config,
-        mixed $fileSystemPath = null,
-        bool $deferred = false,
-        bool &$generated = false
-    ): array {
+        mixed  $fileSystemPath = null,
+        bool   $deferred = false,
+        bool   &$generated = false
+    ): array
+    {
         $generated = false;
         $format = strtolower($config->getFormat());
         // Optimize if allowed to strip info.
@@ -113,7 +116,7 @@ class Processor
         // simple detection for source type if SOURCE is selected
         if ($format == 'source' || empty($format)) {
             $optimizedFormat = true;
-            $format = self::getAllowedFormat($fileExt, ['pjpeg', 'jpeg', 'gif', 'png'], 'png');
+            $format = self::getAllowedFormat($fileExt, ['pjpeg', 'jpeg', 'gif', 'png']);
             if ($format === 'jpeg') {
                 $format = 'pjpeg';
             }
@@ -123,9 +126,9 @@ class Processor
             // Don't optimize images for print as we assume we want images as
             // untouched as possible.
             $optimizedFormat = $optimizeContent = false;
-            $format = self::getAllowedFormat($fileExt, ['svg', 'jpeg', 'png', 'tiff'], 'png');
+            $format = self::getAllowedFormat($fileExt, ['svg', 'jpeg', 'png', 'tiff']);
 
-            if (($format == 'tiff') && \Pimcore\Tool::isFrontendRequestByAdmin()) {
+            if (($format == 'tiff') && Tool::isFrontendRequestByAdmin()) {
                 // return a webformat in admin -> tiff cannot be displayed in browser
                 $format = 'png';
                 $deferred = false; // deferred is default, but it's not possible when using isFrontendRequestByAdmin()
@@ -140,7 +143,7 @@ class Processor
             }
         } elseif ($format == 'tiff') {
             $optimizedFormat = $optimizeContent = false;
-            if (\Pimcore\Tool::isFrontendRequestByAdmin()) {
+            if (Tool::isFrontendRequestByAdmin()) {
                 // return a webformat in admin -> tiff cannot be displayed in browser
                 $format = 'png';
                 $deferred = false; // deferred is default, but it's not possible when using isFrontendRequestByAdmin()
@@ -148,8 +151,8 @@ class Processor
         }
 
         $image = Asset\Image::getImageTransformInstance();
-        $thumbDir = rtrim($asset->getRealPath(), '/').'/'.$asset->getId().'/image-thumb__'.$asset->getId().'__'.$config->getName();
-        $filename = preg_replace("/\." . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '$/i', '', $asset->getFilename());
+        $thumbDir = rtrim($asset->getRealPath(), '/') . '/' . $asset->getId() . '/image-thumb__' . $asset->getId() . '__' . $config->getName();
+        $filename = preg_replace('/\.' . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '$/i', '', $asset->getFilename());
 
         // add custom suffix if available
         if ($config->getFilenameSuffix()) {
@@ -167,7 +170,7 @@ class Processor
             $fileExtension = 'jpg';
         }
 
-        $filename .= '.' . $config->getHash([$asset->getChecksum()]) . '.'. $fileExtension;
+        $filename .= '.' . $config->getHash([$asset->getChecksum()]) . '.' . $fileExtension;
 
         $storagePath = $thumbDir . '/' . $filename;
         $storage = Storage::get('thumbnail');
@@ -181,7 +184,7 @@ class Processor
         } else {
             try {
                 $modificationDate = $storage->lastModified($storagePath);
-            } catch (FilesystemException $e) {
+            } catch (FilesystemException) {
                 // nothing to do
             }
         }
@@ -205,7 +208,7 @@ class Processor
                     // when the original asset is modified
                     $asset->getDao()->deleteFromThumbnailCache($config->getName());
                 }
-            } catch (FilesystemException $e) {
+            } catch (FilesystemException) {
                 // nothing to do
             }
         }
@@ -400,8 +403,6 @@ class Processor
             }
 
             $highResFactor = $config->getHighResolution();
-            $imageCropped = false;
-
             $calculateMaxFactor = function ($factor, $original, $new) {
                 $newFactor = $factor * $original / $new;
                 if ($newFactor < 1) {
@@ -425,9 +426,8 @@ class Processor
                         foreach ($transformation['arguments'] as $key => $value) {
                             $position = array_search($key, $mapping);
                             if ($position !== false) {
-                                // high res calculations if enabled
-                                if (!in_array($transformation['method'], ['cropPercent']) && in_array($key,
-                                    ['width', 'height', 'x', 'y'])) {
+                                // high-res calculations if enabled
+                                if ($transformation['method'] != 'cropPercent' && in_array($key, ['width', 'height', 'x', 'y'])) {
                                     if ($highResFactor && $highResFactor > 1) {
                                         $value *= $highResFactor;
                                         $value = (int)ceil($value);

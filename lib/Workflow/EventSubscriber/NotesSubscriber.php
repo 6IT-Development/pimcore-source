@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\EventSubscriber;
@@ -31,9 +32,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 class NotesSubscriber implements EventSubscriberInterface
 {
-    const ADDITIONAL_DATA_NOTES_COMMENT = 'notes';
+    public const string ADDITIONAL_DATA_NOTES_COMMENT = 'notes';
 
-    const ADDITIONAL_DATA_NOTES_ADDITIONAL_FIELDS = 'additional';
+    public const string ADDITIONAL_DATA_NOTES_ADDITIONAL_FIELDS = 'additional';
 
     private TranslatorInterface $translator;
 
@@ -144,12 +145,12 @@ class NotesSubscriber implements EventSubscriberInterface
             /**
              * Additional Field example
              * [
-            'name' => 'dateLastContacted',
-            'fieldType' => 'date',
-            'label' => 'Date of Conversation',
-            'required' => true,
-            'setterFn' => ''
-            ]
+             * 'name' => 'dateLastContacted',
+             * 'fieldType' => 'date',
+             * 'label' => 'Date of Conversation',
+             * 'required' => true,
+             * 'setterFn' => ''
+             * ]
              */
 
             //work out whether or not to set the value directly to the object or to add it to the note data
@@ -173,14 +174,14 @@ class NotesSubscriber implements EventSubscriberInterface
     private function checkEvent(Event $event): bool
     {
         return $this->isEnabled()
-               && $event->getTransition() instanceof Transition
-               && $event->getSubject() instanceof ElementInterface;
+            && $event->getTransition() instanceof Transition
+            && $event->getSubject() instanceof ElementInterface;
     }
 
     private function checkGlobalActionEvent(GlobalActionEvent $event): bool
     {
         return $this->isEnabled()
-               && $event->getSubject() instanceof ElementInterface;
+            && $event->getSubject() instanceof ElementInterface;
     }
 
     public function isEnabled(): bool

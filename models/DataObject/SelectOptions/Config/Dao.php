@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\SelectOptions\Config;
@@ -24,11 +25,11 @@ use RuntimeException;
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\SelectOptions\Config $model
+ * @property Model\DataObject\SelectOptions\Config $model
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
-    private const CONFIG_KEY = 'select_options';
+    private const string CONFIG_KEY = 'select_options';
 
     public function configure(): void
     {
@@ -73,7 +74,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 
     public function exists(string $name): bool
     {
-        return (bool) $this->getDataByName($this->model->getId());
+        return (bool)$this->getDataByName($this->model->getId());
     }
 
     public function save(): void
@@ -118,7 +119,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         }
     }
 
-    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
+    protected function prepareDataStructureForYaml(string $id, mixed $data): array
     {
         return [
             'pimcore' => [

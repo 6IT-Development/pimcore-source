@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance\Tasks;
@@ -62,7 +63,7 @@ class ScheduledTasksTask implements TaskInterface
                                     $this->logger->error('Schedule\\Task\\Executor: Could not restore document from version data.');
                                 }
                             } else {
-                                $this->logger->error('Schedule\\Task\\Executor: Version [ '.$task->getVersion().' ] does not exist.');
+                                $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist.');
                             }
                         } elseif ($task->getAction() === 'publish' && $document->isAllowed('publish', $taskUser)) {
                             $document->setPublished(true);
@@ -88,7 +89,7 @@ class ScheduledTasksTask implements TaskInterface
                                     $this->logger->error('Schedule\\Task\\Executor: Could not restore asset from version data.');
                                 }
                             } else {
-                                $this->logger->error('Schedule\\Task\\Executor: Version [ '.$task->getVersion().' ] does not exist.');
+                                $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist.');
                             }
                         } elseif ($task->getAction() === 'delete' && $asset->isAllowed('delete', $taskUser)) {
                             Recyclebin\Item::create($asset);
@@ -109,7 +110,7 @@ class ScheduledTasksTask implements TaskInterface
                                     $this->logger->error('Schedule\\Task\\Executor: Could not restore object from version data.');
                                 }
                             } else {
-                                $this->logger->error('Schedule\\Task\\Executor: Version [ '.$task->getVersion().' ] does not exist.');
+                                $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist.');
                             }
                         } elseif ($task->getAction() === 'publish' && $object->isAllowed('publish', $taskUser)) {
                             $object->setPublished(true);
@@ -127,8 +128,8 @@ class ScheduledTasksTask implements TaskInterface
                 $task->setActive(false);
                 $task->save();
             } catch (Exception $e) {
-                $this->logger->error('There was a problem with the scheduled task ID: '.$task->getId());
-                $this->logger->error((string) $e);
+                $this->logger->error('There was a problem with the scheduled task ID: ' . $task->getId());
+                $this->logger->error((string)$e);
             }
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Templating\Renderer;
@@ -34,8 +35,8 @@ class EditableRenderer implements LoggerAwareInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        protected EditableLoaderInterface $editableLoader,
-        protected EditmodeResolver $editmodeResolver,
+        protected EditableLoaderInterface             $editableLoader,
+        protected EditmodeResolver                    $editmodeResolver,
         protected EditmodeEditableDefinitionCollector $configCollector)
     {
     }
@@ -48,7 +49,7 @@ class EditableRenderer implements LoggerAwareInterface
     /**
      * @throws Exception
      */
-    public function getEditable(PageSnippet $document, string $type, string $name, array $config = [], bool $editmode = null): Editable\EditableInterface
+    public function getEditable(PageSnippet $document, string $type, string $name, array $config = [], ?bool $editmode = null): Editable\EditableInterface
     {
         $type = strtolower($type);
 
@@ -95,7 +96,7 @@ class EditableRenderer implements LoggerAwareInterface
      *
      * @throws Exception
      */
-    public function render(PageSnippet $document, string $type, string $name, array $options = [], bool $editmode = null): Editable\EditableInterface
+    public function render(PageSnippet $document, string $type, string $name, array $options = [], ?bool $editmode = null): Editable\EditableInterface
     {
         return $this->getEditable($document, $type, $name, $options, $editmode);
     }

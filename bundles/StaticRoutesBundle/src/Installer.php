@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\StaticRoutesBundle;
 
+use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 use Pimcore\Model\Tool\SettingsStore;
 
@@ -24,11 +26,11 @@ use Pimcore\Model\Tool\SettingsStore;
  */
 class Installer extends SettingsStoreAwareInstaller
 {
-    protected const SETTINGS_STORE_SCOPE = 'pimcore_staticroutes';
+    protected const string SETTINGS_STORE_SCOPE = 'pimcore_staticroutes';
 
-    protected const USER_PERMISSION_CATEGORY = 'Pimcore Static Routes Bundle';
+    protected const string USER_PERMISSION_CATEGORY = 'Pimcore Static Routes Bundle';
 
-    protected const USER_PERMISSIONS = [
+    protected const array USER_PERMISSIONS = [
         'routes',
     ];
 
@@ -47,7 +49,7 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function addUserPermission(): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
             $db->insert('users_permission_definitions', [
@@ -59,7 +61,7 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function removeUserPermission(): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
             $db->delete('users_permission_definitions', [

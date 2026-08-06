@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\SelectOptions\Config;
@@ -19,6 +20,7 @@ namespace Pimcore\Model\DataObject\SelectOptions\Config;
 use ArrayIterator;
 use IteratorAggregate;
 use Pimcore\Model;
+use Pimcore\Model\DataObject\SelectOptions\Config;
 
 /**
  * @method \Pimcore\Model\DataObject\SelectOptions\Config\Listing\Dao getDao()
@@ -28,12 +30,12 @@ class Listing extends Model\AbstractModel implements IteratorAggregate
     /**
      * @internal
      *
-     * @var Model\DataObject\SelectOptions\Config[]|null
+     * @var Config[]|null
      */
     protected ?array $selectOptions = null;
 
     /**
-     * @return Model\DataObject\SelectOptions\Config[]
+     * @return Config[]
      */
     public function getSelectOptions(): array
     {
@@ -45,7 +47,7 @@ class Listing extends Model\AbstractModel implements IteratorAggregate
     }
 
     /**
-     * @param Model\DataObject\SelectOptions\Config[]|null $selectOptions
+     * @param Config[]|null $selectOptions
      *
      * @return $this
      */
@@ -59,7 +61,7 @@ class Listing extends Model\AbstractModel implements IteratorAggregate
     /**
      * Alias of getSelectOptions()
      *
-     * @return Model\DataObject\SelectOptions\Config[]
+     * @return Config[]
      */
     public function load(): array
     {
@@ -67,7 +69,7 @@ class Listing extends Model\AbstractModel implements IteratorAggregate
     }
 
     /**
-     * @return ArrayIterator<\Pimcore\Model\DataObject\SelectOptions\Config>
+     * @return ArrayIterator<Config>
      */
     public function getIterator(): ArrayIterator
     {

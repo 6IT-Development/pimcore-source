@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Inheritance;
@@ -25,6 +26,7 @@ use Pimcore\Model\DataObject\Folder;
 use Pimcore\Model\DataObject\Inheritance;
 use Pimcore\Model\DataObject\RelationTest;
 use Pimcore\Model\DataObject\Service;
+use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Tests\Support\Test\ModelTestCase;
 use Pimcore\Tests\Support\Util\TestHelper;
 
@@ -289,7 +291,7 @@ class GeneralTest extends ModelTestCase
         $one->setNormalInput('parenttext');
         $one->save();
 
-        $objectBetween = new \Pimcore\Model\DataObject\Unittest();
+        $objectBetween = new Unittest();
         $objectBetween->setParent($one);
         $objectBetween->setKey('object of other class');
         $objectBetween->save();

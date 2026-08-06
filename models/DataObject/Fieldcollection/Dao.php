@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Fieldcollection;
@@ -24,11 +24,12 @@ use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data\CustomResourcePersistingInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\LazyLoadingSupportInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface;
+use Pimcore\Model\DataObject\Fieldcollection;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Fieldcollection $model
+ * @property Fieldcollection $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -57,7 +58,7 @@ class Dao extends Model\Dao\AbstractDao
 
             try {
                 $results = $this->db->fetchAllAssociative('SELECT * FROM ' . $tableName . ' WHERE id = ? AND fieldname = ? ORDER BY `index` ASC', [$object->getId(), $this->model->getFieldname()]);
-            } catch (Exception $e) {
+            } catch (Exception) {
                 $results = [];
             }
 
@@ -161,14 +162,14 @@ class Dao extends Model\Dao\AbstractDao
             $tableName = $definition->getTableName($object->getClass());
 
             try {
-                $dataExists = $this->db->fetchOne('SELECT `id` FROM `'.$tableName."` WHERE `id` = '".$object->getId()."' AND `fieldname` = '".$this->model->getFieldname()."' LIMIT 1");
+                $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $tableName . "` WHERE `id` = '" . $object->getId() . "' AND `fieldname` = '" . $this->model->getFieldname() . "' LIMIT 1");
                 if ($dataExists) {
                     $this->db->delete($tableName, [
                         'id' => $object->getId(),
                         'fieldname' => $this->model->getFieldname(),
                     ]);
                 }
-            } catch (Exception $e) {
+            } catch (Exception) {
                 // create definition if it does not exist
                 $definition->createUpdateTable($object->getClass());
             }
@@ -177,8 +178,8 @@ class Dao extends Model\Dao\AbstractDao
                 $tableName = $definition->getLocalizedTableName($object->getClass());
 
                 try {
-                    $dataExists = $this->db->fetchOne('SELECT `ooo_id` FROM `'.$tableName."` WHERE
-         `ooo_id` = '".$object->getId()."' AND `fieldname` = '".$this->model->getFieldname()."' LIMIT 1 ");
+                    $dataExists = $this->db->fetchOne('SELECT `ooo_id` FROM `' . $tableName . "` WHERE
+         `ooo_id` = '" . $object->getId() . "' AND `fieldname` = '" . $this->model->getFieldname() . "' LIMIT 1 ");
                     if ($dataExists) {
                         $this->db->delete($tableName, [
                             'ooo_id' => $object->getId(),
@@ -186,7 +187,7 @@ class Dao extends Model\Dao\AbstractDao
                         ]);
                     }
                 } catch (Exception $e) {
-                    Logger::error((string) $e);
+                    Logger::error((string)$e);
                 }
             }
 
@@ -195,8 +196,8 @@ class Dao extends Model\Dao\AbstractDao
             foreach ($childDefinitions as $fd) {
                 if (!DataObject::isDirtyDetectionDisabled() && $this->model instanceof Model\Element\DirtyIndicatorInterface) {
                     if ($fd instanceof DataObject\ClassDefinition\Data\Relations\AbstractRelations && !$this->model->isFieldDirty(
-                        '_self'
-                    )) {
+                            '_self'
+                        )) {
                         continue;
                     }
                 }
@@ -237,7 +238,7 @@ class Dao extends Model\Dao\AbstractDao
         $whereLocalizedFields = "(ownertype = 'localizedfield' AND "
             . Helper::quoteInto($this->db, 'ownername LIKE ?', '/fieldcollection~'
                 . $this->model->getFieldname() . '/%')
-            . ' AND ' . Helper::quoteInto($this->db, 'src_id = ?', $object->getId()). ')';
+            . ' AND ' . Helper::quoteInto($this->db, 'src_id = ?', $object->getId()) . ')';
 
         if ($saveMode) {
             if (!DataObject::isDirtyDetectionDisabled() && !$this->model->hasDirtyFields() && $hasLocalizedFields) {

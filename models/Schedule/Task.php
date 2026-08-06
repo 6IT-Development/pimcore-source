@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,19 +11,21 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Schedule;
 
 use Exception;
+use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model;
+use Pimcore\Model\Schedule\Task\Dao;
 
 /**
  * @internal
  *
- * @method \Pimcore\Model\Schedule\Task\Dao getDao()
+ * @method Dao getDao()
  * @method void save()
  */
 class Task extends Model\AbstractModel
@@ -48,16 +51,16 @@ class Task extends Model\AbstractModel
         $cacheKey = 'scheduled_task_' . $id;
 
         try {
-            $task = \Pimcore\Cache\RuntimeCache::get($cacheKey);
+            $task = RuntimeCache::get($cacheKey);
             if (!$task) {
                 throw new Exception('Scheduled Task in Registry is not valid');
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             try {
                 $task = new self();
                 $task->getDao()->getById($id);
-                \Pimcore\Cache\RuntimeCache::set($cacheKey, $task);
-            } catch (Model\Exception\NotFoundException $e) {
+                RuntimeCache::set($cacheKey, $task);
+            } catch (Model\Exception\NotFoundException) {
                 return null;
             }
         }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -56,10 +57,8 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
 
     /**
      * @see Data::getDataForEditmode
-     *
-     * @param null|Model\DataObject\Concrete $object
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         $result = [];
         if (is_array($data)) {
@@ -74,7 +73,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
                     $resultItem = [
                         'slug' => $slug->getSlug(),
                         'siteId' => $slug->getSiteId(),
-                        'domain' => $site ? $site->getMainDomain() : null,
+                        'domain' => $site?->getMainDomain(),
                     ];
 
                     $result[$slug->getSiteId()] = $resultItem;
@@ -89,14 +88,14 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
     /**
      * @return Model\DataObject\Data\UrlSlug[]
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         $result = [];
         if (is_array($data)) {
-            foreach ($data as $siteId => $item) {
+            foreach ($data as $item) {
                 $siteId = $item[0];
                 $slug = $item[1];
-                $slug = new Model\DataObject\Data\UrlSlug($slug, (int) $siteId);
+                $slug = new Model\DataObject\Data\UrlSlug($slug, (int)$siteId);
 
                 if ($item[2]) {
                     $slug->setPreviousSlug($item[2]);
@@ -110,11 +109,9 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
     }
 
     /**
-     * @param Model\DataObject\Concrete|null $object
-     *
      * @return Model\DataObject\Data\UrlSlug[]
      */
-    public function getDataFromGridEditor(float $data, Concrete $object = null, array $params = []): array
+    public function getDataFromGridEditor(float $data, ?Concrete $object = null, array $params = []): array
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
@@ -171,7 +168,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         return $this;
     }
 
-    public function save(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function save(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         if (isset($params['isUntouchable']) && $params['isUntouchable']) {
             return;
@@ -213,7 +210,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
                                 // retrying the transaction should success the next time
                                 try {
                                     $existingSlug->getAction();
-                                } catch (Exception $e) {
+                                } catch (Exception) {
                                     $db->insert(Model\DataObject\Data\UrlSlug::TABLE_NAME, $slug);
 
                                     return;
@@ -234,16 +231,13 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         $this->dispatchEvent($event, UrlSlugEvents::POST_SAVE);
     }
 
-    /**
-     * @param Model\DataObject\Concrete|Model\DataObject\Fieldcollection\Data\AbstractData|Model\DataObject\Objectbrick\Data\AbstractData|Model\DataObject\Localizedfield|null $object
-     */
-    public function prepareDataForPersistence(mixed $data, Localizedfield|AbstractData|Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object = null, array $params = []): ?array
+    public function prepareDataForPersistence(mixed $data, Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete|null $object = null, array $params = []): ?array
     {
         $return = [];
 
         if ($object instanceof Model\DataObject\Localizedfield) {
             $object = $object->getObject();
-        } elseif ($object instanceof Model\DataObject\Objectbrick\Data\AbstractData || $object instanceof Model\DataObject\Fieldcollection\Data\AbstractData) {
+        } elseif ($object instanceof DataObject\Objectbrick\Data\AbstractData || $object instanceof Model\DataObject\Fieldcollection\Data\AbstractData) {
             $object = $object->getObject();
         }
 
@@ -272,7 +266,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         return null;
     }
 
-    public function load(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): array
+    public function load(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): array
     {
         $rawResult = [];
         if ($object instanceof Model\DataObject\Concrete) {
@@ -293,7 +287,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
             } else {
                 $rawResult = $object->getObject()->retrieveSlugData(['fieldname' => $this->getName(), 'ownertype' => 'localizedfield', 'position' => $params['language']]);
             }
-        } elseif ($object instanceof Model\DataObject\Objectbrick\Data\AbstractData) {
+        } elseif ($object instanceof DataObject\Objectbrick\Data\AbstractData) {
             $rawResult = $object->getObject()->retrieveSlugData(['fieldname' => $this->getName(), 'ownertype' => 'objectbrick', 'ownername' => $object->getFieldname(), 'position' => $object->getType()]);
         }
 
@@ -306,7 +300,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         return $result;
     }
 
-    public function delete(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function delete(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         if (!isset($params['isUpdate']) || !$params['isUpdate']) {
             $db = Db::get();
@@ -327,7 +321,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         $this->action = $mainDefinition->action;
     }
 
-    public function getDataForSearchIndex(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): string
+    public function getDataForSearchIndex(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): string
     {
         return '';
     }
@@ -381,7 +375,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         return true;
     }
 
-    protected function getPreviewData(?array $data, Concrete $object = null, array $params = [], string $lineBreak = '<br />'): ?string
+    protected function getPreviewData(?array $data, ?Concrete $object = null, array $params = [], string $lineBreak = '<br />'): ?string
     {
         if (is_array($data) && count($data) > 0) {
             $pathes = [];
@@ -402,7 +396,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         return null;
     }
 
-    public function getVersionPreview(mixed $data, Model\DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?Model\DataObject\Concrete $object = null, array $params = []): string
     {
         return $this->getPreviewData($data, $object, $params) ?? '';
     }
@@ -410,7 +404,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
     /**
      * @param null|Model\DataObject\Data\UrlSlug[] $data
      */
-    public function getDataForGrid(?array $data, Concrete $object = null, array $params = []): array
+    public function getDataForGrid(?array $data, ?Concrete $object = null, array $params = []): array
     {
         return $this->getDataForEditmode($data, $object, $params);
     }
@@ -469,7 +463,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
         return $this;
     }
 
-    public function preGetData(mixed $container, array $params = []): mixed
+    public function preGetData(mixed $container, array $params = []): array
     {
         $data = null;
         if ($container instanceof Model\DataObject\Concrete) {
@@ -498,7 +492,7 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
             }
 
             $data = $container->getObjectVar($this->getName());
-        } elseif ($container instanceof Model\DataObject\Objectbrick\Data\AbstractData) {
+        } elseif ($container instanceof DataObject\Objectbrick\Data\AbstractData) {
             if ($this->getLazyLoading() && $container->getObject()) {
                 $brickGetter = 'get' . ucfirst($container->getFieldname());
                 $subContainer = $container->getObject()->$brickGetter();

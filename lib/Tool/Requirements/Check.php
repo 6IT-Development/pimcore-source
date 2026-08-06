@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool\Requirements;
@@ -23,11 +24,11 @@ use ArrayAccess;
  */
 final class Check implements ArrayAccess
 {
-    const STATE_OK = 1;
+    public const int STATE_OK = 1;
 
-    const STATE_WARNING = 2;
+    public const int STATE_WARNING = 2;
 
-    const STATE_ERROR = 3;
+    public const int STATE_ERROR = 3;
 
     public string $name;
 
@@ -103,7 +104,7 @@ final class Check implements ArrayAccess
      */
     public function offsetGet($offset): string|int|null
     {
-        return $this->{'get'.$offset}();
+        return $this->{'get' . $offset}();
     }
 
     /**
@@ -112,7 +113,7 @@ final class Check implements ArrayAccess
      */
     public function offsetSet($offset, $value): void
     {
-        $this->{'set'.$offset}($value);
+        $this->{'set' . $offset}($value);
     }
 
     /**

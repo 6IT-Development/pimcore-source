@@ -9,23 +9,24 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\QuantityValue\Unit;
 
 use Pimcore\Db\Helper;
 use Pimcore\Model;
+use Pimcore\Model\DataObject\QuantityValue\Unit;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\QuantityValue\Unit $model
+ * @property Unit $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
-    const TABLE_NAME = 'quantityvalue_units';
+    public const string TABLE_NAME = 'quantityvalue_units';
 
     /**
      * Contains all valid columns in the database table
@@ -90,7 +91,7 @@ class Dao extends Model\Dao\AbstractDao
             // mimic autoincrement
             $id = $this->db->fetchOne('SELECT CONVERT(SUBSTRING_INDEX(id,\'-\',-1),UNSIGNED INTEGER) AS num FROM quantityvalue_units ORDER BY num DESC LIMIT 1');
             $id = $id > 0 ? ($id + 1) : 1;
-            $this->model->setId((string) $id);
+            $this->model->setId((string)$id);
         }
 
         $class = $this->model->getObjectVars();

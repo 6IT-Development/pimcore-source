@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Messenger\Handler;
@@ -36,7 +37,7 @@ class OptimizeImageHandler implements BatchHandlerInterface
     {
     }
 
-    public function __invoke(OptimizeImageMessage $message, Acknowledger $ack = null): mixed
+    public function __invoke(OptimizeImageMessage $message, ?Acknowledger $ack = null): mixed
     {
         return $this->handle($message, $ack);
     }
@@ -54,9 +55,9 @@ class OptimizeImageHandler implements BatchHandlerInterface
                     $originalFilesize = $storage->fileSize($path);
                     $this->optimizer->optimizeImage($path);
 
-                    $this->logger->debug('Optimized image: '.$path.' saved '.formatBytes($originalFilesize - $storage->fileSize($path)));
+                    $this->logger->debug('Optimized image: ' . $path . ' saved ' . formatBytes($originalFilesize - $storage->fileSize($path)));
                 } else {
-                    $this->logger->debug('Skip optimizing of '.$path." because it doesn't exist anymore");
+                    $this->logger->debug('Skip optimizing of ' . $path . " because it doesn't exist anymore");
                 }
 
                 $ack->ack($message);

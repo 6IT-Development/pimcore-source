@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ExportDataExtractorService\DataExtractor;
@@ -26,7 +27,7 @@ use Pimcore\Model\Property;
 
 class DocumentDataExtractor extends AbstractElementDataExtractor
 {
-    const EXPORTABLE_TAGS = ['wysiwyg', 'input', 'textarea', 'image', 'link'];
+    public const array EXPORTABLE_TAGS = ['wysiwyg', 'input', 'textarea', 'image', 'link'];
 
     private EditableUsageResolver $EditableUsageResolver;
 
@@ -43,12 +44,11 @@ class DocumentDataExtractor extends AbstractElementDataExtractor
     public function extract(TranslationItem $translationItem, string $sourceLanguage, array $targetLanguages): AttributeSet
     {
         $document = $translationItem->getElement();
-
-        $result = parent::extract($translationItem, $sourceLanguage, $targetLanguages);
-
         if (!$document instanceof Document) {
             throw new Exception('only documents allowed');
         }
+
+        $result = parent::extract($translationItem, $sourceLanguage, $targetLanguages);
 
         $this
             ->addDocumentEditables($document, $result)
@@ -76,7 +76,7 @@ class DocumentDataExtractor extends AbstractElementDataExtractor
     protected function addDocumentEditables(Document $document, AttributeSet $result): DocumentDataExtractor
     {
         $editables = [];
-        $service = new Document\Service;
+        $service = new Document\Service();
 
         $translations = $service->getTranslations($document);
 
@@ -104,7 +104,7 @@ class DocumentDataExtractor extends AbstractElementDataExtractor
                     if (isset($translations[$targetLanguage])) {
                         $targetDocument = Document::getById($translations[$targetLanguage]);
 
-                        if ($targetDocument instanceof  Document\PageSnippet) {
+                        if ($targetDocument instanceof Document\PageSnippet) {
                             $targetTag = $targetDocument->getEditable($editable->getName());
                             if ($targetTag instanceof Document\Editable\Image || $targetTag instanceof Document\Editable\Link) {
                                 $targetContent[$targetLanguage] = $targetTag->getText();
@@ -129,7 +129,7 @@ class DocumentDataExtractor extends AbstractElementDataExtractor
 
     protected function addSettings(Document $document, AttributeSet $result): DocumentDataExtractor
     {
-        $service = new Document\Service;
+        $service = new Document\Service();
         $translations = $service->getTranslations($document);
 
         $this->resetSourceDocument($document, $result, $translations);
@@ -145,7 +145,7 @@ class DocumentDataExtractor extends AbstractElementDataExtractor
                 if (isset($translations[$targetLanguage])) {
                     $targetDocument = Document::getById($translations[$targetLanguage]);
 
-                    if ($targetDocument instanceof  Document\Page) {
+                    if ($targetDocument instanceof Document\Page) {
                         $targetData['title'][$targetLanguage] = $targetDocument->getTitle();
                         $targetData['description'][$targetLanguage] = $targetDocument->getDescription();
                     }
@@ -165,16 +165,16 @@ class DocumentDataExtractor extends AbstractElementDataExtractor
     protected function doExportProperty(Property $property): bool
     {
         return parent::doExportProperty($property) && !in_array($property->getName(), [
-                    'language',
-                    'navigation_target',
-                    'navigation_exclude',
-                    'navigation_class',
-                    'navigation_anchor',
-                    'navigation_parameters',
-                    'navigation_relation',
-                    'navigation_accesskey',
-                    'navigation_tabindex',
-                ]);
+                'language',
+                'navigation_target',
+                'navigation_exclude',
+                'navigation_class',
+                'navigation_anchor',
+                'navigation_parameters',
+                'navigation_relation',
+                'navigation_accesskey',
+                'navigation_tabindex',
+            ], true);
     }
 
     private function resetSourceDocument(Document &$document, AttributeSet $result, array $translations): void

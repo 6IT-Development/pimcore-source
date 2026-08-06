@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GlossaryBundle\Model\Glossary;
@@ -33,7 +33,7 @@ class Dao extends AbstractDao
      *
      * @throws NotFoundException
      */
-    public function getById(int $id = null): void
+    public function getById(?int $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -82,7 +82,7 @@ class Dao extends AbstractDao
         foreach ($type as $key => $value) {
             if (in_array($key, $this->getValidTableColumns('glossary'))) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 }
                 $data[$key] = $value;
             }
@@ -102,6 +102,6 @@ class Dao extends AbstractDao
 
         $this->db->insert('glossary', []);
 
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
     }
 }

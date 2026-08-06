@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
@@ -55,7 +56,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
      *
      * @var array
      */
-    public const SYSTEM_COLUMN_NAMES = ['id', 'fullpath', 'key', 'published', 'creationDate', 'modificationDate', 'filename', 'classname', 'index'];
+    public const array SYSTEM_COLUMN_NAMES = ['id', 'fullpath', 'key', 'published', 'creationDate', 'modificationDate', 'filename', 'classname', 'index'];
 
     /**
      * @internal
@@ -68,12 +69,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
      */
     protected ?ClassDefinition $class = null;
 
-    /**
-     * @internal
-     *
-     * @var string|null
-     */
-    protected $className = null;
+    protected ?string $className = null;
 
     /**
      * @internal
@@ -104,7 +100,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
         return $v['classId'];
     }
 
-    protected function update(bool $isUpdate = null, array $params = []): void
+    protected function update(?bool $isUpdate = null, array $params = []): void
     {
         $fieldDefinitions = $this->getClass()->getFieldDefinitions();
 
@@ -203,7 +199,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
 
             // scheduled tasks are saved in $this->saveVersion();
 
-            $this->saveVersion(false, false, isset($params['versionNote']) ? $params['versionNote'] : null);
+            $this->saveVersion(false, false, $params['versionNote'] ?? null);
             $this->saveChildData();
         } finally {
             self::setDisableDirtyDetection($isDirtyDetectionDisabled);
@@ -236,7 +232,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
      * @param string|null $versionNote version note
      *
      */
-    public function saveVersion(bool $setModificationDate = true, bool $saveOnlyVersion = true, string $versionNote = null, bool $isAutoSave = false): ?Model\Version
+    public function saveVersion(bool $setModificationDate = true, bool $saveOnlyVersion = true, ?string $versionNote = null, bool $isAutoSave = false): ?Model\Version
     {
         try {
             if ($setModificationDate) {
@@ -322,9 +318,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
 
         if ($this->getClass()->getFieldDefinition($key) instanceof Model\DataObject\ClassDefinition\Data\CalculatedValue) {
             $value = new Model\DataObject\Data\CalculatedValue($key);
-            $value = Service::getCalculatedFieldValue($this, $value);
-
-            return $value;
+            return Service::getCalculatedFieldValue($this, $value);
         }
 
         return null;
@@ -494,9 +488,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
      */
     public function getRelationData(string $fieldName, bool $forOwner, ?string $remoteClassId = null): array
     {
-        $relationData = $this->getDao()->getRelationData($fieldName, $forOwner, $remoteClassId);
-
-        return $relationData;
+        return $this->getDao()->getRelationData($fieldName, $forOwner, $remoteClassId);
     }
 
     /**
@@ -538,7 +530,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
         if ($classDefinition->getFieldDefinition($realPropertyName) instanceof Model\DataObject\ClassDefinition\Data) {
             $field = $classDefinition->getFieldDefinition($realPropertyName);
             if (!$field->isFilterable()) {
-                throw new Exception("Static getter '::getBy".ucfirst($realPropertyName)."' is not allowed for fieldtype '" . $field->getFieldType() . "'");
+                throw new Exception("Static getter '::getBy" . ucfirst($realPropertyName) . "' is not allowed for fieldtype '" . $field->getFieldType() . "'");
             }
 
             $db = Db::get();
@@ -560,7 +552,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
                 }
 
                 if (!$localizedField->isFilterable()) {
-                    throw new Exception("Static getter '::getBy".ucfirst($realPropertyName)."' is not allowed for fieldtype '" . $localizedField->getFieldType() . "'");
+                    throw new Exception("Static getter '::getBy" . ucfirst($realPropertyName) . "' is not allowed for fieldtype '" . $localizedField->getFieldType() . "'");
                 }
 
                 $defaultCondition = $db->quoteIdentifier($localizedPropertyName) . ' = ' . $db->quote($value) . ' ';
@@ -601,7 +593,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
             if (isset($listConfig['limit']) && $listConfig['limit'] == 1) {
                 $elements = $list->getObjects();
 
-                return isset($elements[0]) ? $elements[0] : null;
+                return $elements[0] ?? null;
             }
 
             return $list;
@@ -609,11 +601,11 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
 
         try {
             return call_user_func_array([parent::class, $method], $arguments);
-        } catch (Exception $e) {
+        } catch (Exception) {
             // there is no property for the called method, so throw an exception
-            Logger::error('Class: DataObject\\Concrete => call to undefined static method '.$method);
+            Logger::error('Class: DataObject\\Concrete => call to undefined static method ' . $method);
 
-            throw new Exception('Call to undefined static method '.$method.' in class DataObject\\Concrete');
+            throw new Exception('Call to undefined static method ' . $method . ' in class DataObject\\Concrete');
         }
     }
 
@@ -715,7 +707,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
             // containing LocalizedFields. Verify all fields in this object.
             foreach (get_object_vars($this) as $propertyKey => $propertyValue) {
                 $fcPropertyKey = DataObject\Service::getVersionDependentDatabaseColumnName($propertyKey);
-                if ($propertyKey !== $fcPropertyKey && str_ends_with($propertyKey, 'o_'. $fcPropertyKey)) {
+                if ($propertyKey !== $fcPropertyKey && str_ends_with($propertyKey, 'o_' . $fcPropertyKey)) {
                     $this->{$fcPropertyKey} = $propertyValue;
                 }
                 if ($propertyValue instanceof ObjectAwareFieldInterface) {
@@ -755,9 +747,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
         $conditionParts = Service::buildConditionPartsFromDescriptor($descriptor);
 
         $query = 'SELECT * FROM ' . $table . ' WHERE ' . implode(' AND ', $conditionParts);
-        $result = $db->fetchAllAssociative($query);
-
-        return $result;
+        return $db->fetchAllAssociative($query);
     }
 
     /**
@@ -809,8 +799,6 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
             return true;
         };
 
-        $filteredData = array_filter($unfilteredData, $filterFn);
-
-        return $filteredData;
+        return array_filter($unfilteredData, $filterFn);
     }
 }

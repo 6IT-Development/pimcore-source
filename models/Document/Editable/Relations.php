@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -24,7 +25,7 @@ use Pimcore\Model\Document;
 use Pimcore\Model\Element;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Relations extends Model\Document\Editable implements Iterator, IdRewriterInterface, EditmodeDataInterface, LazyLoadingInterface
 {
@@ -66,14 +67,14 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
         return $this->elementIds;
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         $this->setElements();
 
         return $this->elements;
     }
 
-    public function getDataForResource(): mixed
+    public function getDataForResource(): array
     {
         return $this->elementIds;
     }
@@ -98,7 +99,7 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
         return $return;
     }
 
-    public function frontend()
+    public function frontend(): string
     {
         $this->setElements();
         $return = '';
@@ -156,7 +157,7 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
     {
         $this->setElements();
 
-        return count($this->elements) > 0 ? false : true;
+        return !(count($this->elements) > 0);
     }
 
     public function resolveDependencies(): array
@@ -188,7 +189,7 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
             $type = $elementId['type'];
             $id = $elementId['id'];
 
-            if (array_key_exists($type, $idMapping) && array_key_exists((int) $id, $idMapping[$type])) {
+            if (array_key_exists($type, $idMapping) && array_key_exists((int)$id, $idMapping[$type])) {
                 $elementId['id'] = $idMapping[$type][$id];
             }
         }

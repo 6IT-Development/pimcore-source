@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore;
@@ -49,7 +50,7 @@ final class StoreConfig extends Model\AbstractModel
             $config->getDao()->getById($id);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -61,7 +62,7 @@ final class StoreConfig extends Model\AbstractModel
             $config->getDao()->getByName($name);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -74,7 +75,7 @@ final class StoreConfig extends Model\AbstractModel
         return $config;
     }
 
-    public function setName(string $name): static
+    public function setName(string $name): StoreConfig
     {
         $this->name = $name;
 
@@ -101,7 +102,7 @@ final class StoreConfig extends Model\AbstractModel
      *
      * @return Model\DataObject\Classificationstore\StoreConfig
      */
-    public function setDescription(string $description): static
+    public function setDescription(string $description): StoreConfig
     {
         $this->description = $description;
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document;
@@ -22,6 +23,7 @@ use Pimcore\Config;
 use Pimcore\Document\Renderer\DocumentRendererInterface;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
+use Pimcore\Image;
 use Pimcore\Image\HtmlToImage;
 use Pimcore\Model;
 use Pimcore\Model\Document;
@@ -60,7 +62,7 @@ class Service extends Model\Element\Service
      */
     protected array $nearestPathCache;
 
-    public function __construct(Model\User $user = null)
+    public function __construct(?Model\User $user = null)
     {
         $this->_user = $user;
     }
@@ -78,9 +80,7 @@ class Service extends Model\Element\Service
 
         // keep useLayout compatibility
         $attributes['_useLayout'] = $useLayout;
-        $content = $renderer->render($document, $attributes, $query, $options);
-
-        return $content;
+        return $renderer->render($document, $attributes, $query, $options);
     }
 
     /**
@@ -288,7 +288,7 @@ class Service extends Model\Element\Service
         $doc->getProperties();
 
         if ($doc instanceof Document\PageSnippet) {
-            foreach ($doc->getEditables() as $name => $data) {
+            foreach ($doc->getEditables() as $data) {
                 if ($data instanceof LazyLoadingInterface) {
                     $data->load();
                 }
@@ -298,7 +298,7 @@ class Service extends Model\Element\Service
         return $doc;
     }
 
-    public static function pathExists(string $path, string $type = null): bool
+    public static function pathExists(string $path, ?string $type = null): bool
     {
         if (!$path) {
             return false;
@@ -314,7 +314,7 @@ class Service extends Model\Element\Service
 
                 return true;
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
         }
 
         return false;
@@ -374,12 +374,12 @@ class Service extends Model\Element\Service
 
             $document->setEditables($editables);
         } elseif ($document instanceof Document\Hardlink) {
-            if (array_key_exists('document', $rewriteConfig) && $document->getSourceId() && array_key_exists((int) $document->getSourceId(), $rewriteConfig['document'])) {
-                $document->setSourceId($rewriteConfig['document'][(int) $document->getSourceId()]);
+            if (array_key_exists('document', $rewriteConfig) && $document->getSourceId() && array_key_exists((int)$document->getSourceId(), $rewriteConfig['document'])) {
+                $document->setSourceId($rewriteConfig['document'][(int)$document->getSourceId()]);
             }
         } elseif ($document instanceof Document\Link) {
-            if (array_key_exists('document', $rewriteConfig) && $document->getLinktype() == 'internal' && $document->getInternalType() == 'document' && array_key_exists((int) $document->getInternal(), $rewriteConfig['document'])) {
-                $document->setInternal($rewriteConfig['document'][(int) $document->getInternal()]);
+            if (array_key_exists('document', $rewriteConfig) && $document->getLinktype() == 'internal' && $document->getInternalType() == 'document' && array_key_exists((int)$document->getInternal(), $rewriteConfig['document'])) {
+                $document->setInternal($rewriteConfig['document'][(int)$document->getInternal()]);
             }
         }
 
@@ -530,7 +530,7 @@ class Service extends Model\Element\Service
      *
      * @internal
      */
-    public static function generatePagePreview(int $id, Request $request = null, string $hostUrl = null): bool
+    public static function generatePagePreview(int $id, ?Request $request = null, ?string $hostUrl = null): bool
     {
         $filesystem = new Filesystem();
         $doc = Document\Page::getById($id);
@@ -551,7 +551,7 @@ class Service extends Model\Element\Service
         $filesystem->mkdir(dirname($file), 0775);
 
         if (HtmlToImage::convert($url, $tmpFile)) {
-            $im = \Pimcore\Image::getInstance();
+            $im = Image::getInstance();
             $im->load($tmpFile);
             $im->scaleByWidth(800);
             $im->save($file, 'jpeg', 85);

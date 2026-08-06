@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Inheritance;
@@ -79,7 +80,7 @@ class ObjectbrickTest extends ModelTestCase
         $three->setPublished(true);
 
         //set brick field lazy relation on two(child)
-        $brickRelations = TestHelper::createEmptyObjects('brickInheritanceRelation', true, 10);
+        $brickRelations = TestHelper::createEmptyObjects('brickInheritanceRelation');
         $three->getMybricks()->getUnittestBrick()->setBrickLazyRelation($brickRelations);
         $three->save();
 

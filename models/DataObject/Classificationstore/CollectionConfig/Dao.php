@@ -9,23 +9,25 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore\CollectionConfig;
 
 use Exception;
 use Pimcore\Model;
+use Pimcore\Model\DataObject\Classificationstore\CollectionConfig;
+use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Classificationstore\CollectionConfig $model
+ * @property CollectionConfig $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
-    const TABLE_NAME_COLLECTIONS = 'classificationstore_collections';
+    public const string TABLE_NAME_COLLECTIONS = 'classificationstore_collections';
 
     /**
      * Get the data for the object from database for the given id, or from the ID which is set in the object
@@ -33,7 +35,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getById(int $id = null): void
+    public function getById(?int $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -52,7 +54,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getByName(string $name = null): void
+    public function getByName(?string $name = null): void
     {
         if ($name != null) {
             $this->model->setName($name);
@@ -101,10 +103,10 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($type as $key => $value) {
             if (in_array($key, $this->getValidTableColumns(self::TABLE_NAME_COLLECTIONS))) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 }
                 if (is_array($value) || is_object($value)) {
-                    $value = \Pimcore\Tool\Serialize::serialize($value);
+                    $value = Serialize::serialize($value);
                 }
 
                 $data[$key] = $value;
@@ -122,6 +124,6 @@ class Dao extends Model\Dao\AbstractDao
 
         $this->db->insert(self::TABLE_NAME_COLLECTIONS, []);
 
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
     }
 }

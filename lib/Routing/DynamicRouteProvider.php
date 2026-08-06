@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Routing;
@@ -83,7 +84,7 @@ final class DynamicRouteProvider implements RouteProviderInterface
         foreach ($this->handlers as $handler) {
             try {
                 return $handler->getRouteByName($name);
-            } catch (RouteNotFoundException $e) {
+            } catch (RouteNotFoundException) {
                 // noop
             }
         }
@@ -91,7 +92,7 @@ final class DynamicRouteProvider implements RouteProviderInterface
         throw new RouteNotFoundException(sprintf("Route for name '%s' was not found", $name));
     }
 
-    public function getRoutesByNames(array $names = null): array
+    public function getRoutesByNames(?array $names = null): array
     {
         // TODO needs performance optimizations
         // TODO really return all routes here as documentation states? where is this used?
@@ -102,7 +103,7 @@ final class DynamicRouteProvider implements RouteProviderInterface
                 try {
                     $route = $this->getRouteByName($name);
                     $routes[] = $route;
-                } catch (RouteNotFoundException $e) {
+                } catch (RouteNotFoundException) {
                     // noop
                 }
             }

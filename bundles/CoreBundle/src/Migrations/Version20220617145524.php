@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -48,6 +48,6 @@ final class Version20220617145524 extends AbstractMigration
                 UNIQUE INDEX `name` (`name`, `classId`)
             ) DEFAULT CHARSET=utf8mb4;');
 
-        $this->write(sprintf('Please restore your custom layout data by running bin/console pimcore:deployment:custom-layouts-rebuild -c manually.'));
+        $this->write('Please restore your custom layout data by running bin/console pimcore:deployment:custom-layouts-rebuild -c manually.');
     }
 }

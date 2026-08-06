@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Translation;
 
 use Exception;
 use Pimcore\Cache;
+use Pimcore\Config;
 use Pimcore\Model\Translation;
 use Pimcore\Tool;
 use Symfony\Component\HttpKernel\CacheWarmer\WarmableInterface;
@@ -58,7 +60,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
         $this->translator = $translator;
     }
 
-    public function trans(string $id, array $parameters = [], string $domain = null, string $locale = null): string
+    public function trans(string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string
     {
         $id = trim($id);
 
@@ -97,9 +99,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
             $term = vsprintf($term, $parameters);
         }
 
-        $term = $this->updateLinks($term);
-
-        return $term;
+        return $this->updateLinks($term);
     }
 
     public function setLocale(string $locale): void
@@ -115,10 +115,10 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
             return $this->translator->getLocale();
         }
 
-        return \Pimcore\Tool::getDefaultLanguage();
+        return Tool::getDefaultLanguage();
     }
 
-    public function getCatalogue(string $locale = null): MessageCatalogueInterface
+    public function getCatalogue(?string $locale = null): MessageCatalogueInterface
     {
         return $this->translator->getCatalogue($locale);
     }
@@ -153,7 +153,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
                 $list = new Translation\Listing();
                 $list->setDomain($domain);
 
-                $debugAdminTranslations = \Pimcore\Config::getSystemConfiguration('general')['debug_admin_translations'] ?? false;
+                $debugAdminTranslations = Config::getSystemConfiguration('general')['debug_admin_translations'] ?? false;
                 $list->setCondition('language = ?', [$locale]);
                 $translations = $list->loadRaw();
 
@@ -166,7 +166,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
 
                         if (empty($translationTerm) && $debugAdminTranslations) {
                             //wrap non-translated keys with "+", if debug admin translations is enabled
-                            $translationTerm = '+' . $translationKey. '+';
+                            $translationTerm = '+' . $translationKey . '+';
                         }
 
                         if (empty($translation['type']) || $translation['type'] === 'simple') {
@@ -179,7 +179,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
 
                 $data = [
                     $domain => $data,
-                    $domain.MessageCatalogue::INTL_DOMAIN_SUFFIX => $dataIntl,
+                    $domain . MessageCatalogue::INTL_DOMAIN_SUFFIX => $dataIntl,
                 ];
                 $catalogue = new MessageCatalogue($locale, $data);
 

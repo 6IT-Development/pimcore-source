@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -43,12 +44,12 @@ class ClassesRebuildCommand extends AbstractCommand
     protected function configure(): void
     {
         $this
-           ->addOption(
-               'create-classes',
-               'c',
-               InputOption::VALUE_NONE,
-               'Create missing Classes (Classes that exists in var/classes but not in the database)'
-           )
+            ->addOption(
+                'create-classes',
+                'c',
+                InputOption::VALUE_NONE,
+                'Create missing Classes (Classes that exists in var/classes but not in the database)'
+            )
             ->addOption(
                 'delete-classes',
                 'd',

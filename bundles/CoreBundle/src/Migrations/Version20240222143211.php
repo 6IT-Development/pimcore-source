@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -50,8 +50,8 @@ final class Version20240222143211 extends AbstractMigration
                     $foreignKeyWithOPrefix = AbstractDao::getForeignKeyName($tableName, 'o_id');
 
                     if ($table->hasForeignKey($foreignKeyWithOPrefix)) {
-                        $this->addSql("ALTER TABLE {$tableName} DROP FOREIGN KEY {$foreignKeyWithOPrefix}");
-                        $this->addSql("ALTER TABLE {$tableName} ADD CONSTRAINT {$foreignKeyWithoutOPrefix} FOREIGN KEY (id) REFERENCES objects(id) ON DELETE CASCADE");
+                        $this->addSql("ALTER TABLE $tableName DROP FOREIGN KEY $foreignKeyWithOPrefix");
+                        $this->addSql("ALTER TABLE $tableName ADD CONSTRAINT $foreignKeyWithoutOPrefix FOREIGN KEY (id) REFERENCES objects(id) ON DELETE CASCADE");
                     }
                 }
             }
@@ -78,8 +78,8 @@ final class Version20240222143211 extends AbstractMigration
                     $foreignKeyWithOPrefix = AbstractDao::getForeignKeyName($tableName, 'o_id');
 
                     if ($table->hasForeignKey($foreignKeyWithoutOPrefix)) {
-                        $this->addSql("ALTER TABLE {$tableName} DROP FOREIGN KEY {$foreignKeyWithoutOPrefix}");
-                        $this->addSql("ALTER TABLE {$tableName} ADD CONSTRAINT {$foreignKeyWithOPrefix} FOREIGN KEY (id) REFERENCES objects(id) ON DELETE CASCADE");
+                        $this->addSql("ALTER TABLE $tableName DROP FOREIGN KEY $foreignKeyWithoutOPrefix");
+                        $this->addSql("ALTER TABLE $tableName ADD CONSTRAINT $foreignKeyWithOPrefix FOREIGN KEY (id) REFERENCES objects(id) ON DELETE CASCADE");
                     }
                 }
             }

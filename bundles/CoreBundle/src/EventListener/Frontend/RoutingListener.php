@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
@@ -45,9 +46,10 @@ class RoutingListener implements EventSubscriberInterface
 
     public function __construct(
         protected RequestHelper $requestHelper,
-        protected SiteResolver $siteResolver,
-        protected Config $config
-    ) {
+        protected SiteResolver  $siteResolver,
+        protected Config        $config
+    )
+    {
     }
 
     public static function getSubscribedEvents(): array
@@ -90,9 +92,6 @@ class RoutingListener implements EventSubscriberInterface
 
         // redirect to the main domain if specified
         $this->handleMainDomainRedirect($event);
-        if ($event->hasResponse()) {
-            return;
-        }
     }
 
     /**
@@ -169,7 +168,6 @@ class RoutingListener implements EventSubscriberInterface
         }
 
         if ($hostRedirect && !$request->query->has('pimcore_disable_host_redirect')) {
-            $qs = '';
             if (null !== $qs = $request->getQueryString()) {
                 $qs = '?' . $qs;
             }

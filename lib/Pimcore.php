@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -11,10 +12,11 @@ declare(strict_types=1);
  * LICENSE.md which is distributed with this source code.
  *
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 use Pimcore\Cache;
+use Pimcore\Db;
 use Pimcore\Helper\LongRunningHelper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -38,7 +40,7 @@ class Pimcore
         if (!isset($_SERVER['PIMCORE_DEV_MODE']) || !is_bool($_SERVER['PIMCORE_DEV_MODE'])) {
             $value = $_SERVER['PIMCORE_DEV_MODE'] ?? false;
             if (!is_bool($value)) {
-                $value = filter_var($value, \FILTER_VALIDATE_BOOLEAN);
+                $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
             }
             $_SERVER['PIMCORE_DEV_MODE'] = (bool)$value;
         }
@@ -73,10 +75,10 @@ class Pimcore
     public static function isInstalled(): bool
     {
         try {
-            \Pimcore\Db::get()->fetchOne('SELECT id FROM assets LIMIT 1');
+            Db::get()->fetchOne('SELECT id FROM assets LIMIT 1');
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception) {
             return false;
         }
     }
@@ -127,7 +129,7 @@ class Pimcore
                 if ($container) {
                     return true;
                 }
-            } catch (\LogicException) {
+            } catch (LogicException) {
             }
         }
 
@@ -164,7 +166,7 @@ class Pimcore
     {
         try {
             self::getContainer();
-        } catch (\LogicException $e) {
+        } catch (LogicException) {
             return;
         }
 

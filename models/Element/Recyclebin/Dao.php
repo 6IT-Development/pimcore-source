@@ -9,18 +9,19 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\Recyclebin;
 
 use Pimcore\Model;
+use Pimcore\Model\Element\Recyclebin;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Element\Recyclebin $model
+ * @property Recyclebin $model
  */
 class Dao extends Model\Dao\AbstractDao
 {

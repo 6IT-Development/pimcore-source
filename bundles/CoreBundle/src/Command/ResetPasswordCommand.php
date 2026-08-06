@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -32,7 +33,7 @@ use Symfony\Component\Console\Question\Question;
  * @internal
  */
 #[AsCommand(
-    name:'pimcore:user:reset-password',
+    name: 'pimcore:user:reset-password',
     description: 'Reset a user\'s password',
     aliases: ['reset-password']
 )]
@@ -59,7 +60,7 @@ class ResetPasswordCommand extends AbstractCommand
         $userArgument = $input->getArgument('user');
 
         if (is_numeric($userArgument)) {
-            $user = User::getById((int) $userArgument);
+            $user = User::getById((int)$userArgument);
         } else {
             $user = User::getByName($userArgument);
         }

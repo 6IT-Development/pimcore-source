@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener;
@@ -21,7 +22,9 @@ use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\AssetEvent;
 use Pimcore\Event\Model\ElementEventInterface;
+use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
+use Pimcore\Model\Element\Tag;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -44,18 +47,18 @@ class ElementTagsListener implements EventSubscriberInterface
     {
         $elementType = Service::getElementType($e->getElement());
         $copiedElement = $e->getElement();
-        /** @var \Pimcore\Model\Element\ElementInterface $baseElement */
+        /** @var ElementInterface $baseElement */
         $baseElement = $e->getArgument('base_element');
-        \Pimcore\Model\Element\Tag::setTagsForElement(
+        Tag::setTagsForElement(
             $elementType,
             $copiedElement->getId(),
-            \Pimcore\Model\Element\Tag::getTagsForElement($elementType, $baseElement->getId())
+            Tag::getTagsForElement($elementType, $baseElement->getId())
         );
     }
 
     public function onPostAssetDelete(AssetEvent $e): void
     {
         $asset = $e->getAsset();
-        \Pimcore\Model\Element\Tag::setTagsForElement('asset', $asset->getId(), []);
+        Tag::setTagsForElement('asset', $asset->getId(), []);
     }
 }

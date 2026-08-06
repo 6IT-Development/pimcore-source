@@ -9,26 +9,27 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Version\Listing;
 
 use Exception;
 use Pimcore\Model;
+use Pimcore\Model\Version\Listing;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Version\Listing $model
+ * @property Listing $model
  */
 class Dao extends Model\Listing\Dao\AbstractDao
 {
-    public function getCondition(): string
+    protected function getCondition(): string
     {
         $condition = parent::getCondition();
-        if ($this->model->isLoadAutoSave() == false) {
+        if (!$this->model->isLoadAutoSave()) {
             if (trim($condition)) {
                 $condition .= ' AND autoSave = 0';
             } else {
@@ -71,8 +72,8 @@ class Dao extends Model\Listing\Dao\AbstractDao
     public function getTotalCount(): int
     {
         try {
-            return (int) $this->db->fetchOne('SELECT COUNT(*) FROM versions ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception $e) {
+            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM versions ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
+        } catch (Exception) {
             return 0;
         }
     }

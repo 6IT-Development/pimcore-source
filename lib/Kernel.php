@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -29,6 +30,7 @@ use Pimcore\Cache\RuntimeCache;
 use Pimcore\Config\BundleConfigLocator;
 use Pimcore\Config\LocationAwareConfigRepository;
 use Pimcore\Event\SystemEvents;
+use Pimcore\Helper\LongRunningHelper;
 use Pimcore\HttpKernel\BundleCollection\BundleCollection;
 use Scheb\TwoFactorBundle\SchebTwoFactorBundle;
 use Symfony\Bundle\DebugBundle\DebugBundle;
@@ -82,20 +84,19 @@ abstract class Kernel extends SymfonyKernel
 
         $this->microKernelRegisterContainerConfiguration($loader);
 
-        $configKeysArray = [
-            'image_thumbnails',
-            'video_thumbnails',
-            'document_types',
-            'predefined_properties',
-            'predefined_asset_metadata',
-            'perspectives',
-            'custom_views',
-            'object_custom_layouts',
-            'system_settings',
-            'select_options',
-        ];
-
-        $loader->load(function (ContainerBuilder $container) use ($loader, $configKeysArray) {
+        $loader->load(function (ContainerBuilder $container) use ($loader) {
+            $configKeysArray = [
+                'image_thumbnails',
+                'video_thumbnails',
+                'document_types',
+                'predefined_properties',
+                'predefined_asset_metadata',
+                'perspectives',
+                'custom_views',
+                'object_custom_layouts',
+                'system_settings',
+                'select_options',
+            ];
             $containerConfig = ConfigurationHelper::getConfigNodeFromSymfonyTree($container, 'pimcore');
 
             foreach ($configKeysArray as $configKey) {
@@ -146,7 +147,7 @@ abstract class Kernel extends SymfonyKernel
     {
         if (true === $this->booted) {
             // cleanup runtime cache, doctrine, monolog ... to free some memory and avoid locking issues
-            $this->container->get(\Pimcore\Helper\LongRunningHelper::class)->cleanUp();
+            $this->container->get(LongRunningHelper::class)->cleanUp();
         }
 
         parent::shutdown();
@@ -159,7 +160,7 @@ abstract class Kernel extends SymfonyKernel
         // initialize runtime cache (defined as synthetic service)
         RuntimeCache::getInstance();
 
-        \Pimcore\Cache::init();
+        Cache::init();
 
         // on pimcore shutdown
         register_shutdown_function(function () {

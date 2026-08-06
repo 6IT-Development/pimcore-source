@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Http\Request\Resolver;
@@ -27,11 +28,11 @@ use Symfony\Component\HttpFoundation\RequestStack;
  */
 class PimcoreContextResolver extends AbstractRequestResolver
 {
-    const ATTRIBUTE_PIMCORE_CONTEXT = '_pimcore_context';
+    public const string ATTRIBUTE_PIMCORE_CONTEXT = '_pimcore_context';
 
-    const CONTEXT_ADMIN = 'admin';
+    public const string CONTEXT_ADMIN = 'admin';
 
-    const CONTEXT_DEFAULT = 'default';
+    public const string CONTEXT_DEFAULT = 'default';
 
     protected PimcoreContextGuesser $guesser;
 
@@ -47,7 +48,7 @@ class PimcoreContextResolver extends AbstractRequestResolver
      *
      *
      */
-    public function getPimcoreContext(Request $request = null): ?string
+    public function getPimcoreContext(?Request $request = null): ?string
     {
         if (null === $request) {
             $request = $this->getCurrentRequest();
@@ -98,12 +99,6 @@ class PimcoreContextResolver extends AbstractRequestResolver
             return false;
         }
 
-        foreach ($context as $ctx) {
-            if ($ctx === $resolvedContext) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($context, fn($ctx) => $ctx === $resolvedContext);
     }
 }

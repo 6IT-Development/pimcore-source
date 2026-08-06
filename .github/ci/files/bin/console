@@ -10,7 +10,7 @@
  * LICENSE.md which is distributed with this source code.
  *
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 use Pimcore\Bootstrap;
@@ -18,7 +18,7 @@ use Pimcore\Console\Application;
 
 ob_get_clean();
 
-include __DIR__ . "/../vendor/autoload_runtime.php";
+include __DIR__ . '/../vendor/autoload_runtime.php';
 
 define('PIMCORE_PROJECT_ROOT', __DIR__ . '/..');
 define('PIMCORE_CONSOLE', true);

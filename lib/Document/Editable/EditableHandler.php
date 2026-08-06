@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Editable;
@@ -76,21 +77,22 @@ class EditableHandler implements LoggerAwareInterface
 
     protected RequestStack $requestStack;
 
-    public const ATTRIBUTE_AREABRICK_INFO = '_pimcore_areabrick_info';
+    public const string ATTRIBUTE_AREABRICK_INFO = '_pimcore_areabrick_info';
 
     public function __construct(
-        AreabrickManagerInterface $brickManager,
+        AreabrickManagerInterface   $brickManager,
         TwigDefaultDelegatingEngine $templating,
-        BundleLocatorInterface $bundleLocator,
-        WebPathResolver $webPathResolver,
-        RequestHelper $requestHelper,
-        TranslatorInterface $translator,
-        ResponseStack $responseStack,
-        EditmodeResolver $editmodeResolver,
-        HttpKernelRuntime $httpKernelRuntime,
-        FragmentRendererInterface $fragmentRenderer,
-        RequestStack $requestStack
-    ) {
+        BundleLocatorInterface      $bundleLocator,
+        WebPathResolver             $webPathResolver,
+        RequestHelper               $requestHelper,
+        TranslatorInterface         $translator,
+        ResponseStack               $responseStack,
+        EditmodeResolver            $editmodeResolver,
+        HttpKernelRuntime           $httpKernelRuntime,
+        FragmentRendererInterface   $fragmentRenderer,
+        RequestStack                $requestStack
+    )
+    {
         $this->brickManager = $brickManager;
         $this->templating = $templating;
         $this->bundleLocator = $bundleLocator;
@@ -127,13 +129,13 @@ class EditableHandler implements LoggerAwareInterface
                     $bundle = $this->bundleLocator->getBundle($brick);
 
                     // check if file exists
-                    $publicDir = is_dir($bundle->getPath().'/Resources/public') ? $bundle->getPath().'/Resources/public' : $bundle->getPath().'/public';
+                    $publicDir = is_dir($bundle->getPath() . '/Resources/public') ? $bundle->getPath() . '/Resources/public' : $bundle->getPath() . '/public';
                     $iconPath = sprintf('%s/areas/%s/icon.png', $publicDir, $brick->getId());
                     if (file_exists($iconPath)) {
                         // build URL to icon
                         $icon = $this->webPathResolver->getPath($bundle, 'areas/' . $brick->getId(), 'icon.png');
                     }
-                } catch (Exception $e) {
+                } catch (Exception) {
                     $icon = '';
                 }
             }

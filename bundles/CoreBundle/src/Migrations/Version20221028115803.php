@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\CoreBundle\Migrations;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Exception;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 
 final class Version20221028115803 extends AbstractMigration
@@ -48,9 +49,9 @@ final class Version20221028115803 extends AbstractMigration
         foreach ($listing->getClasses() as $class) {
             $fds = $class->getFieldDefinitions();
             foreach ($fds as $fd) {
-                if ($fd instanceof \Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections) {
+                if ($fd instanceof Fieldcollections) {
                     $this->write(sprintf('Saving php files for class: %s', $class->getName()));
-                    $class->generateClassFiles(true);
+                    $class->generateClassFiles();
 
                     continue 2;
                 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data;
@@ -54,7 +55,7 @@ class CalculatedValue implements OwnerAwareFieldInterface
      * @internal
      *
      */
-    public function setContextualData(string $ownerType, ?string $ownerName, int|string|null $index, ?string $position, int $groupId = null, int $keyId = null, mixed $keyDefinition = null): void
+    public function setContextualData(string $ownerType, ?string $ownerName, int|string|null $index, ?string $position, ?int $groupId = null, ?int $keyId = null, mixed $keyDefinition = null): void
     {
         $this->ownerType = $ownerType;
         $this->ownerName = $ownerName;

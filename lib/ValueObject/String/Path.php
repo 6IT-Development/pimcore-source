@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -11,20 +11,20 @@ declare(strict_types = 1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\ValueObject\String;
 
 use ValueError;
 
-final class Path
+final readonly class Path
 {
     /**
      * @throws ValueError
      */
-    public function __construct(private readonly string $path)
+    public function __construct(private string $path)
     {
         $this->validate();
     }

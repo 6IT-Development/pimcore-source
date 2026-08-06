@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,17 +11,18 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\MetaData\ClassDefinition\Data;
 
+use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\Service;
 
 class Document extends Data
 {
-    public function normalize(mixed $value, array $params = []): mixed
+    public function normalize(mixed $value, array $params = []): ?int
     {
         $element = $value;
         if (is_string($value)) {
@@ -33,7 +35,7 @@ class Document extends Data
         return null;
     }
 
-    public function denormalize(mixed $value, array $params = []): mixed
+    public function denormalize(mixed $value, array $params = []): AbstractObject|\Pimcore\Model\Document|\Pimcore\Model\Asset|null
     {
         $element = null;
         if (is_numeric($value)) {
@@ -46,7 +48,7 @@ class Document extends Data
     public function transformGetterData(mixed $data, array $params = []): mixed
     {
         if (is_numeric($data)) {
-            return \Pimcore\Model\Document\Service::getElementById('document', (int) $data);
+            return \Pimcore\Model\Document\Service::getElementById('document', (int)$data);
         }
 
         return $data;
@@ -83,7 +85,7 @@ class Document extends Data
         return $data;
     }
 
-    public function getDataForEditMode(mixed $data, array $params = []): mixed
+    public function getDataForEditMode(mixed $data, array $params = []): string
     {
         if (is_numeric($data)) {
             $data = Service::getElementById('document', $data);
@@ -120,7 +122,7 @@ class Document extends Data
                 $key => [
                     'id' => $elementId,
                     'type' => $elementType,
-                ], ];
+                ],];
         }
 
         return [];

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Helper;
@@ -48,7 +49,6 @@ class ContrastColor
             0.7152 * pow($G2BlackColor / 255, 2.2) +
             0.0722 * pow($B2BlackColor / 255, 2.2);
 
-        $contrastRatio = 0;
         if ($L1 > $L2) {
             $contrastRatio = (int)(($L1 + 0.05) / ($L2 + 0.05));
         } else {

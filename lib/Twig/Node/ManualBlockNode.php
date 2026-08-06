@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Node;
@@ -27,14 +27,15 @@ use Twig\Node\Node;
 final class ManualBlockNode extends Node
 {
     public function __construct(
-        private readonly string $blockName,
+        private readonly string       $blockName,
         private readonly BlockOptions $options,
-        Node $start,
-        Node $body,
-        Node $end,
-        int $lineno,
-        string $tag
-    ) {
+        Node                          $start,
+        Node                          $body,
+        Node                          $end,
+        int                           $lineno,
+        string                        $tag
+    )
+    {
         parent::__construct(
             [
                 'start' => $start,
@@ -62,8 +63,7 @@ final class ManualBlockNode extends Node
             ->subcompile($this->getNode('body'))
             ->write($part3)
             ->subcompile($this->getNode('end'))
-            ->write($part4)
-        ;
+            ->write($part4);
     }
 
     private function getPhpCode(string $splitChars): string
@@ -73,7 +73,7 @@ final class ManualBlockNode extends Node
 
         return <<<PHP
         \$editableExtension = \$this->env->getExtension('Pimcore\Twig\Extension\DocumentEditableExtension');
-        \$block = \$editableExtension->renderEditable(\$context, 'block', '{$this->blockName}', $optionsString);
+        \$block = \$editableExtension->renderEditable(\$context, 'block', '$this->blockName', $optionsString);
         \$context['_block'] = \$block;
 \$block->start();
 {$splitChars}

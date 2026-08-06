@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\Escaper;
@@ -21,7 +22,7 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class Xliff12Escaper
 {
-    const SELFCLOSING_TAGS = ['area', 'base', 'br', 'col', 'command', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+    public const array SELFCLOSING_TAGS = ['area', 'base', 'br', 'col', 'command', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
 
     public function escapeXliff(string $content): string
     {
@@ -46,7 +47,7 @@ class Xliff12Escaper
             $parts[0] .= '>';
             foreach ($parts as $part) {
                 if (!empty(trim($part)) || trim($part) === '0') {
-                    if (preg_match("/<([a-z0-9\/]+)/", $part, $tag)) {
+                    if (preg_match('/<([a-z0-9\/]+)/', $part, $tag)) {
                         $tagName = str_replace('/', '', $tag[1]);
                         if (in_array($tagName, self::SELFCLOSING_TAGS)) {
                             $part = '<ph id="' . $count . '">' . $this->encodeData($part) . '</ph>';
@@ -72,23 +73,22 @@ class Xliff12Escaper
             }
         }
 
-        $content = $preText . implode('', $final);
-
-        return $content;
+        return $preText . implode('', $final);
     }
 
     public function unescapeXliff(string $content): string
     {
         $content = $this->parseInnerXml($content);
 
-        if (preg_match("/<\/?(bpt|ept|ph)/", $content)) {
+        if (preg_match('/<\/?(bpt|ept|ph)/', $content)) {
             $xml = new Crawler($content);
-            $els = $xml->filter('bpt, ept, ph');
+
             /** @var DOMElement $el */
-            foreach ($els as $el) {
+            foreach ($xml->filter('bpt, ept, ph') as $el) {
                 $content = html_entity_decode($el->textContent, ENT_COMPAT, 'UTF-8');
                 $el->ownerDocument->textContent = $content;
             }
+
             $content = $xml->text();
         } else {
             $content = html_entity_decode(trim($content));
@@ -102,21 +102,19 @@ class Xliff12Escaper
         $node = simplexml_load_string($content, null, LIBXML_NOCDATA);
 
         if (empty($node->children())) {
-            return (string) $node;
+            return (string)$node;
         }
 
         $content = $node->asXML();
-
         $content = preg_replace("/<\?xml version=\"\d\.\d\"\?>\s?/i", '', $content);
-        $content = preg_replace("/<\/?(target|mrk)([^>.]+)?>\s?/i", '', $content);
-        // we have to do this again but with html entities because of CDATA content
-        $content = preg_replace("/&lt;\/?(target|mrk)((?!&gt;).)*&gt;/i", '', $content);
+        $content = preg_replace('/<\/?(target|mrk)([^>.]+)?>\s?/i', '', $content);
 
-        return $content;
+        // we have to do this again but with html entities because of CDATA content
+        return preg_replace('/&lt;\/?(target|mrk)((?!&gt;).)*&gt;/i', '', $content);
     }
 
     private function encodeData(string $data): string
     {
-        return htmlspecialchars($data, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED, 'UTF-8', true);
+        return htmlspecialchars($data, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED, 'UTF-8');
     }
 }

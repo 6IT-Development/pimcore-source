@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension;
 
 use Pimcore\Cache as CacheManager;
 use Pimcore\Http\Request\Resolver\EditmodeResolver;
+use Pimcore\Tool;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -57,7 +59,7 @@ class CacheExtension extends AbstractExtension
      *
      * @return $this
      */
-    public function init(string $name, int $lifetime = null, bool $force = false): static
+    public function init(string $name, ?int $lifetime = null, bool $force = false): static
     {
         trigger_deprecation(
             'pimcore/pimcore',
@@ -79,7 +81,7 @@ class CacheExtension extends AbstractExtension
 
     public function start(): bool
     {
-        if (\Pimcore\Tool::isFrontendRequestByAdmin() && !$this->force) {
+        if (Tool::isFrontendRequestByAdmin() && !$this->force) {
             return false;
         }
 

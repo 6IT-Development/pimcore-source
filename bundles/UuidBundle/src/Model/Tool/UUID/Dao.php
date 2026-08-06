@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\UuidBundle\Model\Tool\UUID;
@@ -28,7 +28,7 @@ use Pimcore\Model;
  */
 class Dao extends Model\Dao\AbstractDao
 {
-    const TABLE_NAME = 'uuids';
+    public const string TABLE_NAME = 'uuids';
 
     public function save(): void
     {
@@ -105,6 +105,6 @@ class Dao extends Model\Dao\AbstractDao
             ->executeQuery()
             ->fetchOne();
 
-        return (bool) $result;
+        return (bool)$result;
     }
 }

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Unit\Translation;
@@ -142,12 +142,12 @@ class TranslatorTest extends TestCase
         $this->translator->setLocale('en');
         $this->assertEquals(
             strtr($this->translations['en']['text_params'],
-                [   '%Param1%' => 'First Parameter',
+                ['%Param1%' => 'First Parameter',
                     '%Param2%' => 'Second Parameter',
                 ]
             ),
             $this->translator->trans('text_params',
-                [   '%Param1%' => 'First Parameter',
+                ['%Param1%' => 'First Parameter',
                     '%Param2%' => 'Second Parameter',
                 ]
             )
@@ -157,12 +157,12 @@ class TranslatorTest extends TestCase
         $this->translator->setLocale('de');
         $this->assertEquals(
             strtr($this->translations['en']['text_params'],
-                [   '%Param1%' => 'First Parameter',
+                ['%Param1%' => 'First Parameter',
                     '%Param2%' => 'Second Parameter',
                 ]
             ),
             $this->translator->trans('text_params',
-                [   '%Param1%' => 'First Parameter',
+                ['%Param1%' => 'First Parameter',
                     '%Param2%' => 'Second Parameter',
                 ]
             )

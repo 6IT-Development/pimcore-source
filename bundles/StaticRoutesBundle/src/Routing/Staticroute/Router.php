@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\StaticRoutesBundle\Routing\Staticroute;
@@ -142,7 +143,7 @@ final class Router implements RouterInterface, RequestMatcherInterface, Versatil
         }
 
         if ($name && $route = Staticroute::getByName($name, $siteId)) {
-            $encode = isset($parameters['encode']) ? (bool)$parameters['encode'] : true;
+            $encode = !isset($parameters['encode']) || $parameters['encode'];
             unset($parameters['encode']);
             // assemble the route / url in Staticroute::assemble()
             $url = $route->assemble($parameters, $encode);
@@ -150,21 +151,21 @@ final class Router implements RouterInterface, RequestMatcherInterface, Versatil
             $scheme = $this->context->getScheme();
 
             if ('http' === $scheme && 80 !== $this->context->getHttpPort()) {
-                $port = ':'.$this->context->getHttpPort();
+                $port = ':' . $this->context->getHttpPort();
             } elseif ('https' === $scheme && 443 !== $this->context->getHttpsPort()) {
-                $port = ':'.$this->context->getHttpsPort();
+                $port = ':' . $this->context->getHttpsPort();
             }
 
             $schemeAuthority = self::NETWORK_PATH === $referenceType || '' === $scheme ? '//' : "$scheme://";
-            $schemeAuthority .= $hostname.$port;
+            $schemeAuthority .= $hostname . $port;
 
             if ($needsHostname) {
-                $url = $schemeAuthority.$this->context->getBaseUrl().$url;
+                $url = $schemeAuthority . $this->context->getBaseUrl() . $url;
             } else {
                 if (self::RELATIVE_PATH === $referenceType) {
                     $url = UrlGenerator::getRelativePath($this->context->getPathInfo(), $url);
                 } else {
-                    $url = $this->context->getBaseUrl().$url;
+                    $url = $this->context->getBaseUrl() . $url;
                 }
             }
 
@@ -187,7 +188,7 @@ final class Router implements RouterInterface, RequestMatcherInterface, Versatil
         return $this->doMatch($pathinfo);
     }
 
-    protected function doMatch(string $pathinfo, Request $request = null): array
+    protected function doMatch(string $pathinfo, ?Request $request = null): array
     {
         $pathinfo = urldecode($pathinfo);
 
@@ -212,9 +213,7 @@ final class Router implements RouterInterface, RequestMatcherInterface, Versatil
                 $routeParams['pimcore_request_source'] = 'staticroute';
                 $routeParams['_route'] = $route->getName();
 
-                $routeParams = $this->processRouteParams($routeParams);
-
-                return $routeParams;
+                return $this->processRouteParams($routeParams);
             }
         }
 

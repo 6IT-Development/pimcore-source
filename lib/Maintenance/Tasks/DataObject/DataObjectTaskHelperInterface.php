@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance\Tasks\DataObject;
@@ -26,6 +27,6 @@ interface DataObjectTaskHelperInterface
     public function cleanupTable(
         string $tableName,
         string $classId,
-        bool $isLocalized = true
+        bool   $isLocalized = true
     ): void;
 }

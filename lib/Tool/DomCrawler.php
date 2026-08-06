@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -23,11 +24,11 @@ use Symfony\Component\DomCrawler\Crawler;
  */
 class DomCrawler extends Crawler
 {
-    public const FRAGMENT_WRAPPER_TAG = 'pimcore-fragment-wrapper';
+    public const string FRAGMENT_WRAPPER_TAG = 'pimcore-fragment-wrapper';
 
     private bool $wrappedHtmlFragment = false;
 
-    public function __construct($node = null, string $uri = null, string $baseHref = null)
+    public function __construct($node = null, ?string $uri = null, ?string $baseHref = null)
     {
         if (is_string($node)) {
             // check if given node is an HTML fragment, if so wrap it in a custom tag, otherwise
@@ -41,7 +42,7 @@ class DomCrawler extends Crawler
         parent::__construct($node, $uri, $baseHref);
     }
 
-    public function html(string $default = null): string
+    public function html(?string $default = null): string
     {
         if ($this->wrappedHtmlFragment) {
             $html = $this->filter(self::FRAGMENT_WRAPPER_TAG)->html();

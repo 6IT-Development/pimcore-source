@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\DataType;
@@ -31,7 +32,7 @@ class DataTypeTest extends AbstractDataTypeTestCase
      */
     protected function createTestObject(array|string $fields = [], ?array &$returnData = []): Unittest
     {
-        $object = TestHelper::createEmptyObject('local', true, true);
+        $object = TestHelper::createEmptyObject('local');
         if ($fields) {
             if (isset(func_get_args()[1])) {
                 $this->fillObject($object, $fields, $returnData);

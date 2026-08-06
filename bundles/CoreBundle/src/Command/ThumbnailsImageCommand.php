@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -30,7 +31,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * @internal
  */
 #[AsCommand(
-    name:'pimcore:thumbnails:image',
+    name: 'pimcore:thumbnails:image',
     description: 'Generate image thumbnails, useful to pre-generate thumbnails in the background',
     aliases: ['thumbnails:image']
 )]
@@ -38,7 +39,7 @@ class ThumbnailsImageCommand extends AbstractCommand
 {
     use Parallelization;
 
-    private const DATE_FORMAT = 'Y-m-d H:i:s';
+    private const string DATE_FORMAT = 'Y-m-d H:i:s';
 
     protected function configure(): void
     {
@@ -126,15 +127,15 @@ class ThumbnailsImageCommand extends AbstractCommand
         if ($input->getOption('parent')) {
             $parentIds = explode(',', $input->getOption('parent'));
             foreach ($parentIds as $parentId) {
-                $parent = Asset::getById((int) $parentId);
+                $parent = Asset::getById((int)$parentId);
                 if ($parent instanceof Asset\Folder) {
                     $parentConditions[] = "path LIKE '" . $list->escapeLike($parent->getRealFullPath()) . "/%'";
                 } else {
-                    $this->writeError($input->getOption('parent').' is not a valid asset folder ID!');
+                    $this->writeError($input->getOption('parent') . ' is not a valid asset folder ID!');
                     exit(1);
                 }
             }
-            $conditions[] = '('. implode(' OR ', $parentConditions) . ')';
+            $conditions[] = '(' . implode(' OR ', $parentConditions) . ')';
         }
 
         if ($lastModifiedSince = $input->getOption('last-modified-since')) {
@@ -184,7 +185,7 @@ class ThumbnailsImageCommand extends AbstractCommand
     {
         [$assetId, $thumbnailConfigName] = explode('~~~', $item, 2);
 
-        $image = Image::getById((int) $assetId);
+        $image = Image::getById((int)$assetId);
         if (!$image) {
             $this->writeError('No image with ID=' . $assetId . ' found. Has the image been deleted or is the asset of another type?');
 

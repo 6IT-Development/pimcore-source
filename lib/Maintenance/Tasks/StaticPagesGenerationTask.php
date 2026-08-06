@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance\Tasks;
 
+use Carbon\Carbon;
 use Exception;
 use Pimcore;
 use Pimcore\Document\StaticPageGenerator;
@@ -60,7 +62,7 @@ class StaticPagesGenerationTask implements TaskInterface
                         $lastModified = $this->generator->getLastModified($page);
                         $generate = true;
                         if ($staticLifetime = $page->getStaticGeneratorLifetime()) {
-                            $currentTime = \Carbon\Carbon::now();
+                            $currentTime = Carbon::now();
                             $currentTime->subMinutes($staticLifetime);
 
                             if ($lastModified > $currentTime->getTimestamp()) {

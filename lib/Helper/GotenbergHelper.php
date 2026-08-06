@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Helper;
@@ -38,7 +39,7 @@ class GotenbergHelper
             return true;
         }
 
-        if (!class_exists(GotenbergAPI::class, true)) {
+        if (!class_exists(GotenbergAPI::class)) {
             return false;
         }
 
@@ -59,7 +60,7 @@ class GotenbergHelper
                 self::$validPing = true;
 
                 return true;
-            } catch (Exception $e) {
+            } catch (Exception) {
                 // nothing to do
             }
         }

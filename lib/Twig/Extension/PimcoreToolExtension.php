@@ -11,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension;
 
+use Pimcore\Tool;
 use Pimcore\Tool\DeviceDetector;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -29,7 +30,7 @@ class PimcoreToolExtension extends AbstractExtension
     public function getFunctions(): array
     {
         return [
-            new TwigFunction('pimcore_supported_locales', [\Pimcore\Tool::class, 'getSupportedLocales']),
+            new TwigFunction('pimcore_supported_locales', [Tool::class, 'getSupportedLocales']),
             new TwigFunction('pimcore_device', [DeviceDetector::class, 'getInstance'], ['is_safe' => ['html']]),
         ];
     }

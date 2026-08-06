@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\DependencyInjection;
@@ -27,12 +27,7 @@ final class PimcoreXliffExtension extends ConfigurableExtension
 {
     protected function loadInternal(array $config, ContainerBuilder $container): void
     {
-        $loader = new YamlFileLoader(
-            $container,
-            new FileLocator(__DIR__ . '/../../config')
-        );
-
-        $loader->load('services.yaml');
+        new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'))->load('services.yaml');
 
         if (!empty($config['data_object']['translation_extractor']['attributes'])) {
             $definition = $container->getDefinition(DataObjectDataExtractor::class);

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Controller;
@@ -67,11 +67,12 @@ abstract class UserAwareController extends Controller
     }
 
     protected function createAccessDeniedHttpException(
-        string $message = 'Access Denied.',
-        Throwable $previous = null,
-        int $code = 0,
-        array $headers = []
-    ): AccessDeniedHttpException {
+        string     $message = 'Access Denied.',
+        ?Throwable $previous = null,
+        int        $code = 0,
+        array      $headers = []
+    ): AccessDeniedHttpException
+    {
         // $headers parameter not supported by Symfony 3.4
         return new AccessDeniedHttpException($message, $previous, $code, $headers);
     }

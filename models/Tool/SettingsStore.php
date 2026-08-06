@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Tool;
@@ -25,15 +26,15 @@ use Pimcore\Model\Tool\SettingsStore\Dao;
  */
 final class SettingsStore extends Model\AbstractModel
 {
-    public const TYPE_BOOLEAN = 'bool';
+    public const string TYPE_BOOLEAN = 'bool';
 
-    public const TYPE_FLOAT = 'float';
+    public const string TYPE_FLOAT = 'float';
 
-    public const TYPE_INTEGER = 'int';
+    public const string TYPE_INTEGER = 'int';
 
-    public const TYPE_STRING = 'string';
+    public const string TYPE_STRING = 'string';
 
-    protected const ALLOWED_TYPES = [
+    protected const array ALLOWED_TYPES = [
         self::TYPE_BOOLEAN,
         self::TYPE_FLOAT,
         self::TYPE_INTEGER,
@@ -82,13 +83,11 @@ final class SettingsStore extends Model\AbstractModel
     /**
      * @throws Exception
      */
-    private static function validateType(string $type): bool
+    private static function validateType(string $type): void
     {
-        if (!in_array($type, self::ALLOWED_TYPES)) {
+        if (!in_array($type, self::ALLOWED_TYPES, true)) {
             throw new Exception(sprintf('Invalid type `%s`, allowed types are %s', $type, implode(',', self::ALLOWED_TYPES)));
         }
-
-        return true;
     }
 
     /**
@@ -151,7 +150,7 @@ final class SettingsStore extends Model\AbstractModel
 
     public function setScope(?string $scope): void
     {
-        $this->scope = (string) $scope;
+        $this->scope = (string)$scope;
     }
 
     public function getType(): ?string

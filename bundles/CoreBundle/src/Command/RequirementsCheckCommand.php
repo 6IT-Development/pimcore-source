@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -28,7 +29,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * @internal
  */
 #[AsCommand(
-    name:'pimcore:system:requirements:check',
+    name: 'pimcore:system:requirements:check',
     description: 'Check system requirements',
     aliases: ['system:requirements:check']
 )]
@@ -45,22 +46,11 @@ class RequirementsCheckCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        switch ($input->getOption('min-level')) {
-            case 'warning':
-            case 'warnings':
-                $this->levelsToDisplay = [Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR];
-
-                break;
-            case 'error':
-            case 'errors':
-                $this->levelsToDisplay = [Requirements\Check::STATE_ERROR];
-
-                break;
-            default:
-                $this->levelsToDisplay = [Requirements\Check::STATE_OK, Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR];
-
-                break;
-        }
+        $this->levelsToDisplay = match ($input->getOption('min-level')) {
+            'warning', 'warnings' => [Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR],
+            'error', 'errors' => [Requirements\Check::STATE_ERROR],
+            default => [Requirements\Check::STATE_OK, Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR],
+        };
 
         $allChecks = Requirements::checkAll(Db::get());
 
@@ -92,22 +82,10 @@ class RequirementsCheckCommand extends AbstractCommand
 
     protected function displayState(int $state): string
     {
-        switch ($state) {
-            case Requirements\Check::STATE_OK:
-                $displayState = '<fg=green>ok</>';
-
-                break;
-            case Requirements\Check::STATE_WARNING:
-                $displayState = '<fg=yellow>warning</>';
-
-                break;
-            case Requirements\Check::STATE_ERROR:
-            default:
-                $displayState = '<fg=red>error</>';
-
-                break;
-        }
-
-        return $displayState;
+        return match ($state) {
+            Requirements\Check::STATE_OK => '<fg=green>ok</>',
+            Requirements\Check::STATE_WARNING => '<fg=yellow>warning</>',
+            default => '<fg=red>error</>',
+        };
     }
 }

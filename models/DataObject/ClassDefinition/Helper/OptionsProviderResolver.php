@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Helper;
@@ -24,9 +25,9 @@ use Pimcore\Model\DataObject\ClassDefinition\DynamicOptionsProvider\SelectOption
  */
 class OptionsProviderResolver extends ClassResolver
 {
-    const MODE_SELECT = 1;
+    public const int MODE_SELECT = 1;
 
-    const MODE_MULTISELECT = 2;
+    public const int MODE_MULTISELECT = 2;
 
     public static array $providerCache = [];
 

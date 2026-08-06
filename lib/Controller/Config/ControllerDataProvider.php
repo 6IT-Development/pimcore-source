@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Controller\Config;
@@ -32,7 +32,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
  */
 class ControllerDataProvider
 {
-    private ?KernelInterface $kernel = null;
+    private ?KernelInterface $kernel;
 
     /**
      * id -> class mapping array of controllers defined as services
@@ -147,12 +147,12 @@ class ControllerDataProvider
 
         $templates = [];
 
-        if (is_dir($symfonyPath = PIMCORE_PROJECT_ROOT.'/templates')) {
+        if (is_dir($symfonyPath = PIMCORE_PROJECT_ROOT . '/templates')) {
             $templates[] = $this->findTemplates($symfonyPath);
         }
 
         foreach ($this->getBundles() as $bundle) {
-            if (is_dir($bundlePath = $bundle->getPath().'/Resources/views') || is_dir($bundlePath = $bundle->getPath().'/templates')) {
+            if (is_dir($bundlePath = $bundle->getPath() . '/Resources/views') || is_dir($bundlePath = $bundle->getPath() . '/templates')) {
                 $templates[] = $this->findTemplates($bundlePath, $bundle->getName());
             }
         }
@@ -166,7 +166,7 @@ class ControllerDataProvider
      *
      * @return string[]
      */
-    private function findTemplates(string $path, string $bundleName = null): array
+    private function findTemplates(string $path, ?string $bundleName = null): array
     {
         $finder = new Finder();
         $finder

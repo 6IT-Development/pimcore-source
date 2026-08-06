@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Objectbrick\Definition;
@@ -18,11 +18,12 @@ namespace Pimcore\Model\DataObject\Objectbrick\Definition;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\Objectbrick\Definition;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Objectbrick\Definition $model
+ * @property Definition $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -50,7 +51,7 @@ class Dao extends Model\Dao\AbstractDao
 
     public function delete(DataObject\ClassDefinition $class): void
     {
-        $table = $this->getTableName($class, false);
+        $table = $this->getTableName($class);
         $this->db->executeQuery('DROP TABLE IF EXISTS `' . $table . '`');
 
         $table = $this->getTableName($class, true);
@@ -59,7 +60,7 @@ class Dao extends Model\Dao\AbstractDao
 
     public function createUpdateTable(DataObject\ClassDefinition $class): void
     {
-        $tableStore = $this->getTableName($class, false);
+        $tableStore = $this->getTableName($class);
         $tableQuery = $this->getTableName($class, true);
 
         $this->db->executeQuery('CREATE TABLE IF NOT EXISTS `' . $tableStore . "` (
@@ -68,7 +69,7 @@ class Dao extends Model\Dao\AbstractDao
           PRIMARY KEY (`id`,`fieldname`),
           INDEX `id` (`id`),
           INDEX `fieldname` (`fieldname`),
-          CONSTRAINT `".self::getForeignKeyName($tableStore, 'id').'` FOREIGN KEY (`id`) REFERENCES objects (`id`) ON DELETE CASCADE
+          CONSTRAINT `" . self::getForeignKeyName($tableStore, 'id') . '` FOREIGN KEY (`id`) REFERENCES objects (`id`) ON DELETE CASCADE
 		) DEFAULT CHARSET=utf8mb4;');
 
         $this->db->executeQuery('CREATE TABLE IF NOT EXISTS `' . $tableQuery . "` (
@@ -77,7 +78,7 @@ class Dao extends Model\Dao\AbstractDao
           PRIMARY KEY (`id`,`fieldname`),
           INDEX `id` (`id`),
           INDEX `fieldname` (`fieldname`),
-          CONSTRAINT `".self::getForeignKeyName($tableQuery, 'id').'` FOREIGN KEY (`id`) REFERENCES objects (`id`) ON DELETE CASCADE
+          CONSTRAINT `" . self::getForeignKeyName($tableQuery, 'id') . '` FOREIGN KEY (`id`) REFERENCES objects (`id`) ON DELETE CASCADE
 		) DEFAULT CHARSET=utf8mb4;');
 
         $existingColumnsStore = $this->getValidTableColumns($tableStore, false); // no caching of table definition
@@ -130,7 +131,7 @@ class Dao extends Model\Dao\AbstractDao
                 $this->addIndexToField($value, $tableQuery, 'getQueryColumnType');
             }
 
-            if ($value instanceof  DataObject\ClassDefinition\Data\Localizedfields) {
+            if ($value instanceof DataObject\ClassDefinition\Data\Localizedfields) {
                 $value->classSaved(
                     $class,
                     [
@@ -149,7 +150,7 @@ class Dao extends Model\Dao\AbstractDao
 
     public function classSaved(DataObject\ClassDefinition $classDefinition): void
     {
-        $tableStore = $this->getTableName($classDefinition, false);
+        $tableStore = $this->getTableName($classDefinition);
         $tableQuery = $this->getTableName($classDefinition, true);
 
         $this->handleEncryption($classDefinition, [$tableQuery, $tableStore]);
@@ -161,7 +162,7 @@ class Dao extends Model\Dao\AbstractDao
             $indexPrefix = str_starts_with($table, 'object_brick_query_') ? 'p_index_' : 'u_index_';
             foreach ($columnsToRemove as $value) {
                 if (!in_array(strtolower($value), $protectedColumns)) {
-                    Helper::queryIgnoreError($this->db, 'ALTER TABLE `'.$table.'` DROP INDEX `' . $indexPrefix . $value . '`;');
+                    Helper::queryIgnoreError($this->db, 'ALTER TABLE `' . $table . '` DROP INDEX `' . $indexPrefix . $value . '`;');
                 }
             }
             $this->resetValidTableColumnsCache($table);

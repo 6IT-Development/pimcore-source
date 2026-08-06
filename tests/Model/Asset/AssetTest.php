@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Asset;
 
+use Carbon\Carbon;
 use Exception;
 use Pimcore\Model\Asset;
 use Pimcore\Tests\Support\Test\ModelTestCase;
@@ -47,7 +49,7 @@ class AssetTest extends ModelTestCase
         $fileSize = strlen($expectedData);
         $this->assertTrue(strlen((string)$fileSize) > 0);
 
-        $this->testAsset = TestHelper::createImageAsset('', null, true, 'assets/images/image5.jpg');
+        $this->testAsset = TestHelper::createImageAsset();
         $this->assertInstanceOf(Asset\Image::class, $this->testAsset);
 
         $this->reloadAsset();
@@ -187,7 +189,7 @@ class AssetTest extends ModelTestCase
         $this->assertEquals(192, $thumbnail->getHeight());
 
         // check if the thumbnail file is there
-        $pathReference = $thumbnail->getPathReference(false);
+        $pathReference = $thumbnail->getPathReference();
         $stream = Storage::get($pathReference['type'])->readStream($pathReference['src']);
         $this->assertTrue(is_resource($stream));
         $thumbnailContent = stream_get_contents($stream);
@@ -204,7 +206,7 @@ class AssetTest extends ModelTestCase
         $this->assertEquals(192, $thumbnailimageSizeInfo[1]);
 
         // scale by width (factor 2x) without forceResize
-        $config = TestHelper::createThumbnailConfigurationScaleByWidth(2048, false);
+        $config = TestHelper::createThumbnailConfigurationScaleByWidth(2048);
         $thumbnail = $this->testAsset->getThumbnail($config->getName(), false);
         $this->assertEquals(1024, $thumbnail->getWidth());
         $this->assertEquals(768, $thumbnail->getHeight());
@@ -275,7 +277,7 @@ class AssetTest extends ModelTestCase
      */
     public function testCustomModificationDate(): void
     {
-        $customDateTime = new \Carbon\Carbon();
+        $customDateTime = new Carbon();
         $customDateTime = $customDateTime->subHour();
 
         $asset = TestHelper::createDocumentAsset();

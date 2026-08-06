@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -11,8 +11,8 @@ declare(strict_types = 1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Extension\Document\Areabrick;
@@ -90,12 +90,7 @@ class AreabrickManager implements AreabrickManagerInterface
 
     public function getBrick(string $id): AreabrickInterface
     {
-        $brick = null;
-        if (isset($this->bricks[$id])) {
-            $brick = $this->bricks[$id];
-        } else {
-            $brick = $this->loadServiceBrick($id);
-        }
+        $brick = $this->bricks[$id] ?? $this->loadServiceBrick($id);
 
         if (null === $brick) {
             throw new BrickNotFoundException(sprintf('Areabrick %s is not registered', $id));
@@ -115,12 +110,10 @@ class AreabrickManager implements AreabrickManagerInterface
 
     public function getBrickIds(): array
     {
-        $ids = array_merge(
+        return array_merge(
             array_keys($this->bricks),
             array_keys($this->brickServiceIds)
         );
-
-        return $ids;
     }
 
     /**

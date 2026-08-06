@@ -11,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use Pimcore\Db;
 
 /**
  * @internal
@@ -27,7 +28,7 @@ class Version20211103055110 extends AbstractMigration
 {
     public function up(Schema $schema): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         $classes = $db->fetchFirstColumn('SELECT id FROM classes');
 
@@ -48,7 +49,7 @@ class Version20211103055110 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         $classes = $db->fetchAssociative('SELECT id FROM classes');
 

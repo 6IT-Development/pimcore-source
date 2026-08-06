@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\InstallBundle;
@@ -44,9 +44,10 @@ use Pimcore\Bundle\XliffBundle\PimcoreXliffBundle;
 use Pimcore\Config;
 use Pimcore\Console\Style\PimcoreStyle;
 use Pimcore\Db\Helper;
+use Pimcore\Kernel;
 use Pimcore\Model\Tool\SettingsStore;
-use Pimcore\Model\User;
 use Pimcore\Tool\AssetsInstaller;
+use Pimcore\Tool\Authentication;
 use Pimcore\Tool\Console;
 use Pimcore\Tool\Requirements;
 use Pimcore\Tool\Requirements\Check;
@@ -65,9 +66,9 @@ use Throwable;
  */
 class Installer
 {
-    const RECOMMENDED_BUNDLES = ['PimcoreSimpleBackendSearchBundle'];
+    public const array RECOMMENDED_BUNDLES = ['PimcoreSimpleBackendSearchBundle'];
 
-    public const INSTALLABLE_BUNDLES = [
+    public const array INSTALLABLE_BUNDLES = [
         'PimcoreApplicationLoggerBundle' => PimcoreApplicationLoggerBundle::class,
         'PimcoreCustomReportsBundle' => PimcoreCustomReportsBundle::class,
         'PimcoreGlossaryBundle' => PimcoreGlossaryBundle::class,
@@ -122,7 +123,7 @@ class Installer
      * Bundles that will be installed
      *
      */
-    private array $bundlesToInstall =  [];
+    private array $bundlesToInstall = [];
 
     /**
      * This bundles might be different to the predefined one, due to the bundle event
@@ -169,9 +170,10 @@ class Installer
     ];
 
     public function __construct(
-        LoggerInterface $logger,
+        LoggerInterface          $logger,
         EventDispatcherInterface $eventDispatcher
-    ) {
+    )
+    {
         $this->logger = $logger;
         $this->eventDispatcher = $eventDispatcher;
     }
@@ -210,7 +212,7 @@ class Installer
     {
         // map and filter the bundles
         $bundlesToInstall = array_filter(array_map(
-            static fn (string $bundle) => $availableBundles[$bundle] ?? null,
+            static fn(string $bundle) => $availableBundles[$bundle] ?? null,
             $bundlesToInstall,
         ));
         $this->availableBundles = $availableBundles;
@@ -223,7 +225,7 @@ class Installer
         return $this->eventDispatcher->dispatch(new BundleSetupEvent(self::INSTALLABLE_BUNDLES, self::RECOMMENDED_BUNDLES), InstallEvents::EVENT_BUNDLE_SETUP);
     }
 
-    public function checkPrerequisites(Connection $db = null): array
+    public function checkPrerequisites(?Connection $db = null): array
     {
         $checks = array_merge(
             Requirements::checkFilesystem(),
@@ -231,7 +233,7 @@ class Installer
             null !== $db ? Requirements::checkMysql($db) : []
         );
 
-        return $this->formatPrerequisiteMessages($checks, [Check::STATE_ERROR]);
+        return $this->formatPrerequisiteMessages($checks);
     }
 
     /**
@@ -265,7 +267,7 @@ class Installer
         return count($this->stepEvents);
     }
 
-    private function dispatchStepEvent(string $type, string $message = null): InstallerStepEvent
+    private function dispatchStepEvent(string $type, ?string $message = null): InstallerStepEvent
     {
         if (!isset($this->stepEvents[$type])) {
             throw new InvalidArgumentException(sprintf('Trying to dispatch unsupported event type "%s"', $type));
@@ -338,7 +340,7 @@ class Installer
                 $db
             );
         } catch (Throwable $e) {
-            $this->logger->error((string) $e);
+            $this->logger->error((string)$e);
 
             return [
                 $e->getMessage(),
@@ -515,9 +517,7 @@ class Installer
                 throw new ProcessFailedException($process);
             }
 
-            if (null !== $io) {
-                $io->writeln($process->getOutput());
-            }
+            $io?->writeln($process->getOutput());
         } catch (ProcessFailedException $e) {
             $this->logger->error($e->getMessage());
 
@@ -602,9 +602,7 @@ class Installer
                 'ansi' => $ansi,
             ]);
 
-            if (null !== $io) {
-                $io->writeln($process->getOutput());
-            }
+            $io?->writeln($process->getOutput());
         } catch (ProcessFailedException $e) {
             $this->logger->error($e->getMessage());
 
@@ -712,7 +710,7 @@ class Installer
                     $this->createOrUpdateUser($db, $userCredentials);
                 }
             } catch (Exception $e) {
-                $this->logger->error((string) $e);
+                $this->logger->error((string)$e);
                 $errors[] = $e->getMessage();
             }
         }
@@ -721,7 +719,7 @@ class Installer
 
         // close connections and collection garbage ... in order to avoid too many connections error
         // when installing demos
-        if (Pimcore::getKernel() instanceof \Pimcore\Kernel) {
+        if (Pimcore::getKernel() instanceof Kernel) {
             Pimcore::collectGarbage();
         }
 
@@ -747,7 +745,7 @@ class Installer
         $db->insert('users', [
             'parentId' => 0,
             'name' => $settings['username'],
-            'password' => \Pimcore\Tool\Authentication::getPasswordHash($settings['username'], $settings['password']),
+            'password' => Authentication::getPasswordHash($settings['username'], $settings['password']),
             'active' => 1,
             'admin' => 1,
             'type' => 'user',
@@ -898,7 +896,7 @@ class Installer
         ]);
 
         // set the id of the system user to 0
-        $db->update('users', ['id' => 0], ['name' => 'system', 'type' => 'user' ]);
+        $db->update('users', ['id' => 0], ['name' => 'system', 'type' => 'user']);
     }
 
     private function isBundleInstalled(string $bundle): bool

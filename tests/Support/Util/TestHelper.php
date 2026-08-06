@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Util;
@@ -19,13 +20,14 @@ namespace Pimcore\Tests\Support\Util;
 use DateTimeInterface;
 use Exception;
 use InvalidArgumentException;
+use PHPUnit\Framework\SkippedTestError;
 use Pimcore;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Logger;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
-use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject as ObjectModel;
+use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Model\Document;
@@ -47,13 +49,13 @@ class TestHelper
     public static array $thumbnail_configs = [];
 
     /**
-     * Constant will be defined upon suite initialization and will result to true
+     * Constant will be defined upon suite initialization and will result in true
      * if we have a valid DB configuration.
      *
      */
     public static function supportsDbTests(): bool
     {
-        return defined('PIMCORE_TEST_DB_INITIALIZED') ? PIMCORE_TEST_DB_INITIALIZED : false;
+        return defined('PIMCORE_TEST_DB_INITIALIZED') && PIMCORE_TEST_DB_INITIALIZED;
     }
 
     /**
@@ -62,7 +64,7 @@ class TestHelper
     public static function checkDbSupport(): void
     {
         if (!static::supportsDbTests()) {
-            throw new \PHPUnit\Framework\SkippedTestError('Not running test as DB is not connected');
+            throw new SkippedTestError('Not running test as DB is not connected');
         }
     }
 
@@ -150,7 +152,7 @@ class TestHelper
             $a1Hash = self::createAssetComparisonString($asset1, $ignoreCopyDifferences);
             $a2Hash = self::createAssetComparisonString($asset2, $ignoreCopyDifferences);
 
-            return $a1Hash === $a2Hash ? true : false;
+            return $a1Hash === $a2Hash;
         } else {
             return false;
         }
@@ -224,7 +226,7 @@ class TestHelper
             $d1Hash = self::createDocumentComparisonString($doc1, $ignoreCopyDifferences);
             $d2Hash = self::createDocumentComparisonString($doc2, $ignoreCopyDifferences);
 
-            return $d1Hash === $d2Hash ? true : false;
+            return $d1Hash === $d2Hash;
         } else {
             return false;
         }
@@ -351,9 +353,7 @@ class TestHelper
             $o1Hash = self::createObjectComparisonString($object1, $ignoreCopyDifferences);
             $o2Hash = self::createObjectComparisonString($object2, $ignoreCopyDifferences);
 
-            $id = uniqid();
-
-            return $o1Hash === $o2Hash ? true : false;
+            return $o1Hash === $o2Hash;
         } else {
             return false;
         }
@@ -737,7 +737,8 @@ class TestHelper
         bool $cleanDocuments = true,
         bool $cleanAssets = true,
         bool $cleanTags = true
-    ): void {
+    ): void
+    {
         Pimcore::collectGarbage();
 
         if (!static::supportsDbTests()) {
@@ -764,7 +765,7 @@ class TestHelper
                 static::cleanUpTags();
             }
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
 
         Pimcore::collectGarbage();
@@ -797,7 +798,7 @@ class TestHelper
     public static function cleanUpTags(): void
     {
         foreach ((new Tag\Listing()) as $tag) {
-            codecept_debug(sprintf('Deleting tag %s (%d)', $tag->getNamePath(true), $tag->getId()));
+            codecept_debug(sprintf('Deleting tag %s (%d)', $tag->getNamePath(), $tag->getId()));
             $tag->delete();
         }
     }
@@ -840,9 +841,7 @@ class TestHelper
      */
     public static function resolveFilePath(string $path): string
     {
-        $path = __DIR__ . '/../Resources/' . ltrim($path, '/');
-
-        return $path;
+        return __DIR__ . '/../Resources/' . ltrim($path, '/');
     }
 
     public static function generateRandomString(int $length = 10): string
@@ -860,9 +859,7 @@ class TestHelper
     public static function clearThumbnailConfiguration(string $name): void
     {
         $pipe = Asset\Image\Thumbnail\Config::getByName($name);
-        if ($pipe) {
-            $pipe->delete(true);
-        }
+        $pipe?->delete(true);
     }
 
     public static function clearThumbnailConfigurations(): void

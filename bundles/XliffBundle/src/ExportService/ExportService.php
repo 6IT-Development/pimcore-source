@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ExportService;
@@ -20,25 +21,19 @@ use Pimcore\Bundle\XliffBundle\ExportDataExtractorService\ExportDataExtractorSer
 use Pimcore\Bundle\XliffBundle\ExportService\Exporter\ExporterInterface;
 use Pimcore\Bundle\XliffBundle\TranslationItemCollection\TranslationItemCollection;
 
-class ExportService implements ExportServiceInterface
+readonly class ExportService implements ExportServiceInterface
 {
-    private ExportDataExtractorServiceInterface $exportDataExtractorService;
-
-    private ExporterInterface $translationExporter;
-
     /**
      * ExportService constructor.
-     *
      */
     public function __construct(
-        ExportDataExtractorServiceInterface $exportDataExtractorService,
-        ExporterInterface $translationExporter
-    ) {
-        $this->exportDataExtractorService = $exportDataExtractorService;
-        $this->translationExporter = $translationExporter;
+        private ExportDataExtractorServiceInterface $exportDataExtractorService,
+        private ExporterInterface                   $translationExporter
+    )
+    {
     }
 
-    public function exportTranslationItems(TranslationItemCollection $translationItems, string $sourceLanguage, array $targetLanguages, string $exportId = null): string
+    public function exportTranslationItems(TranslationItemCollection $translationItems, string $sourceLanguage, array $targetLanguages, ?string $exportId = null): string
     {
         $exportId = empty($exportId) ? uniqid() : $exportId;
 
@@ -55,22 +50,9 @@ class ExportService implements ExportServiceInterface
         return $this->exportDataExtractorService;
     }
 
-    public function setExportDataExtractorService(ExportDataExtractorServiceInterface $exportDataExtractorService): ExportService
-    {
-        $this->exportDataExtractorService = $exportDataExtractorService;
-
-        return $this;
-    }
-
     public function getTranslationExporter(): ExporterInterface
     {
         return $this->translationExporter;
     }
 
-    public function setTranslationExporter(ExporterInterface $translationExporter): ExportService
-    {
-        $this->translationExporter = $translationExporter;
-
-        return $this;
-    }
 }

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\Recyclebin\Item;
@@ -18,11 +18,12 @@ namespace Pimcore\Model\Element\Recyclebin\Item;
 use Exception;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Element\Recyclebin\Item;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Element\Recyclebin\Item $model
+ * @property Item $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -50,19 +51,12 @@ class Dao extends Model\Dao\AbstractDao
     public function save(): bool
     {
         $version = $this->model->getObjectVars();
-        $data = [];
-
-        foreach ($version as $key => $value) {
-            if (in_array($key, $this->getValidTableColumns('recyclebin'))) {
-                $data[$key] = $value;
-            }
-        }
 
         try {
-            $this->db->insert('recyclebin', $data);
-            $this->model->setId((int) $this->db->lastInsertId());
+            $this->db->insert('recyclebin', array_filter($version, fn($key) => in_array($key, $this->getValidTableColumns('recyclebin'), true), ARRAY_FILTER_USE_KEY));
+            $this->model->setId((int)$this->db->lastInsertId());
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
 
         return true;

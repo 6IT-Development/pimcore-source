@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -27,7 +28,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 
 class MaintenanceModeHelper implements MaintenanceModeHelperInterface
 {
-    protected const ENTRY_ID = 'maintenance_mode';
+    protected const string ENTRY_ID = 'maintenance_mode';
 
     public function __construct(protected RequestStack $requestStack, protected Connection $db)
     {
@@ -55,7 +56,7 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
         Pimcore::getEventDispatcher()->dispatch(new GenericEvent(), SystemEvents::MAINTENANCE_MODE_DEACTIVATE);
     }
 
-    public function isActive(string $matchSessionId = null): bool
+    public function isActive(?string $matchSessionId = null): bool
     {
         try {
             if (!$this->db->isConnected()) {
@@ -83,7 +84,7 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
     {
         try {
             $tmpStore = TmpStore::get(self::ENTRY_ID);
-        } catch (Exception $e) {
+        } catch (Exception) {
             //nothing to log as the tmp doesn't exist
             return null;
         }
@@ -95,7 +96,7 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
     {
         try {
             TmpStore::delete(self::ENTRY_ID);
-        } catch (Exception $e) {
+        } catch (Exception) {
             //nothing to log as the tmp doesn't exist
         }
     }

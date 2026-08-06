@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GlossaryBundle\Controller;
 
+use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 use Pimcore\Cache;
 use Pimcore\Controller\Traits\JsonHelperTrait;
@@ -29,12 +31,12 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * @internal
  */
-#[Route("/settings")]
+#[Route('/settings')]
 class SettingsController extends UserAwareController
 {
     use JsonHelperTrait;
 
-    #[Route("/glossary", name: "pimcore_bundle_glossary_settings_glossary", methods: ["POST"])]
+    #[Route('/glossary', name: 'pimcore_bundle_glossary_settings_glossary', methods: [Request::METHOD_POST])]
     public function glossaryAction(Request $request): JsonResponse
     {
         // check glossary permissions
@@ -101,7 +103,7 @@ class SettingsController extends UserAwareController
                 return $this->jsonResponse(['data' => $glossary->getObjectVars(), 'success' => true]);
             }
         } else {
-            if (!class_exists(\Pimcore\Bundle\AdminBundle\Helper\QueryParams::class)) {
+            if (!class_exists(QueryParams::class)) {
                 throw new AdminClassicBundleNotFoundException('This action requires package "pimcore/admin-ui-classic-bundle" to be installed.');
             }
 
@@ -109,14 +111,14 @@ class SettingsController extends UserAwareController
             $list->setLimit($request->request->getInt('limit', 50));
             $list->setOffset($request->request->getInt('start'));
 
-            $sortingSettings = \Pimcore\Bundle\AdminBundle\Helper\QueryParams::extractSortingSettings(array_merge($request->request->all(), $request->query->all()));
+            $sortingSettings = QueryParams::extractSortingSettings(array_merge($request->request->all(), $request->query->all()));
             if ($sortingSettings['orderKey']) {
                 $list->setOrderKey($sortingSettings['orderKey']);
                 $list->setOrder($sortingSettings['order']);
             }
 
             if ($request->request->has('filter')) {
-                $list->setCondition('`text` LIKE ' . $list->quote('%'.$request->request->getString('filter').'%'));
+                $list->setCondition('`text` LIKE ' . $list->quote('%' . $request->request->getString('filter') . '%'));
             }
 
             $list->load();

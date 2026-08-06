@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -11,8 +11,8 @@ declare(strict_types = 1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Unit\ValueObject\Collection;
@@ -55,7 +55,7 @@ final class ArrayOfPositiveIntegersTest extends TestCase
         $array = new ArrayOfPositiveIntegers([1, 2, 42]);
         $serialized = serialize($array);
 
-        $serialized =  str_replace('42', '-42', $serialized);
+        $serialized = str_replace('42', '-42', $serialized);
 
         $this->expectException(ValueError::class);
         $this->expectExceptionMessage('Provided integer must be positive. (-42 given)');

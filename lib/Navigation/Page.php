@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -160,7 +161,7 @@ abstract class Page extends Container
      * - If $options contains the key 'uri', a Url page
      *   will be created.
      *
-     * @param array $options  options used for creating page
+     * @param array $options options used for creating page
      *
      * @return Url|Page        a page instance
      *
@@ -174,25 +175,20 @@ abstract class Page extends Container
             $type = self::$_defaultPageType;
         }
 
-        if (isset($type)) {
-            if (is_string($type) && !empty($type)) {
-                switch (strtolower($type)) {
-                    case 'uri':
-                        $type = '\Pimcore\Navigation\Page\Url';
-
-                        break;
-                }
-
-                $page = new $type($options);
-                if (!$page instanceof self) {
-                    throw new Exception(sprintf(
-                        'Invalid argument: Detected type "%s", which is not an instance of Page',
-                        $type
-                    ));
-                }
-
-                return $page;
+        if (!empty($type) && is_string($type)) {
+            if (strtolower($type) == 'uri') {
+                $type = '\Pimcore\Navigation\Page\Url';
             }
+
+            $page = new $type($options);
+            if (!$page instanceof self) {
+                throw new Exception(sprintf(
+                    'Invalid argument: Detected type "%s", which is not an instance of Page',
+                    $type
+                ));
+            }
+
+            return $page;
         }
 
         $hasUri = isset($options['uri']);
@@ -212,11 +208,11 @@ abstract class Page extends Container
     /**
      * Page constructor
      *
-     * @param array|null $options   [optional] page options. Default is null, which should set defaults.
+     * @param array|null $options [optional] page options. Default is null, which should set defaults.
      *
      * @throws Exception    if invalid options are given
      */
-    public function __construct(array $options = null)
+    public function __construct(?array $options = null)
     {
         if (is_array($options)) {
             $this->setOptions($options);
@@ -242,7 +238,7 @@ abstract class Page extends Container
      * corresponds to setTarget(), and the option 'reset_params' corresponds to
      * the method setResetParams().
      *
-     * @param  array $options             associative array of options to set
+     * @param array $options associative array of options to set
      *
      * @return $this       fluent interface, returns self
      *
@@ -310,7 +306,7 @@ abstract class Page extends Container
     /**
      * Sets page id
      *
-     * @param  string|null $id id to set. Default is null, which sets no id.
+     * @param string|null $id id to set. Default is null, which sets no id.
      *
      * @return $this fluent interface, returns self
      */
@@ -334,7 +330,7 @@ abstract class Page extends Container
     /**
      * Sets page CSS class
      *
-     * @param  string|null $class CSS class to set. Default is null, which sets no CSS class.
+     * @param string|null $class CSS class to set. Default is null, which sets no CSS class.
      *
      * @return $this fluent interface, returns self
      */
@@ -565,7 +561,7 @@ abstract class Page extends Container
     /**
      * Sets multiple custom HTML attributes at once
      *
-     * @param array $attribs        an associative array of html attributes
+     * @param array $attribs an associative array of html attributes
      *
      * @return $this fluent interface, returns self
      */
@@ -617,7 +613,7 @@ abstract class Page extends Container
     /**
      * Sets page order to use in parent container
      *
-     * @param int|string|null $order                 [optional] page order in container.
+     * @param int|string|null $order [optional] page order in container.
      *                                    Default is null, which sets no
      *                                    specific order.
      *
@@ -625,10 +621,10 @@ abstract class Page extends Container
      *
      * @throws Exception  if order is not integer or null
      */
-    public function setOrder(int|string $order = null): static
+    public function setOrder(int|string|null $order = null): static
     {
         if (is_string($order)) {
-            $temp = (int) $order;
+            $temp = (int)$order;
             if ($temp < 0 || $temp > 0 || $order === '0') {
                 $order = $temp;
             }
@@ -636,7 +632,7 @@ abstract class Page extends Container
 
         if (null !== $order && !is_int($order)) {
             throw new Exception('Invalid argument: $order must be an integer or null, ' .
-                    'or a string that casts to an integer');
+                'or a string that casts to an integer');
         }
 
         $this->_order = $order;
@@ -662,7 +658,7 @@ abstract class Page extends Container
     /**
      * Sets whether page should be considered active or not
      *
-     * @param bool $active          [optional] whether page should be
+     * @param bool $active [optional] whether page should be
      *                               considered active or not. Default is true.
      *
      * @return $this  fluent interface, returns self
@@ -677,7 +673,7 @@ abstract class Page extends Container
     /**
      * Returns whether page should be considered active or not
      *
-     * @param bool $recursive  [optional] whether page should be considered
+     * @param bool $recursive [optional] whether page should be considered
      *                          active if any child pages are active. Default is
      *                          false.
      *
@@ -686,13 +682,7 @@ abstract class Page extends Container
     public function isActive(bool $recursive = false): bool
     {
         if (!$this->_active && $recursive) {
-            foreach ($this->_pages as $page) {
-                if ($page->isActive(true)) {
-                    return true;
-                }
-            }
-
-            return false;
+            return array_any($this->_pages, static fn(Page $page) => $page->isActive(true));
         }
 
         return $this->_active;
@@ -701,7 +691,7 @@ abstract class Page extends Container
     /**
      * Proxy to isActive()
      *
-     * @param bool $recursive  [optional] whether page should be considered
+     * @param bool $recursive [optional] whether page should be considered
      *                          active if any child pages are active. Default
      *                          is false.
      *
@@ -724,7 +714,7 @@ abstract class Page extends Container
         if (is_string($visible) && 'false' === strtolower($visible)) {
             $visible = false;
         }
-        $this->_visible = (bool) $visible;
+        $this->_visible = (bool)$visible;
 
         return $this;
     }
@@ -782,15 +772,13 @@ abstract class Page extends Container
         }
 
         // remove from old parent
-        if (null !== $this->_parent) {
-            $this->_parent->removePage($this);
-        }
+        $this->_parent?->removePage($this);
 
         // set new parent
         $this->_parent = $parent;
 
         // add to parent if page and not already a child
-        if (null !== $this->_parent && !$this->_parent->hasPage($this, false)) {
+        if (null !== $this->_parent && !$this->_parent->hasPage($this)) {
             $this->_parent->addPage($this);
         }
 
@@ -813,8 +801,8 @@ abstract class Page extends Container
      * If the given property is native (id, class, title, etc), the matching
      * set method will be used. Otherwise, it will be set as a custom property.
      *
-     * @param  string $property           property name
-     * @param  mixed  $value              value to set
+     * @param string $property property name
+     * @param mixed $value value to set
      *
      * @return $this       fluent interface, returns self
      *
@@ -844,7 +832,7 @@ abstract class Page extends Container
      * get method will be used. Otherwise, it will return the matching custom
      * property, or null if not found.
      *
-     * @param  string $property           property name
+     * @param string $property property name
      *
      * @return mixed                      the property's value or null
      *
@@ -887,7 +875,7 @@ abstract class Page extends Container
      *
      * Magic overload for enabling <code>$page->propname</code>.
      *
-     * @param  string $name               property name
+     * @param string $name property name
      *
      * @return mixed                      property value or null
      *
@@ -907,7 +895,7 @@ abstract class Page extends Container
      * true or false if it's a custom property (depending on whether the
      * property actually is set).
      *
-     * @param string $name  property name
+     * @param string $name property name
      *
      * @return bool          whether the given property exists
      */
@@ -926,7 +914,7 @@ abstract class Page extends Container
      *
      * Magic overload for enabling <code>unset($page->propname)</code>.
      *
-     * @param string $name               property name
+     * @param string $name property name
      *
      * @return void
      *
@@ -959,9 +947,9 @@ abstract class Page extends Container
     /**
      * Adds a forward relation to the page
      *
-     * @param string $relation      relation name (e.g. alternate, glossary,
+     * @param string $relation relation name (e.g. alternate, glossary,
      *                               canonical, etc)
-     * @param  mixed  $value         value to set for relation
+     * @param mixed $value value to set for relation
      *
      * @return $this  fluent interface, returns self
      */
@@ -975,9 +963,9 @@ abstract class Page extends Container
     /**
      * Adds a reverse relation to the page
      *
-     * @param string $relation      relation name (e.g. alternate, glossary,
+     * @param string $relation relation name (e.g. alternate, glossary,
      *                               canonical, etc)
-     * @param  mixed  $value         value to set for relation
+     * @param mixed $value value to set for relation
      *
      * @return $this  fluent interface, returns self
      */
@@ -991,7 +979,7 @@ abstract class Page extends Container
     /**
      * Removes a forward relation from the page
      *
-     * @param string $relation      name of relation to remove
+     * @param string $relation name of relation to remove
      *
      * @return $this  fluent interface, returns self
      */
@@ -1005,7 +993,7 @@ abstract class Page extends Container
     /**
      * Removes a reverse relation from the page
      *
-     * @param string $relation      name of relation to remove
+     * @param string $relation name of relation to remove
      *
      * @return $this  fluent interface, returns self
      */

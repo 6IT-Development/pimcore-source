@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -165,7 +166,7 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
         return $this;
     }
 
-    protected function prepareDataForPersistence(array|Element\ElementInterface $data, Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object = null, array $params = []): mixed
+    protected function prepareDataForPersistence(array|Element\ElementInterface $data, Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete|null $object = null, array $params = []): ?array
     {
         if ($data instanceof Element\ElementInterface) {
             $type = Element\Service::getElementType($data);
@@ -181,7 +182,7 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
         return null;
     }
 
-    protected function loadData(array $data, Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object = null, array $params = []): mixed
+    protected function loadData(array $data, Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete|null $object = null, array $params = []): array
     {
         // data from relation table
         $data = current($data);
@@ -208,7 +209,7 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         $idIndex = $this->getName() . '__id';
         $typeIndex = $this->getName() . '__type';
@@ -233,18 +234,16 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if ($data instanceof Element\ElementInterface) {
-            $r = [
+            return [
                 'id' => $data->getId(),
                 'path' => $data->getRealFullPath(),
                 'subtype' => $data->getType(),
                 'type' => Element\Service::getElementType($data),
                 'published' => Element\Service::isPublished($data),
             ];
-
-            return $r;
         }
 
         return null;
@@ -255,7 +254,7 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): Asset|Document|DataObject\AbstractObject|null
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): Asset|Document|DataObject\AbstractObject|null
     {
         if (!empty($data['id']) && !empty($data['type'])) {
             return Element\Service::getElementById($data['type'], $data['id']);
@@ -264,20 +263,12 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
         return null;
     }
 
-    /**
-     * @param null|DataObject\Concrete $object
-     *
-     */
-    public function getDataFromGridEditor(array $data, Concrete $object = null, array $params = []): Asset|Document|DataObject\AbstractObject|null
+    public function getDataFromGridEditor(array $data, ?Concrete $object = null, array $params = []): Asset|Document|DataObject\AbstractObject|null
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataForGrid(?Element\ElementInterface $data, Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(?Element\ElementInterface $data, ?Concrete $object = null, array $params = []): ?array
     {
         return $this->getDataForEditmode($data, $object, $params);
     }
@@ -288,10 +279,10 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if ($data instanceof Element\ElementInterface) {
-            return Element\Service::getElementType($data).' '.$data->getRealFullPath();
+            return Element\Service::getElementType($data) . ' ' . $data->getRealFullPath();
         }
 
         return '';
@@ -300,7 +291,7 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
     public function checkValidity(mixed $data, bool $omitMandatoryCheck = false, array $params = []): void
     {
         if (!$omitMandatoryCheck && $this->getMandatory() && $data === null) {
-            throw new Element\ValidationException('Empty mandatory field [ '.$this->getName().' ]');
+            throw new Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
 
         if ($data instanceof Document) {
@@ -325,7 +316,7 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
     {
         $data = $this->getDataFromObjectParam($object, $params);
         if ($data instanceof Element\ElementInterface) {
-            return Element\Service::getElementType($data).':'.$data->getRealFullPath();
+            return Element\Service::getElementType($data) . ':' . $data->getRealFullPath();
         }
 
         return '';
@@ -451,7 +442,7 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
 
     protected function getPhpdocType(): string
     {
-        return $this->getPhpDocClassString(false);
+        return $this->getPhpDocClassString();
     }
 
     public function normalize(mixed $value, array $params = []): ?array
@@ -514,16 +505,16 @@ class ManyToOneRelation extends AbstractRelations implements QueryResourcePersis
         }
 
         if (!isset($data['id'], $data['type'])) {
-            throw new InvalidArgumentException('Please provide an array with keys "id" and "type" or an object which implements '.Element\ElementInterface::class);
+            throw new InvalidArgumentException('Please provide an array with keys "id" and "type" or an object which implements ' . Element\ElementInterface::class);
         }
 
         if ($operator === '=') {
-            $listing->addConditionParam('`'.$this->getName().'__id` = ? AND `'.$this->getName().'__type` = ?', [$data['id'], $data['type']]);
+            $listing->addConditionParam('`' . $this->getName() . '__id` = ? AND `' . $this->getName() . '__type` = ?', [$data['id'], $data['type']]);
 
             return $listing;
         }
 
-        throw new InvalidArgumentException('Filtering '.__CLASS__.' does only support "=" operator');
+        throw new InvalidArgumentException('Filtering ' . __CLASS__ . ' does only support "=" operator');
     }
 
     public function getPhpdocInputType(): ?string

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -93,7 +94,7 @@ class ReverseObjectRelation extends ManyToManyObjectRelation
             try {
                 $class = $this->ownerClassName ? DataObject\ClassDefinition::getByName($this->ownerClassName) : null;
                 if (!$class instanceof DataObject\ClassDefinition) {
-                    Logger::error('Reverse relation '.$this->getName().' has no owner class assigned');
+                    Logger::error('Reverse relation ' . $this->getName() . ' has no owner class assigned');
 
                     return null;
                 }
@@ -136,27 +137,27 @@ class ReverseObjectRelation extends ManyToManyObjectRelation
     {
         //TODO
         if (!$omitMandatoryCheck && $this->getMandatory() && empty($data)) {
-            throw new Model\Element\ValidationException('Empty mandatory field [ '.$this->getName().' ]');
+            throw new Model\Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
 
         if (is_array($data)) {
             foreach ($data as $o) {
                 $allowClass = $this->allowObjectRelation($o);
                 if (!$allowClass || !($o instanceof DataObject\Concrete)) {
-                    throw new Model\Element\ValidationException('Invalid non owner object relation to object ['.$o->getId().']');
+                    throw new Model\Element\ValidationException('Invalid non owner object relation to object [' . $o->getId() . ']');
                 }
             }
         }
     }
 
-    public function load(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): array
+    public function load(Localizedfield|AbstractData|DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): array
     {
         if ($this->getOwnerClassId() === null) {
             return [];
         }
 
         $db = Db::get();
-        $relations = $db->fetchAllAssociative('SELECT * FROM object_relations_'.$this->getOwnerClassId()." WHERE dest_id = ? AND fieldname = ? AND ownertype = 'object'", [$object->getId(), $this->getOwnerFieldName()]);
+        $relations = $db->fetchAllAssociative('SELECT * FROM object_relations_' . $this->getOwnerClassId() . " WHERE dest_id = ? AND fieldname = ? AND ownertype = 'object'", [$object->getId(), $this->getOwnerFieldName()]);
 
         $relations = array_map(static function ($relation) {
             $relation['dest_id'] = $relation['src_id'];

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Image\Optimizer;
@@ -23,17 +24,17 @@ use Spatie\ImageOptimizer\Optimizers\Jpegoptim;
 use Spatie\ImageOptimizer\Optimizers\Optipng;
 use Spatie\ImageOptimizer\Optimizers\Pngquant;
 
-final class SpatieImageOptimizer implements \Pimcore\Image\Optimizer\OptimizerInterface
+final class SpatieImageOptimizer implements OptimizerInterface
 {
     public function optimizeImage(string $input, string $output): string
     {
-        $optimizerChain = (new OptimizerChain)
+        $optimizerChain = (new OptimizerChain())
             ->addOptimizer(new Jpegoptim([
                 '--strip-all',
                 '--all-progressive',
             ]))
-            ->addOptimizer(new Pngquant)
-            ->addOptimizer(new Optipng)
+            ->addOptimizer(new Pngquant())
+            ->addOptimizer(new Optipng())
             ->addOptimizer(new Cwebp([
                 '-pass 10',
                 '-mt',

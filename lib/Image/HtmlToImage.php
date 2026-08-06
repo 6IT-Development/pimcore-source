@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Image;
@@ -36,7 +37,7 @@ class HtmlToImage
 
     public static function isSupported(): bool
     {
-        return (bool) self::getSupportedAdapter();
+        return (bool)self::getSupportedAdapter();
     }
 
     private static function getSupportedAdapter(): string
@@ -57,14 +58,14 @@ class HtmlToImage
         }
 
         if (!self::$supportedAdapter && class_exists(BrowserFactory::class)) {
-            $chromiumUri = \Pimcore\Config::getSystemConfiguration('chromium')['uri'];
+            $chromiumUri = Config::getSystemConfiguration('chromium')['uri'];
             if (!empty($chromiumUri)) {
                 try {
-                    if ((new Connection($chromiumUri))->connect()) {
+                    if (new Connection($chromiumUri)->connect()) {
                         self::$supportedAdapter = 'chromium';
                     }
                 } catch (Exception $e) {
-                    Logger::debug((string) $e);
+                    Logger::debug((string)$e);
                     // nothing to do
                 }
             }
@@ -112,8 +113,8 @@ class HtmlToImage
             if (method_exists($request, 'screenshot')) {
                 $sizes = explode(',', $windowSize);
                 $urlResponse = $request->screenshot()
-                    ->width((int) $sizes[0])
-                    ->height((int) $sizes[1])
+                    ->width((int)$sizes[0])
+                    ->height((int)$sizes[1])
                     ->png()
                     ->url($url);
 
@@ -122,7 +123,7 @@ class HtmlToImage
                 return rename(PIMCORE_SYSTEM_TEMP_DIRECTORY . '/' . $file, $outputFile);
             }
 
-        } catch (Exception $e) {
+        } catch (Exception) {
             // nothing to do
         }
 
@@ -136,12 +137,12 @@ class HtmlToImage
     {
         trigger_deprecation('pimcore/pimcore', '11.2.0', 'Chromium service is deprecated and will be removed in Pimcore 12. Use Gotenberg instead.');
 
-        $chromiumUri = \Pimcore\Config::getSystemConfiguration('chromium')['uri'];
+        $chromiumUri = Config::getSystemConfiguration('chromium')['uri'];
         if (!empty($chromiumUri)) {
             try {
                 $browser = BrowserFactory::connectToBrowser($chromiumUri);
             } catch (Exception $e) {
-                Logger::debug((string) $e);
+                Logger::debug((string)$e);
 
                 return false;
             }

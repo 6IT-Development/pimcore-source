@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension;
@@ -28,7 +28,7 @@ use function is_null;
  */
 class CacheTagExtension extends AbstractExtension
 {
-    private const CACHE_KEY_PREFIX = 'pimcore_twigcache_';
+    private const string CACHE_KEY_PREFIX = 'pimcore_twigcache_';
 
     public function getTokenParsers(): array
     {

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
@@ -23,6 +23,7 @@ use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Http\Request\Resolver\TemplateResolver;
 use Symfony\Bridge\Twig\Attribute\Template;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Event\ViewEvent;
@@ -75,7 +76,7 @@ class ContentTemplateListener implements EventSubscriberInterface
 
         if (interface_exists('Symfony\\Component\\Form\\FormInterface')) {
             foreach ($parameters as $k => $v) {
-                if (!$v instanceof \Symfony\Component\Form\FormInterface) {
+                if (!$v instanceof FormInterface) {
                     continue;
                 }
                 if ($v->isSubmitted() && !$v->isValid()) {
@@ -86,7 +87,7 @@ class ContentTemplateListener implements EventSubscriberInterface
         }
 
         $event->setResponse(($attribute instanceof Template && $attribute->stream)
-            ? new StreamedResponse(fn () => $this->twig->display($resolvedTemplate, $parameters), $status)
+            ? new StreamedResponse(fn() => $this->twig->display($resolvedTemplate, $parameters), $status)
             : new Response($this->twig->render($resolvedTemplate, $parameters), $status)
         );
     }
@@ -100,7 +101,7 @@ class ContentTemplateListener implements EventSubscriberInterface
         $duplicateKeys = array_unique(array_diff_assoc($mergedArray, array_unique($mergedArray)));
 
         if ($duplicateKeys) {
-            throw new Exception('Duplicate keys found: '.implode(', ', array_values($duplicateKeys)).'. Please use unique names for your controller arguments, controller results and template variables.');
+            throw new Exception('Duplicate keys found: ' . implode(', ', array_values($duplicateKeys)) . '. Please use unique names for your controller arguments, controller results and template variables.');
         }
 
         return array_merge($controllerArguments, $controllerResults, $vars);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,24 +11,25 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition;
 
+use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinitionInterface;
 
 class ClassDefinitionManager
 {
-    public const SAVED = 'saved';
+    public const string SAVED = 'saved';
 
-    public const CREATED = 'created';
+    public const string CREATED = 'created';
 
-    public const SKIPPED = 'skipped';
+    public const string SKIPPED = 'skipped';
 
-    public const DELETED = 'deleted';
+    public const string DELETED = 'deleted';
 
     /**
      * Delete all classes from db
@@ -36,7 +38,7 @@ class ClassDefinitionManager
      */
     public function cleanUpDeletedClassDefinitions(): array
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $classes = $db->fetchAllAssociative('SELECT * FROM classes');
         $deleted = [];
 
@@ -115,7 +117,7 @@ class ClassDefinitionManager
         $shouldSave = $force;
 
         if (!$force) {
-            $db = \Pimcore\Db::get();
+            $db = Db::get();
 
             $definitionModificationDate = null;
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Tool\Email;
@@ -20,12 +21,13 @@ use League\Flysystem\FilesystemException;
 use League\Flysystem\UnableToWriteFile;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Tool\Email\Log\Dao;
 use Pimcore\Tool\Storage;
 
 /**
  * @internal
  *
- * @method \Pimcore\Model\Tool\Email\Log\Dao getDao()
+ * @method Dao getDao()
  */
 class Log extends Model\AbstractModel
 {
@@ -385,16 +387,16 @@ class Log extends Model\AbstractModel
         if ($html = $this->getBodyHtml()) {
             try {
                 $storage->write($this->getHtmlLogFilename(), $html);
-            } catch (FilesystemException | UnableToWriteFile $exception) {
-                Logger::warn('Could not write html email log file.'.$exception.' LogId: ' . $this->getId());
+            } catch (FilesystemException|UnableToWriteFile $exception) {
+                Logger::warn('Could not write html email log file.' . $exception . ' LogId: ' . $this->getId());
             }
         }
 
         if ($text = $this->getBodyText()) {
             try {
                 $storage->write($this->getTextLogFilename(), $text);
-            } catch (FilesystemException | UnableToWriteFile $exception) {
-                Logger::warn('Could not write text email log file.'.$exception.' LogId: ' . $this->getId());
+            } catch (FilesystemException|UnableToWriteFile $exception) {
+                Logger::warn('Could not write text email log file.' . $exception . ' LogId: ' . $this->getId());
             }
         }
     }

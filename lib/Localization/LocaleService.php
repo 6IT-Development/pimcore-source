@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Localization;
 
+use Pimcore\Tool;
 use Pimcore\Translation\Translator;
 use ResourceBundle;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -28,7 +30,7 @@ class LocaleService implements LocaleServiceInterface
 
     protected ?Translator $translator = null;
 
-    public function __construct(RequestStack $requestStack = null, Translator $translator = null)
+    public function __construct(?RequestStack $requestStack = null, ?Translator $translator = null)
     {
         $this->requestStack = $requestStack;
         $this->translator = $translator;
@@ -37,9 +39,7 @@ class LocaleService implements LocaleServiceInterface
     public function isLocale(string $locale): bool
     {
         $locales = array_flip($this->getLocaleList());
-        $exists = isset($locales[$locale]);
-
-        return $exists;
+        return isset($locales[$locale]);
     }
 
     public function findLocale(): string
@@ -48,7 +48,7 @@ class LocaleService implements LocaleServiceInterface
             return $requestLocale;
         }
 
-        $defaultLocale = \Pimcore\Tool::getDefaultLanguage();
+        $defaultLocale = Tool::getDefaultLanguage();
         if ($defaultLocale) {
             return $defaultLocale;
         }
@@ -74,7 +74,7 @@ class LocaleService implements LocaleServiceInterface
         return ResourceBundle::getLocales('');
     }
 
-    public function getDisplayRegions(string $locale = null): array
+    public function getDisplayRegions(?string $locale = null): array
     {
         if (!$locale) {
             $locale = $this->findLocale();
@@ -106,19 +106,13 @@ class LocaleService implements LocaleServiceInterface
         if ($locale) {
             if ($this->requestStack) {
                 $mainRequest = $this->requestStack->getMainRequest();
-                if ($mainRequest) {
-                    $mainRequest->setLocale($locale);
-                }
+                $mainRequest?->setLocale($locale);
 
                 $currentRequest = $this->requestStack->getCurrentRequest();
-                if ($currentRequest) {
-                    $currentRequest->setLocale($locale);
-                }
+                $currentRequest?->setLocale($locale);
             }
 
-            if ($this->translator) {
-                $this->translator->setLocale($locale);
-            }
+            $this->translator?->setLocale($locale);
         }
     }
 

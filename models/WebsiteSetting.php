@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
 
 use Exception;
+use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Event\Model\WebsiteSettingEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
@@ -24,9 +26,10 @@ use Pimcore\Event\WebsiteSettingEvents;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Model\WebsiteSetting\Dao;
 
 /**
- * @method \Pimcore\Model\WebsiteSetting\Dao getDao()
+ * @method Dao getDao()
  */
 final class WebsiteSetting extends AbstractModel
 {
@@ -55,7 +58,7 @@ final class WebsiteSetting extends AbstractModel
      */
     protected static array $nameIdMappingCache = [];
 
-    protected static function getCacheKey(string $name, int $siteId = null, string $language = null): string
+    protected static function getCacheKey(string $name, ?int $siteId = null, ?string $language = null): string
     {
         return $name . '~~~' . $siteId . '~~~' . $language;
     }
@@ -89,9 +92,9 @@ final class WebsiteSetting extends AbstractModel
      *
      * @throws Exception
      */
-    public static function getByName(string $name, int $siteId = null, string $language = null, string $fallbackLanguage = null): ?WebsiteSetting
+    public static function getByName(string $name, ?int $siteId = null, ?string $language = null, ?string $fallbackLanguage = null): ?WebsiteSetting
     {
-        $nameCacheKey = static::getCacheKey($name, $siteId, $language);
+        $nameCacheKey = WebsiteSetting::getCacheKey($name, $siteId, $language);
 
         // check if pimcore already knows the id for this $name, if yes just return it
         if (array_key_exists($nameCacheKey, self::$nameIdMappingCache)) {
@@ -103,11 +106,9 @@ final class WebsiteSetting extends AbstractModel
 
         try {
             $setting->getDao()->getByName($name, $siteId, $language);
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             if ($language != $fallbackLanguage) {
-                $result = self::getByName($name, $siteId, $fallbackLanguage, $fallbackLanguage);
-
-                return $result;
+                return self::getByName($name, $siteId, $fallbackLanguage, $fallbackLanguage);
             }
 
             return null;
@@ -132,7 +133,7 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @return $this
      */
-    public function setId(int $id): static
+    public function setId(int $id): WebsiteSetting
     {
         $this->id = $id;
 
@@ -142,7 +143,7 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @return $this
      */
-    public function setName(string $name): static
+    public function setName(string $name): WebsiteSetting
     {
         $this->name = $name;
 
@@ -157,7 +158,7 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @return $this
      */
-    public function setCreationDate(int $creationDate): static
+    public function setCreationDate(int $creationDate): WebsiteSetting
     {
         $this->creationDate = $creationDate;
 
@@ -172,7 +173,7 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @return $this
      */
-    public function setData(mixed $data): static
+    public function setData(mixed $data): WebsiteSetting
     {
         if ($data instanceof ElementInterface) {
             $this->setType(Service::getElementType($data));
@@ -188,7 +189,7 @@ final class WebsiteSetting extends AbstractModel
     {
         // lazy-load data of type asset, document, object
         if (in_array($this->getType(), ['document', 'asset', 'object']) && !$this->data instanceof ElementInterface && is_numeric($this->data)) {
-            return Element\Service::getElementById($this->getType(), (int) $this->data);
+            return Element\Service::getElementById($this->getType(), (int)$this->data);
         }
 
         return $this->data;
@@ -197,7 +198,7 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @return $this
      */
-    public function setModificationDate(int $modificationDate): static
+    public function setModificationDate(int $modificationDate): WebsiteSetting
     {
         $this->modificationDate = $modificationDate;
 
@@ -212,7 +213,7 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @return $this
      */
-    public function setSiteId(?int $siteId): static
+    public function setSiteId(?int $siteId): WebsiteSetting
     {
         $this->siteId = $siteId;
 
@@ -230,7 +231,7 @@ final class WebsiteSetting extends AbstractModel
      *
      * @return $this
      */
-    public function setType(?string $type): static
+    public function setType(?string $type): WebsiteSetting
     {
         $this->type = $type;
 
@@ -254,7 +255,7 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @return $this
      */
-    public function setLanguage(string $language): static
+    public function setLanguage(string $language): WebsiteSetting
     {
         $this->language = $language;
 
@@ -266,7 +267,7 @@ final class WebsiteSetting extends AbstractModel
      */
     public function clearDependentCache(): void
     {
-        \Pimcore\Cache::clearTag('website_config');
+        Cache::clearTag('website_config');
     }
 
     public function delete(): void

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Handler;
@@ -48,8 +49,8 @@ abstract class AbstractAutomationActionHandler
 
     private ?TranslatorInterface $translator = null;
 
-    public function __construct(
-    ) {
+    public function __construct()
+    {
         $this->stepConfiguration = new OptionsResolver();
     }
 
@@ -102,10 +103,11 @@ abstract class AbstractAutomationActionHandler
      */
     public function abortAction(
         string $translationKey,
-        array $translationParams = [],
+        array  $translationParams = [],
         string $translationDomain = 'default',
         string $exceptionClassName = Exception::class
-    ): void {
+    ): void
+    {
         $errorMessage = $this->translator->trans($translationKey, $translationParams, $translationDomain);
 
         throw new $exceptionClassName($errorMessage);
@@ -119,8 +121,9 @@ abstract class AbstractAutomationActionHandler
     protected function logMessageToJobRun(
         JobRun $jobRun,
         string $translationKey,
-        array $params = []
-    ): void {
+        array  $params = []
+    ): void
+    {
         $this->jobRunExtractor->logMessageToJobRun($jobRun, $translationKey, $params);
     }
 
@@ -152,7 +155,8 @@ abstract class AbstractAutomationActionHandler
 
     protected function getEnvironmentVariables(
         GenericExecutionEngineMessageInterface $message
-    ): array {
+    ): array
+    {
         $jobRun = $this->getJobRun($message);
         $job = $jobRun->getJob();
 
@@ -161,8 +165,9 @@ abstract class AbstractAutomationActionHandler
 
     protected function replaceConfigValueWithEnvVariable(
         string $value,
-        array $variables
-    ): mixed {
+        array  $variables
+    ): mixed
+    {
         if (!preg_match_all("/job_env\('([^']*)'\)/", $value, $matches)) {
             return $value;
         }
@@ -179,8 +184,9 @@ abstract class AbstractAutomationActionHandler
 
     protected function extractConfigFieldFromJobStepConfig(
         GenericExecutionEngineMessageInterface $message,
-        string $key
-    ): mixed {
+        string                                 $key
+    ): mixed
+    {
         $config = $this->getCurrentJobStepConfig($message);
         if (!array_key_exists($key, $config)) {
             throw new NotFoundException("Missing configuration $key");
@@ -193,8 +199,9 @@ abstract class AbstractAutomationActionHandler
 
     protected function recursivelyReplaceConfigValuesWithEnvVariables(
         GenericExecutionEngineMessageInterface $message,
-        mixed $configValue
-    ): mixed {
+        mixed                                  $configValue
+    ): mixed
+    {
 
         if (is_string($configValue)) {
             return $this->replaceConfigValueWithEnvVariable(
@@ -204,12 +211,7 @@ abstract class AbstractAutomationActionHandler
         }
 
         if (is_array($configValue)) {
-            $replacedValue = [];
-            foreach ($configValue as $key => $value) {
-                $replacedValue[$key] = $this->recursivelyReplaceConfigValuesWithEnvVariables($message, $value);
-            }
-
-            return $replacedValue;
+            return array_map(fn($value) => $this->recursivelyReplaceConfigValuesWithEnvVariables($message, $value), $configValue);
         }
 
         return $configValue;
@@ -218,8 +220,9 @@ abstract class AbstractAutomationActionHandler
     protected function updateJobRunContext(
         JobRun $jobRun,
         string $key,
-        mixed $value,
-    ): void {
+        mixed  $value,
+    ): void
+    {
         $context = $jobRun->getContext();
         $context[$key] = $value;
         $jobRun->setContext($context);
@@ -233,14 +236,16 @@ abstract class AbstractAutomationActionHandler
 
     protected function isRunning(
         JobRun $jobRun
-    ): bool {
+    ): bool
+    {
         return $this->jobExecutionAgent->isRunning($jobRun->getId());
     }
 
     protected function getSubjectFromMessage(
         GenericExecutionEngineMessageInterface $message,
-        array $types = [JobRunExtractorInterface::OBJECT_TYPE, JobRunExtractorInterface::ASSET_TYPE]
-    ): ?AbstractElement {
+        array                                  $types = [JobRunExtractorInterface::OBJECT_TYPE, JobRunExtractorInterface::ASSET_TYPE]
+    ): ?AbstractElement
+    {
         /** @var AbstractElement $subject */
         $subject = $this->jobRunExtractor->getElementFromMessage($message, $types);
 
@@ -252,8 +257,9 @@ abstract class AbstractAutomationActionHandler
      */
     protected function getSubjectsFromMessage(
         GenericExecutionEngineMessageInterface $message,
-        array $types = [JobRunExtractorInterface::OBJECT_TYPE, JobRunExtractorInterface::ASSET_TYPE]
-    ): array {
+        array                                  $types = [JobRunExtractorInterface::OBJECT_TYPE, JobRunExtractorInterface::ASSET_TYPE]
+    ): array
+    {
         /** @var AbstractElement[] $subjects */
         $subjects = $this->jobRunExtractor->getElementsFromMessage($message, $types);
 

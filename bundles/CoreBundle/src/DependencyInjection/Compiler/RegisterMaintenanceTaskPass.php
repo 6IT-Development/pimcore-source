@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
@@ -37,7 +38,7 @@ final class RegisterMaintenanceTaskPass implements CompilerPassInterface
 
         foreach ($container->findTaggedServiceIds('pimcore.maintenance.task') as $id => $tags) {
             if (!isset($tags[0]['type'])) {
-                throw new InvalidArgumentException('Tagged Maintenance Task `'.$id.'` needs to a `type` attribute.');
+                throw new InvalidArgumentException('Tagged Maintenance Task `' . $id . '` needs to a `type` attribute.');
             }
 
             $definition->addMethodCall('registerTask', [$tags[0]['type'], new Reference($id), $tags[0]['messengerMessageClass'] ?? null]);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Document;
@@ -28,6 +29,7 @@ use Pimcore\Model;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Exception\ThumbnailFormatNotSupportedException;
+use Pimcore\Tool;
 use Pimcore\Tool\Storage;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Lock\LockFactory;
@@ -46,7 +48,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
      */
     protected int $page = 1;
 
-    public function __construct(?Model\Asset\Document $asset, array|string|Image\Thumbnail\Config $config = null, int $page = 1, bool $deferred = true)
+    public function __construct(?Model\Asset\Document $asset, array|string|Image\Thumbnail\Config|null $config = null, int $page = 1, bool $deferred = true)
     {
         $this->asset = $asset;
         $this->config = $this->createConfig($config ?? []);
@@ -58,7 +60,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
     {
         // set defaults
         $deferredAllowed = $args['deferredAllowed'] ?? true;
-        $frontend = $args['frontend'] ?? \Pimcore\Tool::isFrontend();
+        $frontend = $args['frontend'] ?? Tool::isFrontend();
 
         $pathReference = $this->getPathReference($deferredAllowed);
 
@@ -69,9 +71,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
             'frontendPath' => $path,
         ]);
         Pimcore::getEventDispatcher()->dispatch($event, FrontendEvents::ASSET_DOCUMENT_IMAGE_THUMBNAIL);
-        $path = $event->getArgument('frontendPath');
-
-        return $path;
+        return $event->getArgument('frontendPath');
     }
 
     /**

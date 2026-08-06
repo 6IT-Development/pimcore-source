@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow;
@@ -36,11 +37,11 @@ class ExpressionService
 
     private AuthenticationTrustResolverInterface $trustResolver;
 
-    private ?RoleHierarchyInterface $roleHierarchy = null;
+    private ?RoleHierarchyInterface $roleHierarchy;
 
-    private ?ValidatorInterface $validator = null;
+    private ?ValidatorInterface $validator;
 
-    public function __construct(ExpressionLanguage $expressionLanguage, TokenStorageInterface $tokenStorage, AuthorizationCheckerInterface $authenticationChecker, AuthenticationTrustResolverInterface $trustResolver, RoleHierarchyInterface $roleHierarchy = null, ValidatorInterface $validator = null)
+    public function __construct(ExpressionLanguage $expressionLanguage, TokenStorageInterface $tokenStorage, AuthorizationCheckerInterface $authenticationChecker, AuthenticationTrustResolverInterface $trustResolver, ?RoleHierarchyInterface $roleHierarchy = null, ?ValidatorInterface $validator = null)
     {
         $this->expressionLanguage = $expressionLanguage;
         $this->tokenStorage = $tokenStorage;
@@ -58,7 +59,7 @@ class ExpressionService
     // code should be sync with Symfony\Component\Security\Core\Authorization\Voter\ExpressionVoter
     private function getVariables(object $subject): array
     {
-        $token = $this->tokenStorage->getToken() ?: new NullToken;
+        $token = $this->tokenStorage->getToken() ?: new NullToken();
 
         $roleNames = $token->getRoleNames();
         if (null !== $this->roleHierarchy) {

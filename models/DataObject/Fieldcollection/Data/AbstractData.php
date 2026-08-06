@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Fieldcollection\Data;
@@ -92,14 +93,14 @@ abstract class AbstractData extends Model\AbstractModel implements Model\DataObj
         return $this->object;
     }
 
-    public function get(string $fieldName, string $language = null): mixed
+    public function get(string $fieldName, ?string $language = null): mixed
     {
-        return $this->{'get'.ucfirst($fieldName)}($language);
+        return $this->{'get' . ucfirst($fieldName)}($language);
     }
 
-    public function set(string $fieldName, mixed $value, string $language = null): mixed
+    public function set(string $fieldName, mixed $value, ?string $language = null): mixed
     {
-        return $this->{'set'.ucfirst($fieldName)}($value, $language);
+        return $this->{'set' . ucfirst($fieldName)}($value, $language);
     }
 
     /**
@@ -112,7 +113,7 @@ abstract class AbstractData extends Model\AbstractModel implements Model\DataObj
         $fields = $this->getDefinition()->getFieldDefinitions(['suppressEnrichment' => true]);
         foreach ($fields as $field) {
             if ($field instanceof LazyLoadingSupportInterface
-                && $field instanceof  Model\DataObject\ClassDefinition\Data
+                && $field instanceof Model\DataObject\ClassDefinition\Data
                 && $field->getLazyLoading()) {
                 $lazyLoadedFieldNames[] = $field->getName();
             }

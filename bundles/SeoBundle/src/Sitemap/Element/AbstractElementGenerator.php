@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Sitemap\Element;
@@ -30,12 +30,12 @@ abstract class AbstractElementGenerator implements GeneratorInterface
     /**
      * @var FilterInterface[]
      */
-    private array $filters = [];
+    private array $filters;
 
     /**
      * @var ProcessorInterface[]
      */
-    private array $processors = [];
+    private array $processors;
 
     /**
      * @param FilterInterface[] $filters
@@ -75,42 +75,24 @@ abstract class AbstractElementGenerator implements GeneratorInterface
 
     /**
      * Determines if the element can be added.
-     *
-     *
      */
     protected function canBeAdded(ElementInterface $element, GeneratorContextInterface $context): bool
     {
-        foreach ($this->filters as $filter) {
-            if (!$filter->canBeAdded($element, $context)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($this->filters, fn(FilterInterface $filter) => $filter->canBeAdded($element, $context));
     }
 
     /**
      * Determines if the element handles children (only used from generators
      * supporting tree structures).
-     *
-     *
      */
     protected function handlesChildren(ElementInterface $element, GeneratorContextInterface $context): bool
     {
-        foreach ($this->filters as $filter) {
-            if (!$filter->handlesChildren($element, $context)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($this->filters, fn(FilterInterface $filter) => $filter->handlesChildren($element, $context));
     }
 
     /**
      * Processes a URL about to be added to the sitemap. Can either return an Url instance
      * or null to exclude the Url.
-     *
-     *
      */
     protected function process(Url $url, ElementInterface $element, GeneratorContextInterface $context): ?Url
     {

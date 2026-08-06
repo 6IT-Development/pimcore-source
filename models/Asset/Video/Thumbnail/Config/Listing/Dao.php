@@ -9,18 +9,19 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Video\Thumbnail\Config\Listing;
 
 use Pimcore\Model\Asset\Video\Thumbnail\Config;
+use Pimcore\Model\Asset\Video\Thumbnail\Config\Listing;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Asset\Video\Thumbnail\Config\Listing $model
+ * @property Listing $model
  */
 class Dao extends Config\Dao
 {

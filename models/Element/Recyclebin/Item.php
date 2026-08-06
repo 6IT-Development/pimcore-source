@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\Recyclebin;
 
+use DeepCopy\Matcher\PropertyMatcher;
+use DeepCopy\TypeFilter\ReplaceFilter;
 use DeepCopy\TypeMatcher\TypeMatcher;
 use Exception;
 use League\Flysystem\StorageAttributes;
@@ -32,6 +35,7 @@ use Pimcore\Model\Document;
 use Pimcore\Model\Element;
 use Pimcore\Model\Element\DeepCopy\PimcoreClassDefinitionMatcher;
 use Pimcore\Model\Element\DeepCopy\PimcoreClassDefinitionReplaceFilter;
+use Pimcore\Tool\Admin;
 use Pimcore\Tool\Serialize;
 use Pimcore\Tool\Storage;
 
@@ -58,7 +62,7 @@ class Item extends Model\AbstractModel
 
     protected string $deletedby;
 
-    public static function create(Element\ElementInterface $element, Model\User $user = null): void
+    public static function create(Element\ElementInterface $element, ?Model\User $user = null): void
     {
         $item = new self();
         $item->setElement($element);
@@ -72,7 +76,7 @@ class Item extends Model\AbstractModel
             $item->getDao()->getById($id);
 
             return $item;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -80,7 +84,7 @@ class Item extends Model\AbstractModel
     /**
      * @throws Exception
      */
-    public function restore(Model\User $user = null): void
+    public function restore(?Model\User $user = null): void
     {
         $dummy = null;
         $raw = Storage::get('recycle_bin')->read($this->getStorageFile());
@@ -90,17 +94,17 @@ class Item extends Model\AbstractModel
         if ($element instanceof Document) {
             $indentElement = Document::getByPath($element->getRealFullPath());
             if ($indentElement) {
-                $element->setKey($element->getKey().'_restore');
+                $element->setKey($element->getKey() . '_restore');
             }
         } elseif ($element instanceof Asset) {
             $indentElement = Asset::getByPath($element->getRealFullPath());
             if ($indentElement) {
-                $element->setFilename($element->getFilename().'_restore');
+                $element->setFilename($element->getFilename() . '_restore');
             }
         } elseif ($element instanceof DataObject\AbstractObject) {
             $indentElement = DataObject::getByPath($element->getRealFullPath());
             if ($indentElement) {
-                $element->setKey($element->getKey().'_restore');
+                $element->setKey($element->getKey() . '_restore');
             }
 
             // create an empty object first and clone it
@@ -119,7 +123,7 @@ class Item extends Model\AbstractModel
             Model\Version::enable();
         }
 
-        if (\Pimcore\Tool\Admin::getCurrentUser()) {
+        if (Admin::getCurrentUser()) {
             $parent = $element->getParent();
             if ($parent && !$parent->isAllowed('publish')) {
                 throw new Exception('Not sufficient permissions');
@@ -134,10 +138,8 @@ class Item extends Model\AbstractModel
 
             DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
         } catch (Exception $e) {
-            Logger::error((string) $e);
-            if ($dummy) {
-                $dummy->delete();
-            }
+            Logger::error((string)$e);
+            $dummy?->delete();
 
             throw $e;
         }
@@ -145,7 +147,7 @@ class Item extends Model\AbstractModel
         $this->delete();
     }
 
-    public function save(Model\User $user = null): void
+    public function save(?Model\User $user = null): void
     {
         $this->setType(Element\Service::getElementType($this->getElement()));
         $this->setSubtype($this->getElement()->getType());
@@ -192,7 +194,7 @@ class Item extends Model\AbstractModel
         $storage->delete($this->getStorageFile());
 
         $files = $storage->listContents($this->getType())->filter(function (StorageAttributes $item) {
-            return (bool) strpos($item->path(), '/' . $this->getId() . '_');
+            return (bool)strpos($item->path(), '/' . $this->getId() . '_');
         });
 
         /** @var StorageAttributes $item */
@@ -277,7 +279,7 @@ class Item extends Model\AbstractModel
         }
     }
 
-    public function marshalData(Element\ElementInterface $data): mixed
+    public function marshalData(Element\ElementInterface $data): Element\ElementInterface|array
     {
         //for full dump of relation fields in container types
         $context = [
@@ -287,12 +289,10 @@ class Item extends Model\AbstractModel
         $copier = Element\Service::getDeepCopyInstance($data, $context);
 
         $copier->addTypeFilter(
-            new \DeepCopy\TypeFilter\ReplaceFilter(
+            new ReplaceFilter(
                 function ($currentValue) {
                     $elementType = Element\Service::getElementType($currentValue);
-                    $descriptor = new Element\ElementDescriptor($elementType, $currentValue->getId());
-
-                    return $descriptor;
+                    return new Element\ElementDescriptor($elementType, $currentValue->getId());
                 }
             ),
             new class((string)$this->element) extends TypeMatcher {
@@ -318,7 +318,7 @@ class Item extends Model\AbstractModel
                 ), new PimcoreClassDefinitionMatcher(Data\CustomRecyclingMarshalInterface::class)
             );
         }
-        $copier->addFilter(new Model\Version\SetDumpStateFilter(true), new \DeepCopy\Matcher\PropertyMatcher(Element\ElementDumpStateInterface::class, Element\ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
+        $copier->addFilter(new Model\Version\SetDumpStateFilter(true), new PropertyMatcher(Element\ElementDumpStateInterface::class, Element\ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
 
         return $copier->copy($data);
     }

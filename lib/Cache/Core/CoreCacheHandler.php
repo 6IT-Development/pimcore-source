@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,16 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Cache\Core;
 
 use Closure;
 use DateInterval;
+use DeepCopy\Matcher\PropertyMatcher;
+use DeepCopy\TypeFilter\ReplaceFilter;
 use DeepCopy\TypeMatcher\TypeMatcher;
 use Pimcore\Event\CoreCacheEvents;
 use Pimcore\Model\Document\Hardlink\Wrapper\WrapperInterface;
@@ -251,9 +254,7 @@ class CoreCacheHandler implements LoggerAwareInterface
         $item = $this->getItem($key);
 
         if ($item->isHit()) {
-            $data = $item->get();
-
-            return $data;
+            return $item->get();
         }
 
         return false;
@@ -281,7 +282,7 @@ class CoreCacheHandler implements LoggerAwareInterface
      *
      *
      */
-    public function save(string $key, mixed $data, array $tags = [], DateInterval|int $lifetime = null, ?int $priority = 0, bool $force = false): bool
+    public function save(string $key, mixed $data, array $tags = [], DateInterval|int|null $lifetime = null, ?int $priority = 0, bool $force = false): bool
     {
         if ($this->writeInProgress) {
             return false;
@@ -338,7 +339,7 @@ class CoreCacheHandler implements LoggerAwareInterface
         if ($data) {
             $this->saveQueue[$item->getKey()] = $item;
 
-            if (count($this->saveQueue) > ($this->maxWriteToCacheItems*3)) {
+            if (count($this->saveQueue) > ($this->maxWriteToCacheItems * 3)) {
                 $this->cleanupQueue();
             }
 
@@ -439,7 +440,7 @@ class CoreCacheHandler implements LoggerAwareInterface
         return $tags;
     }
 
-    protected function storeCacheData(string $key, mixed $data, array $tags = [], DateInterval|int $lifetime = null, bool $force = false): bool
+    protected function storeCacheData(string $key, mixed $data, array $tags = [], DateInterval|int|null $lifetime = null, bool $force = false): bool
     {
         if ($this->writeInProgress) {
             return false;
@@ -472,8 +473,8 @@ class CoreCacheHandler implements LoggerAwareInterface
                 $this->logger->warning(
                     'Not saving {key} to cache as {reason} (id: {id})',
                     [
-                        'key'    => $key,
-                        'id'     => $id,
+                        'key' => $key,
+                        'id' => $id,
                         'reason' => $reason,
                     ]
                 );
@@ -491,15 +492,13 @@ class CoreCacheHandler implements LoggerAwareInterface
                 'conversion' => false,
             ];
             $copier = Service::getDeepCopyInstance($data, $context);
-            $copier->addFilter(new SetDumpStateFilter(false), new \DeepCopy\Matcher\PropertyMatcher(ElementDumpStateInterface::class, ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
+            $copier->addFilter(new SetDumpStateFilter(false), new PropertyMatcher(ElementDumpStateInterface::class, ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
 
             $copier->addTypeFilter(
-                new \DeepCopy\TypeFilter\ReplaceFilter(
+                new ReplaceFilter(
                     function ($currentValue) {
                         if ($currentValue instanceof CacheMarshallerInterface) {
-                            $marshalledValue = $currentValue->marshalForCache();
-
-                            return $marshalledValue;
+                            return $currentValue->marshalForCache();
                         }
 
                         return $currentValue;
@@ -525,8 +524,8 @@ class CoreCacheHandler implements LoggerAwareInterface
                 if (!is_scalar($itemData)) {
                     $itemData = serialize($itemData);
                 }
-                $itemSizeText = formatBytes(mb_strlen((string) $itemData));
-            } catch (Throwable $e) {
+                $itemSizeText = formatBytes(mb_strlen((string)$itemData));
+            } catch (Throwable) {
                 $itemSizeText = 'unknown';
             }
 
@@ -664,11 +663,9 @@ class CoreCacheHandler implements LoggerAwareInterface
         $tags = array_unique($tags);
 
         // don't clear tags in ignore array
-        $tags = array_filter($tags, function ($tag) use ($blocklist) {
+        return array_filter($tags, function ($tag) use ($blocklist) {
             return !in_array($tag, $blocklist);
         });
-
-        return $tags;
     }
 
     /**
@@ -767,9 +764,9 @@ class CoreCacheHandler implements LoggerAwareInterface
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function removeClearedTags(array $tags): static
     {

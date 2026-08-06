@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Controller;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 abstract class Controller extends AbstractController
 {
-    protected function render(string $view, array $parameters = [], Response $response = null): Response
+    protected function render(string $view, array $parameters = [], ?Response $response = null): Response
     {
         $templatingEngine = $this->container->get('pimcore.templating');
         if ($templatingEngine->isDelegate()) {
@@ -40,7 +41,7 @@ abstract class Controller extends AbstractController
         return parent::render($view, $parameters, $response);
     }
 
-    protected function stream(string $view, array $parameters = [], StreamedResponse $response = null): StreamedResponse
+    protected function stream(string $view, array $parameters = [], ?StreamedResponse $response = null): StreamedResponse
     {
         $templatingEngine = $this->container->get('pimcore.templating');
         if ($templatingEngine->isDelegate()) {
@@ -76,7 +77,7 @@ abstract class Controller extends AbstractController
     public static function getSubscribedServices(): array
     {
         $services = parent::getSubscribedServices();
-        $services['pimcore.templating'] = '?'.TwigDefaultDelegatingEngine::class;
+        $services['pimcore.templating'] = '?' . TwigDefaultDelegatingEngine::class;
 
         return $services;
     }

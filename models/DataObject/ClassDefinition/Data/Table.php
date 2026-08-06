@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -29,7 +30,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
     use DataObject\Traits\SimpleComparisonTrait;
     use DataObject\Traits\SimpleNormalizerTrait;
     use DataObject\Traits\DataHeightTrait;
-    use DataObject\Traits\DataWidthTrait{
+    use DataObject\Traits\DataWidthTrait {
         setWidth as protected setWidthTrait;
     }
 
@@ -197,7 +198,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
      *
      * @see ResourcePersistenceAwareInterface::getDataForResource
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         if (empty($data)) {
             // if it is empty then there is no need to serialize anything
@@ -218,9 +219,9 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
-        $unserializedData = Serialize::unserialize((string) $data);
+        $unserializedData = Serialize::unserialize((string)$data);
 
         if ($data === null || empty($unserializedData)) {
             return [];
@@ -257,7 +258,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if (!empty($data)) {
             $tmpLine = [];
@@ -281,7 +282,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if (is_array($data)) {
             //make sure only array values are used of edit mode (other wise ext stores do not work anymore)
@@ -291,7 +292,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
         return $data;
     }
 
-    public function getDataForGrid(?array $data, Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(?array $data, ?Concrete $object = null, array $params = []): ?array
     {
         return $this->getDataForEditmode($data, $object, $params);
     }
@@ -302,7 +303,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
      * @see Data::getDataFromEditmode
      *
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         // check for empty data
         $checkData = '';
@@ -322,11 +323,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
         return $data;
     }
 
-    /**
-     * @param null|DataObject\Concrete $object
-     *
-     */
-    public function getDataFromGridEditor(array $data, Concrete $object = null, array $params = []): ?array
+    public function getDataFromGridEditor(array $data, ?Concrete $object = null, array $params = []): ?array
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
@@ -337,7 +334,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         $versionPreview = $this->getDiffVersionPreview($data, $object, $params);
         if (is_array($versionPreview) && $versionPreview['html']) {
@@ -350,7 +347,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
     public function checkValidity(mixed $data, bool $omitMandatoryCheck = false, array $params = []): void
     {
         if (!$omitMandatoryCheck && $this->getMandatory() && empty($data)) {
-            throw new Model\Element\ValidationException('Empty mandatory field [ '.$this->getName().' ]');
+            throw new Model\Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
 
         if (!empty($data) && !is_array($data)) {
@@ -393,13 +390,11 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
         return true;
     }
 
-    /** Generates a pretty version preview (similar to getVersionPreview) can be either html or
+    /**
+     * Generates a pretty version preview (similar to getVersionPreview) can be either html or
      * a image URL. See the https://github.com/pimcore/object-merger bundle documentation for details
-     *
-     * @param DataObject\Concrete|null $object
-     *
      */
-    public function getDiffVersionPreview(?array $data, Concrete $object = null, array $params = []): array|string
+    public function getDiffVersionPreview(?array $data, ?Concrete $object = null, array $params = []): array|string
     {
         if ($data) {
             $html = '<table>';
@@ -410,7 +405,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
                 $index = 0;
                 $columConfig = $this->getColumnConfig();
 
-                foreach (current($data) as $cellData) {
+                foreach (current($data) as $ignored) {
                     $html .= '<th>';
                     $html .= htmlspecialchars($columConfig[$index]['label'], ENT_QUOTES, 'UTF-8');
                     $html .= '</td>';
@@ -424,7 +419,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
                 if (is_array($row)) {
                     foreach ($row as $cell) {
                         $html .= '<td>';
-                        $html .= htmlspecialchars((string) $cell, ENT_QUOTES, 'UTF-8');
+                        $html .= htmlspecialchars((string)$cell, ENT_QUOTES, 'UTF-8');
                         $html .= '</td>';
                     }
                 }
@@ -498,7 +493,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
 
         $code .= $this->getPreGetValueHookCode($key);
 
-        if ($this instanceof  PreGetDataInterface) {
+        if ($this instanceof PreGetDataInterface) {
             $code .= "\t" . '$data = $this->getClass()->getFieldDefinition("' . $key . '")->preGetData($this);' . "\n\n";
         } else {
             $code .= "\t" . '$data = $this->' . $key . ";\n\n";
@@ -525,7 +520,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
         return $code;
     }
 
-    public function getGetterCodeObjectbrick(\Pimcore\Model\DataObject\Objectbrick\Definition $brickClass): string
+    public function getGetterCodeObjectbrick(DataObject\Objectbrick\Definition $brickClass): string
     {
         $key = $this->getName();
 
@@ -535,8 +530,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
             $typeDeclaration = '';
         }
 
-        $code = '';
-        $code .= '/**' . "\n";
+        $code = '/**' . "\n";
         $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
@@ -579,8 +573,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
             $typeDeclaration = '';
         }
 
-        $code = '';
-        $code .= '/**' . "\n";
+        $code = '/**' . "\n";
         $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";

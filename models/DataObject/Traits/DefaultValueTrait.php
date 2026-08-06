@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Traits;
@@ -37,7 +38,7 @@ trait DefaultValueTrait
      *
      * @return mixed $data
      */
-    protected function handleDefaultValue(mixed $data, Concrete $object = null, array $params = []): mixed
+    protected function handleDefaultValue(mixed $data, ?Concrete $object = null, array $params = []): mixed
     {
         // 1. only for create, not on update. otherwise there is no way to null it out anymore.
         if ($params['isUpdate'] ?? true) {
@@ -67,7 +68,7 @@ trait DefaultValueTrait
                         'position' => $params['language'],
                         'fieldname' => $this->getName(),
                     ],
-                    $owner instanceof \Pimcore\Model\DataObject\Fieldcollection\Data\AbstractData => [
+                    $owner instanceof DataObject\Fieldcollection\Data\AbstractData => [
                         'ownerType' => 'fieldcollection',
                         'ownerName' => $owner->getFieldname(),
                         'fieldname' => $this->getName(),
@@ -107,7 +108,7 @@ trait DefaultValueTrait
             try {
                 // make sure we get the inherited value of the parent
                 $parentValue = DataObject\Service::useInheritedValues(true,
-                    fn () => $owner?->getValueFromParent($this->getName(), []),
+                    fn() => $owner?->getValueFromParent($this->getName(), []),
                 );
 
                 if (!$this->isEmpty($parentValue) || $parentValue === null) {

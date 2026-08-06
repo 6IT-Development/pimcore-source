@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
 
 use Exception;
 use Pimcore\Model;
+use Pimcore\Tool\Admin;
 
 /**
  * @internal
@@ -65,7 +67,7 @@ final class Editlock extends Model\AbstractModel
             $lock->getDao()->getByElement($cid, $ctype);
 
             return $lock;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -77,7 +79,7 @@ final class Editlock extends Model\AbstractModel
             $lock->getDao()->clearSession($sessionId);
 
             return true;
-        } catch (Exception $e) {
+        } catch (Exception) {
             return null;
         }
     }
@@ -85,7 +87,7 @@ final class Editlock extends Model\AbstractModel
     public static function lock(int $cid, string $ctype, string $sessionId): Editlock|bool
     {
         // try to get user
-        if (!$user = \Pimcore\Tool\Admin::getCurrentUser()) {
+        if (!$user = Admin::getCurrentUser()) {
             return false;
         }
 
@@ -124,21 +126,21 @@ final class Editlock extends Model\AbstractModel
         return $this->userId;
     }
 
-    public function setCid(int $cid): static
+    public function setCid(int $cid): Editlock
     {
         $this->cid = $cid;
 
         return $this;
     }
 
-    public function setId(?int $id): static
+    public function setId(?int $id): Editlock
     {
         $this->id = $id;
 
         return $this;
     }
 
-    public function setUserId(int $userId): static
+    public function setUserId(int $userId): Editlock
     {
         $this->userId = $userId;
 
@@ -150,7 +152,7 @@ final class Editlock extends Model\AbstractModel
         return $this->ctype;
     }
 
-    public function setCtype(string $ctype): static
+    public function setCtype(string $ctype): Editlock
     {
         $this->ctype = $ctype;
 
@@ -162,7 +164,7 @@ final class Editlock extends Model\AbstractModel
         return $this->sessionId;
     }
 
-    public function setSessionId(string $sessionId): static
+    public function setSessionId(string $sessionId): Editlock
     {
         $this->sessionId = $sessionId;
 
@@ -183,14 +185,14 @@ final class Editlock extends Model\AbstractModel
         return $this->date;
     }
 
-    public function setDate(int $date): static
+    public function setDate(int $date): Editlock
     {
         $this->date = $date;
 
         return $this;
     }
 
-    public function setCpath(string $cpath): static
+    public function setCpath(string $cpath): Editlock
     {
         $this->cpath = $cpath;
 

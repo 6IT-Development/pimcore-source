@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
@@ -175,16 +175,16 @@ interface ClassDefinitionInterface extends FieldDefinitionEnrichmentModelInterfa
     public function setEncryption(bool $encryption): static;
 
     /**
+     * @param string[] $tables
      * @internal
      *
-     * @param string[] $tables
      */
     public function addEncryptedTables(array $tables): void;
 
     /**
+     * @param string[] $tables
      * @internal
      *
-     * @param string[] $tables
      */
     public function removeEncryptedTables(array $tables): void;
 
@@ -196,9 +196,9 @@ interface ClassDefinitionInterface extends FieldDefinitionEnrichmentModelInterfa
     public function hasEncryptedTables(): bool;
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function setEncryptedTables(array $encryptedTables): static;
 

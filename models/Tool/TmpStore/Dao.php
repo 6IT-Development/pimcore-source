@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Tool\TmpStore;
@@ -18,11 +18,12 @@ namespace Pimcore\Model\Tool\TmpStore;
 use Exception;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
+use Pimcore\Model\Tool\TmpStore;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Tool\TmpStore $model
+ * @property TmpStore $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -41,11 +42,11 @@ class Dao extends Model\Dao\AbstractDao
                 'tag' => $tag,
                 'date' => time(),
                 'expiryDate' => (time() + $lifetime),
-                'serialized' => (int) $serialized,
+                'serialized' => (int)$serialized,
             ], $this->getPrimaryKey('tmp_store'));
 
             return true;
-        } catch (Exception $e) {
+        } catch (Exception) {
             return false;
         }
     }
@@ -75,8 +76,6 @@ class Dao extends Model\Dao\AbstractDao
 
     public function getIdsByTag(string $tag): array
     {
-        $items = $this->db->fetchFirstColumn('SELECT id FROM tmp_store WHERE tag = ?', [$tag]);
-
-        return $items;
+        return $this->db->fetchFirstColumn('SELECT id FROM tmp_store WHERE tag = ?', [$tag]);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener;
@@ -45,11 +46,12 @@ class ResponseExceptionListener implements EventSubscriberInterface
 
     public function __construct(
         protected DocumentRendererInterface $documentRenderer,
-        protected Connection $db,
-        protected SystemSettingsConfig $config,
-        protected Document\Service $documentService,
-        protected SiteResolver $siteResolver
-    ) {
+        protected Connection                $db,
+        protected SystemSettingsConfig      $config,
+        protected Document\Service          $documentService,
+        protected SiteResolver              $siteResolver
+    )
+    {
     }
 
     public static function getSubscribedEvents(): array
@@ -95,7 +97,7 @@ class ResponseExceptionListener implements EventSubscriberInterface
             $headers = $exception->getHeaders();
         } else {
             // only log exception if it's not intentional (like a NotFoundHttpException)
-            $this->logger->error((string) $exception);
+            $this->logger->error((string)$exception);
         }
 
         $errorPath = $this->determineErrorPath($request);

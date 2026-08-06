@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,17 +11,20 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
 
+use Pimcore\Cache;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
+use Pimcore\Model\Property\Dao;
+use Pimcore\Tool\Serialize;
 
 /**
- * @method \Pimcore\Model\Property\Dao getDao()
+ * @method Dao getDao()
  * @method void save()
  */
 final class Property extends AbstractModel
@@ -42,11 +46,11 @@ final class Property extends AbstractModel
     protected bool $inherited = false;
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
-    public function setDataFromEditmode(mixed $data): static
+    public function setDataFromEditmode(mixed $data): Property
     {
         // IMPORTANT: if you use this method be sure that the type of the property is already set
 
@@ -70,16 +74,16 @@ final class Property extends AbstractModel
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
-    public function setDataFromResource(mixed $data): static
+    public function setDataFromResource(mixed $data): Property
     {
         // IMPORTANT: if you use this method be sure that the type of the property is already set
         // do not set data for object, asset and document here, this is loaded dynamically when calling $this->getData();
         if ($this->type == 'date') {
-            $this->data = \Pimcore\Tool\Serialize::unserialize($data);
+            $this->data = Serialize::unserialize($data);
         } elseif ($this->type == 'bool') {
             $this->data = false;
             if (!empty($data)) {
@@ -97,7 +101,7 @@ final class Property extends AbstractModel
     {
         $this->getDao()->save();
 
-        \Pimcore\Cache::remove($this->getCtype() . '_properties_' . $this->getCid());
+        Cache::remove($this->getCtype() . '_properties_' . $this->getCid());
     }
 
     public function getCid(): ?int
@@ -117,7 +121,7 @@ final class Property extends AbstractModel
     {
         // lazy-load data of type asset, document, object
         if (in_array($this->getType(), ['document', 'asset', 'object']) && !$this->data instanceof ElementInterface && is_numeric($this->data)) {
-            return Element\Service::getElementById($this->getType(), (int) $this->data);
+            return Element\Service::getElementById($this->getType(), (int)$this->data);
         }
 
         return $this->data;
@@ -139,7 +143,7 @@ final class Property extends AbstractModel
     /**
      * @return $this
      */
-    public function setCid(int $cid): static
+    public function setCid(int $cid): Property
     {
         $this->cid = $cid;
 
@@ -152,7 +156,7 @@ final class Property extends AbstractModel
      *
      * @return $this
      */
-    public function setCtype(string $ctype): static
+    public function setCtype(string $ctype): Property
     {
         $this->ctype = $ctype;
 
@@ -162,7 +166,7 @@ final class Property extends AbstractModel
     /**
      * @return $this
      */
-    public function setData(mixed $data): static
+    public function setData(mixed $data): Property
     {
         if ($data instanceof ElementInterface) {
             $this->setType(Service::getElementType($data));
@@ -177,7 +181,7 @@ final class Property extends AbstractModel
     /**
      * @return $this
      */
-    public function setName(string $name): static
+    public function setName(string $name): Property
     {
         $this->name = $name;
 
@@ -190,7 +194,7 @@ final class Property extends AbstractModel
      *
      * @return $this
      */
-    public function setType(string $type): static
+    public function setType(string $type): Property
     {
         $this->type = $type;
 
@@ -219,7 +223,7 @@ final class Property extends AbstractModel
     /**
      * @return $this
      */
-    public function setCpath(?string $cpath): static
+    public function setCpath(?string $cpath): Property
     {
         $this->cpath = $cpath;
 
@@ -229,7 +233,7 @@ final class Property extends AbstractModel
     /**
      * @return $this
      */
-    public function setInherited(bool $inherited): static
+    public function setInherited(bool $inherited): Property
     {
         $this->inherited = $inherited;
 
@@ -244,7 +248,7 @@ final class Property extends AbstractModel
     /**
      * @return $this
      */
-    public function setInheritable(bool $inheritable): static
+    public function setInheritable(bool $inheritable): Property
     {
         $this->inheritable = $inheritable;
 
@@ -290,7 +294,7 @@ final class Property extends AbstractModel
         if (!$this->isInherited()) {
             if (array_key_exists($this->getType(), $idMapping)) {
                 if ($this->getData() instanceof ElementInterface) {
-                    if (array_key_exists((int) $this->getData()->getId(), $idMapping[$this->getType()])) {
+                    if (array_key_exists((int)$this->getData()->getId(), $idMapping[$this->getType()])) {
                         $this->setData(Element\Service::getElementById($this->getType(), $idMapping[$this->getType()][$this->getData()->getId()]));
                     }
                 }
@@ -305,9 +309,9 @@ final class Property extends AbstractModel
     public function serialize(): array
     {
         return [
-          'name' => $this->getName(),
-          'type' => $this->getType(),
-          'data' => $this->getData(),
+            'name' => $this->getName(),
+            'type' => $this->getType(),
+            'data' => $this->getData(),
         ];
     }
 }

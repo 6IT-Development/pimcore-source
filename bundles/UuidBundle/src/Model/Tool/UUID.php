@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\UuidBundle\Model\Tool;
@@ -62,7 +63,7 @@ final class UUID extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setInstanceIdentifier(string $instanceIdentifier): static
+    public function setInstanceIdentifier(string $instanceIdentifier): UUID
     {
         $this->instanceIdentifier = $instanceIdentifier;
 
@@ -75,13 +76,13 @@ final class UUID extends Model\AbstractModel
     }
 
     /**
-     * @internal
-     *
      * @return $this
      *
      * @throws Exception
+     * @internal
+     *
      */
-    public function setSystemInstanceIdentifier(): static
+    public function setSystemInstanceIdentifier(): UUID
     {
         $instanceIdentifier = Pimcore::getKernel()->getContainer()->getParameter('pimcore_uuid.instance_identifier');
         if (empty($instanceIdentifier)) {
@@ -95,7 +96,7 @@ final class UUID extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setItemId(int|string $id): static
+    public function setItemId(int|string $id): UUID
     {
         $this->itemId = $id;
 
@@ -110,7 +111,7 @@ final class UUID extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setType(string $type): static
+    public function setType(string $type): UUID
     {
         $this->type = $type;
 
@@ -123,9 +124,9 @@ final class UUID extends Model\AbstractModel
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function createUuid(): string
     {
@@ -158,7 +159,7 @@ final class UUID extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setItem(mixed $item): static
+    public function setItem(mixed $item): UUID
     {
         $this->setItemId($item->getId());
 
@@ -180,7 +181,7 @@ final class UUID extends Model\AbstractModel
      */
     public static function getByItem(mixed $item): UUID
     {
-        $self = new self;
+        $self = new self();
         $self->setSystemInstanceIdentifier();
         $self->setUuid($self->setItem($item)->createUuid());
 
@@ -189,7 +190,7 @@ final class UUID extends Model\AbstractModel
 
     public static function getByUuid(string $uuid): UUID
     {
-        $self = new self;
+        $self = new self();
 
         return $self->getDao()->getByUuid($uuid);
     }
@@ -199,9 +200,9 @@ final class UUID extends Model\AbstractModel
      *
      * @throws Exception
      */
-    public static function create(mixed $item): static
+    public static function create(mixed $item): UUID
     {
-        $uuid = new static;
+        $uuid = new UUID();
         $uuid->setSystemInstanceIdentifier()->setItem($item);
         $uuid->setUuid($uuid->createUuid());
 

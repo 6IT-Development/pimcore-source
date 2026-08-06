@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\Task\Maintenance;
@@ -41,7 +42,7 @@ class FullTextIndexOptimizeTask implements TaskInterface
      */
     public function execute(): void
     {
-        if ($this->lock->acquire(false)) {
+        if ($this->lock->acquire()) {
             Db::get()->fetchAllAssociative('OPTIMIZE TABLE search_backend_data');
             Db::get()->fetchAllAssociative('OPTIMIZE TABLE email_log');
         }

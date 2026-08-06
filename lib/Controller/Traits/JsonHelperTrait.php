@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Controller\Traits;
@@ -36,8 +36,8 @@ trait JsonHelperTrait
     /**
      * Returns a JsonResponse that uses the admin serializer
      *
-     * @param mixed $data    The response data
-     * @param int $status    The status code to use for the Response
+     * @param mixed $data The response data
+     * @param int $status The status code to use for the Response
      * @param array $headers Array of extra headers to add
      * @param array $context Context to pass to serializer when using serializer component
      *
@@ -52,9 +52,9 @@ trait JsonHelperTrait
     /**
      * Encodes data into JSON string
      *
-     * @param mixed $data    The data to be encoded
+     * @param mixed $data The data to be encoded
      * @param array $context Context to pass to serializer when using serializer component
-     * @param int $options   Options passed to json_encode
+     * @param int $options Options passed to json_encode
      */
     public function encodeJson(mixed $data, array $context = [], int $options = JsonResponse::DEFAULT_ENCODING_OPTIONS, bool $usePimcoreSerializer = true): string
     {
@@ -72,9 +72,9 @@ trait JsonHelperTrait
     /**
      * Decodes a JSON string into an array/object
      *
-     * @param mixed $json       The data to be decoded
+     * @param mixed $json The data to be decoded
      * @param bool $associative Whether to decode into associative array or object
-     * @param array $context    Context to pass to serializer when using serializer component
+     * @param array $context Context to pass to serializer when using serializer component
      */
     public function decodeJson(mixed $json, bool $associative = true, array $context = [], bool $usePimcoreSerializer = true): mixed
     {

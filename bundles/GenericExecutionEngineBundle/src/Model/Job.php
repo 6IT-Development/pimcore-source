@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Model;
@@ -27,10 +28,11 @@ final class Job
      */
     public function __construct(
         private readonly string $name,
-        private readonly array $steps,
-        private array $selectedElements = [],
-        private readonly array $environmentData = []
-    ) {
+        private readonly array  $steps,
+        private array           $selectedElements = [],
+        private readonly array  $environmentData = []
+    )
+    {
         if (empty($this->steps)) {
             throw new InvalidArgumentException('Job must have at least one step');
         }

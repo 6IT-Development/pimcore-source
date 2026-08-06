@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -80,7 +81,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
      *
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         $editmodeData = [];
 
@@ -124,7 +125,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
             return $this->doGetDataForEditmode($getter, $data, $params, $allowedBrickType, $level + 1);
         }
 
-        if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
+        if (!$item instanceof Objectbrick\Data\AbstractData) {
             return null;
         }
 
@@ -141,7 +142,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
                 $fieldData = $this->getDataForField($item, $fd->getName(), $fd, $level, $data->getObject(), $getter, $params);
                 $brickData[$fd->getName()] = $fieldData->objectData;
                 $brickMetaData[$fd->getName()] = $fieldData->metaData;
-                if ($fieldData->metaData['inherited'] == true) {
+                if ($fieldData->metaData['inherited']) {
                     $inherited = true;
                 }
             }
@@ -159,15 +160,13 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
 
         $brickDefinition = DataObject\Objectbrick\Definition::getByKey($allowedBrickType);
 
-        $editmodeDataItem = [
+        return [
             'data' => $brickData,
             'type' => $item->getType(),
             'metaData' => $brickMetaData,
             'inherited' => $inherited,
             'title' => $brickDefinition->getTitle(),
         ];
-
-        return $editmodeDataItem;
     }
 
     /**
@@ -213,7 +212,13 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
                 $data = $relations[0] ?? null;
             } else {
                 foreach ($relations as $rel) {
-                    $data[] = ['id' => $rel['id'], 'fullpath' => $rel['path'],  'type' => $rel['type'], 'subtype' => $rel['subtype'], 'published' => ($rel['published'] ? true : false)];
+                    $data[] = [
+                        'id' => $rel['id'],
+                        'fullpath' => $rel['path'],
+                        'type' => $rel['type'],
+                        'subtype' => $rel['subtype'],
+                        'published' => (bool)$rel['published']
+                    ];
                 }
             }
             $result->objectData = $data;
@@ -225,7 +230,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
 
             if ($fielddefinition->isEmpty($fieldValue) && !empty($parent)) {
                 $parentItem = DataObject\Service::useInheritedValues(true,
-                    fn () => $parent->{'get' . ucfirst($this->getName())}()->$getter()
+                    fn() => $parent->{'get' . ucfirst($this->getName())}()->$getter()
                 );
 
                 if (!empty($parentItem)) {
@@ -233,7 +238,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
                 }
             }
             $result->objectData = $editmodeValue;
-            $result->metaData['objectid'] = $baseObject ? $baseObject->getId() : null;
+            $result->metaData['objectid'] = $baseObject?->getId();
             $result->metaData['inherited'] = $level != 0;
         }
 
@@ -245,7 +250,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
      *
      *
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): Objectbrick
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): Objectbrick
     {
         $container = $this->getDataFromObjectParam($object);
 
@@ -302,19 +307,19 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
      *
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         // this is handled directly in the template
         // https://github.com/pimcore/admin-ui-classic-bundle/blob/1.x/templates/admin/data_object/data_object/preview_version.html.twig
         return 'BRICKS';
     }
 
-    public function getForCsvExport(DataObject\Localizedfield|DataObject\Fieldcollection\Data\AbstractData|DataObject\Objectbrick\Data\AbstractData|DataObject\Concrete $object, array $params = []): string
+    public function getForCsvExport(DataObject\Localizedfield|DataObject\Fieldcollection\Data\AbstractData|Objectbrick\Data\AbstractData|DataObject\Concrete $object, array $params = []): string
     {
         return 'NOT SUPPORTED';
     }
 
-    public function getDataForSearchIndex(DataObject\Localizedfield|DataObject\Fieldcollection\Data\AbstractData|DataObject\Objectbrick\Data\AbstractData|DataObject\Concrete $object, array $params = []): string
+    public function getDataForSearchIndex(DataObject\Localizedfield|DataObject\Fieldcollection\Data\AbstractData|Objectbrick\Data\AbstractData|DataObject\Concrete $object, array $params = []): string
     {
         $dataString = '';
         $obData = $this->getDataFromObjectParam($object, $params);
@@ -322,7 +327,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         if ($obData instanceof DataObject\Objectbrick) {
             $items = $obData->getItems();
             foreach ($items as $item) {
-                if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
+                if (!$item instanceof Objectbrick\Data\AbstractData) {
                     continue;
                 }
 
@@ -337,7 +342,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         return $dataString;
     }
 
-    public function save(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function save(Localizedfield|AbstractData|Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         $container = $this->getDataFromObjectParam($object);
         if ($container instanceof DataObject\Objectbrick) {
@@ -345,7 +350,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         }
     }
 
-    public function load(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): mixed
+    public function load(Localizedfield|AbstractData|Objectbrick\Data\AbstractData|Concrete $object, array $params = []): mixed
     {
         $classname = '\\Pimcore\\Model\\DataObject\\' . ucfirst($object->getClass()->getName()) . '\\' . ucfirst($this->getName());
 
@@ -359,7 +364,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         return null;
     }
 
-    public function delete(Localizedfield|AbstractData|\Pimcore\Model\DataObject\Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
+    public function delete(Localizedfield|AbstractData|Objectbrick\Data\AbstractData|Concrete $object, array $params = []): void
     {
         $container = $this->load($object);
         if ($container) {
@@ -412,7 +417,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         if ($data instanceof DataObject\Objectbrick) {
             $items = $data->getItems();
             foreach ($items as $item) {
-                if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
+                if (!$item instanceof Objectbrick\Data\AbstractData) {
                     continue;
                 }
 
@@ -434,7 +439,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         if ($data instanceof DataObject\Objectbrick) {
             $items = $data->getItems();
             foreach ($items as $item) {
-                if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
+                if (!$item instanceof Objectbrick\Data\AbstractData) {
                     continue;
                 }
 
@@ -505,7 +510,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
                 $getter = 'get' . ucfirst($allowedType);
                 $item = $data->$getter();
 
-                if ($item instanceof DataObject\Objectbrick\Data\AbstractData) {
+                if ($item instanceof Objectbrick\Data\AbstractData) {
                     if ($item->getDoDelete()) {
                         continue;
                     }
@@ -568,16 +573,12 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
                 }
                 $message = implode(' / ', $errors);
 
-                throw new Model\Element\ValidationException('invalid brick ' . $this->getName().': '.$message);
+                throw new Model\Element\ValidationException('invalid brick ' . $this->getName() . ': ' . $message);
             }
         }
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataForGrid(?Objectbrick $data, Concrete $object = null, array $params = []): string
+    public function getDataForGrid(?Objectbrick $data, ?Concrete $object = null, array $params = []): string
     {
         return 'NOT SUPPORTED';
     }
@@ -586,9 +587,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
     {
         $valueGetter = 'get' . ucfirst($key);
 
-        $value = $fielddefinition->getDiffDataForEditmode($item->$valueGetter(), $baseObject, $params);
-
-        return $value;
+        return $fielddefinition->getDiffDataForEditmode($item->$valueGetter(), $baseObject, $params);
     }
 
     private function doGetDiffDataForEditmode(Objectbrick $data, string $getter, array $params = [], int $level = 0): ?array
@@ -602,7 +601,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
             return $this->doGetDiffDataForEditmode($data, $getter, $params, $level + 1);
         }
 
-        if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
+        if (!$item instanceof Objectbrick\Data\AbstractData) {
             return null;
         }
 
@@ -613,7 +612,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         $result = [];
 
         foreach ($collectionDef->getFieldDefinitions() as $fd) {
-            $fieldData = $this->getDiffDataForField($item, $fd->getName(), $fd, $level, $data->getObject(), $getter, $params = []);
+            $fieldData = $this->getDiffDataForField($item, $fd->getName(), $fd, $level, $data->getObject(), $getter);
 
             $diffdata = [];
 
@@ -646,7 +645,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
     /** See parent class.
      *
      */
-    public function getDiffDataForEditMode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDiffDataForEditMode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         $editmodeData = [];
 
@@ -671,7 +670,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
      *
      *
      */
-    public function getDiffDataFromEditmode(array $data, DataObject\Concrete $object = null, array $params = []): mixed
+    public function getDiffDataFromEditmode(array $data, ?DataObject\Concrete $object = null, array $params = []): mixed
     {
         $valueGetter = 'get' . ucfirst($this->getName());
         $valueSetter = 'set' . ucfirst($this->getName());
@@ -725,7 +724,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
         if ($data instanceof DataObject\Objectbrick) {
             $items = $data->getItems();
             foreach ($items as $item) {
-                if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
+                if (!$item instanceof Objectbrick\Data\AbstractData) {
                     continue;
                 }
 
@@ -735,7 +734,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
 
                 foreach ($collectionDef->getFieldDefinitions() as $fd) {
                     if ($fd instanceof IdRewriterInterface
-                    && $fd instanceof DataObject\ClassDefinition\Data) {
+                        && $fd instanceof DataObject\ClassDefinition\Data) {
                         $d = $fd->rewriteIds($item, $idMapping, $params);
                         $setter = 'set' . ucfirst($fd->getName());
                         $item->$setter($d);
@@ -819,7 +818,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface, Ty
             $result = [];
             $value = $value->getObjectVars();
             foreach ($value as $item) {
-                if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
+                if (!$item instanceof Objectbrick\Data\AbstractData) {
                     continue;
                 }
 

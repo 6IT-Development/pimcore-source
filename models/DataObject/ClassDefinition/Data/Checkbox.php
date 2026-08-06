@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
+use Pimcore\Db;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -52,12 +54,9 @@ class Checkbox extends Data implements ResourcePersistenceAwareInterface, QueryR
     }
 
     /**
-     * @param null|DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataForResource
-     *
      */
-    public function getDataForResource(mixed $data, Concrete $object = null, array $params = []): ?int
+    public function getDataForResource(mixed $data, ?Concrete $object = null, array $params = []): ?int
     {
         $data = $this->handleDefaultValue($data, $object, $params);
 
@@ -65,15 +64,12 @@ class Checkbox extends Data implements ResourcePersistenceAwareInterface, QueryR
     }
 
     /**
-     *
-     *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
-     *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?bool
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?bool
     {
         if (!is_null($data)) {
-            $data = (bool) $data;
+            $data = (bool)$data;
         }
 
         return $data;
@@ -84,7 +80,7 @@ class Checkbox extends Data implements ResourcePersistenceAwareInterface, QueryR
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?int
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?int
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -95,12 +91,12 @@ class Checkbox extends Data implements ResourcePersistenceAwareInterface, QueryR
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?int
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?int
     {
         return $this->getDataForResource($data, $object, $params);
     }
 
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?bool
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?bool
     {
         return $this->getDataFromResource($data, $object, $params);
     }
@@ -111,7 +107,7 @@ class Checkbox extends Data implements ResourcePersistenceAwareInterface, QueryR
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return (string)$data;
     }
@@ -123,9 +119,9 @@ class Checkbox extends Data implements ResourcePersistenceAwareInterface, QueryR
         }
 
         /* @todo seems to cause problems with old installations
-        if(!is_bool($data) and $data !== 1 and $data !== 0){
-        throw new \Exception(get_class($this).": invalid data");
-        }*/
+         * if(!is_bool($data) and $data !== 1 and $data !== 0){
+         * throw new \Exception(get_class($this).": invalid data");
+         * }*/
     }
 
     public function getForCsvExport(DataObject\Localizedfield|DataObject\Fieldcollection\Data\AbstractData|DataObject\Objectbrick\Data\AbstractData|DataObject\Concrete $object, array $params = []): string
@@ -173,7 +169,7 @@ class Checkbox extends Data implements ResourcePersistenceAwareInterface, QueryR
      */
     public function getFilterConditionExt(mixed $value, string $operator, array $params = []): string
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $value = $db->quote($value);
         $key = $db->quoteIdentifier($this->name);
 

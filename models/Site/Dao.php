@@ -9,19 +9,21 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Site;
 
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Model\Site;
+use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Site $model
+ * @property Site $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -113,7 +115,7 @@ class Dao extends Model\Dao\AbstractDao
         $this->model->setCreationDate($ts);
         $this->model->setModificationDate($ts);
         $this->db->insert('sites', ['rootId' => $this->model->getRootId()]);
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
     }
 
     /**
@@ -130,10 +132,10 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($site as $key => $value) {
             if (in_array($key, $this->getValidTableColumns('sites'))) {
                 if (is_array($value) || is_object($value)) {
-                    $value = \Pimcore\Tool\Serialize::serialize($value);
+                    $value = Serialize::serialize($value);
                 }
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 }
                 $data[$key] = $value;
             }

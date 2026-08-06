@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Migrate;
@@ -64,7 +65,7 @@ class ThumbnailsFolderStructureCommand extends AbstractCommand
             $matches = [];
             preg_match('/(image-thumb|video-thumb|pdf-thumb)__(\d+)__/', $attributes->path(), $matches);
 
-            return count($matches) > 2 && !str_contains('/' . $attributes->path(), '/'.$matches[2].'/' . $matches[1] . '__'.$matches[2].'__');
+            return count($matches) > 2 && !str_contains('/' . $attributes->path(), '/' . $matches[2] . '/' . $matches[1] . '__' . $matches[2] . '__');
         });
 
         $iterator = $thumbnailFiles->toArray();

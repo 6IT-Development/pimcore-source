@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -108,7 +109,7 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
         $this->autoConvert = $autoConvert;
     }
 
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         $data = $this->handleDefaultValue($data, $object, $params);
 
@@ -125,12 +126,12 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
         ];
     }
 
-    public function getDataForQueryResource(mixed $data, Concrete $object = null, array $params = []): array
+    public function getDataForQueryResource(mixed $data, ?Concrete $object = null, array $params = []): array
     {
         return $this->getDataForResource($data, $object, $params);
     }
 
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if ($data instanceof Model\DataObject\Data\AbstractQuantityValue) {
             return [
@@ -142,7 +143,7 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
         return null;
     }
 
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if ($data instanceof Model\DataObject\Data\AbstractQuantityValue) {
             $unit = '';
@@ -153,7 +154,7 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
                 }
             }
 
-            return htmlspecialchars((string)$data->getValue() . $unit, ENT_QUOTES, 'UTF-8');
+            return htmlspecialchars($data->getValue() . $unit, ENT_QUOTES, 'UTF-8');
         }
 
         return '';
@@ -163,7 +164,7 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
     {
         $data = $this->getDataFromObjectParam($object, $params);
         if ($data instanceof Model\DataObject\Data\AbstractQuantityValue) {
-            return (string) $data;
+            return (string)$data;
         }
 
         return '';
@@ -172,7 +173,7 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
     /**
      * display the quantity value field data in the grid
      */
-    public function getDataForGrid(mixed $data, Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(mixed $data, ?Concrete $object = null, array $params = []): ?array
     {
         if ($data instanceof Model\DataObject\Data\AbstractQuantityValue) {
             $unit = $data->getUnit();
@@ -239,7 +240,7 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
         $baseUnit = $filterUnit->getBaseunit() ?? $filterUnit;
 
         $unitListing = new Model\DataObject\QuantityValue\Unit\Listing();
-        $unitListing->setCondition('baseunit='.Db::get()->quote($baseUnit->getId()).' OR id='.Db::get()->quote($filterUnit->getId()));
+        $unitListing->setCondition('baseunit=' . Db::get()->quote($baseUnit->getId()) . ' OR id=' . Db::get()->quote($filterUnit->getId()));
 
         $conditions = [];
         foreach ($unitListing->load() as $unit) {
@@ -257,18 +258,18 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
                 $convertedQuantityValue = $converter->convert($filterQuantityValue, $unit);
             }
 
-            $conditions[] = '('.
+            $conditions[] = '(' .
                 $this->getFilterConditionExt(
                     $convertedQuantityValue->getValue(),
                     $operator,
-                    ['name' => $this->getName().'__value']
-                ).
-                ' AND '.
+                    ['name' => $this->getName() . '__value']
+                ) .
+                ' AND ' .
                 $this->getFilterConditionExt(
                     $convertedQuantityValue->getUnitId(),
                     '=',
-                    ['name' => $this->getName().'__unit']
-                ).
+                    ['name' => $this->getName() . '__unit']
+                ) .
                 ')';
         }
 
@@ -277,7 +278,7 @@ abstract class AbstractQuantityValue extends Data implements ResourcePersistence
 
     protected function prepareUnitIdForComparison(mixed $unitId): string
     {
-        $unitId = (string) $unitId;
+        $unitId = (string)$unitId;
         if (empty($unitId)) {
             $unitId = '';
         }

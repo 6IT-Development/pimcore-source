@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Definition\Import;
@@ -35,7 +36,7 @@ class QuantityValueCommand extends AbstractCommand
 {
     use DryRun;
 
-    public function __construct(private Service $service)
+    public function __construct(private readonly Service $service)
     {
         parent::__construct();
     }
@@ -92,7 +93,7 @@ class QuantityValueCommand extends AbstractCommand
         $path = $this->getPath();
         $json = $this->getJson($path);
         $override = $this->input->getOption('override') ?? false;
-        $result = false;
+
         if ($this->isDryRun()) {
             $this->output->writeln($this->prefixDryRun(sprintf('Skipping the unit definition import from %s', $path)));
             $result = true;

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -31,7 +32,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
      * @see ResourcePersistenceAwareInterface::getDataForResource
      *
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return Serialize::serialize($data);
     }
@@ -72,7 +73,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
      *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         return Serialize::unserialize($data);
     }
@@ -82,7 +83,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -93,7 +94,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if (!empty($data)) {
             if (is_array($data)) {
@@ -118,7 +119,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if (is_array($data)) {
             $points = [];
@@ -138,7 +139,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         return $this->getDiffVersionPreview($data, $object, $params);
     }
@@ -171,13 +172,11 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
         return true;
     }
 
-    /** Generates a pretty version preview (similar to getVersionPreview) can be either html or
+    /**
+     * Generates a pretty version preview (similar to getVersionPreview) can be either html or
      * a image URL. See the https://github.com/pimcore/object-merger bundle documentation for details
-     *
-     * @param DataObject\Concrete|null $object
-     *
      */
-    public function getDiffVersionPreview(?array $data, Concrete $object = null, array $params = []): string
+    public function getDiffVersionPreview(?array $data, ?Concrete $object = null, array $params = []): string
     {
         $line = [];
 
@@ -196,8 +195,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
             return true;
         }
 
-        if (!is_array($oldValue) || !is_array($newValue)
-        || count($oldValue) != count($newValue)) {
+        if (!is_array($oldValue) || !is_array($newValue) || count($oldValue) != count($newValue)) {
             return false;
         }
 
@@ -206,13 +204,7 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
         $oldValue = array_values($oldValue);
         $newValue = array_values($newValue);
 
-        foreach ($oldValue as $p => $point) {
-            if (!$fd->isEqual($point, $newValue[$p])) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($oldValue, fn($point, $p) => $fd->isEqual($point, $newValue[$p]));
     }
 
     public function getParameterTypeDeclaration(): ?string
@@ -227,12 +219,12 @@ class Geopolygon extends AbstractGeo implements ResourcePersistenceAwareInterfac
 
     public function getPhpdocInputType(): ?string
     {
-        return '\\'.DataObject\Data\GeoCoordinates::class.'[]|null';
+        return '\\' . DataObject\Data\GeoCoordinates::class . '[]|null';
     }
 
     public function getPhpdocReturnType(): ?string
     {
-        return '\\'.DataObject\Data\GeoCoordinates::class.'[]|null';
+        return '\\' . DataObject\Data\GeoCoordinates::class . '[]|null';
     }
 
     public function normalize(mixed $value, array $params = []): ?array

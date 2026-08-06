@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
@@ -19,12 +20,13 @@ namespace Pimcore\Model\DataObject;
 use Exception;
 use Pimcore\Model;
 use Pimcore\Model\DataObject\ClassDefinition\Data\PreGetDataInterface;
+use Pimcore\Model\DataObject\Classificationstore\Dao;
 use Pimcore\Model\Element\DirtyIndicatorInterface;
 use Pimcore\Tool;
 
 /**
- * @method \Pimcore\Model\DataObject\Classificationstore\Dao createUpdateTable()
- * @method \Pimcore\Model\DataObject\Classificationstore\Dao getDao()
+ * @method Dao createUpdateTable()
+ * @method Dao getDao()
  * @method void delete()
  * @method Classificationstore load()
  * @method void save()
@@ -70,7 +72,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
      */
     protected array $groupCollectionMapping = [];
 
-    public function __construct(array $items = null)
+    public function __construct(?array $items = null)
     {
         if ($items) {
             $this->setItems($items);
@@ -100,7 +102,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         }
 
         return $this->getAllDataFromField(
-            fn ($classificationStore, $fieldsArray) => $this->mergeArrays(
+            fn($classificationStore, $fieldsArray) => $this->mergeArrays(
                 $fieldsArray,
                 $classificationStore->items
             )
@@ -155,7 +157,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
      *
      * @throws Exception
      */
-    public function setLocalizedKeyValue(int $groupId, int $keyId, mixed $value, string $language = null): static
+    public function setLocalizedKeyValue(int $groupId, int $keyId, mixed $value, ?string $language = null): static
     {
         if (!$groupId) {
             throw new Exception('groupId not valid');
@@ -262,7 +264,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
             return $this->activeGroups;
         }
 
-        return $this->getAllDataFromField(fn ($classificationStore, $fieldsArray) => $classificationStore->activeGroups + $fieldsArray);
+        return $this->getAllDataFromField(fn($classificationStore, $fieldsArray) => $classificationStore->activeGroups + $fieldsArray);
     }
 
     private function sanitizeActiveGroups(array $activeGroups): array
@@ -325,12 +327,13 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
      * @throws Exception
      */
     public function getLocalizedKeyValue(
-        int $groupId,
-        int $keyId,
+        int     $groupId,
+        int     $keyId,
         ?string $language = 'default',
-        bool $ignoreFallbackLanguage = false,
-        bool $ignoreDefaultLanguage = false
-    ): mixed {
+        bool    $ignoreFallbackLanguage = false,
+        bool    $ignoreDefaultLanguage = false
+    ): mixed
+    {
         $language = $this->getLanguage($language);
 
         $keyConfig = Model\DataObject\Classificationstore\DefinitionCache::get($keyId);
@@ -338,16 +341,14 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
             $data = new Model\DataObject\Data\CalculatedValue($this->getFieldname());
             $childDef = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
             $data->setContextualData('classificationstore', $this->getFieldname(), null, $language, $groupId, $keyId, $childDef);
-            $data = Model\DataObject\Service::getCalculatedFieldValueForEditMode($this->getObject(), [], $data);
-
-            return $data;
+            return Model\DataObject\Service::getCalculatedFieldValueForEditMode($this->getObject(), [], $data);
         }
 
         $fieldDefinition = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
         $data = null;
 
         if (array_key_exists($groupId, $this->items) && array_key_exists($keyId, $this->items[$groupId])
-                && array_key_exists($language, $this->items[$groupId][$keyId])
+            && array_key_exists($language, $this->items[$groupId][$keyId])
         ) {
             $data = $this->items[$groupId][$keyId][$language];
         }
@@ -382,7 +383,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
                             $classificationStore = $parent->$getter();
                             if ($classificationStore instanceof Classificationstore) {
                                 if ($classificationStore->object->getId() != $this->object->getId()) {
-                                    $data = $classificationStore->getLocalizedKeyValue($groupId, $keyId, $language, false);
+                                    $data = $classificationStore->getLocalizedKeyValue($groupId, $keyId, $language);
                                 }
                             }
                         }
@@ -417,7 +418,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
             return $this->groupCollectionMapping;
         }
 
-        return $this->getAllDataFromField(fn ($classificationStore, $fieldsArray) => $fieldsArray + $classificationStore->groupCollectionMapping);
+        return $this->getAllDataFromField(fn($classificationStore, $fieldsArray) => $fieldsArray + $classificationStore->groupCollectionMapping);
     }
 
     /**
@@ -428,7 +429,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         $this->groupCollectionMapping = $groupCollectionMapping;
     }
 
-    public function setGroupCollectionMapping(int $groupId = null, int $collectionId = null): void
+    public function setGroupCollectionMapping(?int $groupId = null, ?int $collectionId = null): void
     {
         if ($groupId && $collectionId) {
             $this->groupCollectionMapping[$groupId] = $collectionId;
@@ -478,9 +479,10 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
     }
 
     public function createGroup(
-        Classificationstore $classificationstore,
+        Classificationstore             $classificationstore,
         Classificationstore\GroupConfig $groupConfig
-    ): Model\DataObject\Classificationstore\Group {
+    ): Model\DataObject\Classificationstore\Group
+    {
         return new Model\DataObject\Classificationstore\Group($classificationstore, $groupConfig);
     }
 

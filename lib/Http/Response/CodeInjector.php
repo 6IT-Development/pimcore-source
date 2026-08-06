@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Http\Response;
@@ -24,15 +24,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CodeInjector
 {
-    public const SELECTOR_BODY = 'body';
+    public const string SELECTOR_BODY = 'body';
 
-    public const SELECTOR_HEAD = 'head';
+    public const string SELECTOR_HEAD = 'head';
 
-    public const POSITION_BEGINNING = 'beginning';
+    public const string POSITION_BEGINNING = 'beginning';
 
-    public const POSITION_END = 'end';
+    public const string POSITION_END = 'end';
 
-    public const REPLACE = 'replace';
+    public const string REPLACE = 'replace';
 
     private static array $presetSelectors = [
         self::SELECTOR_HEAD,
@@ -118,9 +118,7 @@ class CodeInjector
         }
 
         // replace placeholder with actual code
-        $html = str_replace($injectTpl, $code, $html);
-
-        return $html;
+        return str_replace($injectTpl, $code, $html);
     }
 
     private function injectIntoDomSelector(string $html, string $code, string $selector, string $position, string $charset): string

@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Image;
@@ -41,7 +41,7 @@ final class Thumbnail implements ThumbnailInterface
      */
     protected static array $hasListenersCache = [];
 
-    public function __construct(Image $asset, array|string|Thumbnail\Config $config = null, bool $deferred = true)
+    public function __construct(Image $asset, array|string|Thumbnail\Config|null $config = null, bool $deferred = true)
     {
         $this->asset = $asset;
         $this->deferred = $deferred;
@@ -53,7 +53,7 @@ final class Thumbnail implements ThumbnailInterface
         // set defaults
         $deferredAllowed = $args['deferredAllowed'] ?? true;
         $cacheBuster = $args['cacheBuster'] ?? false;
-        $frontend = $args['frontend'] ?? \Pimcore\Tool::isFrontend();
+        $frontend = $args['frontend'] ?? Tool::isFrontend();
 
         $pathReference = null;
         if (
@@ -102,7 +102,7 @@ final class Thumbnail implements ThumbnailInterface
 
     protected function useOriginalFile(string $filename): bool
     {
-        return $this->getConfig() && preg_match("@\.svgz?$@", $filename) && !$this->getConfig()->isRasterizeSVG();
+        return $this->getConfig() && preg_match('@\.svgz?$@', $filename) && !$this->getConfig()->isRasterizeSVG();
     }
 
     /**
@@ -174,7 +174,7 @@ final class Thumbnail implements ThumbnailInterface
     {
         $sourceTagAttributes = [];
         $sourceTagAttributes['srcset'] = $this->getSrcset($thumbConfig, $image, $options, $mediaQuery);
-        $thumb = $image->getThumbnail($thumbConfig, true);
+        $thumb = $image->getThumbnail($thumbConfig);
 
         if ($mediaQuery) {
             $sourceTagAttributes['media'] = $mediaQuery;
@@ -223,7 +223,7 @@ final class Thumbnail implements ThumbnailInterface
 
         if (($options['lowQualityPlaceholder'] ?? false) && !Tool::isFrontendRequestByAdmin()) {
             // this gets used in getImagTag() later, use a 1x1 transparent GIF as a fallback if no LQIP exists
-            $options['previewDataUri'] =  $image->getLowQualityPreviewDataUri() ?: $emptyGif;
+            $options['previewDataUri'] = $image->getLowQualityPreviewDataUri() ?: $emptyGif;
         }
 
         $isAutoFormat = $thumbConfig instanceof Config && strtolower($thumbConfig->getFormat()) === 'source';
@@ -242,7 +242,7 @@ final class Thumbnail implements ThumbnailInterface
 
         if ($thumbConfig instanceof Config) {
             $thumbConfigRes = clone $thumbConfig;
-            $html.= $this->getMediaConfigHtml($thumbConfigRes, $image, $options, $isAutoFormat);
+            $html .= $this->getMediaConfigHtml($thumbConfigRes, $image, $options, $isAutoFormat);
         }
 
         if (!($options['disableImgTag'] ?? null)) {
@@ -320,8 +320,6 @@ final class Thumbnail implements ThumbnailInterface
                 $titleText = $image->getMetadata($customTitle);
             } elseif ($image->getMetadata('title')) {
                 $titleText = $image->getMetadata('title');
-            } else {
-                //don't change the one that is already set
             }
         }
 
@@ -348,8 +346,6 @@ final class Thumbnail implements ThumbnailInterface
                 $copyrightText = $image->getMetadata($customCopyright);
             } elseif ($image->getMetadata('copyright')) {
                 $copyrightText = $image->getMetadata('copyright');
-            } else {
-                // no value found, skip it
             }
 
             if (isset($copyrightText)) {
@@ -458,7 +454,7 @@ final class Thumbnail implements ThumbnailInterface
                 $thumbConfigRes->selectMedia($mediaQuery);
             }
             $thumbConfigRes->setHighResolution($highRes);
-            $thumb = $image->getThumbnail($thumbConfigRes, true);
+            $thumb = $image->getThumbnail($thumbConfigRes);
 
             $descriptor = $highRes . 'x';
             // encode comma in thumbnail path as srcset is a comma separated list

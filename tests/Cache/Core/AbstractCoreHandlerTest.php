@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Cache\Core;
@@ -92,7 +93,7 @@ abstract class AbstractCoreHandlerTest extends Unit
         }
 
         // call tests with TEST_LOG=1 if you need logs (e.g. during development)
-        if ((bool)getenv('TEST_LOG')) {
+        if (getenv('TEST_LOG')) {
             echo PHP_EOL;
             $bufferHandler->flush();
             echo PHP_EOL;
@@ -149,7 +150,7 @@ abstract class AbstractCoreHandlerTest extends Unit
 
     public static function setUpBeforeClass(): void
     {
-        static::setupLogger((new ReflectionClass(__CLASS__))->getShortName());
+        static::setupLogger(new ReflectionClass(__CLASS__)->getShortName());
     }
 
     public static function tearDownAfterClass(): void
@@ -157,7 +158,7 @@ abstract class AbstractCoreHandlerTest extends Unit
         static::handleLogOutput();
     }
 
-    protected function getHandlerPropertyValue(string $property, CoreCacheHandler $handler = null): mixed
+    protected function getHandlerPropertyValue(string $property, ?CoreCacheHandler $handler = null): mixed
     {
         if (null === $handler) {
             $handler = $this->handler;
@@ -621,7 +622,7 @@ abstract class AbstractCoreHandlerTest extends Unit
 
     public function testShutdownTagListIsProcessedOnMethodCall(): void
     {
-        $this->handleShutdownTagListProcessing(false);
+        $this->handleShutdownTagListProcessing();
     }
 
     public function testShutdownTagListIsProcessedOnShutdown(): void

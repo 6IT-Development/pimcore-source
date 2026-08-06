@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -23,16 +23,16 @@ use Pimcore\Model\Dao\AbstractDao;
 
 final class Version20230616085142 extends AbstractMigration
 {
-    private const ID_COLUMN = 'id';
+    private const string ID_COLUMN = 'id';
 
-    private const O_PREFIX = 'o_';
+    private const string O_PREFIX = 'o_';
 
-    private const PK_COLUMNS = '`' . self::ID_COLUMN .
-        '`,`dest_id`, `type`, `fieldname`, `column`, `ownertype`, `ownername`, `position`, `index`';
+    private const string PK_COLUMNS = '`' . self::ID_COLUMN .
+    '`,`dest_id`, `type`, `fieldname`, `column`, `ownertype`, `ownername`, `position`, `index`';
 
-    private const UNIQUE_KEY_NAME = 'metadata_un';
+    private const string UNIQUE_KEY_NAME = 'metadata_un';
 
-    private const AUTO_ID = 'auto_id';
+    private const string AUTO_ID = 'auto_id';
 
     public function getDescription(): string
     {
@@ -80,7 +80,7 @@ final class Version20230616085142 extends AbstractMigration
                 if ($recreateForeignKey) {
                     $this->addSql(
                         'ALTER TABLE `' . $tableName . '`
-                            ADD CONSTRAINT `'.$foreignKeyName.'`
+                            ADD CONSTRAINT `' . $foreignKeyName . '`
                             FOREIGN KEY (`' . self::ID_COLUMN . '`)
                             REFERENCES `objects` (`' . self::ID_COLUMN . '`)
                             ON UPDATE NO ACTION
@@ -115,7 +115,7 @@ final class Version20230616085142 extends AbstractMigration
 
                 $this->addSql('ALTER TABLE `' . $tableName . '` DROP COLUMN `' . self::AUTO_ID . '`');
                 $this->addSql(
-                    'ALTER TABLE `' . $tableName . '` ADD PRIMARY KEY (' . self::PK_COLUMNS  . ')'
+                    'ALTER TABLE `' . $tableName . '` ADD PRIMARY KEY (' . self::PK_COLUMNS . ')'
                 );
 
                 if ($metaDataTable->hasIndex(self::UNIQUE_KEY_NAME)) {
@@ -127,7 +127,7 @@ final class Version20230616085142 extends AbstractMigration
                 if ($recreateForeignKey) {
                     $this->addSql(
                         'ALTER TABLE `' . $tableName . '`
-                            ADD CONSTRAINT `'.$foreignKeyName.'`
+                            ADD CONSTRAINT `' . $foreignKeyName . '`
                             FOREIGN KEY (`' . self::ID_COLUMN . '`)
                             REFERENCES `objects` (`' . self::ID_COLUMN . '`)
                             ON UPDATE RESTRICT

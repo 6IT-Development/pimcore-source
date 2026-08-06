@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
@@ -59,13 +60,14 @@ class FullPageCacheListener
     protected ?string $defaultCacheKey = null;
 
     public function __construct(
-        protected SessionStatus $sessionStatus,
+        protected SessionStatus            $sessionStatus,
         protected EventDispatcherInterface $eventDispatcher,
-        protected Config $config
-    ) {
+        protected Config                   $config
+    )
+    {
     }
 
-    public function disable(string $reason = null): bool
+    public function disable(?string $reason = null): bool
     {
         if ($reason) {
             $this->disableReason = $reason;
@@ -129,7 +131,7 @@ class FullPageCacheListener
             return;
         }
 
-        if (!\Pimcore\Tool::useFrontendOutputFilters()) {
+        if (!Tool::useFrontendOutputFilters()) {
             return;
         }
 
@@ -181,7 +183,7 @@ class FullPageCacheListener
                 }
 
                 if (!empty($conf['lifetime'])) {
-                    $this->setLifetime((int) $conf['lifetime']);
+                    $this->setLifetime((int)$conf['lifetime']);
                 }
 
                 if (!empty($conf['exclude_patterns'])) {
@@ -208,7 +210,7 @@ class FullPageCacheListener
                 }
 
                 // output-cache is always disabled when logged in at the admin ui
-                if (null !== $pimcoreUser = Tool\Authentication::authenticateSession($request)) {
+                if (null !== Tool\Authentication::authenticateSession($request)) {
                     $this->disable('backend user is logged in');
 
                     return;
@@ -219,7 +221,7 @@ class FullPageCacheListener
                 return;
             }
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             $this->disable('ERROR: Exception (see log files in /var/log)');
 
@@ -253,14 +255,12 @@ class FullPageCacheListener
 
         $appendKey .= $request->getMethod();
 
-        $this->defaultCacheKey = 'output_' . md5(\Pimcore\Tool::getHostname() . $requestUri . $appendKey);
+        $this->defaultCacheKey = 'output_' . md5(Tool::getHostname() . $requestUri . $appendKey);
         $cacheKeys = [
             $this->defaultCacheKey . '_' . $device,
             $this->defaultCacheKey,
         ];
 
-        $cacheKey = null;
-        $cacheItem = null;
         foreach ($cacheKeys as $cacheKey) {
             $cacheItem = Cache::load($cacheKey);
             if ($cacheItem) {
@@ -271,9 +271,9 @@ class FullPageCacheListener
         if ($cacheItem) {
             /** @var Response $response */
             $response = $cacheItem;
-            $response->headers->set('X-Pimcore-Output-Cache-Tag', $cacheKey, true);
+            $response->headers->set('X-Pimcore-Output-Cache-Tag', $cacheKey);
             $cacheItemDate = strtotime($response->headers->get('X-Pimcore-Cache-Date'));
-            $response->headers->set('Age', (string) (time() - $cacheItemDate));
+            $response->headers->set('Age', (string)(time() - $cacheItemDate));
 
             $event->setResponse($response);
             $this->stopResponsePropagation = true;
@@ -294,7 +294,7 @@ class FullPageCacheListener
         }
 
         $request = $event->getRequest();
-        if (!\Pimcore\Tool::isFrontend() || \Pimcore\Tool::isFrontendRequestByAdmin($request)) {
+        if (!Tool::isFrontend() || Tool::isFrontendRequestByAdmin($request)) {
             return;
         }
 
@@ -317,19 +317,19 @@ class FullPageCacheListener
         }
 
         if ($this->disableReason) {
-            $response->headers->set('X-Pimcore-Output-Cache-Disable-Reason', $this->disableReason, true);
+            $response->headers->set('X-Pimcore-Output-Cache-Disable-Reason', $this->disableReason);
         }
 
         if ($this->enabled && $response->getStatusCode() == 200 && $this->defaultCacheKey) {
             try {
                 if ($this->lifetime && $this->addExpireHeader) {
                     // add cache control for proxies and http-caches like varnish, ...
-                    $response->headers->set('Cache-Control', 'public, max-age=' . $this->lifetime, true);
+                    $response->headers->set('Cache-Control', 'public, max-age=' . $this->lifetime);
 
                     // add expire header
                     $date = new DateTime('now');
                     $date->add(new DateInterval('PT' . $this->lifetime . 'S'));
-                    $response->headers->set('Expires', $date->format(DateTimeInterface::RFC1123), true);
+                    $response->headers->set('Expires', $date->format(DateTimeInterface::RFC1123));
                 }
 
                 $now = new DateTime('now');
@@ -353,7 +353,7 @@ class FullPageCacheListener
 
                 Cache::save($cacheItem, $cacheKey, $tags, $this->lifetime, 1000, true);
             } catch (Exception $e) {
-                Logger::error((string) $e);
+                Logger::error((string)$e);
 
                 return;
             }

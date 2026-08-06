@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Objectbrick\Data;
@@ -74,9 +75,7 @@ abstract class AbstractData extends Model\AbstractModel implements Model\DataObj
 
     public function getDefinition(): DataObject\Objectbrick\Definition
     {
-        $definition = DataObject\Objectbrick\Definition::getByKey($this->getType());
-
-        return $definition;
+        return DataObject\Objectbrick\Definition::getByKey($this->getType());
     }
 
     public function setDoDelete(bool $doDelete): static
@@ -148,7 +147,7 @@ abstract class AbstractData extends Model\AbstractModel implements Model\DataObj
 
     public function setObject(?Concrete $object): static
     {
-        $this->objectId = $object ? $object->getId() : null;
+        $this->objectId = $object?->getId();
         $this->object = $object;
 
         if (property_exists($this, 'localizedfields') && $this->localizedfields instanceof Localizedfield) {
@@ -181,14 +180,14 @@ abstract class AbstractData extends Model\AbstractModel implements Model\DataObj
         return null;
     }
 
-    public function get(string $fieldName, string $language = null): mixed
+    public function get(string $fieldName, ?string $language = null): mixed
     {
-        return $this->{'get'.ucfirst($fieldName)}($language);
+        return $this->{'get' . ucfirst($fieldName)}($language);
     }
 
-    public function set(string $fieldName, mixed $value, string $language = null): mixed
+    public function set(string $fieldName, mixed $value, ?string $language = null): mixed
     {
-        return $this->{'set'.ucfirst($fieldName)}($value, $language);
+        return $this->{'set' . ucfirst($fieldName)}($value, $language);
     }
 
     /**

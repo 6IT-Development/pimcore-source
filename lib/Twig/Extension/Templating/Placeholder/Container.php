@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -45,24 +46,18 @@ class Container extends ArrayObject
 {
     /**
      * Whether or not to override all contents of placeholder
-     *
-     * @const string
      */
-    const SET = 'SET';
+    public const string SET = 'SET';
 
     /**
      * Whether or not to append contents to placeholder
-     *
-     * @const string
      */
-    const APPEND = 'APPEND';
+    public const string APPEND = 'APPEND';
 
     /**
      * Whether or not to prepend contents to placeholder
-     *
-     * @const string
      */
-    const PREPEND = 'PREPEND';
+    public const string PREPEND = 'PREPEND';
 
     /**
      * What text to prefix the placeholder with when rendering
@@ -249,7 +244,7 @@ class Container extends ArrayObject
             $indent = str_repeat(' ', $indent);
         }
 
-        return (string) $indent;
+        return (string)$indent;
     }
 
     /**
@@ -276,7 +271,7 @@ class Container extends ArrayObject
         $this->_captureLock = true;
         $this->_captureType = $type;
         if ((null !== $key) && is_scalar($key)) {
-            $this->_captureKey = (string) $key;
+            $this->_captureKey = (string)$key;
         }
         ob_start();
     }
@@ -360,7 +355,7 @@ class Container extends ArrayObject
             return 0;
         }
 
-        return $nextIndex = max($keys) + 1;
+        return max($keys) + 1;
     }
 
     /**
@@ -368,7 +363,7 @@ class Container extends ArrayObject
      *
      *
      */
-    public function toString(int|string $indent = null): string
+    public function toString(int|string|null $indent = null): string
     {
         // Check items
         if (0 === $this->count()) {
@@ -384,9 +379,7 @@ class Container extends ArrayObject
             . $this->getPrefix()
             . implode($this->getSeparator(), $items)
             . $this->getPostfix();
-        $return = preg_replace("/(\r\n?|\n)/", '$1' . $indent, $return);
-
-        return $return;
+        return preg_replace("/(\r\n?|\n)/", '$1' . $indent, $return);
     }
 
     /**

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Config;
@@ -31,23 +32,23 @@ class LocationAwareConfigRepository
 {
     use StopMessengerWorkersTrait;
 
-    public const LOCATION_SYMFONY_CONFIG = 'symfony-config';
+    public const string LOCATION_SYMFONY_CONFIG = 'symfony-config';
 
-    public const LOCATION_SETTINGS_STORE = 'settings-store';
+    public const string LOCATION_SETTINGS_STORE = 'settings-store';
 
-    public const LOCATION_DISABLED = 'disabled';
+    public const string LOCATION_DISABLED = 'disabled';
 
-    public const READ_TARGET = 'read_target';
+    public const string READ_TARGET = 'read_target';
 
-    public const WRITE_TARGET = 'write_target';
+    public const string WRITE_TARGET = 'write_target';
 
-    public const CONFIG_LOCATION = 'config_location';
+    public const string CONFIG_LOCATION = 'config_location';
 
-    public const TYPE = 'type';
+    public const string TYPE = 'type';
 
-    public const OPTIONS = 'options';
+    public const string OPTIONS = 'options';
 
-    public const DIRECTORY = 'directory';
+    public const string DIRECTORY = 'directory';
 
     protected array $containerConfig = [];
 
@@ -56,10 +57,11 @@ class LocationAwareConfigRepository
     protected ?array $storageConfig = null;
 
     public function __construct(
-        array $containerConfig,
+        array   $containerConfig,
         ?string $settingsStoreScope,
-        array $storageConfig,
-    ) {
+        array   $storageConfig,
+    )
+    {
         $this->containerConfig = $containerConfig;
         $this->settingsStoreScope = $settingsStoreScope;
         $this->storageConfig = $storageConfig;
@@ -172,7 +174,7 @@ class LocationAwareConfigRepository
      *
      * @throws Exception
      */
-    public function saveConfig(string $key, mixed $data, callable $yamlStructureCallback = null): void
+    public function saveConfig(string $key, mixed $data, ?callable $yamlStructureCallback = null): void
     {
         $writeLocation = $this->getWriteTarget();
 
@@ -206,7 +208,7 @@ class LocationAwareConfigRepository
     {
         $container = Pimcore::getContainer();
 
-        foreach ($data as $key => &$value) {
+        foreach ($data as &$value) {
             if (is_array($value)) {
                 $this->searchAndReplaceMissingParameters($value);
 
@@ -217,10 +219,10 @@ class LocationAwareConfigRepository
                 continue;
             }
 
-            if (preg_match('/%([^%\s]+)%/', (string) $value, $match)) {
+            if (preg_match('/%([^%\s]+)%/', (string)$value, $match)) {
                 $key = $match[1];
 
-                if (str_starts_with($key, 'env(') && str_ends_with($key, ')')  && 'env()' !== $key) {
+                if (str_starts_with($key, 'env(') && str_ends_with($key, ')') && 'env()' !== $key) {
                     continue;
                 }
 

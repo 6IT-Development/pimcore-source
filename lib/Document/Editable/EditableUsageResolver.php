@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Editable;
@@ -49,13 +49,11 @@ class EditableUsageResolver
         $this->renderer->render($document, [
             EditmodeResolver::ATTRIBUTE_EDITMODE => true,
             Block::ATTRIBUTE_IGNORE_EDITMODE_INDICES => true,
-            ]);
+        ]);
         $names = $this->subscriber->getRecordedEditableNames();
         $this->unregisterEventSubscriber();
 
-        $names = array_unique($names);
-
-        return $names;
+        return array_unique($names);
     }
 
     protected function registerEventSubscriber(): void

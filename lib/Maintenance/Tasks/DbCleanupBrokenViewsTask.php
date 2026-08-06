@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance\Tasks;
@@ -46,15 +47,15 @@ class DbCleanupBrokenViewsTask implements TaskInterface
 
             if ($type === 'VIEW') {
                 try {
-                    $createStatement = $this->db->fetchAssociative('SHOW FIELDS FROM '.$name);
+                    $this->db->fetchAssociative('SHOW FIELDS FROM ' . $name);
                 } catch (Exception $e) {
                     if (str_contains($e->getMessage(), 'references invalid table')) {
-                        $this->logger->error('view '.$name.' seems to be a broken one, it will be removed');
-                        $this->logger->error('error message was: '.$e->getMessage());
+                        $this->logger->error('view ' . $name . ' seems to be a broken one, it will be removed');
+                        $this->logger->error('error message was: ' . $e->getMessage());
 
-                        $this->db->executeQuery('DROP VIEW '.$name);
+                        $this->db->executeQuery('DROP VIEW ' . $name);
                     } else {
-                        $this->logger->error((string) $e);
+                        $this->logger->error((string)$e);
                     }
                 }
             }

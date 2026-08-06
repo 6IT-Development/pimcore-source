@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\User\AbstractUser;
@@ -19,11 +19,12 @@ use DateTime;
 use Exception;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\User\AbstractUser;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\User\AbstractUser $model
+ * @property AbstractUser $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -75,7 +76,7 @@ class Dao extends Model\Dao\AbstractDao
             $data = $this->castUserDataToBoolean($data);
             $this->assignVariablesToModel($data);
         } else {
-            throw new Model\Exception\NotFoundException(sprintf('Token does not match any user.'));
+            throw new Model\Exception\NotFoundException('Token does not match any user.');
         }
     }
 
@@ -98,7 +99,7 @@ class Dao extends Model\Dao\AbstractDao
             'type' => $this->model->getType(),
         ]);
 
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
     }
 
     /**
@@ -113,7 +114,7 @@ class Dao extends Model\Dao\AbstractDao
 
         $c = $this->db->fetchOne('SELECT id FROM users WHERE parentId = ?', [$this->model->getId()]);
 
-        return (bool) $c;
+        return (bool)$c;
     }
 
     /**
@@ -130,13 +131,13 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($dataRaw as $key => $value) {
             if (in_array($key, $this->getValidTableColumns('users'))) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 } elseif (in_array($key, ['permissions', 'roles', 'docTypes', 'classes', 'perspectives', 'websiteTranslationLanguagesEdit', 'websiteTranslationLanguagesView'])) {
                     // permission and roles are stored as csv
                     if (is_array($value)) {
                         $value = implode(',', $value);
                     }
-                } elseif (in_array($key, ['twoFactorAuthentication'])) {
+                } elseif ($key == 'twoFactorAuthentication') {
                     $value = json_encode($value);
                 }
                 $data[$key] = $value;
@@ -162,7 +163,7 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function setLastLoginDate(): void
     {
-        $data['lastLogin'] = (new DateTime())->getTimestamp();
+        $data['lastLogin'] = new DateTime()->getTimestamp();
         $this->db->update('users', $data, ['id' => $this->model->getId()]);
     }
 }

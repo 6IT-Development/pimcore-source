@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Controller;
@@ -28,7 +29,7 @@ class SettingsController extends UserAwareController
 {
     use JsonHelperTrait;
 
-    #[Route("/robots-txt", name: "pimcore_bundle_seo_settings_robotstxtget", methods: ["GET"])]
+    #[Route('/robots-txt', name: 'pimcore_bundle_seo_settings_robotstxtget', methods: [Request::METHOD_GET])]
     public function robotsTxtGetAction(): JsonResponse
     {
         $this->checkPermission('robots.txt');
@@ -42,7 +43,7 @@ class SettingsController extends UserAwareController
         ]);
     }
 
-    #[Route("/robots-txt", name: "pimcore_bundle_seo_settings_robotstxtput", methods: ["PUT"])]
+    #[Route('/robots-txt', name: 'pimcore_bundle_seo_settings_robotstxtput', methods: [Request::METHOD_PUT])]
     public function robotsTxtPutAction(Request $request): JsonResponse
     {
         $this->checkPermission('robots.txt');

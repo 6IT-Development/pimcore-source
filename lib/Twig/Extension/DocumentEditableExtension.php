@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension;
@@ -19,6 +20,7 @@ namespace Pimcore\Twig\Extension;
 use Exception;
 use Generator;
 use Pimcore\Model\Document\Editable\BlockInterface;
+use Pimcore\Model\Document\Editable\EditableInterface;
 use Pimcore\Model\Document\PageSnippet;
 use Pimcore\Templating\Renderer\EditableRenderer;
 use Pimcore\Twig\TokenParser\BlockParser;
@@ -74,11 +76,11 @@ class DocumentEditableExtension extends AbstractExtension
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
-    public function renderEditable(array $context, string $type, string $name, array $options = []): string|\Pimcore\Model\Document\Editable\EditableInterface
+    public function renderEditable(array $context, string $type, string $name, array $options = []): string|EditableInterface
     {
         $document = $context['document'] ?? null;
         if (!($document instanceof PageSnippet)) {

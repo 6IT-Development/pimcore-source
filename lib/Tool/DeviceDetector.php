@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -36,7 +37,7 @@ class DeviceDetector
 
     protected bool $wasUsed = false;
 
-    public static function getInstance(string $default = null): DeviceDetector
+    public static function getInstance(?string $default = null): DeviceDetector
     {
         if (!self::$instance) {
             self::$instance = new self($default);
@@ -45,7 +46,7 @@ class DeviceDetector
         return self::$instance;
     }
 
-    public function __construct(string $default = null)
+    public function __construct(?string $default = null)
     {
         if ($default && in_array($default, ['desktop', 'mobile', 'tablet'])) {
             $this->default = $default;
@@ -112,7 +113,7 @@ class DeviceDetector
     public function getDevice(): ?string
     {
         foreach ($this->validDeviceTypes as $deviceType) {
-            if ($this->{'is'.ucfirst($deviceType)}()) {
+            if ($this->{'is' . ucfirst($deviceType)}()) {
                 return $deviceType;
             }
         }
@@ -207,7 +208,7 @@ class DeviceDetector
             }
         }
 
-        $this->{'is'.ucfirst($type)} = true;
+        $this->{'is' . ucfirst($type)} = true;
         $this->determinedDeviceType = true;
     }
 }

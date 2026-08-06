@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore;
@@ -83,7 +84,7 @@ final class GroupConfig extends Model\AbstractModel
             Cache::save($config, $cacheKey);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -109,14 +110,14 @@ final class GroupConfig extends Model\AbstractModel
 
             $config = new self();
             $config->setName($name);
-            $config->setStoreId($storeId ? $storeId : 1);
+            $config->setStoreId($storeId ?: 1);
             $config->getDao()->getByName();
 
             Cache\RuntimeCache::set($cacheKey, $config);
             Cache::save($config, $cacheKey);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -129,7 +130,7 @@ final class GroupConfig extends Model\AbstractModel
         return $config;
     }
 
-    public function setId(int $id): static
+    public function setId(int $id): GroupConfig
     {
         $this->id = $id;
 
@@ -151,7 +152,7 @@ final class GroupConfig extends Model\AbstractModel
         $this->parentId = $parentId;
     }
 
-    public function setName(string $name): static
+    public function setName(string $name): GroupConfig
     {
         $this->name = $name;
 
@@ -178,7 +179,7 @@ final class GroupConfig extends Model\AbstractModel
      *
      * @return $this
      */
-    public function setDescription(?string $description): static
+    public function setDescription(?string $description): GroupConfig
     {
         $this->description = $description;
 
@@ -224,7 +225,7 @@ final class GroupConfig extends Model\AbstractModel
         }
     }
 
-    public function setModificationDate(int $modificationDate): static
+    public function setModificationDate(int $modificationDate): GroupConfig
     {
         $this->modificationDate = $modificationDate;
 
@@ -236,7 +237,7 @@ final class GroupConfig extends Model\AbstractModel
         return $this->modificationDate;
     }
 
-    public function setCreationDate(int $creationDate): static
+    public function setCreationDate(int $creationDate): GroupConfig
     {
         $this->creationDate = $creationDate;
 
@@ -257,9 +258,7 @@ final class GroupConfig extends Model\AbstractModel
     {
         $list = new KeyGroupRelation\Listing();
         $list->setCondition('groupId = ' . $this->id);
-        $list = $list->load();
-
-        return $list;
+        return $list->load();
     }
 
     public function getStoreId(): int
@@ -275,7 +274,7 @@ final class GroupConfig extends Model\AbstractModel
     /**
      * Calculate cache key
      */
-    private static function getCacheKey(int $id, string $name = null): string
+    private static function getCacheKey(int $id, ?string $name = null): string
     {
         $cacheKey = 'cs_groupconfig_' . $id;
         if ($name !== null) {

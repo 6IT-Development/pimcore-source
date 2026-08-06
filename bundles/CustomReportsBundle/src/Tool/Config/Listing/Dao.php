@@ -9,21 +9,22 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CustomReportsBundle\Tool\Config\Listing;
 
 use Pimcore\Bundle\CustomReportsBundle\Tool\Config;
+use Pimcore\Bundle\CustomReportsBundle\Tool\Config\Listing;
 use Pimcore\Model;
 
 /**
  * @internal
  *
- * @property \Pimcore\Bundle\CustomReportsBundle\Tool\Config\Listing $model
+ * @property Listing $model
  */
-class Dao extends \Pimcore\Bundle\CustomReportsBundle\Tool\Config\Dao
+class Dao extends Config\Dao
 {
     /**
      * @return Config[]

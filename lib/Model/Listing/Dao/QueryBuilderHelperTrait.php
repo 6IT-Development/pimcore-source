@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Listing\Dao;
@@ -147,8 +148,7 @@ trait QueryBuilderHelperTrait
             $queryBuilder
                 ->resetQueryParts()
                 ->select('COUNT(*)')
-                ->from('(' . $innerQuery . ')', 'XYZ')
-            ;
+                ->from('(' . $innerQuery . ')', 'XYZ');
         } elseif ($this->isQueryBuilderPartInUse($queryBuilder, 'distinct')) {
             $countIdentifier = 'DISTINCT ' . $identifierColumn;
             $queryBuilder->select('COUNT(' . $countIdentifier . ') AS totalCount');
@@ -161,7 +161,7 @@ trait QueryBuilderHelperTrait
             if ($query->getQueryPart($part)) {
                 return true;
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             // do nothing
         }
 

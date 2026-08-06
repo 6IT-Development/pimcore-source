@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,16 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset;
 
+use Doctrine\DBAL\Exception;
+use League\Flysystem\FilesystemException;
 use Pimcore;
+use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\File;
 use Pimcore\Logger;
@@ -26,7 +30,7 @@ use Pimcore\Model\Asset;
 use Pimcore\Tool\Storage;
 
 /**
- * @method \Pimcore\Model\Asset\Dao getDao()
+ * @method Dao getDao()
  */
 class Folder extends Model\Asset
 {
@@ -78,12 +82,12 @@ class Folder extends Model\Asset
     }
 
     /**
-     * @internal
-     *
      * @return resource|null
      *
-     * @throws \Doctrine\DBAL\Exception
-     * @throws \League\Flysystem\FilesystemException
+     * @throws Exception
+     * @throws FilesystemException
+     * @internal
+     *
      */
     public function getPreviewImage(bool $force = false)
     {
@@ -99,7 +103,7 @@ class Folder extends Model\Asset
         $tileThumbnailConfig = Asset\Image\Thumbnail\Config::getPreviewConfig();
 
         $limit = 42;
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $condition = "`path` LIKE :path AND `type` IN ('image', 'video', 'document')";
         $conditionParams = [
             'path' => Helper::escapeLike($this->getRealFullPath()) . '/%',
@@ -127,7 +131,7 @@ class Folder extends Model\Asset
         $skipped = false;
 
         if ($totalImages) {
-            $collage = imagecreatetruecolor(($squareDimension * $colums) + ($gutter * ($colums - 1)), (int) ceil(($totalImages / $colums)) * ($squareDimension + $gutter));
+            $collage = imagecreatetruecolor(($squareDimension * $colums) + ($gutter * ($colums - 1)), (int)ceil(($totalImages / $colums)) * ($squareDimension + $gutter));
             $background = imagecolorallocate($collage, 12, 15, 18);
             imagefill($collage, 0, 0, $background);
 

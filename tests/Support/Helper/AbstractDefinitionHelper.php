@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Helper;
@@ -41,7 +42,7 @@ abstract class AbstractDefinitionHelper extends Module
             } else {
                 $this->debug(sprintf(
                     '[%s] Not initializing model definitions as DB is not connected',
-                    strtoupper((new ReflectionClass($this))->getShortName())
+                    strtoupper(new ReflectionClass($this)->getShortName())
                 ));
             }
         }

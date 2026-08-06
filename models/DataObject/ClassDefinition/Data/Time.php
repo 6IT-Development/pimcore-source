@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -46,7 +47,7 @@ class Time extends Model\DataObject\ClassDefinition\Data\Input
      * @internal
      *
      */
-    public int $increment = 15 ;
+    public int $increment = 15;
 
     public function getMinValue(): ?string
     {
@@ -82,19 +83,19 @@ class Time extends Model\DataObject\ClassDefinition\Data\Input
 
         if (is_string($data)) {
             if (!preg_match('/^(2[0-3]|[01][0-9]):[0-5][0-9]$/', $data) && $data !== '') {
-                throw new Model\Element\ValidationException('Wrong time format given must be a 5 digit string (eg: 06:49) [ '.$this->getName().' ]');
+                throw new Model\Element\ValidationException('Wrong time format given must be a 5 digit string (eg: 06:49) [ ' . $this->getName() . ' ]');
             }
         } elseif (!empty($data)) {
-            throw new Model\Element\ValidationException('Wrong time format given must be a 5 digit string (eg: 06:49) [ '.$this->getName().' ]');
+            throw new Model\Element\ValidationException('Wrong time format given must be a 5 digit string (eg: 06:49) [ ' . $this->getName() . ' ]');
         }
 
         if (!$omitMandatoryCheck && $data) {
             if (!$this->toTime($data)) {
-                throw new Model\Element\ValidationException('Wrong time format given must be a 5 digit string (eg: 06:49) [ '.$this->getName().' ]');
+                throw new Model\Element\ValidationException('Wrong time format given must be a 5 digit string (eg: 06:49) [ ' . $this->getName() . ' ]');
             }
 
             if ($this->getMinValue() && $this->isEarlier($this->getMinValue(), $data)) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is not at least ' . $this->getMinValue());
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is not at least ' . $this->getMinValue());
             }
 
             if ($this->getMaxValue() && $this->isLater($this->getMaxValue(), $data)) {
@@ -133,7 +134,7 @@ class Time extends Model\DataObject\ClassDefinition\Data\Input
      *
      *
      */
-    private function toTimestamp(string $string, int $baseTimestamp = null): int
+    private function toTimestamp(string $string, ?int $baseTimestamp = null): int
     {
         if ($baseTimestamp === null) {
             $baseTimestamp = time();

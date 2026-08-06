@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
@@ -26,7 +27,6 @@ use ReflectionClass;
 use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
@@ -79,7 +79,6 @@ final class AreabrickPass implements CompilerPassInterface
             }
 
             // handle bricks implementing ContainerAwareInterface
-            $this->handleContainerAwareDefinition($definition, $reflector);
             $this->handleEditableRendererCall($definition, $reflector);
         }
 
@@ -105,10 +104,11 @@ final class AreabrickPass implements CompilerPassInterface
      */
     private function autoloadAreabricks(
         ContainerBuilder $container,
-        Definition $areaManagerDefinition,
-        array $locatorMapping,
-        array $excludedClasses
-    ): array {
+        Definition       $areaManagerDefinition,
+        array            $locatorMapping,
+        array            $excludedClasses
+    ): array
+    {
         $bundles = $container->getParameter('kernel.bundles_metadata');
         //Find bricks from /src since AppBundle is removed
         $bundles['App'] = [
@@ -142,7 +142,6 @@ final class AreabrickPass implements CompilerPassInterface
                 ]);
 
                 // handle bricks implementing ContainerAwareInterface
-                $this->handleContainerAwareDefinition($definition, $reflector);
                 $this->handleEditableRendererCall($definition, $reflector);
             }
         }
@@ -158,22 +157,12 @@ final class AreabrickPass implements CompilerPassInterface
     }
 
     /**
-     * Adds setContainer() call to bricks implementing ContainerAwareInterface
-     */
-    private function handleContainerAwareDefinition(Definition $definition, ReflectionClass $reflector): void
-    {
-        if ($reflector->implementsInterface(ContainerAwareInterface::class)) {
-            $definition->addMethodCall('setContainer', [new Reference('service_container')]);
-        }
-    }
-
-    /**
      * Look for classes implementing AreabrickInterface in each bundle's Document\Areabrick sub-namespace
      */
     private function findBundleBricks(ContainerBuilder $container, string $name, array $metadata, array $excludedClasses = []): array
     {
-        $sourcePath = is_dir($metadata['path'].'/src') ? $metadata['path'].'/src' : $metadata['path'];
-        $directory = $sourcePath.DIRECTORY_SEPARATOR.'Document'.DIRECTORY_SEPARATOR.'Areabrick';
+        $sourcePath = is_dir($metadata['path'] . '/src') ? $metadata['path'] . '/src' : $metadata['path'];
+        $directory = $sourcePath . DIRECTORY_SEPARATOR . 'Document' . DIRECTORY_SEPARATOR . 'Areabrick';
 
         // update cache when directory is added/removed
         $container->addResource(new FileExistenceResource($directory));

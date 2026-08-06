@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\DataObject;
@@ -58,12 +59,12 @@ class ListingTest extends ModelTestCase
         $seeds = [10, 11, 42, 53, 65, 78, 85];
 
         foreach ($seeds as $seed) {
-            $object = TestHelper::createEmptyObject('listing-test-' . $seed . '_', false, true);
+            $object = TestHelper::createEmptyObject('listing-test-' . $seed . '_', false);
 
-            $object->setInput('content'.$seed);
+            $object->setInput('content' . $seed);
             $object->setNumber(99 + $seed);
-            $object->setFirstname('first?name '.$seed);
-            $object->setLastname('last:name '.$seed);
+            $object->setFirstname('first?name ' . $seed);
+            $object->setLastname('last:name ' . $seed);
 
             $object->save();
         }

@@ -9,19 +9,20 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Tool\Email\Blocklist;
 
 use Pimcore\Db\Helper;
 use Pimcore\Model;
+use Pimcore\Model\Tool\Email\Blocklist;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Tool\Email\Blocklist $model
+ * @property Blocklist $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -56,7 +57,7 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($version as $key => $value) {
             if (in_array($key, $this->getValidTableColumns('email_blocklist'))) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 }
 
                 $data[$key] = $value;

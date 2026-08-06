@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Version;
@@ -20,11 +20,12 @@ use Pimcore\Db\Helper;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Model\Version;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Version $model
+ * @property Version $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -60,7 +61,7 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($version as $key => $value) {
             if (in_array($key, $this->getValidTableColumns('versions'))) {
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 }
 
                 $data[$key] = $value;
@@ -71,7 +72,7 @@ class Dao extends Model\Dao\AbstractDao
 
         $lastInsertId = $this->db->lastInsertId();
         if (!$this->model->getId() && $lastInsertId) {
-            $this->model->setId((int) $lastInsertId);
+            $this->model->setId((int)$lastInsertId);
         }
 
         return $this->model->getId();
@@ -85,11 +86,11 @@ class Dao extends Model\Dao\AbstractDao
         $this->db->delete('versions', ['id' => $this->model->getId()]);
     }
 
-    public function isVersionUsedInScheduler(Model\Version $version): bool
+    public function isVersionUsedInScheduler(Version $version): bool
     {
         $exists = $this->db->fetchOne('SELECT id FROM schedule_tasks WHERE active = 1 AND version = ?', [$version->getId()]);
 
-        return (bool) $exists;
+        return (bool)$exists;
     }
 
     public function getBinaryFileIdForHash(string $hash): ?int
@@ -105,9 +106,7 @@ class Dao extends Model\Dao\AbstractDao
     public function isBinaryHashInUse(?string $hash): bool
     {
         $count = $this->db->fetchOne('SELECT count(*) FROM versions WHERE binaryFileHash = ? AND cid = ?', [$hash, $this->model->getCid()]);
-        $returnValue = ($count > 1);
-
-        return $returnValue;
+        return ($count > 1);
     }
 
     /**
@@ -140,11 +139,11 @@ class Dao extends Model\Dao\AbstractDao
                     $versionData = $this->db->executeQuery('SELECT cid FROM versions WHERE ctype = ? AND public=0 AND id NOT IN (' . $ignoreIdsList . ') GROUP BY cid HAVING COUNT(*) > ? LIMIT 1000', [$elementType['elementType'], $elementType['steps'] + 1]);
                     while ($versionInfo = $versionData->fetchAssociative()) {
                         $count++;
-                        $elementVersions = $this->db->fetchFirstColumn('SELECT id FROM versions WHERE cid=? AND ctype = ? AND public=0 AND id NOT IN ('.$ignoreIdsList.') ORDER BY id DESC LIMIT '.($elementType['steps'] + 1).', '.PHP_INT_MAX, [$versionInfo['cid'], $elementType['elementType']]);
+                        $elementVersions = $this->db->fetchFirstColumn('SELECT id FROM versions WHERE cid=? AND ctype = ? AND public=0 AND id NOT IN (' . $ignoreIdsList . ') ORDER BY id DESC LIMIT ' . ($elementType['steps'] + 1) . ', ' . PHP_INT_MAX, [$versionInfo['cid'], $elementType['elementType']]);
 
                         $versionIds = array_merge($versionIds, $elementVersions);
 
-                        Logger::info($versionInfo['cid'].'(object '.$count.') Vcount '.count($versionIds));
+                        Logger::info($versionInfo['cid'] . '(object ' . $count . ') Vcount ' . count($versionIds));
 
                         // call the garbage collector if memory consumption is > 100MB
                         if (memory_get_usage() > 100000000 && ($count % 100 == 0)) {
@@ -164,7 +163,7 @@ class Dao extends Model\Dao\AbstractDao
                 }
             }
         }
-        Logger::info('return ' .  count($versionIds) . " ids\n");
+        Logger::info('return ' . count($versionIds) . " ids\n");
 
         return array_map('intval', $versionIds);
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -48,18 +49,18 @@ use stdClass;
 use Twig\Extension\RuntimeExtensionInterface;
 
 /**
- * @method $this appendHttpEquiv($keyValue, $content, $conditionalHttpEquiv=[])
- * @method $this appendName($keyValue, $content, $conditionalName=[])
- * @method $this appendProperty($property, $content, $modifiers=[])
- * @method $this offsetSetHttpEquiv($index, $keyValue, $content, $conditionalHttpEquiv=[])
- * @method $this offsetSetName($index, $keyValue, $content, $conditionalName=[])
- * @method $this offsetSetProperty($index, $property, $content, $modifiers=[])
- * @method $this prependHttpEquiv($keyValue, $content, $conditionalHttpEquiv=[])
- * @method $this prependName($keyValue, $content, $conditionalName=[])
- * @method $this prependProperty($property, $content, $modifiers=[])
- * @method $this setHttpEquiv($keyValue, $content, $modifiers=[])
- * @method $this setName($keyValue, $content, $modifiers=[])
- * @method $this setProperty($property, $content, $modifiers=[])
+ * @method $this appendHttpEquiv($keyValue, $content, $conditionalHttpEquiv = [])
+ * @method $this appendName($keyValue, $content, $conditionalName = [])
+ * @method $this appendProperty($property, $content, $modifiers = [])
+ * @method $this offsetSetHttpEquiv($index, $keyValue, $content, $conditionalHttpEquiv = [])
+ * @method $this offsetSetName($index, $keyValue, $content, $conditionalName = [])
+ * @method $this offsetSetProperty($index, $property, $content, $modifiers = [])
+ * @method $this prependHttpEquiv($keyValue, $content, $conditionalHttpEquiv = [])
+ * @method $this prependName($keyValue, $content, $conditionalName = [])
+ * @method $this prependProperty($property, $content, $modifiers = [])
+ * @method $this setHttpEquiv($keyValue, $content, $modifiers = [])
+ * @method $this setName($keyValue, $content, $modifiers = [])
+ * @method $this setProperty($property, $content, $modifiers = [])
  *
  */
 class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
@@ -101,7 +102,7 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
      *
      * @return $this
      */
-    public function __invoke(string $content = null, string $keyValue = null, string $keyType = 'name', array $modifiers = [], string $placement = Container::APPEND): static
+    public function __invoke(?string $content = null, ?string $keyValue = null, string $keyType = 'name', array $modifiers = [], string $placement = Container::APPEND): static
     {
         if ((null !== $content) && (null !== $keyValue)) {
             $item = $this->createData($keyType, $keyValue, $content, $modifiers);
@@ -125,16 +126,12 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
 
     protected function _normalizeType(string $type): string
     {
-        switch ($type) {
-            case 'Name':
-                return 'name';
-            case 'HttpEquiv':
-                return 'http-equiv';
-            case 'Property':
-                return 'property';
-            default:
-                throw new Exception(sprintf('Invalid type "%s" passed to _normalizeType', $type));
-        }
+        return match ($type) {
+            'Name' => 'name',
+            'HttpEquiv' => 'http-equiv',
+            'Property' => 'property',
+            default => throw new Exception(sprintf('Invalid type "%s" passed to _normalizeType', $type)),
+        };
     }
 
     public function getItem(string $type, string $keyValue): mixed
@@ -217,7 +214,7 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
     /**
      * Append
      *
-     * @param  stdClass $value
+     * @param stdClass $value
      *
      * @throws Exception
      */
@@ -233,7 +230,7 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
     /**
      * OffsetSet
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      * @throws Exception
      */
@@ -249,23 +246,23 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
     /**
      * OffsetUnset
      *
-     * @param  string|int $index
+     * @param string|int $index
      *
      * @throws Exception
      */
-    public function offsetUnset($index): void
+    public function offsetUnset($offset): void
     {
-        if (!in_array($index, $this->getContainer()->getKeys())) {
+        if (!in_array($offset, $this->getContainer()->getKeys())) {
             throw new Exception('Invalid index passed to offsetUnset()');
         }
 
-        $this->getContainer()->offsetUnset($index);
+        $this->getContainer()->offsetUnset($offset);
     }
 
     /**
      * Prepend
      *
-     * @param  string $value
+     * @param string $value
      *
      * @throws Exception
      */
@@ -348,7 +345,7 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
      *
      *
      */
-    public function toString(int|string $indent = null): string
+    public function toString(int|string|null $indent = null): string
     {
         $indent = (null !== $indent)
             ? $this->getWhitespace($indent)
@@ -382,7 +379,7 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
      */
     public function createData(string $type, string $typeValue, string $content, array $modifiers): stdClass
     {
-        $data = new stdClass;
+        $data = new stdClass();
         $data->type = $type;
         $data->$type = $typeValue;
         $data->content = $content;
@@ -407,7 +404,7 @@ class HeadMeta extends AbstractExtension implements RuntimeExtensionInterface
      *
      * @return $this
      */
-    public function setDescription(string $string, int $length = null, string $suffix = ''): static
+    public function setDescription(string $string, ?int $length = null, string $suffix = ''): static
     {
         $string = $this->normalizeString($string, $length, $suffix);
 

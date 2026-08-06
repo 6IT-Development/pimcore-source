@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Helper;
@@ -69,7 +70,7 @@ final class LongRunningHelper
     protected function cleanupDoctrine(): void
     {
         try {
-            foreach ($this->connectionRegistry->getConnections() as $name => $connection) {
+            foreach ($this->connectionRegistry->getConnections() as $connection) {
                 if (!($connection instanceof Connection)) {
                     throw new LogicException('Expected only instances of Connection');
                 }
@@ -77,7 +78,7 @@ final class LongRunningHelper
                     $connection->close();
                 }
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             // connection couldn't be established, this is e.g. the case when Pimcore isn't installed yet
         }
     }

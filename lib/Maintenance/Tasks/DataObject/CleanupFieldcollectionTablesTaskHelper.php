@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance\Tasks\DataObject;
 
 use Doctrine\DBAL\Connection;
+use Pimcore\Model\DataObject\Fieldcollection\Definition;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -24,14 +26,15 @@ use Psr\Log\LoggerInterface;
  */
 class CleanupFieldcollectionTablesTaskHelper implements ConcreteTaskHelperInterface
 {
-    private const PIMCORE_FIELDCOLLECTION_CLASS_DIRECTORY =
+    private const string PIMCORE_FIELDCOLLECTION_CLASS_DIRECTORY =
         PIMCORE_CLASS_DEFINITION_DIRECTORY . '/fieldcollections';
 
     public function __construct(
-        private LoggerInterface $logger,
-        private DataObjectTaskHelperInterface $helper,
-        private Connection $db
-    ) {
+        private readonly LoggerInterface               $logger,
+        private readonly DataObjectTaskHelperInterface $helper,
+        private readonly Connection                    $db
+    )
+    {
     }
 
     public function cleanupCollectionTable(): void
@@ -47,7 +50,7 @@ class CleanupFieldcollectionTablesTaskHelper implements ConcreteTaskHelperInterf
             [
                 'localized' => false,
                 'prefix' => 'object_collection_',
-                'pattern' => "object\_collection\_%",
+                'pattern' => 'object\_collection\_%',
             ],
         ];
         foreach ($tasks as $task) {
@@ -83,7 +86,7 @@ class CleanupFieldcollectionTablesTaskHelper implements ConcreteTaskHelperInterf
 
     private function checkIfFcExists(string $fcType, string $tableName): bool
     {
-        $fcDef = \Pimcore\Model\DataObject\Fieldcollection\Definition::getByKey($fcType);
+        $fcDef = Definition::getByKey($fcType);
         if (!$fcDef) {
             $this->logger->error("Fieldcollection '" . $fcType . "' not found. Please check table " . $tableName);
 

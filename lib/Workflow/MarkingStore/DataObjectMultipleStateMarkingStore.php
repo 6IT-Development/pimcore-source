@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\MarkingStore;
 
 use Pimcore\Model\DataObject\Concrete;
 use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\PropertyAccess\PropertyAccessor;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Symfony\Component\Workflow\Exception\LogicException;
 use Symfony\Component\Workflow\Marking;
@@ -27,9 +29,9 @@ class DataObjectMultipleStateMarkingStore implements MarkingStoreInterface
 {
     private string $property;
 
-    private \Symfony\Component\PropertyAccess\PropertyAccessor|PropertyAccessorInterface $propertyAccessor;
+    private PropertyAccessor|PropertyAccessorInterface $propertyAccessor;
 
-    public function __construct(string $property = 'marking', PropertyAccessorInterface $propertyAccessor = null)
+    public function __construct(string $property = 'marking', ?PropertyAccessorInterface $propertyAccessor = null)
     {
         $this->property = $property;
         $this->propertyAccessor = $propertyAccessor ?: PropertyAccess::createPropertyAccessor();
@@ -39,7 +41,7 @@ class DataObjectMultipleStateMarkingStore implements MarkingStoreInterface
     {
         $this->checkIfSubjectIsValid($subject);
 
-        $marking = (array) $this->propertyAccessor->getValue($subject, $this->property);
+        $marking = (array)$this->propertyAccessor->getValue($subject, $this->property);
 
         $_marking = [];
         foreach ($marking as $place) {

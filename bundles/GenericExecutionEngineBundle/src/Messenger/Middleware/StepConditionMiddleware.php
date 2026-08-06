@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Middleware;
@@ -27,13 +28,14 @@ use Symfony\Component\Messenger\Middleware\StackInterface;
 /**
  * @internal
  */
-final class StepConditionMiddleware implements MiddlewareInterface
+final readonly class StepConditionMiddleware implements MiddlewareInterface
 {
     public function __construct(
-        private readonly JobExecutionAgentInterface $jobExecutionAgent,
-        private readonly JobRunExtractorInterface $jobRunExtractor,
-        private readonly LoggerInterface $genericExecutionEngineLogger,
-    ) {
+        private JobExecutionAgentInterface $jobExecutionAgent,
+        private JobRunExtractorInterface   $jobRunExtractor,
+        private LoggerInterface            $genericExecutionEngineLogger,
+    )
+    {
     }
 
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
@@ -58,7 +60,8 @@ final class StepConditionMiddleware implements MiddlewareInterface
 
     private function logToJobRun(
         GenericExecutionEngineMessageInterface $message
-    ): void {
+    ): void
+    {
         $jobRun = $this->jobRunExtractor->getJobRun($message);
         $jobName = $jobRun->getJob()?->getName();
         $stepId = $message->getCurrentJobStep();

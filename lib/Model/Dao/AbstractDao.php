@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Dao;
@@ -25,7 +26,7 @@ abstract class AbstractDao implements DaoInterface
 {
     use DaoTrait;
 
-    const CACHEKEY = 'system_resource_columns_';
+    public const string CACHEKEY = 'system_resource_columns_';
 
     public Connection $db;
 
@@ -80,7 +81,7 @@ abstract class AbstractDao implements DaoInterface
                         $primaryKeyColumns[] = $fieldName;
                     }
                 }
-                $allColumns = ['columns' => $columns,  'primaryKeyColumns' => $primaryKeyColumns];
+                $allColumns = ['columns' => $columns, 'primaryKeyColumns' => $primaryKeyColumns];
                 Cache::save($allColumns, $cacheKey, ['system', 'resource'], null, 997);
             }
 
@@ -105,7 +106,7 @@ abstract class AbstractDao implements DaoInterface
 
     public static function getForeignKeyName(string $table, string $column): string
     {
-        $fkName = 'fk_'.$table.'__'.$column;
+        $fkName = 'fk_' . $table . '__' . $column;
         if (strlen($fkName) > 64) {
             $fkName = substr($fkName, 0, 55) . '_' . hash('crc32', $fkName);
         }

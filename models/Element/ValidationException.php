@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -67,7 +68,7 @@ class ValidationException extends Exception
         $msg = $this->getMessage();
         $contextStack = $this->getContextStack();
         if ($contextStack) {
-            $msg .= '[ '.$contextStack[0].' ]';
+            $msg .= '[ ' . $contextStack[0] . ' ]';
         }
 
         $subItems = $this->getSubItems();
@@ -80,7 +81,7 @@ class ValidationException extends Exception
                     $subItemMessage = $subItem->getAggregatedMessage();
                     $contextStack = $subItem->getContextStack();
                     if ($contextStack) {
-                        $subItemMessage .= '[ '.$contextStack[0].' ]';
+                        $subItemMessage .= '[ ' . $contextStack[0] . ' ]';
                     }
                 } else {
                     $subItemMessage = $subItem->getMessage();

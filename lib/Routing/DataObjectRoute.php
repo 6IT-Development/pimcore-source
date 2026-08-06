@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Routing;
@@ -41,7 +42,7 @@ final class DataObjectRoute extends Route implements RouteObjectInterface
     /**
      * @return $this
      */
-    public function setObject(Concrete $object): static
+    public function setObject(Concrete $object): DataObjectRoute
     {
         $this->object = $object;
 
@@ -56,7 +57,7 @@ final class DataObjectRoute extends Route implements RouteObjectInterface
     /**
      * @return $this
      */
-    public function setSlug(UrlSlug $slug): static
+    public function setSlug(UrlSlug $slug): DataObjectRoute
     {
         $this->slug = $slug;
 
@@ -71,7 +72,7 @@ final class DataObjectRoute extends Route implements RouteObjectInterface
     /**
      * @return $this
      */
-    public function setSite(?Site $site): static
+    public function setSite(?Site $site): DataObjectRoute
     {
         $this->site = $site;
 

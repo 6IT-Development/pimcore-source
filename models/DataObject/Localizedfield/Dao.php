@@ -9,14 +9,15 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Localizedfield;
 
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
+use Pimcore\Config;
 use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\Logger;
@@ -27,12 +28,13 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\CustomResourcePersistingInterf
 use Pimcore\Model\DataObject\ClassDefinition\Data\LazyLoadingSupportInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\QueryResourcePersistenceAwareInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface;
+use Pimcore\Model\DataObject\Localizedfield;
 use Pimcore\Tool;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Localizedfield $model
+ * @property Localizedfield $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -51,15 +53,15 @@ class Dao extends Model\Dao\AbstractDao
             if ($containerType === 'fieldcollection') {
                 $containerKey = $context['containerKey'];
 
-                return 'object_collection_'.$containerKey.'_localized_'.$this->model->getClass()->getId();
+                return 'object_collection_' . $containerKey . '_localized_' . $this->model->getClass()->getId();
             } elseif ($containerType === 'objectbrick') {
                 $containerKey = $context['containerKey'];
 
-                return 'object_brick_localized_'.$containerKey.'_'.$this->model->getClass()->getId();
+                return 'object_brick_localized_' . $containerKey . '_' . $this->model->getClass()->getId();
             }
         }
 
-        return 'object_localized_data_'.$this->model->getClass()->getId();
+        return 'object_localized_data_' . $this->model->getClass()->getId();
     }
 
     public function getQueryTableName(): string
@@ -70,11 +72,11 @@ class Dao extends Model\Dao\AbstractDao
             if ($containerType == 'objectbrick') {
                 $containerKey = $context['containerKey'];
 
-                return 'object_brick_localized_query_'.$containerKey.'_'.$this->model->getClass()->getId();
+                return 'object_brick_localized_query_' . $containerKey . '_' . $this->model->getClass()->getId();
             }
         }
 
-        return 'object_localized_query_'.$this->model->getClass()->getId();
+        return 'object_localized_query_' . $this->model->getClass()->getId();
     }
 
     /**
@@ -89,9 +91,8 @@ class Dao extends Model\Dao\AbstractDao
         // see Pimcore\Model\DataObject\Fieldcollection\Dao::delete
 
         $forceUpdate = false;
-        if ((isset($params['newParent']) && $params['newParent']) || DataObject::isDirtyDetectionDisabled() || $this->model->hasDirtyLanguages(
-        ) || $context['containerType'] == 'fieldcollection') {
-            $forceUpdate = $this->delete(false, true);
+        if ((isset($params['newParent']) && $params['newParent']) || DataObject::isDirtyDetectionDisabled() || $this->model->hasDirtyLanguages() || $context['containerType'] == 'fieldcollection') {
+            $forceUpdate = $this->delete(false);
         }
 
         $object = $this->model->getObject();
@@ -127,15 +128,15 @@ class Dao extends Model\Dao\AbstractDao
          */
         DataObject\Concrete\Dao\InheritanceHelper::setUseRuntimeCache(true);
 
-        $ignoreLocalizedQueryFallback = \Pimcore\Config::getSystemConfiguration('objects')['ignore_localized_query_fallback'];
+        $ignoreLocalizedQueryFallback = Config::getSystemConfiguration('objects')['ignore_localized_query_fallback'];
         if (!$ignoreLocalizedQueryFallback) {
             $this->model->markLanguageAsDirtyByFallback();
         }
 
-        $flag = DataObject\Localizedfield::getGetFallbackValues();
+        $flag = Localizedfield::getGetFallbackValues();
 
         if (!$ignoreLocalizedQueryFallback) {
-            DataObject\Localizedfield::setGetFallbackValues(true);
+            Localizedfield::setGetFallbackValues(true);
         }
 
         foreach ($validLanguages as $language) {
@@ -165,7 +166,7 @@ class Dao extends Model\Dao\AbstractDao
                 foreach ($fieldDefinitions as $fieldName => $fd) {
                     if ($fd instanceof CustomResourcePersistingInterface) {
                         // for fieldtypes which have their own save algorithm eg. relational data types, ...
-                        $context = $this->model->getContext() ? $this->model->getContext() : [];
+                        $context = $this->model->getContext() ?: [];
                         if (isset($context['containerType']) && ($context['containerType'] === 'fieldcollection' || $context['containerType'] === 'objectbrick')) {
                             $context['subContainerType'] = 'localizedfield';
                         }
@@ -220,21 +221,21 @@ class Dao extends Model\Dao\AbstractDao
                 }
 
                 $storeTable = $this->getTableName();
-                $queryTable = $this->getQueryTableName().'_'.$language;
+                $queryTable = $this->getQueryTableName() . '_' . $language;
 
                 try {
                     if ((isset($params['newParent']) && $params['newParent']) || !isset($params['isUpdate']) || !$params['isUpdate'] || $this->model->isLanguageDirty(
-                        $language
-                    )) {
+                            $language
+                        )) {
                         Helper::upsert($this->db, $storeTable, $insertData, $this->getPrimaryKey($storeTable));
                     }
-                } catch (TableNotFoundException $e) {
+                } catch (TableNotFoundException) {
                     // if the table doesn't exist -> create it! deferred creation for object bricks ...
                     try {
                         $this->db->rollBack();
                     } catch (Exception $er) {
                         // PDO adapter throws exceptions if rollback fails
-                        Logger::info((string) $er);
+                        Logger::info((string)$er);
                     }
 
                     $this->createUpdateTable();
@@ -256,14 +257,11 @@ class Dao extends Model\Dao\AbstractDao
                         $queryTable
                     );
                     $this->inheritanceHelper->resetFieldsToCheck();
-                    $sql = 'SELECT * FROM '.$queryTable.' WHERE ooo_id = '.$object->getId(
-                    )." AND language = '".$language."'";
-
-                    $oldData = [];
+                    $sql = 'SELECT * FROM ' . $queryTable . ' WHERE ooo_id = ' . $object->getId() . " AND language = '" . $language . "'";
 
                     try {
                         $oldData = $this->db->fetchAssociative($sql);
-                    } catch (TableNotFoundException $e) {
+                    } catch (TableNotFoundException) {
                         // if the table doesn't exist -> create it!
 
                         // the following is to ensure consistent data and atomic transactions, while having the flexibility
@@ -275,7 +273,7 @@ class Dao extends Model\Dao\AbstractDao
                             $this->db->rollBack();
                         } catch (Exception $er) {
                             // PDO adapter throws exceptions if rollback fails
-                            Logger::info((string) $er);
+                            Logger::info((string)$er);
                         }
 
                         // this creates the missing table
@@ -301,7 +299,7 @@ class Dao extends Model\Dao\AbstractDao
                             // so we select the data from the parent object using FOR UPDATE, which causes a lock on this row
                             // so the data of the parent cannot be changed while this transaction is on progress
                             $parentData = $this->db->fetchAssociative(
-                                'SELECT * FROM '.$queryTable.' WHERE ooo_id = ? AND language = ? FOR UPDATE',
+                                'SELECT * FROM ' . $queryTable . ' WHERE ooo_id = ? AND language = ? FOR UPDATE',
                                 [$parentForInheritance->getId(), $language]
                             );
                         }
@@ -309,7 +307,7 @@ class Dao extends Model\Dao\AbstractDao
 
                     foreach ($fieldDefinitions as $fd) {
                         if ($fd instanceof QueryResourcePersistenceAwareInterface
-                            &&  $fd instanceof DataObject\ClassDefinition\Data) {
+                            && $fd instanceof DataObject\ClassDefinition\Data) {
                             $key = $fd->getName();
 
                             // exclude untouchables if value is not an array - this means data has not been loaded
@@ -402,16 +400,16 @@ class Dao extends Model\Dao\AbstractDao
                                 }
                             } else {
                                 Logger::debug(
-                                    'Excluding untouchable query value for object [ '.$this->model->getObjectId() ." ]  key [ $key ] because it has not been loaded"
+                                    'Excluding untouchable query value for object [ ' . $this->model->getObjectId() . " ]  key [ $key ] because it has not been loaded"
                                 );
                             }
                         }
                     }
 
-                    $queryTable = $this->getQueryTableName().'_'.$language;
+                    $queryTable = $this->getQueryTableName() . '_' . $language;
                     Helper::upsert($this->db, $queryTable, $data, $this->getPrimaryKey($queryTable));
                     if ($inheritanceEnabled) {
-                        $context = isset($params['context']) ? $params['context'] : [];
+                        $context = $params['context'] ?? [];
                         if ($context['containerType'] === 'objectbrick') {
                             $inheritanceRelationContext = [
                                 'ownertype' => 'localizedfield',
@@ -436,7 +434,7 @@ class Dao extends Model\Dao\AbstractDao
         } // foreach language
 
         if (!$ignoreLocalizedQueryFallback) {
-            DataObject\Localizedfield::setGetFallbackValues($flag);
+            Localizedfield::setGetFallbackValues($flag);
         }
         DataObject\Concrete\Dao\InheritanceHelper::setUseRuntimeCache(false);
         DataObject\Concrete\Dao\InheritanceHelper::clearRuntimeCache();
@@ -478,7 +476,7 @@ class Dao extends Model\Dao\AbstractDao
                 if (!$container instanceof DataObject\Fieldcollection\Definition || $container instanceof DataObject\Objectbrick\Definition) {
                     $validLanguages = Tool::getValidLanguages();
                     foreach ($validLanguages as $language) {
-                        $queryTable = $this->getQueryTableName().'_'.$language;
+                        $queryTable = $this->getQueryTableName() . '_' . $language;
                         $this->db->delete($queryTable, ['ooo_id' => $id]);
                     }
                 }
@@ -491,7 +489,7 @@ class Dao extends Model\Dao\AbstractDao
             foreach ($childDefinitions as $fd) {
                 if ($fd instanceof CustomResourcePersistingInterface) {
                     $params = [
-                        'context' => $this->model->getContext() ? $this->model->getContext() : [],
+                        'context' => $this->model->getContext() ?: [],
                         'isUpdate' => $isUpdate,
                     ];
                     if (isset($params['context']['containerType']) && ($params['context']['containerType'] === 'fieldcollection' || $params['context']['containerType'] === 'objectbrick')) {
@@ -502,14 +500,14 @@ class Dao extends Model\Dao\AbstractDao
                 }
             }
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             if ($isUpdate && $e instanceof TableNotFoundException) {
                 try {
                     $this->db->rollBack();
                 } catch (Exception $er) {
                     // PDO adapter throws exceptions if rollback fails
-                    Logger::info((string) $er);
+                    Logger::info((string)$er);
                 }
 
                 $this->createUpdateTable();
@@ -520,7 +518,7 @@ class Dao extends Model\Dao\AbstractDao
         }
 
         // remove relations
-        $ignoreLocalizedQueryFallback = \Pimcore\Config::getSystemConfiguration('objects')['ignore_localized_query_fallback'];
+        $ignoreLocalizedQueryFallback = Config::getSystemConfiguration('objects')['ignore_localized_query_fallback'];
         if (!$ignoreLocalizedQueryFallback) {
             $this->model->markLanguageAsDirtyByFallback();
         }
@@ -548,7 +546,7 @@ class Dao extends Model\Dao\AbstractDao
                 }
             }
 
-            $dirtyLanguageCondition = ' AND position IN('.implode(',', $languageList).')';
+            $dirtyLanguageCondition = ' AND position IN(' . implode(',', $languageList) . ')';
         }
 
         if ($container instanceof DataObject\Fieldcollection\Definition) {
@@ -559,15 +557,15 @@ class Dao extends Model\Dao\AbstractDao
                 throw new Exception('no container type set');
             }
 
-            $sql = Helper::quoteInto($this->db, 'src_id = ?', $objectId)." AND ownertype = 'localizedfield' AND "
-                .Helper::quoteInto($this->db,
+            $sql = Helper::quoteInto($this->db, 'src_id = ?', $objectId) . " AND ownertype = 'localizedfield' AND "
+                . Helper::quoteInto($this->db,
                     'ownername LIKE ?',
-                    '/'.$context['containerType'].'~'.$containerName.'/'.$index.'/%'
-                ).$dirtyLanguageCondition;
+                    '/' . $context['containerType'] . '~' . $containerName . '/' . $index . '/%'
+                ) . $dirtyLanguageCondition;
 
             if ($deleteQuery || $context['containerType'] === 'fieldcollection') {
                 // Fieldcollection don't support delta updates, so we delete the relations and insert them later again
-                $this->db->executeStatement('DELETE FROM object_relations_'.$object->getClassId().' WHERE '.$sql);
+                $this->db->executeStatement('DELETE FROM object_relations_' . $object->getClassId() . ' WHERE ' . $sql);
             }
 
             return true;
@@ -575,10 +573,9 @@ class Dao extends Model\Dao\AbstractDao
 
         if ($deleteQuery || $context['containerType'] === 'fieldcollection') {
             // Fieldcollection don't support delta updates, so we delete the relations and insert them later again
-            $sql = 'ownertype = "localizedfield" AND ownername = "localizedfield" and src_id = '.$this->model->getObject(
-            )->getId().$dirtyLanguageCondition;
+            $sql = 'ownertype = "localizedfield" AND ownername = "localizedfield" and src_id = ' . $this->model->getObject()->getId() . $dirtyLanguageCondition;
             $this->db->executeStatement(
-                'DELETE FROM object_relations_'.$this->model->getObject()->getClassId().' WHERE '.$sql
+                'DELETE FROM object_relations_' . $this->model->getObject()->getClassId() . ' WHERE ' . $sql
             );
         }
 
@@ -601,11 +598,11 @@ class Dao extends Model\Dao\AbstractDao
             $container = DataObject\Fieldcollection\Definition::getByKey($containerKey);
 
             $data = $this->db->fetchAllAssociative(
-                'SELECT * FROM '.$this->getTableName()
-                .' WHERE ooo_id = ? AND language IN ('.implode(
+                'SELECT * FROM ' . $this->getTableName()
+                . ' WHERE ooo_id = ? AND language IN (' . implode(
                     ',',
                     $validLanguages
-                ).') AND `fieldname` = ? AND `index` = ?',
+                ) . ') AND `fieldname` = ? AND `index` = ?',
                 [
                     $this->model->getObject()->getId(),
                     $fieldname,
@@ -618,8 +615,8 @@ class Dao extends Model\Dao\AbstractDao
             $fieldname = $context['fieldname'];
 
             $data = $this->db->fetchAllAssociative(
-                'SELECT * FROM '.$this->getTableName()
-                .' WHERE ooo_id = ? AND language IN ('.implode(',', $validLanguages).') AND `fieldname` = ?',
+                'SELECT * FROM ' . $this->getTableName()
+                . ' WHERE ooo_id = ? AND language IN (' . implode(',', $validLanguages) . ') AND `fieldname` = ?',
                 [
                     $this->model->getObject()->getId(),
                     $fieldname,
@@ -629,10 +626,10 @@ class Dao extends Model\Dao\AbstractDao
             $object->__objectAwareFields['localizedfields'] = true;
             $container = $this->model->getClass();
             $data = $this->db->fetchAllAssociative(
-                'SELECT * FROM '.$this->getTableName().' WHERE ooo_id = ? AND language IN ('.implode(
+                'SELECT * FROM ' . $this->getTableName() . ' WHERE ooo_id = ? AND language IN (' . implode(
                     ',',
                     $validLanguages
-                ).')',
+                ) . ')',
                 [$this->model->getObject()->getId()]
             );
         }
@@ -663,7 +660,6 @@ class Dao extends Model\Dao\AbstractDao
                     if ($fd instanceof LazyLoadingSupportInterface
                         && $fd instanceof DataObject\ClassDefinition\Data
                         && $fd->getLazyLoading()) {
-                        $lazyKey = $fd->getName() . DataObject\LazyLoadedFieldsInterface::LAZY_KEY_SEPARATOR . $row['language'];
                     } else {
                         $value = $fd->load($this->model, $params);
                         if ($value === 0 || !empty($value)) {
@@ -675,7 +671,7 @@ class Dao extends Model\Dao\AbstractDao
                     if (is_array($fd->getColumnType())) {
                         $multidata = [];
                         foreach ($fd->getColumnType() as $fkey => $fvalue) {
-                            $multidata[$key.'__'.$fkey] = $row[$key.'__'.$fkey];
+                            $multidata[$key . '__' . $fkey] = $row[$key . '__' . $fkey];
                         }
                         $value = $fd->getDataFromResource($multidata, null, $this->getFieldDefinitionParams($key, $row['language']));
                         $this->model->setLocalizedValue($key, $value, $row['language'], false);
@@ -692,7 +688,7 @@ class Dao extends Model\Dao\AbstractDao
     {
         // init
         $languages = Tool::getValidLanguages();
-        $defaultTable = 'object_query_'.$this->model->getClass()->getId();
+        $defaultTable = 'object_query_' . $this->model->getClass()->getId();
 
         $db = $this->db;
 
@@ -727,19 +723,19 @@ class Dao extends Model\Dao\AbstractDao
 
             return $fallback !== 'null'
                 ? $sql
-                : $db->quoteIdentifier($lang).'.'.$db->quoteIdentifier($field);
+                : $db->quoteIdentifier($lang) . '.' . $db->quoteIdentifier($field);
         };
 
         foreach ($languages as $language) {
             try {
-                $tablename = $this->getQueryTableName().'_'.$language;
+                $tablename = $this->getQueryTableName() . '_' . $language;
 
                 // get available columns
                 $viewColumns = array_merge(
-                    $this->db->fetchAllAssociative('SHOW COLUMNS FROM `'.$defaultTable.'`'),
+                    $this->db->fetchAllAssociative('SHOW COLUMNS FROM `' . $defaultTable . '`'),
                     $this->db->fetchAllAssociative('SHOW COLUMNS FROM `objects`')
                 );
-                $localizedColumns = $this->db->fetchAllAssociative('SHOW COLUMNS FROM `'.$tablename.'`');
+                $localizedColumns = $this->db->fetchAllAssociative('SHOW COLUMNS FROM `' . $tablename . '`');
 
                 // get view fields
                 $viewFields = [];
@@ -753,12 +749,12 @@ class Dao extends Model\Dao\AbstractDao
                 array_unshift($fallbackLanguages, $language);
                 foreach ($localizedColumns as $row) {
                     if ($row['Field'] == 'language' || $row['Field'] == 'ooo_id') {
-                        $localizedFields[] = $db->quoteIdentifier($language).'.'.$db->quoteIdentifier($row['Field']);
+                        $localizedFields[] = $db->quoteIdentifier($language) . '.' . $db->quoteIdentifier($row['Field']);
                     } else {
-                        $localizedFields[] = $getFallbackValue($row['Field'], $fallbackLanguages).sprintf(
-                            ' as "%s"',
-                            $row['Field']
-                        );
+                        $localizedFields[] = $getFallbackValue($row['Field'], $fallbackLanguages) . sprintf(
+                                ' as "%s"',
+                                $row['Field']
+                            );
                     }
                 }
 
@@ -767,20 +763,20 @@ class Dao extends Model\Dao\AbstractDao
 
                 // create view
                 $viewQuery = <<<QUERY
-CREATE OR REPLACE VIEW `object_localized_{$this->model->getClass()->getId()}_{$language}` AS
+CREATE OR REPLACE VIEW `object_localized_{$this->model->getClass()->getId()}_$language` AS
 
 SELECT {$selectViewFields}
-FROM `{$defaultTable}`
+FROM `$defaultTable`
     JOIN `objects`
-        ON (`objects`.`id` = `{$defaultTable}`.`oo_id`)
+        ON (`objects`.`id` = `$defaultTable`.`oo_id`)
 QUERY;
 
                 // join fallback languages
                 foreach ($fallbackLanguages as $lang) {
                     $viewQuery .= <<<QUERY
-LEFT JOIN {$this->getQueryTableName()}_{$lang} as `{$lang}`
+LEFT JOIN {$this->getQueryTableName()}_$lang as `$lang`
     ON( 1
-        AND {$defaultTable}.oo_id = {$lang}.ooo_id
+        AND $defaultTable.oo_id = $lang.ooo_id
     )
 QUERY;
                 }
@@ -788,7 +784,7 @@ QUERY;
                 // execute
                 $this->db->executeQuery($viewQuery);
             } catch (Exception $e) {
-                Logger::error((string) $e);
+                Logger::error((string)$e);
             }
         }
     }
@@ -804,7 +800,7 @@ QUERY;
         $context = $this->model->getContext();
         if (isset($context['containerType']) && ($context['containerType'] === 'fieldcollection' || $context['containerType'] === 'objectbrick')) {
             $this->db->executeQuery(
-                'CREATE TABLE IF NOT EXISTS `'.$table."` (
+                'CREATE TABLE IF NOT EXISTS `' . $table . "` (
               `ooo_id` int(11) UNSIGNED NOT NULL default '0',
               `index` INT(11) NOT NULL DEFAULT '0',
               `fieldname` VARCHAR(190) NOT NULL DEFAULT '',
@@ -813,17 +809,17 @@ QUERY;
               INDEX `index` (`index`),
               INDEX `fieldname` (`fieldname`),
               INDEX `language` (`language`),
-              CONSTRAINT `".self::getForeignKeyName($table, 'ooo_id').'` FOREIGN KEY (`ooo_id`) REFERENCES objects (`id`) ON DELETE CASCADE
+              CONSTRAINT `" . self::getForeignKeyName($table, 'ooo_id') . '` FOREIGN KEY (`ooo_id`) REFERENCES objects (`id`) ON DELETE CASCADE
             ) DEFAULT CHARSET=utf8mb4;'
             );
         } else {
             $this->db->executeQuery(
-                'CREATE TABLE IF NOT EXISTS `'.$table."` (
+                'CREATE TABLE IF NOT EXISTS `' . $table . "` (
               `ooo_id` int(11) UNSIGNED NOT NULL default '0',
               `language` varchar(10) NOT NULL DEFAULT '',
               PRIMARY KEY (`ooo_id`,`language`),
               INDEX `language` (`language`),
-              CONSTRAINT `".self::getForeignKeyName($table, 'ooo_id').'` FOREIGN KEY (`ooo_id`) REFERENCES objects (`id`) ON DELETE CASCADE
+              CONSTRAINT `" . self::getForeignKeyName($table, 'ooo_id') . '` FOREIGN KEY (`ooo_id`) REFERENCES objects (`id`) ON DELETE CASCADE
             ) DEFAULT CHARSET=utf8mb4;'
             );
         }
@@ -881,15 +877,15 @@ QUERY;
         if ($container instanceof DataObject\ClassDefinition || $container instanceof DataObject\Objectbrick\Definition) {
             foreach ($validLanguages as &$language) {
                 $queryTable = $this->getQueryTableName();
-                $queryTable .= '_'.$language;
+                $queryTable .= '_' . $language;
 
                 $this->db->executeQuery(
-                    'CREATE TABLE IF NOT EXISTS `'.$queryTable."` (
+                    'CREATE TABLE IF NOT EXISTS `' . $queryTable . "` (
                       `ooo_id` int(11) UNSIGNED NOT NULL default '0',
                       `language` varchar(10) NOT NULL DEFAULT '',
                       PRIMARY KEY (`ooo_id`,`language`),
                       INDEX `language` (`language`),
-                      CONSTRAINT `".self::getForeignKeyName($queryTable, 'ooo_id').'` FOREIGN KEY (`ooo_id`) REFERENCES objects (`id`) ON DELETE CASCADE
+                      CONSTRAINT `" . self::getForeignKeyName($queryTable, 'ooo_id') . '` FOREIGN KEY (`ooo_id`) REFERENCES objects (`id`) ON DELETE CASCADE
                     ) DEFAULT CHARSET=utf8mb4;'
                 );
 
@@ -928,8 +924,8 @@ QUERY;
                         // if a datafield requires more than one column in the query table
                         if (is_array($value->getQueryColumnType())) {
                             foreach ($value->getQueryColumnType() as $fkey => $fvalue) {
-                                $this->addModifyColumn($queryTable, $key.'__'.$fkey, $fvalue, '', 'NULL');
-                                $protectedColumns[] = $key.'__'.$fkey;
+                                $this->addModifyColumn($queryTable, $key . '__' . $fkey, $fvalue, '', 'NULL');
+                                $protectedColumns[] = $key . '__' . $fkey;
                             }
                         } elseif ($value->getQueryColumnType()) {
                             $this->addModifyColumn($queryTable, $key, $value->getQueryColumnType(), '', 'NULL');

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Http\Request\Resolver;
@@ -27,7 +28,7 @@ class EditmodeResolver extends AbstractRequestResolver implements LoggerAwareInt
 {
     use LoggerAwareTrait;
 
-    const ATTRIBUTE_EDITMODE = '_editmode';
+    public const string ATTRIBUTE_EDITMODE = '_editmode';
 
     protected UserLoader $userLoader;
 
@@ -50,7 +51,7 @@ class EditmodeResolver extends AbstractRequestResolver implements LoggerAwareInt
         return $this;
     }
 
-    public function isEditmode(Request $request = null): bool
+    public function isEditmode(?Request $request = null): bool
     {
         if ($this->forceEditmode) {
             $this->logger->debug('Resolved editmode to true as force editmode is set');

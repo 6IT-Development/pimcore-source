@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
@@ -22,10 +23,11 @@ use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\Exception\InheritanceParentNotFoundException;
+use Pimcore\Model\DataObject\Objectbrick\Dao;
 use Pimcore\Model\Element\DirtyIndicatorInterface;
 
 /**
- * @method \Pimcore\Model\DataObject\Objectbrick\Dao getDao()
+ * @method Dao getDao()
  */
 class Objectbrick extends Model\AbstractModel implements DirtyIndicatorInterface, ObjectAwareFieldInterface
 {
@@ -53,12 +55,7 @@ class Objectbrick extends Model\AbstractModel implements DirtyIndicatorInterface
      */
     protected ?int $objectId = null;
 
-    /**
-     * @internal
-     *
-     * @var array
-     */
-    protected $brickGetters = [];
+    protected array $brickGetters = [];
 
     public function __construct(Concrete $object, string $fieldname)
     {
@@ -96,7 +93,7 @@ class Objectbrick extends Model\AbstractModel implements DirtyIndicatorInterface
     public function setItems(array $items): static
     {
         $this->items = $items;
-        $this->markFieldDirty('_self', true);
+        $this->markFieldDirty('_self');
 
         return $this;
     }
@@ -257,12 +254,12 @@ class Objectbrick extends Model\AbstractModel implements DirtyIndicatorInterface
 
     public function get(string $fieldName): mixed
     {
-        return $this->{'get'.ucfirst($fieldName)}();
+        return $this->{'get' . ucfirst($fieldName)}();
     }
 
     public function set(string $fieldName, mixed $value): mixed
     {
-        return $this->{'set'.ucfirst($fieldName)}($value);
+        return $this->{'set' . ucfirst($fieldName)}($value);
     }
 
     /**

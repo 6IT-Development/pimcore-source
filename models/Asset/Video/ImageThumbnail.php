@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Video;
 
 use Exception;
+use League\Flysystem\FilesystemException;
 use Pimcore;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\FrontendEvents;
@@ -25,6 +27,7 @@ use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\Exception\ThumbnailFormatNotSupportedException;
+use Pimcore\Tool;
 use Pimcore\Tool\Storage;
 use Pimcore\Video;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -49,7 +52,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
      */
     protected ?Image $imageAsset = null;
 
-    public function __construct(?Model\Asset\Video $asset, array|string|Image\Thumbnail\Config $config = null, int $timeOffset = null, Image $imageAsset = null, bool $deferred = true)
+    public function __construct(?Model\Asset\Video $asset, array|string|Image\Thumbnail\Config|null $config = null, ?int $timeOffset = null, ?Image $imageAsset = null, bool $deferred = true)
     {
         $this->asset = $asset;
         $this->timeOffset = $timeOffset;
@@ -62,7 +65,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
     {
         // set defaults
         $deferredAllowed = $args['deferredAllowed'] ?? true;
-        $frontend = $args['frontend'] ?? \Pimcore\Tool::isFrontend();
+        $frontend = $args['frontend'] ?? Tool::isFrontend();
 
         $pathReference = $this->getPathReference($deferredAllowed);
 
@@ -73,13 +76,11 @@ final class ImageThumbnail implements ImageThumbnailInterface
             'frontendPath' => $path,
         ]);
         Pimcore::getEventDispatcher()->dispatch($event, FrontendEvents::ASSET_VIDEO_IMAGE_THUMBNAIL);
-        $path = $event->getArgument('frontendPath');
-
-        return $path;
+        return $event->getArgument('frontendPath');
     }
 
     /**
-     * @throws Exception|\League\Flysystem\FilesystemException|ThumbnailFormatNotSupportedException
+     * @throws Exception|FilesystemException|ThumbnailFormatNotSupportedException
      *
      * @internal
      */
@@ -139,7 +140,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
                         $tempFile = File::getLocalTempFilePath('png');
                         $converter = Video::getInstance();
                         $converter->load($this->asset->getLocalFile());
-                        if (false === $converter->saveImage($tempFile, (int) $timeOffset)) {
+                        if (false === $converter->saveImage($tempFile, (int)$timeOffset)) {
                             Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is failed.');
 
                             return;

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Node;
@@ -27,12 +27,13 @@ use Twig\Node\Node;
 final class BlockNode extends Node
 {
     public function __construct(
-        private readonly string $blockName,
+        private readonly string       $blockName,
         private readonly BlockOptions $options,
-        Node $body,
-        int $lineno,
-        string $tag
-    ) {
+        Node                          $body,
+        int                           $lineno,
+        string                        $tag
+    )
+    {
         parent::__construct(['body' => $body], [], $lineno, $tag);
     }
 
@@ -55,7 +56,7 @@ final class BlockNode extends Node
 
         return <<<PHP
         \$editableExtension = \$this->env->getExtension('Pimcore\Twig\Extension\DocumentEditableExtension');
-        \$block = \$editableExtension->renderEditable(\$context, 'block', '{$this->blockName}', $optionsString);
+        \$block = \$editableExtension->renderEditable(\$context, 'block', '$this->blockName', $optionsString);
         foreach(\$block->getIterator() as \$key => \$index) {
             \$block->setCurrent(\$key);
             \$context['_block'] = \$block;

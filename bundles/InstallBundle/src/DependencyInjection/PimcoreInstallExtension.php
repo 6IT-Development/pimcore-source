@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\InstallBundle\DependencyInjection;
@@ -58,13 +58,6 @@ final class PimcoreInstallExtension extends ConfigurableExtension
      */
     private function normalizeDbCredentials(array $dbCredentials): array
     {
-        $normalized = [];
-        foreach ($dbCredentials as $key => $value) {
-            if (!empty($value)) {
-                $normalized[$key] = $value;
-            }
-        }
-
-        return $normalized;
+        return array_filter($dbCredentials, fn($value) => !empty($value));
     }
 }

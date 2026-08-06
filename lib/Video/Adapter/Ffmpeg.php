@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Video\Adapter;
@@ -46,7 +47,7 @@ class Ffmpeg extends Adapter
                 return true;
             }
         } catch (Exception $e) {
-            Logger::warning((string) $e);
+            Logger::warning((string)$e);
         }
 
         return false;
@@ -58,7 +59,7 @@ class Ffmpeg extends Adapter
      */
     public static function getFfmpegCli(): false|string
     {
-        return \Pimcore\Tool\Console::getExecutable('ffmpeg', true);
+        return Console::getExecutable('ffmpeg', true);
     }
 
     public function load(string $file, array $options = []): static
@@ -121,7 +122,7 @@ class Ffmpeg extends Adapter
                 $mediaKeys = array_keys($medias);
                 $command = [];
 
-                foreach ($mediaKeys as $mediaKey) {
+                for ($i = 0; $i < count($mediaKeys); $i++) {
                     array_push($command, '-map', 'v:0');
                 }
 
@@ -138,7 +139,7 @@ class Ffmpeg extends Adapter
                     if ($medias[$bitrate]['converter'] instanceof self) {
                         foreach ($medias[$bitrate]['converter']->arguments as $aKey => $argument) {
                             $argument = ($aKey % 2 == 0 ? $argument . ':' . $i : $argument);
-                            array_push($command, $argument);
+                            $command[] = $argument;
                         }
                     }
                 }
@@ -208,9 +209,9 @@ class Ffmpeg extends Adapter
         return $success;
     }
 
-    public function saveImage(string $file, int $timeOffset = null): bool
+    public function saveImage(string $file, ?int $timeOffset = null): bool
     {
-        $timeOffset = (string) ($timeOffset ?? 5);
+        $timeOffset = (string)($timeOffset ?? 5);
 
         try {
             $cmd = [
@@ -225,7 +226,7 @@ class Ffmpeg extends Adapter
 
             return true;
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             return false;
         }
@@ -266,9 +267,7 @@ class Ffmpeg extends Adapter
 
             if ($result) {
                 // calculate duration in seconds
-                $duration = ((int)$matches[1] * 3600) + ((int)$matches[2] * 60) + (float)$matches[3];
-
-                return $duration;
+                return ((int)$matches[1] * 3600) + ((int)$matches[2] * 60) + (float)$matches[3];
             }
 
             throw new Exception(
@@ -340,7 +339,7 @@ class Ffmpeg extends Adapter
 
     public function addFlag(string $flag): void
     {
-        array_push($this->arguments, $flag);
+        $this->arguments[] = $flag;
     }
 
     public function getArguments(): array
@@ -350,7 +349,7 @@ class Ffmpeg extends Adapter
 
     public function setVideoBitrate(int $videoBitrate): static
     {
-        $videoBitrate = (int) ceil($videoBitrate / 2) * 2;
+        $videoBitrate = (int)ceil($videoBitrate / 2) * 2;
 
         parent::setVideoBitrate($videoBitrate);
 
@@ -363,7 +362,7 @@ class Ffmpeg extends Adapter
 
     public function setAudioBitrate(int $audioBitrate): static
     {
-        $audioBitrate = (int) ceil($audioBitrate / 2) * 2;
+        $audioBitrate = (int)ceil($audioBitrate / 2) * 2;
 
         parent::setAudioBitrate($audioBitrate);
 
@@ -379,27 +378,27 @@ class Ffmpeg extends Adapter
         // ensure $width & $height are even (mp4 requires this)
         $width = ceil($width / 2) * 2;
         $height = ceil($height / 2) * 2;
-        $this->addArgument('-s', $width.'x'.$height);
+        $this->addArgument('-s', $width . 'x' . $height);
     }
 
     public function scaleByWidth(int $width): void
     {
         // ensure $width is even (mp4 requires this)
         $width = ceil($width / 2) * 2;
-        $this->videoFilter[] = 'scale='.$width.':trunc(ow/a/2)*2';
+        $this->videoFilter[] = 'scale=' . $width . ':trunc(ow/a/2)*2';
     }
 
     public function scaleByHeight(int $height): void
     {
         // ensure $height is even (mp4 requires this)
         $height = ceil($height / 2) * 2;
-        $this->videoFilter[] = 'scale=trunc(oh/(ih/iw)/2)*2:'.$height;
+        $this->videoFilter[] = 'scale=trunc(oh/(ih/iw)/2)*2:' . $height;
     }
 
     public function cut(?string $inputSeeking = null, ?string $targetDuration = null): void
     {
         if (!empty($inputSeeking)) {
-            $result = preg_match("/^(\d\d):(\d\d):(\d\d\.?\d*)$/", $inputSeeking, $matches);
+            $result = preg_match('/^(\d\d):(\d\d):(\d\d\.?\d*)$/', $inputSeeking, $matches);
 
             if ($result) {
                 $this->inputSeeking = ((int)$matches[1] * 3600) + ((int)$matches[2] * 60) + (float)$matches[3];
@@ -412,7 +411,7 @@ class Ffmpeg extends Adapter
 
     public function setFramerate(int $fps): void
     {
-        $this->videoFilter[] = 'fps='.$fps;
+        $this->videoFilter[] = 'fps=' . $fps;
     }
 
     public function mute(): void
@@ -423,7 +422,7 @@ class Ffmpeg extends Adapter
     public function colorChannelMixer(?string $effect = null): void
     {
         if (!empty($effect)) {
-            $this->videoFilter[] = 'colorchannelmixer='.$effect;
+            $this->videoFilter[] = 'colorchannelmixer=' . $effect;
         }
     }
 }

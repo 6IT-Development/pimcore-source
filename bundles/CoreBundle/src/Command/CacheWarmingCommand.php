@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -70,38 +71,32 @@ class CacheWarmingCommand extends AbstractCommand
                 'types',
                 't',
                 InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                sprintf('Perform warming only for this types of elements. Valid options: %s', $this->humanList($this->validTypes)),
-                null
+                sprintf('Perform warming only for this types of elements. Valid options: %s', $this->humanList($this->validTypes))
             )
             ->addOption(
                 'documentTypes',
                 'd',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of documents. Valid options: %s', $this->humanList($this->validDocumentTypes)),
-                null
+                sprintf('Restrict warming to these types of documents. Valid options: %s', $this->humanList($this->validDocumentTypes))
             )
             ->addOption(
                 'assetTypes',
                 'a',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of assets. Valid options: %s', $this->humanList($this->validAssetTypes)),
-                null
+                sprintf('Restrict warming to these types of assets. Valid options: %s', $this->humanList($this->validAssetTypes))
             )
             ->addOption(
                 'objectTypes',
                 'o',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of objects. Valid options: %s', $this->humanList($this->validObjectTypes)),
-                null
+                sprintf('Restrict warming to these types of objects. Valid options: %s', $this->humanList($this->validObjectTypes))
             )
             ->addOption(
                 'classes',
                 'c',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                'Restrict object warming to these classes (only valid for objects!). Valid options: class names of your classes defined in Pimcore',
-                null
-            )
-        ;
+                'Restrict object warming to these classes (only valid for objects!). Valid options: class names of your classes defined in Pimcore'
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -149,7 +144,7 @@ class CacheWarmingCommand extends AbstractCommand
         if (null !== $types && count($types) > 0) {
             $output .= sprintf(' for types %s', $this->humanList($types, 'and', '<info>%s</info>'));
         } else {
-            $output .= sprintf(' for <info>all</info> types');
+            $output .= ' for <info>all</info> types';
         }
 
         if (!empty($extra)) {
@@ -165,7 +160,7 @@ class CacheWarmingCommand extends AbstractCommand
      *
      *
      */
-    protected function humanList(array $list, string $glue = 'or', string $template = null): string
+    protected function humanList(array $list, string $glue = 'or', ?string $template = null): string
     {
         if (null !== $template) {
             array_walk($list, function (&$item) use ($template) {

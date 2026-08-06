@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassBuilder;
@@ -56,12 +57,12 @@ class ObjectBrickContainerClassBuilder implements ObjectBrickContainerClassBuild
                 $cd .= "\t\t\t" . '$brickContainer = $this->getObject()->getValueFromParent("' . $fieldName . '");' . "\n";
                 $cd .= "\t\t\t" . 'if(!empty($brickContainer)) {' . "\n";
                 $cd .= "\t\t\t\t" . '//check if parent object has brick, and if so, create an empty brick to enable inheritance' . "\n";
-                $cd .= "\t\t\t\t" . '$parentBrick = $this->getObject()->getValueFromParent("' . $fieldName . '")->get' . ucfirst($brickKey) . '($includeDeletedBricks);'. "\n";
+                $cd .= "\t\t\t\t" . '$parentBrick = $this->getObject()->getValueFromParent("' . $fieldName . '")->get' . ucfirst($brickKey) . '($includeDeletedBricks);' . "\n";
                 $cd .= "\t\t\t\t" . 'if (!empty($parentBrick)) {' . "\n";
                 $cd .= "\t\t\t\t\t" . '$brickType = "\\\Pimcore\\\Model\\\DataObject\\\Objectbrick\\\Data\\\" . ucfirst($parentBrick->getType());' . "\n";
                 $cd .= "\t\t\t\t\t" . '$brick = new $brickType($this->getObject());' . "\n";
                 $cd .= "\t\t\t\t\t" . '$brick->setFieldname("' . $fieldName . '");' . "\n";
-                $cd .= "\t\t\t\t\t" . '$this->set'. ucfirst($brickKey) . '($brick);' . "\n";
+                $cd .= "\t\t\t\t\t" . '$this->set' . ucfirst($brickKey) . '($brick);' . "\n";
                 $cd .= "\t\t\t\t\t" . 'return $brick;' . "\n";
                 $cd .= "\t\t\t\t" . '}' . "\n";
                 $cd .= "\t\t\t" . "}\n";
@@ -72,7 +73,7 @@ class ObjectBrickContainerClassBuilder implements ObjectBrickContainerClassBuild
             }
             $cd .= "\t" . 'if(!$includeDeletedBricks &&' . "\n";
             $cd .= "\t\t" . 'isset($this->' . "$brickKey" . ') &&' . "\n";
-            $cd .= "\t\t" . '$this->' . "$brickKey" .'->getDoDelete()) {' . "\n";
+            $cd .= "\t\t" . '$this->' . "$brickKey" . '->getDoDelete()) {' . "\n";
             $cd .= "\t\t\t" . 'return null;' . "\n";
             $cd .= "\t" . '}' . "\n";
             $cd .= "\t" . 'return $this->' . $brickKey . ";\n";

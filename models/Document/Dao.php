@@ -9,23 +9,26 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document;
 
 use Exception;
+use Pimcore\Config;
 use Pimcore\Db\Helper;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Document;
 use Pimcore\Model\User;
+use Pimcore\Tool\Admin;
 use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Document $model
+ * @property Document $model
  */
 class Dao extends Model\Element\Dao
 {
@@ -86,10 +89,10 @@ class Dao extends Model\Element\Dao
             'index' => 0,
         ]));
 
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
 
         if (!$this->model->getKey()) {
-            $this->model->setKey((string) $this->model->getId());
+            $this->model->setKey((string)$this->model->getId());
         }
     }
 
@@ -100,9 +103,9 @@ class Dao extends Model\Element\Dao
     {
         $typeSpecificTable = null;
         $validColumnsTypeSpecific = [];
-        $documentsConfig = \Pimcore\Config::getSystemConfiguration('documents');
+        $documentsConfig = Config::getSystemConfiguration('documents');
         $validTables = [];
-        foreach ($documentsConfig['type_definitions']['map'] as $type => $config) {
+        foreach ($documentsConfig['type_definitions']['map'] as $config) {
             if (isset($config['valid_table']) && $config['valid_table']) {
                 $validTables[] = $config['valid_table'];
             }
@@ -196,7 +199,7 @@ class Dao extends Model\Element\Dao
         $documents = $this->db->fetchAllAssociative('SELECT id, CONCAT(`path`,`key`) as `path` FROM documents WHERE `path` like ?', [Helper::escapeLike($oldPath) . '%']);
 
         $userId = '0';
-        if ($user = \Pimcore\Tool\Admin::getCurrentUser()) {
+        if ($user = Admin::getCurrentUser()) {
             $userId = $user->getId();
         }
 
@@ -222,7 +225,7 @@ class Dao extends Model\Element\Dao
 
         try {
             $path = $this->db->fetchOne('SELECT CONCAT(`path`,`key`) as `path` FROM documents WHERE id = ?', [$this->model->getId()]);
-        } catch (Exception $e) {
+        } catch (Exception) {
             Logger::error('could not  get current document path from DB');
         }
 
@@ -235,14 +238,14 @@ class Dao extends Model\Element\Dao
             return 0;
         }
 
-        $versionCount = (int) $this->db->fetchOne('SELECT versionCount FROM documents WHERE id = ? FOR UPDATE', [$this->model->getId()]);
+        $versionCount = (int)$this->db->fetchOne('SELECT versionCount FROM documents WHERE id = ? FOR UPDATE', [$this->model->getId()]);
 
         if ($this->model instanceof PageSnippet) {
-            $versionCount2 = (int) $this->db->fetchOne("SELECT MAX(versionCount) FROM versions WHERE cid = ? AND ctype = 'document'", [$this->model->getId()]);
+            $versionCount2 = (int)$this->db->fetchOne("SELECT MAX(versionCount) FROM versions WHERE cid = ? AND ctype = 'document'", [$this->model->getId()]);
             $versionCount = max($versionCount, $versionCount2);
         }
 
-        return (int) $versionCount;
+        return (int)$versionCount;
     }
 
     /**
@@ -345,7 +348,7 @@ class Dao extends Model\Element\Dao
             $sql .= ' AND IF(' . $anyAllowedRowOrChildren . ',1,IF(' . $inheritedPermission . ', ' . $isDisallowedCurrentRow . ' = 0, 0)) = 1';
         }
 
-        $includingUnpublished ??= !Model\Document::doHideUnpublished();
+        $includingUnpublished ??= !Document::doHideUnpublished();
         if (!$includingUnpublished) {
             $sql .= ' AND published = 1';
         }
@@ -382,7 +385,7 @@ class Dao extends Model\Element\Dao
             $sql .= ' AND IF(' . $anyAllowedRowOrChildren . ',1,IF(' . $inheritedPermission . ', ' . $isDisallowedCurrentRow . ' = 0, 0)) = 1';
         }
 
-        return (int) $this->db->fetchOne($sql, [$this->model->getId()]);
+        return (int)$this->db->fetchOne($sql, [$this->model->getId()]);
     }
 
     /**
@@ -402,7 +405,7 @@ class Dao extends Model\Element\Dao
             $params[] = $this->model->getId();
         }
 
-        $includingUnpublished ??= !Model\Document::doHideUnpublished();
+        $includingUnpublished ??= !Document::doHideUnpublished();
         if (!$includingUnpublished) {
             $sql .= ' AND published = 1';
         }
@@ -424,7 +427,7 @@ class Dao extends Model\Element\Dao
         // check for an locked element below this element
         $belowLocks = $this->db->fetchOne("SELECT tree_locks.id FROM tree_locks
             INNER JOIN documents ON tree_locks.id = documents.id
-                WHERE documents.path LIKE ? AND tree_locks.type = 'document' AND tree_locks.locked IS NOT NULL AND tree_locks.locked != '' LIMIT 1", [Helper::escapeLike($this->model->getRealFullPath()). '/%']);
+                WHERE documents.path LIKE ? AND tree_locks.type = 'document' AND tree_locks.locked IS NOT NULL AND tree_locks.locked != '' LIMIT 1", [Helper::escapeLike($this->model->getRealFullPath()) . '/%']);
 
         if ($belowLocks > 0) {
             return true;
@@ -518,7 +521,7 @@ class Dao extends Model\Element\Dao
                     return true;
                 }
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             Logger::warn('Unable to get permission ' . $type . ' for document ' . $this->model->getId());
         }
 

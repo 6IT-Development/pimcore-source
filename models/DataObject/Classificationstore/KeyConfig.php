@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore;
@@ -87,7 +88,7 @@ final class KeyConfig extends Model\AbstractModel
             Cache::save($config, $cacheKey);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -113,14 +114,14 @@ final class KeyConfig extends Model\AbstractModel
 
             $config = new self();
             $config->setName($name);
-            $config->setStoreId($storeId ? $storeId : 1);
+            $config->setStoreId($storeId ?: 1);
             $config->getDao()->getByName();
 
             Cache\RuntimeCache::set($cacheKey, $config);
             Cache::save($config, $cacheKey);
 
             return $config;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -133,7 +134,7 @@ final class KeyConfig extends Model\AbstractModel
         return $config;
     }
 
-    public function setId(int $id): static
+    public function setId(int $id): KeyConfig
     {
         $this->id = $id;
 
@@ -145,7 +146,7 @@ final class KeyConfig extends Model\AbstractModel
         return $this->id;
     }
 
-    public function setName(string $name): static
+    public function setName(string $name): KeyConfig
     {
         $this->name = $name;
 
@@ -170,7 +171,7 @@ final class KeyConfig extends Model\AbstractModel
      *
      * @return $this
      */
-    public function setDescription(?string $description): static
+    public function setDescription(?string $description): KeyConfig
     {
         $this->description = $description;
 
@@ -300,7 +301,7 @@ final class KeyConfig extends Model\AbstractModel
     /**
      * Calculate cache key
      */
-    private static function getCacheKey(int $id, string $name = null): string
+    private static function getCacheKey(int $id, ?string $name = null): string
     {
         $cacheKey = 'cs_keyconfig_' . $id;
         if ($name !== null) {

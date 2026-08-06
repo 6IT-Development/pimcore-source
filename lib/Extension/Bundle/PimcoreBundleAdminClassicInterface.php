@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Extension\Bundle;
@@ -20,7 +20,7 @@ use Pimcore\Routing\RouteReferenceInterface;
 interface PimcoreBundleAdminClassicInterface
 {
     /**
-     * Get javascripts to include in admin interface
+     * Get JavaScript to be included it in the admin interface
      *
      * Strings will be directly included, RouteReferenceInterface objects are used to generate an URL through the
      * router.
@@ -30,7 +30,7 @@ interface PimcoreBundleAdminClassicInterface
     public function getJsPaths(): array;
 
     /**
-     * Get stylesheets to include in admin interface
+     * Get stylesheets to be included in the admin interface
      *
      * Strings will be directly included, RouteReferenceInterface objects are used to generate an URL through the
      * router.
@@ -40,7 +40,7 @@ interface PimcoreBundleAdminClassicInterface
     public function getCssPaths(): array;
 
     /**
-     * Get javascripts to include in editmode
+     * Get JavaScript to be included in editmode
      *
      * Strings will be directly included, RouteReferenceInterface objects are used to generate an URL through the
      * router.
@@ -50,7 +50,7 @@ interface PimcoreBundleAdminClassicInterface
     public function getEditmodeJsPaths(): array;
 
     /**
-     * Get stylesheets to include in editmode
+     * Get stylesheets to be included in editmode
      *
      * Strings will be directly included, RouteReferenceInterface objects are used to generate an URL through the
      * router.

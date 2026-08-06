@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Editable;
@@ -68,7 +68,7 @@ final class EditmodeEditableDefinitionCollector
 
     public function stashPush(): void
     {
-        array_push($this->stash, $this->editableDefinitions);
+        $this->stash[] = $this->editableDefinitions;
         $this->editableDefinitions = [];
     }
 
@@ -111,12 +111,10 @@ final class EditmodeEditableDefinitionCollector
      */
     public function getHtml(): string
     {
-        $code = '
+        return '
             <script>
                 var editableDefinitions = ' . $this->getJson() . ';
             </script>
         ';
-
-        return $code;
     }
 }

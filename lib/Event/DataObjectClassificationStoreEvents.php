@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -23,166 +24,166 @@ final class DataObjectClassificationStoreEvents
      *
      * @var string
      */
-    const COLLECTION_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.collectionConfig.preAdd';
+    public const string COLLECTION_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.collectionConfig.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\CollectionConfigEvent")
      *
      * @var string
      */
-    const COLLECTION_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.collectionConfig.postAdd';
+    public const string COLLECTION_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.collectionConfig.postAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\CollectionConfigEvent")
      *
      * @var string
      */
-    const COLLECTION_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.collectionConfig.preUpdate';
+    public const string COLLECTION_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.collectionConfig.preUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\CollectionConfigEvent")
      *
      * @var string
      */
-    const COLLECTION_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.collectionConfig.postUpdate';
+    public const string COLLECTION_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.collectionConfig.postUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\CollectionConfigEvent")
      *
      * @var string
      */
-    const COLLECTION_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.collectionConfig.preDelete';
+    public const string COLLECTION_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.collectionConfig.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\CollectionConfigEvent")
      *
      * @var string
      */
-    const COLLECTION_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.collectionConfig.postDelete';
+    public const string COLLECTION_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.collectionConfig.postDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\GroupConfigEvent")
      *
      * @var string
      */
-    const GROUP_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.groupConfig.preAdd';
+    public const string GROUP_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.groupConfig.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\GroupConfigEvent")
      *
      * @var string
      */
-    const GROUP_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.groupConfig.postAdd';
+    public const string GROUP_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.groupConfig.postAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\GroupConfigEvent")
      *
      * @var string
      */
-    const GROUP_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.groupConfig.preUpdate';
+    public const string GROUP_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.groupConfig.preUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\GroupConfigEvent")
      *
      * @var string
      */
-    const GROUP_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.groupConfig.postUpdate';
+    public const string GROUP_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.groupConfig.postUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\GroupConfigEvent")
      *
      * @var string
      */
-    const GROUP_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.groupConfig.preDelete';
+    public const string GROUP_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.groupConfig.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\GroupConfigEvent")
      *
      * @var string
      */
-    const GROUP_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.groupConfig.postDelete';
+    public const string GROUP_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.groupConfig.postDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\KeyConfigEvent")
      *
      * @var string
      */
-    const KEY_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.keyConfig.preAdd';
+    public const string KEY_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.keyConfig.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\KeyConfigEvent")
      *
      * @var string
      */
-    const KEY_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.keyConfig.postAdd';
+    public const string KEY_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.keyConfig.postAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\KeyConfigEvent")
      *
      * @var string
      */
-    const KEY_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.keyConfig.preUpdate';
+    public const string KEY_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.keyConfig.preUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\KeyConfigEvent")
      *
      * @var string
      */
-    const KEY_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.keyConfig.postUpdate';
+    public const string KEY_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.keyConfig.postUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\KeyConfigEvent")
      *
      * @var string
      */
-    const KEY_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.keyConfig.preDelete';
+    public const string KEY_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.keyConfig.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\KeyConfigEvent")
      *
      * @var string
      */
-    const KEY_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.keyConfig.postDelete';
+    public const string KEY_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.keyConfig.postDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\StoreConfigEvent")
      *
      * @var string
      */
-    const STORE_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.storeConfig.preAdd';
+    public const string STORE_CONFIG_PRE_ADD = 'pimcore.dataobject.classificationstore.storeConfig.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\StoreConfigEvent")
      *
      * @var string
      */
-    const STORE_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.storeConfig.postAdd';
+    public const string STORE_CONFIG_POST_ADD = 'pimcore.dataobject.classificationstore.storeConfig.postAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\StoreConfigEvent")
      *
      * @var string
      */
-    const STORE_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.storeConfig.preUpdate';
+    public const string STORE_CONFIG_PRE_UPDATE = 'pimcore.dataobject.classificationstore.storeConfig.preUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\StoreConfigEvent")
      *
      * @var string
      */
-    const STORE_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.storeConfig.postUpdate';
+    public const string STORE_CONFIG_POST_UPDATE = 'pimcore.dataobject.classificationstore.storeConfig.postUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\StoreConfigEvent")
      *
      * @var string
      */
-    const STORE_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.storeConfig.preDelete';
+    public const string STORE_CONFIG_PRE_DELETE = 'pimcore.dataobject.classificationstore.storeConfig.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\ClassificationStore\StoreConfigEvent")
      *
      * @var string
      */
-    const STORE_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.storeConfig.postDelete';
+    public const string STORE_CONFIG_POST_DELETE = 'pimcore.dataobject.classificationstore.storeConfig.postDelete';
 }

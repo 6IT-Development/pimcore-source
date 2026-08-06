@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\HttpKernel;
@@ -33,9 +34,9 @@ class WebPathResolver
      *
      * @param BundleInterface $bundle Bundle to fetch in
      *
+     * @return string Prefix
      * @throws InvalidArgumentException
      *
-     * @return string Prefix
      */
     public function getPrefix(BundleInterface $bundle): string
     {

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
 
 use Pimcore;
+use Symfony\Component\Serializer\Serializer;
 use Throwable;
 
 final class Serialize
@@ -43,7 +45,7 @@ final class Serialize
      * Shortcut to access the admin serializer
      *
      */
-    public static function getAdminSerializer(): \Symfony\Component\Serializer\Serializer
+    public static function getAdminSerializer(): Serializer
     {
         return Pimcore::getContainer()->get('pimcore_admin.serializer');
     }
@@ -85,7 +87,7 @@ final class Serialize
             $propCollection = get_object_vars($clone);
 
             foreach ($propCollection as $name => $propValue) {
-                if (!str_starts_with((string) $name, "\0")) {
+                if (!str_starts_with((string)$name, "\0")) {
                     $clone->$name = self::loopFilterCycles($propValue);
                 }
             }

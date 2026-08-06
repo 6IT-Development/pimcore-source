@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -23,14 +24,14 @@ final class DocumentEvents
      *
      * @var string
      */
-    const PRE_ADD = 'pimcore.document.preAdd';
+    public const string PRE_ADD = 'pimcore.document.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DocumentEvent")
      *
      * @var string
      */
-    const POST_ADD = 'pimcore.document.postAdd';
+    public const string POST_ADD = 'pimcore.document.postAdd';
 
     /**
      * Arguments:
@@ -40,7 +41,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const POST_ADD_FAILURE = 'pimcore.document.postAddFailure';
+    public const string POST_ADD_FAILURE = 'pimcore.document.postAddFailure';
 
     /**
      * Arguments:
@@ -50,7 +51,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const PRE_UPDATE = 'pimcore.document.preUpdate';
+    public const string PRE_UPDATE = 'pimcore.document.preUpdate';
 
     /**
      * Arguments:
@@ -61,7 +62,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const POST_UPDATE = 'pimcore.document.postUpdate';
+    public const string POST_UPDATE = 'pimcore.document.postUpdate';
 
     /**
      * Arguments:
@@ -72,28 +73,28 @@ final class DocumentEvents
      *
      * @var string
      */
-    const POST_UPDATE_FAILURE = 'pimcore.document.postUpdateFailure';
+    public const string POST_UPDATE_FAILURE = 'pimcore.document.postUpdateFailure';
 
     /**
      * @Event("Pimcore\Event\Model\DocumentDeleteInfoEvent")
      *
      * @var string
      */
-    const DELETE_INFO = 'pimcore.document.deleteInfo';
+    public const string DELETE_INFO = 'pimcore.document.deleteInfo';
 
     /**
      * @Event("Pimcore\Event\Model\DocumentEvent")
      *
      * @var string
      */
-    const PRE_DELETE = 'pimcore.document.preDelete';
+    public const string PRE_DELETE = 'pimcore.document.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DocumentEvent")
      *
      * @var string
      */
-    const POST_DELETE = 'pimcore.document.postDelete';
+    public const string POST_DELETE = 'pimcore.document.postDelete';
 
     /**
      * Arguments:
@@ -103,7 +104,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const POST_DELETE_FAILURE = 'pimcore.document.postDeleteFailure';
+    public const string POST_DELETE_FAILURE = 'pimcore.document.postDeleteFailure';
 
     /**
      * Arguments:
@@ -113,7 +114,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const POST_LOAD = 'pimcore.document.postLoad';
+    public const string POST_LOAD = 'pimcore.document.postLoad';
 
     /**
      * Arguments:
@@ -123,7 +124,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const PRE_COPY = 'pimcore.document.preCopy';
+    public const string PRE_COPY = 'pimcore.document.preCopy';
 
     /**
      * Arguments:
@@ -133,7 +134,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const POST_COPY = 'pimcore.document.postCopy';
+    public const string POST_COPY = 'pimcore.document.postCopy';
 
     /**
      * The EDITABLE_NAME event is triggered when a document editable name is built.
@@ -141,7 +142,7 @@ final class DocumentEvents
      * @Event("Pimcore\Event\Model\Document\EditableNameEvent")
      *
      */
-    const EDITABLE_NAME = 'pimcore.document.editable.name';
+    public const string EDITABLE_NAME = 'pimcore.document.editable.name';
 
     /**
      * The RENDERER_PRE_RENDER event is triggered before the DocumentRenderer renders a document
@@ -150,7 +151,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const RENDERER_PRE_RENDER = 'pimcore.document.renderer.pre_render';
+    public const string RENDERER_PRE_RENDER = 'pimcore.document.renderer.pre_render';
 
     /**
      * The RENDERER_POST_RENDER event is triggered after the DocumentRenderer rendered a document
@@ -159,7 +160,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const RENDERER_POST_RENDER = 'pimcore.document.renderer.post_render';
+    public const string RENDERER_POST_RENDER = 'pimcore.document.renderer.post_render';
 
     /**
      * The INCLUDERENDERER_PRE_RENDER event is triggered before the IncludeRenderer renders an include
@@ -168,7 +169,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const INCLUDERENDERER_PRE_RENDER = 'pimcore.document.IncludeRenderer.pre_render';
+    public const string INCLUDERENDERER_PRE_RENDER = 'pimcore.document.IncludeRenderer.pre_render';
 
     /**
      * Arguments:
@@ -179,7 +180,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const EDITABLE_RENDERLET_PRE_RENDER = 'pimcore.document.editable.renderlet.pre_render';
+    public const string EDITABLE_RENDERLET_PRE_RENDER = 'pimcore.document.editable.renderlet.pre_render';
 
     /**
      *
@@ -187,7 +188,7 @@ final class DocumentEvents
      *
      * @var string
      */
-    const PAGE_POST_SAVE_ACTION = 'pimcore.document.page.post_save_action';
+    public const string PAGE_POST_SAVE_ACTION = 'pimcore.document.page.post_save_action';
 
     /**
      *
@@ -195,5 +196,5 @@ final class DocumentEvents
      *
      * @var string
      */
-    const POST_MOVE_ACTION = 'pimcore.document.post_move_action';
+    public const string POST_MOVE_ACTION = 'pimcore.document.post_move_action';
 }

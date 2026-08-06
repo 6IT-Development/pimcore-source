@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ExportDataExtractorService\DataExtractor;
@@ -28,13 +29,13 @@ use Pimcore\Tool;
 
 class DataObjectDataExtractor extends AbstractElementDataExtractor
 {
-    const EXPORTABLE_TAGS = ['input', 'textarea', 'wysiwyg'];
+    public const array EXPORTABLE_TAGS = ['input', 'textarea', 'wysiwyg'];
 
-    const BRICK_DELIMITER = '|';
+    public const string BRICK_DELIMITER = '|';
 
-    const FIELD_COLLECTIONS_DELIMITER = '|';
+    public const string FIELD_COLLECTIONS_DELIMITER = '|';
 
-    const BLOCK_DELIMITER = '|';
+    public const string BLOCK_DELIMITER = '|';
 
     protected array $exportAttributes;
 
@@ -50,10 +51,11 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
      */
     public function extract(
         TranslationItem $translationItem,
-        string $sourceLanguage,
-        array $targetLanguages,
-        array $exportAttributes = null
-    ): AttributeSet {
+        string          $sourceLanguage,
+        array           $targetLanguages,
+        ?array          $exportAttributes = null
+    ): AttributeSet
+    {
         $notInheritedSet = $this->extractRawAttributeSet(
             $translationItem,
             $sourceLanguage,
@@ -93,18 +95,18 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
      */
     private function extractRawAttributeSet(
         TranslationItem $translationItem,
-        string $sourceLanguage,
-        array $targetLanguages,
-        ?array $exportAttributes,
-        bool $inherited
-    ): AttributeSet {
+        string          $sourceLanguage,
+        array           $targetLanguages,
+        ?array          $exportAttributes,
+        bool            $inherited
+    ): AttributeSet
+    {
         return DataObject\Service::useInheritedValues(
             $inherited,
             function () use ($translationItem, $sourceLanguage, $targetLanguages, $exportAttributes) {
                 $result = parent::extract($translationItem, $sourceLanguage, $targetLanguages);
 
                 $object = $translationItem->getElement();
-
                 if ($object instanceof DataObject\Folder) {
                     return $result;
                 }
@@ -124,15 +126,7 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
 
     private function isAttributeIncluded(AttributeSet $attributeSet, Attribute $attribute): bool
     {
-        foreach ($attributeSet->getAttributes() as $_attribute) {
-            if ($_attribute->getType() === $attribute->getType() &&
-                $_attribute->getContent() === $attribute->getContent()
-            ) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($attributeSet->getAttributes(), fn(Attribute $_attribute) => $_attribute->getType() === $attribute->getType() && $_attribute->getContent() === $attribute->getContent());
     }
 
     /**
@@ -140,9 +134,10 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
      */
     protected function addLocalizedFields(
         DataObject\Concrete $object,
-        AttributeSet $result,
-        array $exportAttributes = null
-    ): DataObjectDataExtractor {
+        AttributeSet        $result,
+        ?array              $exportAttributes = null
+    ): DataObjectDataExtractor
+    {
         /** @var Localizedfields|null $fd */
         $fd = $object->getClass()->getFieldDefinition('localizedfields');
         if ($fd) {
@@ -190,12 +185,13 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
      * @throws Exception
      */
     protected function addBlocksInLocalizedfields(
-        Localizedfields $fd,
-        Data $definition,
+        Localizedfields     $fd,
+        Data                $definition,
         DataObject\Concrete $object,
-        AttributeSet $result,
-        array $exportAttributes = null
-    ): void {
+        AttributeSet        $result,
+        ?array              $exportAttributes = null
+    ): void
+    {
         $locale = str_replace('-', '_', $result->getSourceLanguage());
         if (!Tool::isValidLanguage($locale)) {
             $locale = Locale::getPrimaryLanguage($locale);
@@ -249,13 +245,14 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
     }
 
     protected function addBlocksInLocalizedFieldCollections(
-        Data $definition,
+        Data                      $definition,
         DataObject\Localizedfield $localizedField,
-        Data $fieldCollectionDefinition,
-        mixed $fieldCollectionItem,
-        AttributeSet $result,
-        string $locale
-    ): void {
+        Data                      $fieldCollectionDefinition,
+        mixed                     $fieldCollectionItem,
+        AttributeSet              $result,
+        string                    $locale
+    ): void
+    {
         $blockElements = $localizedField->getLocalizedValue($definition->getName(), $locale);
 
         $targetBlockElements = [];
@@ -316,9 +313,10 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
      */
     protected function addBlocks(
         DataObject\Concrete $object,
-        AttributeSet $result,
-        array $exportAttributes = null
-    ): DataObjectDataExtractor {
+        AttributeSet        $result,
+        ?array              $exportAttributes = null
+    ): DataObjectDataExtractor
+    {
         $locale = str_replace('-', '_', $result->getSourceLanguage());
         if (!Tool::isValidLanguage($locale)) {
             $locale = Locale::getPrimaryLanguage($locale);
@@ -405,9 +403,10 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
      */
     protected function addLocalizedFieldsInBricks(
         DataObject\Concrete $object,
-        AttributeSet $result,
-        array $exportAttributes = null
-    ): DataObjectDataExtractor {
+        AttributeSet        $result,
+        ?array              $exportAttributes = null
+    ): DataObjectDataExtractor
+    {
         $locale = str_replace('-', '_', $result->getSourceLanguage());
         if (!Tool::isValidLanguage($locale)) {
             $locale = Locale::getPrimaryLanguage($locale);
@@ -494,9 +493,10 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
      */
     protected function addLocalizedFieldsInFieldCollections(
         DataObject\Concrete $object,
-        AttributeSet $result,
-        array $exportAttributes = null
-    ): DataObjectDataExtractor {
+        AttributeSet        $result,
+        ?array              $exportAttributes = null
+    ): DataObjectDataExtractor
+    {
         $locale = str_replace('-', '_', $result->getSourceLanguage());
         if (!Tool::isValidLanguage($locale)) {
             $locale = Locale::getPrimaryLanguage($locale);
@@ -599,7 +599,7 @@ class DataObjectDataExtractor extends AbstractElementDataExtractor
         return $this;
     }
 
-    protected function isFieldExportable(string $className, Data $definition, array $exportAttributes = null): bool
+    protected function isFieldExportable(string $className, Data $definition, ?array $exportAttributes = null): bool
     {
         // check allowed datatypes
         if (!in_array($definition->getFieldtype(), self::EXPORTABLE_TAGS)) {

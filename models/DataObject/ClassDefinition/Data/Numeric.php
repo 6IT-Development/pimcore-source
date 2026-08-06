@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 use InvalidArgumentException;
+use Pimcore\Db;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -30,9 +32,9 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     use Model\DataObject\Traits\SimpleNormalizerTrait;
     use Model\DataObject\Traits\SimpleComparisonTrait;
 
-    const DECIMAL_SIZE_DEFAULT = 64;
+    public const int DECIMAL_SIZE_DEFAULT = 64;
 
-    const DECIMAL_PRECISION_DEFAULT = 0;
+    public const int DECIMAL_PRECISION_DEFAULT = 0;
 
     public static array $validFilterOperators = [
         '=',
@@ -273,11 +275,9 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataForResource
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): float|int|string|null
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): float|int|string|null
     {
         $data = $this->handleDefaultValue($data, $object, $params);
 
@@ -289,12 +289,9 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
-     *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): float|int|string|null
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): float|int|string|null
     {
         if (is_numeric($data)) {
             return $this->toNumeric($data);
@@ -304,12 +301,9 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
-     *
      */
-    public function getDataForQueryResource(mixed $data, Concrete $object = null, array $params = []): float|int|string|null
+    public function getDataForQueryResource(mixed $data, ?Concrete $object = null, array $params = []): float|int|string|null
     {
         //TODO same fallback as above
 
@@ -317,11 +311,9 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see Data::getDataForEditmode
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): float|int|string|null
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): float|int|string|null
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -331,29 +323,27 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): float|int|string|null
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): float|int|string|null
     {
         return $this->getDataFromResource($data, $object, $params);
     }
 
     /**
-     * @param null|Model\DataObject\Concrete $object
-     *
      * @see Data::getVersionPreview
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
-        return (string) $data;
+        return (string)$data;
     }
 
     public function checkValidity(mixed $data, bool $omitMandatoryCheck = false, array $params = []): void
     {
         if (!$omitMandatoryCheck && $this->getMandatory() && $this->isEmpty($data)) {
-            throw new Model\Element\ValidationException('Empty mandatory field [ '.$this->getName().' ]');
+            throw new Model\Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
 
         if (!$this->isEmpty($data) && !is_numeric($data)) {
-            throw new Model\Element\ValidationException('field ['.$this->getName().' ] - invalid numeric data [' . $data . '] ');
+            throw new Model\Element\ValidationException('field [' . $this->getName() . ' ] - invalid numeric data [' . $data . '] ');
         }
 
         if (!$this->isEmpty($data) && !$omitMandatoryCheck) {
@@ -364,19 +354,19 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
             }
 
             if ($this->getInteger() && str_contains((string)$data, '.')) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is not an integer');
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is not an integer');
             }
 
             if ($this->getMinValue() !== null && $this->getMinValue() > $data) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is not at least ' . $this->getMinValue());
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is not at least ' . $this->getMinValue());
             }
 
             if ($this->getMaxValue() !== null && $data > $this->getMaxValue()) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is bigger than ' . $this->getMaxValue());
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is bigger than ' . $this->getMaxValue());
             }
 
             if ($this->getUnsigned() && $data < 0) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is not unsigned (bigger than 0)');
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is not unsigned (bigger than 0)');
             }
         }
     }
@@ -396,11 +386,11 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
      */
     public function getFilterConditionExt(mixed $value, string $operator, array $params = []): string
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $name = $params['name'] ?: $this->name;
         $key = $db->quoteIdentifier($name);
         if (!empty($params['brickPrefix'])) {
-            $key = $params['brickPrefix'].$key;
+            $key = $params['brickPrefix'] . $key;
         }
 
         if ($value === 'NULL') {
@@ -437,26 +427,26 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     private function toNumeric(mixed $value): float|int|string
     {
         if ($this->getInteger()) {
-            return (int) $value;
+            return (int)$value;
         }
 
-        $value = str_replace(',', '.', (string) $value);
+        $value = str_replace(',', '.', (string)$value);
 
         if ($this->isDecimalType()) {
             return $value;
         }
 
         if (!str_contains($value, '.')) {
-            return (int) $value;
+            return (int)$value;
         }
 
-        return (float) $value;
+        return (float)$value;
     }
 
     public function preSetData(mixed $container, mixed $data, array $params = []): mixed
     {
         if (!is_null($data) && $this->getDecimalPrecision()) {
-            $data = round((float) $data, $this->getDecimalPrecision());
+            $data = round((float)$data, $this->getDecimalPrecision());
         }
 
         return $data;

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Cache\Core;
@@ -34,8 +35,6 @@ class DoctrineDbalCoreHandlerTest extends AbstractCoreHandlerTest
     {
         TestHelper::checkDbSupport();
         $doctrineDbalAdapter = new DoctrineDbalAdapter(Pimcore::getContainer()->get('doctrine.dbal.default_connection'), '', $this->defaultLifetime);
-        $adapter = new TagAwareAdapter($doctrineDbalAdapter);
-
-        return $adapter;
+        return new TagAwareAdapter($doctrineDbalAdapter);
     }
 }

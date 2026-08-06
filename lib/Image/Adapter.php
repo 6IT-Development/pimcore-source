@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Image;
@@ -268,10 +268,10 @@ abstract class Adapter implements AdapterInterface
         $originalWidth = $this->getWidth();
         $originalHeight = $this->getHeight();
 
-        $widthPixel = (int) ceil($originalWidth * ($width / 100));
-        $heightPixel = (int) ceil($originalHeight * ($height / 100));
-        $xPixel = (int) ceil($originalWidth * ($x / 100));
-        $yPixel = (int) ceil($originalHeight * ($y / 100));
+        $widthPixel = (int)ceil($originalWidth * ($width / 100));
+        $heightPixel = (int)ceil($originalHeight * ($height / 100));
+        $xPixel = (int)ceil($originalWidth * ($x / 100));
+        $yPixel = (int)ceil($originalHeight * ($y / 100));
 
         return $this->crop($xPixel, $yPixel, $widthPixel, $heightPixel);
     }
@@ -314,7 +314,7 @@ abstract class Adapter implements AdapterInterface
     /**
      * @deprecated Provided by AdapterInterface::save() instead
      */
-    abstract public function save(string $path, string $format = null, int $quality = null): static;
+    abstract public function save(string $path, ?string $format = null, ?int $quality = null): static;
 
     abstract protected function destroy(): void;
 

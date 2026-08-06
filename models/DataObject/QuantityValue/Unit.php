@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\QuantityValue;
@@ -20,15 +20,16 @@ use Pimcore\Event\DataObjectQuantityValueEvents;
 use Pimcore\Event\Model\DataObject\QuantityValueUnitEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Model;
+use Pimcore\Model\DataObject\QuantityValue\Unit\Dao;
 
 /**
- * @method \Pimcore\Model\DataObject\QuantityValue\Unit\Dao getDao()
+ * @method Dao getDao()
  */
 class Unit extends Model\AbstractModel
 {
     use RecursionBlockingEventDispatchHelperTrait;
 
-    const CACHE_KEY = 'quantityvalue_units_table';
+    public const string CACHE_KEY = 'quantityvalue_units_table';
 
     protected ?string $id = null;
 
@@ -55,7 +56,7 @@ class Unit extends Model\AbstractModel
             $unit->getDao()->getByAbbreviation($abbreviation);
 
             return $unit;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
@@ -67,7 +68,7 @@ class Unit extends Model\AbstractModel
             $unit->getDao()->getByReference($reference);
 
             return $unit;
-        } catch (Model\Exception\NotFoundException $e) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }

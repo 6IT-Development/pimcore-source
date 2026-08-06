@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -30,12 +31,9 @@ class Geobounds extends AbstractGeo implements
     NormalizerInterface
 {
     /**
-     * @param null|DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataForResource
-     *
      */
-    public function getDataForResource(mixed $data, Concrete $object = null, array $params = []): array
+    public function getDataForResource(mixed $data, ?Concrete $object = null, array $params = []): array
     {
         if ($data instanceof DataObject\Data\Geobounds) {
             return [
@@ -76,7 +74,7 @@ class Geobounds extends AbstractGeo implements
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Geobounds
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Geobounds
     {
         if (is_array($data) &&
             $data[$this->getName() . '__NElongitude'] &&
@@ -105,7 +103,7 @@ class Geobounds extends AbstractGeo implements
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -116,7 +114,7 @@ class Geobounds extends AbstractGeo implements
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if ($data instanceof DataObject\Data\Geobounds) {
             return [
@@ -130,11 +128,7 @@ class Geobounds extends AbstractGeo implements
         return null;
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataForGrid(?DataObject\Data\Geobounds $data, Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(?DataObject\Data\Geobounds $data, ?Concrete $object = null, array $params = []): ?array
     {
         return $this->getDataForEditmode($data, $object, $params);
     }
@@ -144,7 +138,7 @@ class Geobounds extends AbstractGeo implements
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Geobounds
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\Geobounds
     {
         if (is_array($data) && $data['NElongitude'] !== null && $data['NElatitude'] !== null && $data['SWlongitude'] !== null && $data['SWlatitude'] !== null) {
             $ne = new DataObject\Data\GeoCoordinates($data['NElatitude'], $data['NElongitude']);
@@ -162,7 +156,7 @@ class Geobounds extends AbstractGeo implements
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if ($data instanceof DataObject\Data\Geobounds) {
             return $data->getNorthEast()->getLongitude() . ',' . $data->getNorthEast()->getLatitude() . ' ' . $data->getSouthWest()->getLongitude() . ',' . $data->getSouthWest()->getLatitude();
@@ -175,7 +169,7 @@ class Geobounds extends AbstractGeo implements
     {
         $data = $this->getDataFromObjectParam($object, $params);
         if ($data instanceof DataObject\Data\Geobounds) {
-            return  $data->getNorthEast()->getLongitude().','.$data->getNorthEast()->getLatitude().'|'.$data->getSouthWest()->getLongitude().','.$data->getSouthWest()->getLatitude();
+            return $data->getNorthEast()->getLongitude() . ',' . $data->getNorthEast()->getLatitude() . '|' . $data->getSouthWest()->getLongitude() . ',' . $data->getSouthWest()->getLatitude();
         }
 
         return '';
@@ -232,32 +226,27 @@ class Geobounds extends AbstractGeo implements
             return true;
         }
 
-        if (!$oldValue instanceof DataObject\Data\Geobounds
-            || !$newValue instanceof DataObject\Data\Geobounds) {
+        if (!$oldValue instanceof DataObject\Data\Geobounds || !$newValue instanceof DataObject\Data\Geobounds) {
             return false;
         }
 
         $oldValue = [
-            'NElongitude' => $oldValue->getNorthEast()->getLongitude(),
-            'NElatitude' => $oldValue->getNorthEast()->getLatitude(),
-            'SWlongitude' => $oldValue->getSouthWest()->getLongitude(),
-            'SWlatitude' => $oldValue->getSouthWest()->getLatitude(),
+            'NElongitude' => $oldValue->getNorthEast()?->getLongitude(),
+            'NElatitude' => $oldValue->getNorthEast()?->getLatitude(),
+            'SWlongitude' => $oldValue->getSouthWest()?->getLongitude(),
+            'SWlatitude' => $oldValue->getSouthWest()?->getLatitude(),
         ];
 
         $newValue = [
-            'NElongitude' => $newValue->getNorthEast()->getLongitude(),
-            'NElatitude' => $newValue->getNorthEast()->getLatitude(),
-            'SWlongitude' => $newValue->getSouthWest()->getLongitude(),
-            'SWlatitude' => $newValue->getSouthWest()->getLatitude(),
+            'NElongitude' => $newValue->getNorthEast()?->getLongitude(),
+            'NElatitude' => $newValue->getNorthEast()?->getLatitude(),
+            'SWlongitude' => $newValue->getSouthWest()?->getLongitude(),
+            'SWlatitude' => $newValue->getSouthWest()?->getLatitude(),
         ];
 
-        foreach ($oldValue as $key => $oValue) {
-            if ($oValue !== $newValue[$key]) {
-                return false;
-            }
-        }
+        // TODO float kezelése
 
-        return true;
+        return array_all($oldValue, fn($oValue, $key) => $oValue === $newValue[$key]);
     }
 
     public function getParameterTypeDeclaration(): ?string

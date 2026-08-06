@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\AbstractObject;
@@ -20,12 +20,14 @@ use Pimcore\Db\Helper;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\User;
+use Pimcore\Tool\Admin;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\AbstractObject $model
+ * @property AbstractObject $model
  */
 class Dao extends Model\Element\Dao
 {
@@ -66,7 +68,7 @@ class Dao extends Model\Element\Dao
     }
 
     /**
-     * Create a new record for the object in database
+     * Create a new record for the object in the database
      */
     public function create(): void
     {
@@ -74,7 +76,7 @@ class Dao extends Model\Element\Dao
             'key' => $this->model->getKey(),
             'path' => $this->model->getRealPath(),
         ]));
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
 
         if (!$this->model->getKey() && !is_numeric($this->model->getKey())) {
             $this->model->setKey($this->db->lastInsertId());
@@ -156,7 +158,7 @@ class Dao extends Model\Element\Dao
             $objects = $this->db->fetchFirstColumn('SELECT id FROM objects WHERE `path` like ?', [Helper::escapeLike($oldPath) . '%']);
 
             $userId = '0';
-            if ($user = \Pimcore\Tool\Admin::getCurrentUser()) {
+            if ($user = Admin::getCurrentUser()) {
                 $userId = $user->getId();
             }
 
@@ -202,14 +204,14 @@ class Dao extends Model\Element\Dao
             return 0;
         }
 
-        $versionCount = (int) $this->db->fetchOne('SELECT versionCount FROM objects WHERE id = ? FOR UPDATE', [$this->model->getId()]);
+        $versionCount = (int)$this->db->fetchOne('SELECT versionCount FROM objects WHERE id = ? FOR UPDATE', [$this->model->getId()]);
 
         if ($this->model instanceof DataObject\Concrete) {
-            $versionCount2 = (int) $this->db->fetchOne("SELECT MAX(versionCount) FROM versions WHERE cid = ? AND ctype = 'object'", [$this->model->getId()]);
+            $versionCount2 = (int)$this->db->fetchOne("SELECT MAX(versionCount) FROM versions WHERE cid = ? AND ctype = 'object'", [$this->model->getId()]);
             $versionCount = max($versionCount, $versionCount2);
         }
 
-        return (int) $versionCount;
+        return (int)$versionCount;
     }
 
     /**
@@ -284,7 +286,8 @@ class Dao extends Model\Element\Dao
         ],
         ?bool $includingUnpublished = null,
         ?User $user = null
-    ): bool {
+    ): bool
+    {
         if (!$this->model->getId()) {
             return false;
         }
@@ -340,7 +343,8 @@ class Dao extends Model\Element\Dao
             DataObject::OBJECT_TYPE_FOLDER,
         ],
         ?bool $includingUnpublished = null
-    ): bool {
+    ): bool
+    {
         if (!$this->model->getParentId()) {
             return false;
         }
@@ -378,8 +382,9 @@ class Dao extends Model\Element\Dao
             DataObject::OBJECT_TYPE_VARIANT,
             DataObject::OBJECT_TYPE_FOLDER,
         ],
-        ?User $user = null
-    ): int {
+        ?User  $user = null
+    ): int
+    {
         if (!$this->model->getId()) {
             return 0;
         }
@@ -398,13 +403,13 @@ class Dao extends Model\Element\Dao
             $inheritedPermission = $this->isInheritingPermission('list', $permissionIds);
 
             $anyAllowedRowOrChildren = 'EXISTS(SELECT list FROM users_workspaces_object uwo WHERE userId IN (' . implode(',', $permissionIds) . ') AND list=1 AND LOCATE(CONCAT(o.path,o.key),cpath)=1 AND
-            NOT EXISTS(SELECT list FROM users_workspaces_object WHERE userId ='.$currentUserId.'  AND list=0 AND cpath = uwo.cpath))';
+            NOT EXISTS(SELECT list FROM users_workspaces_object WHERE userId =' . $currentUserId . '  AND list=0 AND cpath = uwo.cpath))';
             $isDisallowedCurrentRow = 'EXISTS(SELECT list FROM users_workspaces_object uworow WHERE userId IN (' . implode(',', $permissionIds) . ')  AND cid = id AND list=0)';
 
             $query .= ' AND IF(' . $anyAllowedRowOrChildren . ',1,IF(' . $inheritedPermission . ', ' . $isDisallowedCurrentRow . ' = 0, 0)) = 1';
         }
 
-        return (int) $this->db->fetchOne($query, [$this->model->getId()]);
+        return (int)$this->db->fetchOne($query, [$this->model->getId()]);
     }
 
     /**
@@ -487,7 +492,7 @@ class Dao extends Model\Element\Dao
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function isInheritingPermission(string $type, array $userIds): int
     {
@@ -521,7 +526,7 @@ class Dao extends Model\Element\Dao
                     return true;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             Logger::warn('Unable to get permission ' . $type . ' for object ' . $this->model->getId());
         }
 
@@ -596,7 +601,7 @@ class Dao extends Model\Element\Dao
             $permissions = $this->db->fetchAssociative('SELECT ' . $queryType . ' FROM users_workspaces_object WHERE cid IN (' . implode(',', $parentIds) . ') AND userId IN (' . implode(',', $userIds) . ') ORDER BY LENGTH(cpath) DESC, FIELD(userId, ' . $user->getId() . ') DESC' . $orderByType . ' LIMIT 1');
 
             return $permissions ?: null;
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             Logger::warn('Unable to get permission ' . $type . ' for object ' . $this->model->getId());
         }
 
@@ -619,7 +624,7 @@ class Dao extends Model\Element\Dao
             $cid = $this->model->getId();
             $sql = 'SELECT ' . $type . ' FROM users_workspaces_object WHERE cid != ' . $cid . ' AND cpath LIKE ' . $this->db->quote(Helper::escapeLike($this->model->getRealFullPath()) . '%') . ' AND userId IN (' . implode(',', $userIds) . ') ORDER BY LENGTH(cpath) DESC';
             $permissions = $this->db->fetchAllAssociative($sql);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             Logger::warn('Unable to get permission ' . $type . ' for object ' . $this->model->getId());
         }
 

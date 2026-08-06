@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,12 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle;
 
+use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 
 /**
@@ -39,10 +41,10 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $sqlPath = (__DIR__ . '/Resources/install/');
         $sqlFileNames = ['install.sql'];
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath.$fileName);
+            $statement = file_get_contents($sqlPath . $fileName);
             $db->executeQuery($statement);
         }
     }
@@ -51,10 +53,10 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $sqlPath = __DIR__ . '/Resources/uninstall/';
         $sqlFileNames = ['uninstall.sql'];
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath.$fileName);
+            $statement = file_get_contents($sqlPath . $fileName);
             $db->executeQuery($statement);
         }
     }

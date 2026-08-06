@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Controller\Document;
@@ -32,15 +32,15 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 /**
  * @internal
  */
-#[Route("/document")]
+#[Route('/document')]
 class DocumentController extends UserAwareController
 {
     use JsonHelperTrait;
     use DocumentTreeConfigWrapperTrait;
 
-    private const DOCUMENT_ROOT_ID = 1;
+    private const int DOCUMENT_ROOT_ID = 1;
 
-    #[Route("/seopanel-tree-root", name: "pimcore_bundle_seo_document_document_seopaneltreeroot", methods: ["GET"])]
+    #[Route('/seopanel-tree-root', name: 'pimcore_bundle_seo_document_document_seopaneltreeroot', methods: [Request::METHOD_GET])]
     public function seopanelTreeRootAction(DocumentRouteHandler $documentRouteHandler): JsonResponse
     {
         $this->checkPermission('seo_document_editor');
@@ -59,12 +59,13 @@ class DocumentController extends UserAwareController
         throw $this->createAccessDeniedHttpException();
     }
 
-    #[Route("/seopanel-tree", name: "pimcore_bundle_seo_document_document_seopaneltree", methods: ["GET"])]
+    #[Route('/seopanel-tree', name: 'pimcore_bundle_seo_document_document_seopaneltree', methods: [Request::METHOD_GET])]
     public function seopanelTreeAction(
-        Request $request,
+        Request                  $request,
         EventDispatcherInterface $eventDispatcher,
-        DocumentRouteHandler $documentRouteHandler
-    ): JsonResponse {
+        DocumentRouteHandler     $documentRouteHandler
+    ): JsonResponse
+    {
         $this->checkPermission('seo_document_editor');
 
         if (!class_exists(AdminEvents::class)) {
@@ -83,7 +84,7 @@ class DocumentController extends UserAwareController
         // make sure document routes are also built for unpublished documents
         $documentRouteHandler->setForceHandleUnpublishedDocuments(true);
 
-        $document = Document::getById((int) $allParams['node']);
+        $document = Document::getById((int)$allParams['node']);
 
         $documents = [];
         if ($document->hasChildren()) {
@@ -106,7 +107,7 @@ class DocumentController extends UserAwareController
                 // only display document if listing is allowed for the current user
                 if ($childDocument->isAllowed('list')) {
                     $list = new Document\Listing();
-                    $list->setCondition('`path` LIKE ? and `type` = ?', [$list->escapeLike($childDocument->getRealFullPath()). '/%', 'page']);
+                    $list->setCondition('`path` LIKE ? and `type` = ?', [$list->escapeLike($childDocument->getRealFullPath()) . '/%', 'page']);
 
                     if ($childDocument instanceof Document\Page || $list->getTotalCount() > 0) {
                         $documents[] = $this->getSeoNodeConfig($childDocument);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Tool;
@@ -37,7 +38,7 @@ class SettingsStoreTest extends ModelTestCase
         $this->$assetMethod($setting->getData());
         $queryResult = $db->fetchOne('SELECT id FROM ' . SettingsStore\Dao::TABLE_NAME . ' WHERE id = :id AND scope = :scope', [
             'id' => $id,
-            'scope' => (string) $scope,
+            'scope' => (string)$scope,
         ]);
         $this->assertEquals($id, $queryResult);
 
@@ -59,7 +60,7 @@ class SettingsStoreTest extends ModelTestCase
         SettingsStore::delete($id, $scope);
         $queryResult = $db->fetchOne('SELECT id FROM ' . SettingsStore\Dao::TABLE_NAME . ' WHERE id = :id AND scope = :scope', [
             'id' => $id,
-            'scope' => (string) $scope,
+            'scope' => (string)$scope,
         ]);
         $this->assertFalse($queryResult);
     }

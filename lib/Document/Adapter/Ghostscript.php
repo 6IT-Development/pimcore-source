@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Document\Adapter;
@@ -54,7 +55,7 @@ class Ghostscript extends Adapter
     public function isFileTypeSupported(string $fileType): bool
     {
         // it's also possible to pass a path or filename
-        if (preg_match("/\.?pdf$/i", $fileType)) {
+        if (preg_match('/\.?pdf$/i', $fileType)) {
             return true;
         }
 
@@ -82,7 +83,7 @@ class Ghostscript extends Adapter
     public function load(Asset\Document $asset): static
     {
         // avoid timeouts
-        $maxExecTime = (int) ini_get('max_execution_time');
+        $maxExecTime = (int)ini_get('max_execution_time');
         if ($maxExecTime > 1 && $maxExecTime < 250) {
             set_time_limit(250);
         }
@@ -105,7 +106,7 @@ class Ghostscript extends Adapter
             $asset = $this->asset;
         }
 
-        if (preg_match("/\.?pdf$/i", $asset->getFilename())) { // only PDF's are supported
+        if (preg_match('/\.?pdf$/i', $asset->getFilename())) { // only PDF's are supported
             $file = $asset->getStream();
             if (!is_resource($file)) {
                 throw new Exception(sprintf('Could not get pdf from asset with id %s', $asset->getId()));
@@ -127,11 +128,11 @@ class Ghostscript extends Adapter
         $process->mustRun();
         $pages = trim($process->getOutput());
 
-        if (! is_numeric($pages)) {
+        if (!is_numeric($pages)) {
             throw new Exception('Unable to get page-count of ' . $this->asset->getRealFullPath());
         }
 
-        return (int) $pages;
+        return (int)$pages;
     }
 
     /**
@@ -176,7 +177,7 @@ class Ghostscript extends Adapter
     {
         try {
             $localFile = self::getLocalFileFromStream($this->getPdf());
-            $cmd = [self::getGhostscriptCli(), '-sDEVICE=pngalpha', '-dFirstPage=' . $page, '-dLastPage=' . $page, '-dTextAlphaBits=4', '-dGraphicsAlphaBits=4', '-r'. $resolution, '-o', $imageTargetPath, $localFile];
+            $cmd = [self::getGhostscriptCli(), '-sDEVICE=pngalpha', '-dFirstPage=' . $page, '-dLastPage=' . $page, '-dTextAlphaBits=4', '-dGraphicsAlphaBits=4', '-r' . $resolution, '-o', $imageTargetPath, $localFile];
             Console::addLowProcessPriority($cmd);
             $process = new Process($cmd);
             $process->setTimeout(240);
@@ -184,7 +185,7 @@ class Ghostscript extends Adapter
 
             return true;
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             return false;
         }
@@ -209,7 +210,7 @@ class Ghostscript extends Adapter
 
             return $this->convertPdfToText($page, $path);
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             return false;
         }
@@ -222,7 +223,7 @@ class Ghostscript extends Adapter
     {
         try {
             $pdftotextBin = self::getPdftotextCli();
-        } catch (Exception $e) {
+        } catch (Exception) {
             $pdftotextBin = false;
         }
 

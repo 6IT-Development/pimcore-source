@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore;
@@ -22,12 +22,13 @@ use Pimcore\Element\MarshallerService;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\Classificationstore;
 use Pimcore\Normalizer\NormalizerInterface;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Classificationstore $model
+ * @property Classificationstore $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -58,8 +59,8 @@ class Dao extends Model\Dao\AbstractDao
         $dataTable = $this->getDataTableName();
         $fieldname = $this->model->getFieldname();
 
-        $dataExists = $this->db->fetchOne('SELECT `id` FROM `'.$dataTable."` WHERE
-         `id` = '".$objectId."' AND `fieldname` = '".$fieldname."' LIMIT 1");
+        $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $dataTable . "` WHERE
+         `id` = '" . $objectId . "' AND `fieldname` = '" . $fieldname . "' LIMIT 1");
         if ($dataExists) {
             $this->db->delete($dataTable, ['id' => $objectId, 'fieldname' => $fieldname]);
         }
@@ -81,8 +82,8 @@ class Dao extends Model\Dao\AbstractDao
 
         $groupsTable = $this->getGroupsTableName();
 
-        $dataExists = $this->db->fetchOne('SELECT `id` FROM `'.$groupsTable."` WHERE
-         `id` = '".$objectId."' AND `fieldname` = '".$fieldname."' LIMIT 1");
+        $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $groupsTable . "` WHERE
+         `id` = '" . $objectId . "' AND `fieldname` = '" . $fieldname . "' LIMIT 1");
         if ($dataExists) {
             $this->db->delete($groupsTable, ['id' => $objectId, 'fieldname' => $fieldname]);
         }
@@ -281,8 +282,8 @@ class Dao extends Model\Dao\AbstractDao
             `groupId` INT(11) UNSIGNED NOT NULL,
             `fieldname` VARCHAR(70) NOT NULL,
             PRIMARY KEY (`id`, `fieldname`, `groupId`),
-            CONSTRAINT `'.self::getForeignKeyName($groupsTable, 'id').'` FOREIGN KEY (`id`) REFERENCES `objects` (`id`) ON DELETE CASCADE,
-            CONSTRAINT `'.self::getForeignKeyName($groupsTable, 'groupId').'` FOREIGN KEY (`groupId`) REFERENCES `classificationstore_groups` (`id`) ON DELETE CASCADE
+            CONSTRAINT `' . self::getForeignKeyName($groupsTable, 'id') . '` FOREIGN KEY (`id`) REFERENCES `objects` (`id`) ON DELETE CASCADE,
+            CONSTRAINT `' . self::getForeignKeyName($groupsTable, 'groupId') . '` FOREIGN KEY (`groupId`) REFERENCES `classificationstore_groups` (`id`) ON DELETE CASCADE
         ) DEFAULT CHARSET=utf8mb4;');
 
         $this->db->executeQuery('CREATE TABLE IF NOT EXISTS `' . $dataTable . '` (
@@ -299,8 +300,8 @@ class Dao extends Model\Dao\AbstractDao
             INDEX `keyId` (`keyId`),
             INDEX `language` (`language`),
             INDEX `groupKeys` (`id`, `fieldname`, `groupId`),
-            CONSTRAINT `'.self::getForeignKeyName($dataTable, 'id').'` FOREIGN KEY (`id`) REFERENCES `objects` (`id`) ON DELETE CASCADE,
-            CONSTRAINT `'.self::getForeignKeyName($dataTable, 'id__fieldname__groupId').'` FOREIGN KEY (`id`, `fieldname`, `groupId`) REFERENCES `' . $groupsTable . '` (`id`, `fieldname`, `groupId`) ON DELETE CASCADE
+            CONSTRAINT `' . self::getForeignKeyName($dataTable, 'id') . '` FOREIGN KEY (`id`) REFERENCES `objects` (`id`) ON DELETE CASCADE,
+            CONSTRAINT `' . self::getForeignKeyName($dataTable, 'id__fieldname__groupId') . '` FOREIGN KEY (`id`, `fieldname`, `groupId`) REFERENCES `' . $groupsTable . '` (`id`, `fieldname`, `groupId`) ON DELETE CASCADE
         ) DEFAULT CHARSET=utf8mb4;');
 
         $this->tableDefinitions = [];

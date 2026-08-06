@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Concrete;
@@ -23,11 +23,12 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\CustomResourcePersistingInterf
 use Pimcore\Model\DataObject\ClassDefinition\Data\LazyLoadingSupportInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\QueryResourcePersistenceAwareInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface;
+use Pimcore\Model\DataObject\Concrete;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Concrete $model
+ * @property Concrete $model
  */
 class Dao extends Model\DataObject\AbstractObject\Dao
 {
@@ -38,7 +39,6 @@ class Dao extends Model\DataObject\AbstractObject\Dao
 
     public function init(): void
     {
-        return;
     }
 
     protected function getInheritanceHelper(): Dao\InheritanceHelper
@@ -176,7 +176,7 @@ class Dao extends Model\DataObject\AbstractObject\Dao
      * Save changes to database, it's an good idea to use save() instead
      *
      */
-    public function update(bool $isUpdate = null): void
+    public function update(?bool $isUpdate = null): void
     {
         parent::update($isUpdate);
 
@@ -221,8 +221,7 @@ class Dao extends Model\DataObject\AbstractObject\Dao
                         ],
                         'owner' => $this->model,
                         'fieldname' => $fieldName,
-                    ]
-                    ;
+                    ];
                     if ($this->model instanceof Model\Element\DirtyIndicatorInterface) {
                         $saveParams['newParent'] = $this->model->isFieldDirty('parentId');
                     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,19 +11,21 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition;
 
 use Exception;
 use Pimcore;
+use Pimcore\Db;
 use Pimcore\Loader\ImplementationLoader\LoaderInterface;
 use Pimcore\Logger;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data\VarExporterInterface;
 use Pimcore\Tool;
+use Pimcore\Tool\Admin;
 
 class Service
 {
@@ -95,7 +98,7 @@ class Service
     public static function importClassDefinitionFromJson(DataObject\ClassDefinition $class, string $json, bool $throwException = false, bool $ignoreId = false): bool
     {
         $userId = 0;
-        $user = \Pimcore\Tool\Admin::getCurrentUser();
+        $user = Admin::getCurrentUser();
         if ($user) {
             $userId = $user->getId();
         }
@@ -376,7 +379,7 @@ class Service
      */
     public static function updateTableDefinitions(array &$tableDefinitions, array $tableNames): void
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $tmp = [];
         foreach ($tableNames as $tableName) {
             $tmp[$tableName] = $db->fetchAllAssociative('show columns from ' . $tableName);
@@ -411,8 +414,8 @@ class Service
                 }
 
                 if (str_replace(' ', '', strtolower($colDefinition['Type'])) === str_replace(' ', '', strtolower($type)) &&
-                        strtolower($colDefinition['Null']) == strtolower($null) &&
-                        $colDefinition['Default'] == $default) {
+                    strtolower($colDefinition['Null']) == strtolower($null) &&
+                    $colDefinition['Default'] == $default) {
                     return true;
                 }
             }

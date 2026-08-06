@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -50,19 +51,18 @@ workflow in DOT format
     %command.full_name% <workflow name> | dot -Tpng > workflow.png
 
 EOF
-            )
-        ;
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $container = $this->getApplication()->getKernel()->getContainer();
         $serviceId = $input->getArgument('name');
-        if ($container->has('workflow.'.$serviceId)) {
-            $workflow = $container->get('workflow.'.$serviceId);
+        if ($container->has('workflow.' . $serviceId)) {
+            $workflow = $container->get('workflow.' . $serviceId);
             $dumper = $container->get(GraphvizDumper::class);
-        } elseif ($container->has('state_machine.'.$serviceId)) {
-            $workflow = $container->get('state_machine.'.$serviceId);
+        } elseif ($container->has('state_machine.' . $serviceId)) {
+            $workflow = $container->get('state_machine.' . $serviceId);
             $dumper = $container->get(StateMachineGraphvizDumper::class);
         } else {
             throw new InvalidArgumentException(sprintf('No service found for "workflow.%1$s" nor "state_machine.%1$s".', $serviceId));

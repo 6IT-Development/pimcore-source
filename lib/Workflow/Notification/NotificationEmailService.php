@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,19 +11,23 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\Notification;
 
 use Exception;
+use Pimcore\Logger;
+use Pimcore\Mail;
+use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
+use Pimcore\Templating\TwigDefaultDelegatingEngine;
 use Pimcore\Tool;
 use Pimcore\Workflow\EventSubscriber\NotificationSubscriber;
-use Pimcore\Templating\TwigDefaultDelegatingEngine;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Workflow\Workflow;
 use Symfony\Contracts\Translation\LocaleAwareInterface;
@@ -30,7 +35,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 class NotificationEmailService extends AbstractNotificationService
 {
-    const MAIL_PATH_LANGUAGE_PLACEHOLDER = '%_locale%';
+    public const string MAIL_PATH_LANGUAGE_PLACEHOLDER = '%_locale%';
 
     private TwigDefaultDelegatingEngine $template;
 
@@ -62,16 +67,16 @@ class NotificationEmailService extends AbstractNotificationService
             if ($hostUrl !== '') {
                 // Decide what kind of link to create
                 $objectType = $type = 'object';
-                if ($subject instanceof \Pimcore\Model\Document) {
+                if ($subject instanceof Document) {
                     $objectType = 'document';
                     $type = $subject->getType();
                 }
-                if ($subject instanceof \Pimcore\Model\Asset) {
+                if ($subject instanceof Asset) {
                     $objectType = 'asset';
                     $type = $subject->getType();
                 }
 
-                $deeplink = $hostUrl . $this->router->generate('pimcore_admin_login_deeplink') . '?'.$objectType.'_' . $subject->getId() . '_'. $type;
+                $deeplink = $hostUrl . $this->router->generate('pimcore_admin_login_deeplink') . '?' . $objectType . '_' . $subject->getId() . '_' . $type;
             }
 
             foreach ($recipients as $language => $recipientsPerLanguage) {
@@ -110,7 +115,7 @@ class NotificationEmailService extends AbstractNotificationService
                 }
             }
         } catch (Exception $e) {
-            \Pimcore\Logger::error('Error sending Workflow change notification email: ' . (string)$e);
+            Logger::error('Error sending Workflow change notification email: ' . $e);
         }
     }
 
@@ -119,7 +124,7 @@ class NotificationEmailService extends AbstractNotificationService
      */
     protected function sendPimcoreDocumentMail(array $recipients, string $subjectType, ElementInterface $subject, Workflow $workflow, string $action, string $language, string $mailPath, string $deeplink): void
     {
-        $mail = new \Pimcore\Mail(['document' => $mailPath, 'params' => $this->getNotificationEmailParameters($subjectType, $subject, $workflow, $action, $deeplink, $language)]);
+        $mail = new Mail(['document' => $mailPath, 'params' => $this->getNotificationEmailParameters($subjectType, $subject, $workflow, $action, $deeplink, $language)]);
 
         foreach ($recipients as $user) {
             $mail->addTo($user->getEmail(), $user->getName());
@@ -133,7 +138,7 @@ class NotificationEmailService extends AbstractNotificationService
      */
     protected function sendTemplateMail(array $recipients, string $subjectType, ElementInterface $subject, Workflow $workflow, string $action, string $language, string $mailPath, string $deeplink): void
     {
-        $mail = new \Pimcore\Mail();
+        $mail = new Mail();
 
         foreach ($recipients as $user) {
             $mail->addTo($user->getEmail(), $user->getName());
@@ -158,7 +163,7 @@ class NotificationEmailService extends AbstractNotificationService
 
         try {
             // allow retrieval of inherited values
-            return DataObject\Service::useInheritedValues(true, fn () => $this->template->render(
+            return DataObject\Service::useInheritedValues(true, fn() => $this->template->render(
                 $mailPath,
                 $this->getNotificationEmailParameters($subjectType, $subject, $workflow, $action, $deeplink, $language),
             ));

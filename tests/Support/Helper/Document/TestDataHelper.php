@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Helper\Document;
@@ -113,7 +114,7 @@ class TestDataHelper extends AbstractTestDataHelper
         $editable = $pagesnippet->getEditable($field);
         $this->assertInstanceOf(Image::class, $editable);
         $value = $editable->getImage();
-        $this->assertInstanceOf(\Pimcore\Model\Asset\Image::class, $value);
+        $this->assertInstanceOf(Asset\Image::class, $value);
 
         $expectedImage = $params['asset'];
         $this->assertEquals($expectedImage->getId(), $value->getId());
@@ -272,17 +273,17 @@ class TestDataHelper extends AbstractTestDataHelper
         $this->assertInstanceOf(Video::class, $editable);
 
         $video = $editable->getVideoAsset();
-        $this->assertInstanceOf(\Pimcore\Model\Asset\Video::class, $video);
+        $this->assertInstanceOf(Asset\Video::class, $video);
 
         $expectedVideo = $params['video'];
-        $this->assertInstanceOf(\Pimcore\Model\Asset\Video::class, $expectedVideo);
+        $this->assertInstanceOf(Asset\Video::class, $expectedVideo);
 
         $this->assertEquals($expectedVideo->getId(), $video->getId());
 
         $poster = $editable->getPosterAsset();
         $expectedPoster = $params['poster'];
-        $this->assertInstanceOf(\Pimcore\Model\Asset\Image::class, $poster);
-        $this->assertInstanceOf(\Pimcore\Model\Asset\Image::class, $expectedPoster);
+        $this->assertInstanceOf(Asset\Image::class, $poster);
+        $this->assertInstanceOf(Asset\Image::class, $expectedPoster);
 
         $this->assertEquals($expectedPoster->getId(), $poster->getId());
 
@@ -346,7 +347,7 @@ class TestDataHelper extends AbstractTestDataHelper
     public function createBlockData(?Page $page = null, ?string $blockName = null): array
     {
         $asset = TestHelper::createImageAsset('blockimage-');
-        $blockIndices =  [
+        $blockIndices = [
             '1' => [
                 'input' => 'block text 1',
             ],
@@ -439,7 +440,7 @@ class TestDataHelper extends AbstractTestDataHelper
                 'path' => $target->getFullPath(),
                 'text' => 'some text' . $seed,
                 'title' => 'some title' . $seed,
-                'target' => '_blank', ]
+                'target' => '_blank',]
         );
 
         $page->setEditable($editable);
@@ -485,7 +486,7 @@ class TestDataHelper extends AbstractTestDataHelper
 
         $editable->setDataFromEditmode([
                 'id' => $objects[0]->getId(),
-                'type' => 'object', ]
+                'type' => 'object',]
 
         );
         $page->setEditable($editable);
@@ -506,7 +507,7 @@ class TestDataHelper extends AbstractTestDataHelper
         foreach ($objects as $object) {
             $list[] = [
                 'id' => $object->getId(),
-                'type' => 'object', ];
+                'type' => 'object',];
         }
         $editable->setDataFromEditmode($list);
         $page->setEditable($editable);

@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
@@ -36,7 +36,7 @@ class MonologPsrLogMessageProcessorPass implements CompilerPassInterface
 
         // We need to ignore this due to this bug: https://github.com/phpstan/phpstan-symfony/issues/15
         // @phpstan-ignore-next-line
-        if (! $container->has($processorId)) {
+        if (!$container->has($processorId)) {
             $processor = new Definition(PsrLogMessageProcessor::class);
             $processor->setPublic(false);
 

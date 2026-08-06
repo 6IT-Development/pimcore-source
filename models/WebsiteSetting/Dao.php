@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\WebsiteSetting;
@@ -29,7 +29,7 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * @throws NotFoundException
      */
-    public function getById(int $id = null): void
+    public function getById(?int $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -47,7 +47,7 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * @throws NotFoundException
      */
-    public function getByName(string $name = null, int $siteId = null, string $language = null): void
+    public function getByName(?string $name = null, ?int $siteId = null, ?string $language = null): void
     {
         if ($name != null) {
             $this->model->setName($name);
@@ -94,19 +94,9 @@ class Dao extends Model\Dao\AbstractDao
 
     public function update(): void
     {
-        $ts = time();
-        $this->model->setModificationDate($ts);
+        $this->model->setModificationDate(time());
 
-        $dataRaw = $this->model->getObjectVars();
-        $data = [];
-
-        foreach ($dataRaw as $key => $value) {
-            if (in_array($key, $this->getValidTableColumns('website_settings'))) {
-                $data[$key] = $value;
-            }
-        }
-
-        $this->db->update('website_settings', $data, ['id' => $this->model->getId()]);
+        $this->db->update('website_settings', array_filter($this->model->getObjectVars(), fn($key) => in_array($key, $this->getValidTableColumns('website_settings'), true), ARRAY_FILTER_USE_KEY), ['id' => $this->model->getId()]);
 
         $this->model->clearDependentCache();
     }
@@ -119,7 +109,7 @@ class Dao extends Model\Dao\AbstractDao
 
         $this->db->insert('website_settings', ['name' => $this->model->getName(), 'siteId' => $this->model->getSiteId()]);
 
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
 
         $this->update();
     }

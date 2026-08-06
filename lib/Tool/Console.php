@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -86,10 +87,10 @@ final class Console
                 $paths = explode(PATH_SEPARATOR, $systemConfig['path_variable']);
             }
         } catch (Exception $e) {
-            Logger::warning((string) $e);
+            Logger::warning((string)$e);
         }
 
-        array_push($paths, '');
+        $paths[] = '';
 
         // allow custom check routines for certain programs
         $customCheckMethod = 'check' . ucfirst($name);
@@ -115,7 +116,7 @@ final class Console
                         return $fullQualifiedPath;
                     }
                 }
-            } catch (Exception $e) {
+            } catch (Exception) {
                 // nothing to do ...
             }
         }
@@ -157,11 +158,11 @@ final class Console
             }
 
             $phpFinder = new PhpExecutableFinder();
-            $phpPath = $phpFinder->find(true);
+            $phpPath = $phpFinder->find();
             if (!$phpPath) {
                 throw new NotFoundException('No PHP executable found, get from getExecutable()');
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             $phpPath = self::getExecutable('php', true, false);
         }
 
@@ -188,18 +189,16 @@ final class Console
         $cmd = [$phpCli, $script];
 
         if (Config::getEnvironment()) {
-            array_push($cmd, '--env=' . Config::getEnvironment());
+            $cmd[] = '--env=' . Config::getEnvironment();
         }
 
-        $cmd = array_merge($cmd, $arguments);
-
-        return $cmd;
+        return array_merge($cmd, $arguments);
     }
 
     /**
      * @param string[] $arguments
      */
-    public static function runPhpScript(string $script, array $arguments = [], string $outputFile = null, float $timeout = 60): string
+    public static function runPhpScript(string $script, array $arguments = [], ?string $outputFile = null, float $timeout = 60): string
     {
         $cmd = self::buildPhpScriptCmd($script, $arguments);
         self::addLowProcessPriority($cmd);
@@ -225,7 +224,7 @@ final class Console
     /**
      * @deprecated since v6.9. For long running background tasks switch to a queue implementation.
      */
-    public static function runPhpScriptInBackground(string $script, array $arguments = [], string $outputFile = null): int
+    public static function runPhpScriptInBackground(string $script, array $arguments = [], ?string $outputFile = null): int
     {
         $cmd = self::buildPhpScriptCmd($script, $arguments);
         $process = new Process($cmd);
@@ -234,7 +233,7 @@ final class Console
         return self::execInBackground($commandLine, $outputFile);
     }
 
-    public static function execInBackground(string $cmd, string $outputFile = null): int
+    public static function execInBackground(string $cmd, ?string $outputFile = null): int
     {
         // windows systems
         if (self::getSystemEnvironment() == 'windows') {
@@ -252,13 +251,13 @@ final class Console
             $outputFile = '/dev/null';
         }
 
-        $nice = (string) self::getExecutable('nice');
+        $nice = (string)self::getExecutable('nice');
         if ($nice) {
             $nice .= ' -n 19 ';
         }
 
         if ($useNohup) {
-            $nohup = (string) self::getExecutable('nohup');
+            $nohup = (string)self::getExecutable('nohup');
             if ($nohup) {
                 $nohup .= ' ';
             }
@@ -270,14 +269,13 @@ final class Console
          * mod_php seems to lose the environment variables if we do not set them manually before the child process is started
          */
         if (str_contains(php_sapi_name(), 'apache')) {
-            foreach (['APP_ENV'] as $envVarName) {
-                if ($envValue = $_SERVER[$envVarName] ?? $_SERVER['REDIRECT_' . $envVarName] ?? null) {
-                    putenv($envVarName . '='.$envValue);
-                }
+            $envVarName = 'APP_ENV';
+            if ($envValue = $_SERVER[$envVarName] ?? $_SERVER['REDIRECT_' . $envVarName] ?? null) {
+                putenv($envVarName . '=' . $envValue);
             }
         }
 
-        $commandWrapped = $nohup . $nice . $cmd . ' > '. $outputFile .' 2>&1 & echo $!';
+        $commandWrapped = $nohup . $nice . $cmd . ' > ' . $outputFile . ' 2>&1 & echo $!';
         Logger::debug('Executing command `' . $commandWrapped . '´ on the current shell in background');
         $pid = shell_exec($commandWrapped);
 
@@ -292,7 +290,7 @@ final class Console
             $outputFile = 'NUL';
         }
 
-        $commandWrapped = 'cmd /c ' . $cmd . ' > '. $outputFile . ' 2>&1';
+        $commandWrapped = 'cmd /c ' . $cmd . ' > ' . $outputFile . ' 2>&1';
         Logger::debug('Executing command `' . $commandWrapped . '´ on the current shell in background');
 
         $WshShell = new COM('WScript.Shell');
@@ -309,7 +307,7 @@ final class Console
      */
     public static function addLowProcessPriority(array|string &$cmd): void
     {
-        $nice = (string) self::getExecutable('nice');
+        $nice = (string)self::getExecutable('nice');
         if ($nice) {
             if (is_string($cmd)) {
                 $cmd = $nice . ' -n 19 ' . $cmd;

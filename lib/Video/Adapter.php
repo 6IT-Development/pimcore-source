@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Video;
@@ -67,7 +68,7 @@ abstract class Adapter
 
     abstract public function save(): bool;
 
-    abstract public function saveImage(string $file, int $timeOffset = null): bool;
+    abstract public function saveImage(string $file, ?int $timeOffset = null): bool;
 
     abstract public function destroy(): void;
 

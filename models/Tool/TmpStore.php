@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,17 +11,18 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Tool;
 
 use Pimcore\Model;
+use Pimcore\Model\Tool\TmpStore\Dao;
 
 /**
  * @method bool getById(string $id)
- * @method \Pimcore\Model\Tool\TmpStore\Dao getDao()
+ * @method Dao getDao()
  */
 final class TmpStore extends Model\AbstractModel
 {
@@ -94,7 +96,7 @@ final class TmpStore extends Model\AbstractModel
         return $instance->getDao()->add($id, $data, $tag, $lifetime);
     }
 
-    public static function set(string $id, mixed $data, string $tag = null, int $lifetime = null): bool
+    public static function set(string $id, mixed $data, ?string $tag = null, ?int $lifetime = null): bool
     {
         $instance = self::getInstance();
 
@@ -128,9 +130,7 @@ final class TmpStore extends Model\AbstractModel
     public static function getIdsByTag(string $tag): array
     {
         $instance = self::getInstance();
-        $items = $instance->getDao()->getIdsByTag($tag);
-
-        return $items;
+        return $instance->getDao()->getIdsByTag($tag);
     }
 
     public function getId(): string
@@ -193,7 +193,7 @@ final class TmpStore extends Model\AbstractModel
         $this->expiryDate = $expiryDate;
     }
 
-    public function update(int $lifetime = null): bool
+    public function update(?int $lifetime = null): bool
     {
         if (!$lifetime) {
             $lifetime = 86400;

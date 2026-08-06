@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Video\Thumbnail;
@@ -33,14 +34,14 @@ final class Config extends Model\AbstractModel
     /**
      * format of array:
      * array(
-     array(
-     "method" => "myName",
-     "arguments" =>
-     array(
-     "width" => 345,
-     "height" => 200
-     )
-     )
+     * array(
+     * "method" => "myName",
+     * "arguments" =>
+     * array(
+     * "width" => 345,
+     * "height" => 200
+     * )
+     * )
      * )
      *
      * @internal
@@ -116,14 +117,14 @@ final class Config extends Model\AbstractModel
             if (!$thumbnail) {
                 throw new Exception('Thumbnail in registry is null');
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             try {
                 $thumbnail = new self();
                 /** @var Model\Asset\Video\Thumbnail\Config\Dao $dao */
                 $dao = $thumbnail->getDao();
                 $dao->getByName($name);
                 RuntimeCache::set($cacheKey, $thumbnail);
-            } catch (Model\Exception\NotFoundException $e) {
+            } catch (Model\Exception\NotFoundException) {
                 return null;
             }
         }
@@ -146,9 +147,9 @@ final class Config extends Model\AbstractModel
             [
                 'method' => 'scaleByWidth',
                 'arguments' =>
-                [
-                    'width' => 500,
-                ],
+                    [
+                        'width' => 500,
+                    ],
             ],
         ]);
 
@@ -167,7 +168,7 @@ final class Config extends Model\AbstractModel
      *
      * @internal
      */
-    public function addItem(string $name, array $parameters, string $media = null): bool
+    public function addItem(string $name, array $parameters, ?string $media = null): bool
     {
         $item = [
             'method' => $name,
@@ -236,7 +237,7 @@ final class Config extends Model\AbstractModel
         $this->medias = [];
     }
 
-    public function setDescription(string $description): static
+    public function setDescription(string $description): Config
     {
         $this->description = $description;
 
@@ -248,7 +249,7 @@ final class Config extends Model\AbstractModel
         return $this->description;
     }
 
-    public function setItems(array $items): static
+    public function setItems(array $items): Config
     {
         $this->items = $items;
 
@@ -285,7 +286,7 @@ final class Config extends Model\AbstractModel
         return $this->filenameSuffix;
     }
 
-    public function setName(string $name): static
+    public function setName(string $name): Config
     {
         $this->name = $name;
 
@@ -297,7 +298,7 @@ final class Config extends Model\AbstractModel
         return $this->name;
     }
 
-    public function setAudioBitrate(?int $audioBitrate): static
+    public function setAudioBitrate(?int $audioBitrate): Config
     {
         $this->audioBitrate = $audioBitrate;
 
@@ -309,7 +310,7 @@ final class Config extends Model\AbstractModel
         return $this->audioBitrate;
     }
 
-    public function setVideoBitrate(?int $videoBitrate): static
+    public function setVideoBitrate(?int $videoBitrate): Config
     {
         $this->videoBitrate = $videoBitrate;
 

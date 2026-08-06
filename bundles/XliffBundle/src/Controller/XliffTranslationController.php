@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\Controller;
@@ -32,16 +33,16 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route("/translation")]
+#[Route('/translation')]
 class XliffTranslationController extends UserAwareController
 {
     use JsonHelperTrait;
 
-    /**
-     * @throws Exception
-     */
-    #[Route("/xliff-export", name: "pimcore_bundle_xliff_translation_xliffexport", methods: ["POST"])]
-    public function xliffExportAction(Request $request, ExportServiceInterface $exportService): JsonResponse
+    #[Route('/xliff-export', name: 'pimcore_bundle_xliff_translation_xliffexport', methods: [Request::METHOD_POST])]
+    public function xliffExportAction(
+        Request                $request,
+        ExportServiceInterface $exportService
+    ): JsonResponse
     {
         $this->checkPermission('xliff_import_export');
 
@@ -64,8 +65,12 @@ class XliffTranslationController extends UserAwareController
         ]);
     }
 
-    #[Route("/xliff-export-download", name: "pimcore_bundle_xliff_translation_exportdownload", methods: ["GET"])]
-    public function xliffExportDownloadAction(Request $request, ExporterInterface $translationExporter, ExportServiceInterface $exportService): BinaryFileResponse
+    #[Route('/xliff-export-download', name: 'pimcore_bundle_xliff_translation_exportdownload', methods: [Request::METHOD_GET])]
+    public function xliffExportDownloadAction(
+        Request                $request,
+        ExporterInterface      $translationExporter,
+        ExportServiceInterface $exportService
+    ): BinaryFileResponse
     {
         $this->checkPermission('xliff_import_export');
 
@@ -75,16 +80,16 @@ class XliffTranslationController extends UserAwareController
         $response = new BinaryFileResponse($exportFile);
         $response->headers->set('Content-Type', $translationExporter->getContentType());
         $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, basename($exportFile));
-        $response->deleteFileAfterSend(true);
+        $response->deleteFileAfterSend();
 
         return $response;
     }
 
-    /**
-     * @throws Exception
-     */
-    #[Route("/xliff-import-upload", name: "pimcore_bundle_xliff_translation_xliffimportupload", methods: ["POST"])]
-    public function xliffImportUploadAction(Request $request, ImportDataExtractorInterface $importDataExtractor): JsonResponse
+    #[Route('/xliff-import-upload', name: 'pimcore_bundle_xliff_translation_xliffimportupload', methods: [Request::METHOD_POST])]
+    public function xliffImportUploadAction(
+        Request                      $request,
+        ImportDataExtractorInterface $importDataExtractor
+    ): JsonResponse
     {
         $this->checkPermission('xliff_import_export');
 
@@ -111,6 +116,7 @@ class XliffTranslationController extends UserAwareController
             'jobs' => $jobs,
             'id' => $id,
         ]);
+
         // set content-type to text/html, otherwise (when application/json is sent) chrome will complain in
         // Ext.form.Action.Submit and mark the submission as failed
         $response->headers->set('Content-Type', 'text/html');
@@ -118,20 +124,17 @@ class XliffTranslationController extends UserAwareController
         return $response;
     }
 
-    /**
-     * @throws Exception
-     */
-    #[Route("/xliff-import-element", name: "pimcore_bundle_xliff_translation_xliffimportelement", methods: ["POST"])]
-    public function xliffImportElementAction(Request $request, ImportDataExtractorInterface $importDataExtractor, ImporterServiceInterface $importerService): JsonResponse
+    #[Route('/xliff-import-element', name: 'pimcore_bundle_xliff_translation_xliffimportelement', methods: [Request::METHOD_POST])]
+    public function xliffImportElementAction(
+        Request                      $request,
+        ImportDataExtractorInterface $importDataExtractor,
+        ImporterServiceInterface     $importerService
+    ): JsonResponse
     {
         $this->checkPermission('xliff_import_export');
 
-        $id = $request->request->getString('id');
-        $step = $request->request->getInt('step');
-
         try {
-            $attributeSet = $importDataExtractor->extractElement($id, $step);
-            if ($attributeSet) {
+            if ($attributeSet = $importDataExtractor->extractElement($id = $request->request->getString('id'), $request->request->getInt('step'))) {
                 $importerService->import($attributeSet);
             } else {
                 Logger::warning(sprintf('Could not resolve element %s', $id));

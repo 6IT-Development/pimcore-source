@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassBuilder;
@@ -100,7 +101,7 @@ class SelectOptionsEnumBuilder implements SelectOptionsEnumBuilderInterface
     {
         // Prefix backslash
         return array_map(
-            fn (string $class) => '\\' . ltrim($class),
+            fn(string $class) => '\\' . ltrim($class),
             explode_and_trim(',', $classes)
         );
     }
@@ -166,7 +167,7 @@ class SelectOptionsEnumBuilder implements SelectOptionsEnumBuilderInterface
     protected function implodeTemplateValues(array $lines, int $indent = 4, bool $addEndLineBreak = false): string
     {
         $content = implode("\n" . $this->indent($indent), $lines);
-        if ($addEndLineBreak && (bool)count($lines)) {
+        if ($addEndLineBreak && count($lines)) {
             $content .= "\n";
         }
 
@@ -212,7 +213,7 @@ class SelectOptionsEnumBuilder implements SelectOptionsEnumBuilderInterface
         // Attempt to convert value to case name
         $value = $selectOption->getValue();
         // Apply slug to remove invalid characters
-        $caseName = (new AsciiSlugger())
+        $caseName = new AsciiSlugger()
             ->slug($value, '_', 'en')
             ->toString();
         $caseName = $this->toUpperCamelCase($caseName);

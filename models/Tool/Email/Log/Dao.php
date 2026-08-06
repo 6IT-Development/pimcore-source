@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Tool\Email\Log;
@@ -19,12 +19,13 @@ use DateTimeInterface;
 use Exception;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Tool\Email\Log;
 use stdClass;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Tool\Email\Log $model
+ * @property Log $model
  */
 class Dao extends Model\Dao\AbstractDao
 {
@@ -39,7 +40,7 @@ class Dao extends Model\Dao\AbstractDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getById(int $id = null): void
+    public function getById(?int $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -77,7 +78,7 @@ class Dao extends Model\Dao\AbstractDao
                 $value = $this->model->$getter();
 
                 if (is_bool($value)) {
-                    $value = (int) $value;
+                    $value = (int)$value;
                 } elseif (is_array($value)) {
                     //converts the dynamic params to a basic json string
                     $preparedData = self::createJsonLoggingObject($value);
@@ -91,8 +92,8 @@ class Dao extends Model\Dao\AbstractDao
 
         try {
             $this->db->update(self::$dbTable, $data, ['id' => $this->model->getId()]);
-        } catch (Exception $e) {
-            Logger::emerg('Could not Save emailLog with the id "'.$this->model->getId().'" ');
+        } catch (Exception) {
+            Logger::emerg('Could not Save emailLog with the id "' . $this->model->getId() . '" ');
         }
     }
 
@@ -109,7 +110,7 @@ class Dao extends Model\Dao\AbstractDao
         $this->db->insert(self::$dbTable, []);
 
         $date = time();
-        $this->model->setId((int) $this->db->lastInsertId());
+        $this->model->setId((int)$this->db->lastInsertId());
         $this->model->setModificationDate($date);
     }
 
@@ -140,14 +141,14 @@ class Dao extends Model\Dao\AbstractDao
 
         if (is_string($value) || is_int($value) || is_null($value)) {
             $class->data = ['type' => 'simple',
-                'value' => $value, ];
+                'value' => $value,];
         } elseif ($value instanceof DateTimeInterface) {
             $class->data = ['type' => 'simple',
-                'value' => $value->format('Y-m-d H:i'), ];
+                'value' => $value->format('Y-m-d H:i'),];
         } elseif (is_object($value) && method_exists($value, 'getId')) {
             $class->data = ['type' => 'object',
                 'objectId' => $value->getId(),
-                'objectClass' => get_class($value), ];
+                'objectClass' => get_class($value),];
         } elseif (is_array($value)) {
             foreach ($value as $entryKey => $entryValue) {
                 $class->children[] = self::prepareLoggingData($entryKey, $entryValue);

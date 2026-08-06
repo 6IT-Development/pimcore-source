@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\MetaData;
 
 use Exception;
+use ForceUTF8\Encoding;
 use Pimcore\Logger;
 use Pimcore\Tool\Console;
 use RuntimeException;
@@ -37,9 +39,9 @@ trait EmbeddedMetaDataTrait
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function handleEmbeddedMetaData(bool $useExifTool = true, ?string $filePath = null): void
     {
@@ -122,7 +124,7 @@ trait EmbeddedMetaDataTrait
             if (is_array($exif)) {
                 foreach ($exif as $name => $value) {
                     if ((is_string($value) && strlen($value) < 50) || is_numeric($value)) {
-                        $data[$name] = \ForceUTF8\Encoding::toUTF8($value);
+                        $data[$name] = Encoding::toUTF8($value);
                     }
                 }
             }
@@ -175,7 +177,7 @@ trait EmbeddedMetaDataTrait
                 $tagLength = strlen($tag);
                 $offset = 0;
                 while (($position = strpos($buffer, $tag, $offset)) === false && ($chunk = fread($file_pointer,
-                    $chunkSize)) !== false && !empty($chunk)) {
+                        $chunkSize)) !== false && !empty($chunk)) {
                     $offset = strlen($buffer) - $tagLength; // subtract the tag size just in case it's split between chunks.
                     $buffer .= $chunk;
                 }
@@ -364,7 +366,7 @@ trait EmbeddedMetaDataTrait
                             }
 
                             if (isset($mapping[$key])) {
-                                $data[$mapping[$key]] = \ForceUTF8\Encoding::toUTF8($value);
+                                $data[$mapping[$key]] = Encoding::toUTF8($value);
                             }
                         }
                     }

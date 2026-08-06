@@ -9,18 +9,19 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Snippet;
 
 use Pimcore\Model;
+use Pimcore\Model\Document\Snippet;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Document\Snippet $model
+ * @property Snippet $model
  */
 class Dao extends Model\Document\PageSnippet\Dao
 {
@@ -30,7 +31,7 @@ class Dao extends Model\Document\PageSnippet\Dao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getById(int $id = null): void
+    public function getById(?int $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);

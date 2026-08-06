@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -42,9 +43,7 @@ class Composer
     protected static function getRootPath(Event $event): string
     {
         $config = $event->getComposer()->getConfig();
-        $rootPath = dirname($config->get('vendor-dir'));
-
-        return $rootPath;
+        return dirname($config->get('vendor-dir'));
     }
 
     public static function postCreateProject(Event $event): void
@@ -69,7 +68,7 @@ class Composer
     {
         try {
             static::executeCommand($event, $consoleDir, ['pimcore:cache:clear'], 60);
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             $event->getIO()->write('<comment>Unable to perform command pimcore:cache:clear</comment>');
         }
     }
@@ -119,7 +118,7 @@ class Composer
         $command = [static::getPhp(false)];
         $command = array_merge($command, static::getPhpArguments());
 
-        $command[] = $consoleDir.'/console';
+        $command[] = $consoleDir . '/console';
         if ($event->getIO()->isDecorated()) {
             $command[] = '--ansi';
         }
@@ -172,7 +171,7 @@ class Composer
         }
 
         if ($ini) {
-            $arguments[] = '--php-ini='.$ini;
+            $arguments[] = '--php-ini=' . $ini;
         }
 
         return $arguments;

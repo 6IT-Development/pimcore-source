@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Maintenance;
@@ -35,10 +36,11 @@ final class Executor implements ExecutorInterface
     private LoggerInterface $logger;
 
     public function __construct(
-        string $pidFileName,
-        LoggerInterface $logger,
-        private MessageBusInterface $messengerBusPimcoreCore
-    ) {
+        string                               $pidFileName,
+        LoggerInterface                      $logger,
+        private readonly MessageBusInterface $messengerBusPimcoreCore
+    )
+    {
         $this->pidFileName = $pidFileName;
         $this->logger = $logger;
     }
@@ -119,7 +121,7 @@ final class Executor implements ExecutorInterface
         $item = TmpStore::get($this->pidFileName);
 
         if ($item instanceof TmpStore && $date = $item->getData()) {
-            return (int) $date;
+            return (int)$date;
         }
 
         return 0;

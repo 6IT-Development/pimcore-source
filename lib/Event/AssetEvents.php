@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -23,14 +24,14 @@ final class AssetEvents
      *
      * @var string
      */
-    const PRE_ADD = 'pimcore.asset.preAdd';
+    public const string PRE_ADD = 'pimcore.asset.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\AssetEvent")
      *
      * @var string
      */
-    const POST_ADD = 'pimcore.asset.postAdd';
+    public const string POST_ADD = 'pimcore.asset.postAdd';
 
     /**
      * Arguments:
@@ -40,7 +41,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const POST_ADD_FAILURE = 'pimcore.asset.postAddFailure';
+    public const string POST_ADD_FAILURE = 'pimcore.asset.postAddFailure';
 
     /**
      * Arguments:
@@ -50,7 +51,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const PRE_UPDATE = 'pimcore.asset.preUpdate';
+    public const string PRE_UPDATE = 'pimcore.asset.preUpdate';
 
     /**
      * Arguments:
@@ -60,7 +61,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const PRE_GET_METADATA = 'pimcore.asset.preGetMetadata';
+    public const string PRE_GET_METADATA = 'pimcore.asset.preGetMetadata';
 
     /**
      * Arguments:
@@ -71,7 +72,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const POST_UPDATE = 'pimcore.asset.postUpdate';
+    public const string POST_UPDATE = 'pimcore.asset.postUpdate';
 
     /**
      * Arguments:
@@ -82,28 +83,28 @@ final class AssetEvents
      *
      * @var string
      */
-    const POST_UPDATE_FAILURE = 'pimcore.asset.postUpdateFailure';
+    public const string POST_UPDATE_FAILURE = 'pimcore.asset.postUpdateFailure';
 
     /**
      * @Event("Pimcore\Bundle\AdminBundle\Event\Model\AssetDeleteInfoEvent")
      *
      * @var string
      */
-    const DELETE_INFO = 'pimcore.asset.deleteInfo';
+    public const string DELETE_INFO = 'pimcore.asset.deleteInfo';
 
     /**
      * @Event("Pimcore\Event\Model\AssetEvent")
      *
      * @var string
      */
-    const PRE_DELETE = 'pimcore.asset.preDelete';
+    public const string PRE_DELETE = 'pimcore.asset.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\AssetEvent")
      *
      * @var string
      */
-    const POST_DELETE = 'pimcore.asset.postDelete';
+    public const string POST_DELETE = 'pimcore.asset.postDelete';
 
     /**
      * Arguments:
@@ -113,7 +114,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const POST_DELETE_FAILURE = 'pimcore.asset.postDeleteFailure';
+    public const string POST_DELETE_FAILURE = 'pimcore.asset.postDeleteFailure';
 
     /**
      * Arguments:
@@ -123,7 +124,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const POST_LOAD = 'pimcore.asset.postLoad';
+    public const string POST_LOAD = 'pimcore.asset.postLoad';
 
     /**
      * Arguments:
@@ -133,7 +134,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const PRE_COPY = 'pimcore.asset.preCopy';
+    public const string PRE_COPY = 'pimcore.asset.preCopy';
 
     /**
      * Arguments:
@@ -143,7 +144,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const POST_COPY = 'pimcore.asset.postCopy';
+    public const string POST_COPY = 'pimcore.asset.postCopy';
 
     /**
      * Fires after the thumbnail was created
@@ -156,7 +157,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const IMAGE_THUMBNAIL = 'pimcore.asset.image.thumbnail';
+    public const string IMAGE_THUMBNAIL = 'pimcore.asset.image.thumbnail';
 
     /**
      * Fires after the image thumbnail was created
@@ -169,7 +170,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const VIDEO_IMAGE_THUMBNAIL = 'pimcore.asset.video.image-thumbnail';
+    public const string VIDEO_IMAGE_THUMBNAIL = 'pimcore.asset.video.image-thumbnail';
 
     /**
      * Fires after the image thumbnail was created
@@ -182,7 +183,7 @@ final class AssetEvents
      *
      * @var string
      */
-    const DOCUMENT_IMAGE_THUMBNAIL = 'pimcore.asset.document.image-thumbnail';
+    public const string DOCUMENT_IMAGE_THUMBNAIL = 'pimcore.asset.document.image-thumbnail';
 
     /**
      * Fires before an asset upload created
@@ -191,5 +192,5 @@ final class AssetEvents
      *
      * @var string
      */
-    const RESOLVE_UPLOAD_TARGET = 'pimcore.asset.resolve-upload-target';
+    public const string RESOLVE_UPLOAD_TARGET = 'pimcore.asset.resolve-upload-target';
 }

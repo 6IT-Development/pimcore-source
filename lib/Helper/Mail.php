@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Helper;
@@ -21,6 +22,7 @@ use Net_URL2;
 use Pimcore\Mail as MailClient;
 use Pimcore\Model;
 use Pimcore\Tool;
+use Pimcore\Tool\Frontend;
 use Symfony\Component\Mime\Address;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
@@ -89,7 +91,7 @@ class Mail
      */
     public static function getDebugInformationCssStyle(): string
     {
-        $style = <<<'CSS'
+        return <<<'CSS'
 <style type="text/css">
 .pimcore_debug_information{
     width:100%;
@@ -115,8 +117,6 @@ class Mail
 
 </style>
 CSS;
-
-        return $style;
     }
 
     /**
@@ -143,7 +143,7 @@ CSS;
         return implode(', ', $formatedReceiversArray);
     }
 
-    public static function logEmail(MailClient $mail, array $recipients, string $error = null): Model\Tool\Email\Log
+    public static function logEmail(MailClient $mail, array $recipients, ?string $error = null): Model\Tool\Email\Log
     {
         $emailLog = new Model\Tool\Email\Log();
 
@@ -183,9 +183,7 @@ CSS;
         }
 
         foreach (['To', 'Cc', 'Bcc', 'ReplyTo'] as $key) {
-            $addresses = isset($recipients[$key]) ? $recipients[$key] : null;
-
-            if ($addresses) {
+            if ($addresses = $recipients[$key] ?? null) {
                 if (method_exists($emailLog, 'set' . $key)) {
                     $emailLog->{"set$key"}(self::formatDebugReceivers($addresses));
                 }
@@ -193,7 +191,6 @@ CSS;
         }
 
         $emailLog->setError($error);
-
         $emailLog->save();
 
         return $emailLog;
@@ -204,22 +201,22 @@ CSS;
      *
      * @throws Exception
      */
-    public static function setAbsolutePaths(string $string, ?Model\Document $document = null, string $hostUrl = null): string
+    public static function setAbsolutePaths(string $string, ?Model\Document $document = null, ?string $hostUrl = null): string
     {
         $replacePrefix = '';
 
         if (!$hostUrl && $document) {
             // try to determine if the document is within a site
-            $site = \Pimcore\Tool\Frontend::getSiteForDocument($document);
+            $site = Frontend::getSiteForDocument($document);
             if ($site) {
-                $hostUrl = \Pimcore\Tool::getRequestScheme() . '://' . $site->getMainDomain();
+                $hostUrl = Tool::getRequestScheme() . '://' . $site->getMainDomain();
                 $replacePrefix = $site->getRootPath();
             }
         }
 
         // fallback
         if (!$hostUrl) {
-            $hostUrl = \Pimcore\Tool::getHostUrl();
+            $hostUrl = Tool::getHostUrl();
         }
 
         //matches all links
@@ -261,9 +258,9 @@ CSS;
                 ) {
                     continue;
                 }
-                $parts[$key] = $hostUrl.$v;
+                $parts[$key] = $hostUrl . $v;
             }
-            $s = ' srcset="'.implode(', ', $parts).'" ';
+            $s = ' srcset="' . implode(', ', $parts) . '" ';
             if ($matches[0][$i]) {
                 $string = str_replace($matches[0][$i], $s, $string);
             }
@@ -296,7 +293,7 @@ CSS;
                         $fileContent = file_get_contents($fileInfo['filePathNormalized']);
                     }
                 } elseif (str_starts_with($path, 'http')) {
-                    $fileContent = \Pimcore\Tool::getHttpData($path);
+                    $fileContent = Tool::getHttpData($path);
                     $fileInfo = [
                         'fileUrlNormalized' => $path,
                     ];
@@ -315,9 +312,7 @@ CSS;
         }
 
         $cssToInlineStyles = new CssToInlineStyles();
-        $string = $cssToInlineStyles->convert($string, $css);
-
-        return $string;
+        return $cssToInlineStyles->convert($string, $css);
     }
 
     /**

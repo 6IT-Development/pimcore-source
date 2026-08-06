@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\Command;
@@ -20,6 +21,7 @@ use Exception;
 use Pimcore;
 use Pimcore\Bundle\SimpleBackendSearchBundle\Model\Search;
 use Pimcore\Console\AbstractCommand;
+use Pimcore\Db;
 use Pimcore\Logger;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Element\Service;
@@ -43,7 +45,7 @@ class SearchBackendReindexCommand extends AbstractCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // clear all data
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $db->executeQuery('TRUNCATE `search_backend_data`;');
 
         $elementsPerLoop = 100;
@@ -72,7 +74,7 @@ class SearchBackendReindexCommand extends AbstractCommand
                 $list->setOffset($i * $elementsPerLoop);
 
                 $this->output->writeln(
-                    'Processing ' .$type . ': ' . ($list->getOffset() + $elementsPerLoop) . '/' . $elementsTotal
+                    'Processing ' . $type . ': ' . ($list->getOffset() + $elementsPerLoop) . '/' . $elementsTotal
                 );
 
                 $elements = $list->load();
@@ -87,7 +89,7 @@ class SearchBackendReindexCommand extends AbstractCommand
 
                         $searchEntry->save();
                     } catch (Exception $e) {
-                        Logger::err((string) $e);
+                        Logger::err((string)$e);
                     }
                 }
                 Pimcore::collectGarbage();

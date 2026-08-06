@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Exception;
 use Pimcore\Console\AbstractCommand;
+use Pimcore\Db;
 use Pimcore\Logger;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -28,7 +30,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * @internal
  */
 #[AsCommand(
-    name:'pimcore:mysql-tools',
+    name: 'pimcore:mysql-tools',
     description: 'Optimize and warmup mysql database',
     aliases: ['mysql-tools']
 )]
@@ -53,7 +55,7 @@ class MysqlToolsCommand extends AbstractCommand
             exit;
         }
 
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
 
         if ($input->getOption('mode') == 'optimize') {
             $tables = $db->fetchAllAssociative('SHOW TABLES');
@@ -65,7 +67,7 @@ class MysqlToolsCommand extends AbstractCommand
                     Logger::debug('Running: OPTIMIZE TABLE ' . $t);
                     $db->executeQuery('OPTIMIZE TABLE ' . $t);
                 } catch (Exception $e) {
-                    Logger::error((string) $e);
+                    Logger::error((string)$e);
                 }
             }
         } elseif ($input->getOption('mode') == 'warmup') {
@@ -79,7 +81,7 @@ class MysqlToolsCommand extends AbstractCommand
                     $res = $db->fetchOne("SELECT COUNT(*) FROM $t");
                     Logger::debug('Result: ' . $res);
                 } catch (Exception $e) {
-                    Logger::error((string) $e);
+                    Logger::error((string)$e);
                 }
             }
         }

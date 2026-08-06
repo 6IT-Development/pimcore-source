@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ExportService\Exporter;
@@ -27,20 +28,18 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class Xliff12Exporter implements ExporterInterface
 {
-    const DELIMITER = '~-~';
-
-    private Xliff12Escaper $xliffEscaper;
+    public const string DELIMITER = '~-~';
 
     private ?SimpleXMLElement $xliffFile = null;
 
     public function __construct(
-        Xliff12Escaper $xliffEscaper,
-        protected Filesystem $filesystem
-    ) {
-        $this->xliffEscaper = $xliffEscaper;
+        private readonly Xliff12Escaper $xliffEscaper,
+        protected Filesystem            $filesystem
+    )
+    {
     }
 
-    public function export(AttributeSet $attributeSet, string $exportId = null): string
+    public function export(AttributeSet $attributeSet, ?string $exportId = null): string
     {
         $exportId = $exportId ?: uniqid();
         $exportFile = $this->getExportFilePath($exportId);

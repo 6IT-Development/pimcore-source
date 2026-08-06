@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension;
@@ -49,11 +49,12 @@ class ImageThumbnailExtension extends AbstractExtension
     }
 
     public function getImageThumbnailHtml(
-        Image $image,
+        Image  $image,
         string $thumbnail,
-        array $options = [],
-        bool $deferred = true
-    ): string {
+        array  $options = [],
+        bool   $deferred = true
+    ): string
+    {
         return $this->getImageThumbnail($image, $thumbnail, $deferred)->getHTML($options);
     }
 }

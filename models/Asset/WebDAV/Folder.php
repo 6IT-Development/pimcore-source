@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\WebDAV;
@@ -46,14 +47,14 @@ class Folder extends DAV\Collection
         $childrenList = new Asset\Listing();
 
         $childrenList->addConditionParam('parentId = ?', [$this->asset->getId()]);
-        $user = \Pimcore\Tool\Admin::getCurrentUser();
+        $user = AdminTool::getCurrentUser();
         $childrenList->filterAccessibleByUser($user, $this->asset);
 
         foreach ($childrenList as $child) {
             try {
                 $children[] = $this->getChild($child);
             } catch (Exception $e) {
-                Logger::warning((string) $e);
+                Logger::warning((string)$e);
             }
         }
 
@@ -102,11 +103,11 @@ class Folder extends DAV\Collection
      * @param string $name
      * @param string|resource|null $data
      *
-     * @throws DAV\Exception\Forbidden
-     *
      * @return null
+     *
+     * @throws DAV\Exception\Forbidden
      */
-    public function createFile($name, $data = null)
+    public function createFile($name, $data = null): null
     {
         $tmpFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/asset-dav-tmp-file-' . uniqid();
         if (is_resource($data)) {
@@ -144,7 +145,7 @@ class Folder extends DAV\Collection
         $user = AdminTool::getCurrentUser();
 
         if ($this->asset->isAllowed('create')) {
-            $asset = Asset::create($this->asset->getId(), [
+            Asset::create($this->asset->getId(), [
                 'filename' => Element\Service::getValidKey($name, 'asset'),
                 'type' => 'folder',
                 'userModification' => $user->getId(),

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,17 +11,18 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject;
 
 use Exception;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\Folder\Dao;
 
 /**
- * @method \Pimcore\Model\DataObject\Folder\Dao getDao()
+ * @method Dao getDao()
  */
 class Folder extends DataObject
 {
@@ -37,7 +39,7 @@ class Folder extends DataObject
         return $object;
     }
 
-    protected function update(bool $isUpdate = null, array $params = []): void
+    protected function update(?bool $isUpdate = null, array $params = []): void
     {
         parent::update($isUpdate, $params);
         $this->getDao()->update($isUpdate);

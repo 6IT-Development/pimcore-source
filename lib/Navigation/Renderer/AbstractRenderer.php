@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -97,7 +98,7 @@ abstract class AbstractRenderer implements RendererInterface
      *
      * @return $this
      */
-    public function setMinDepth(int $minDepth = null): static
+    public function setMinDepth(?int $minDepth = null): static
     {
         $this->_minDepth = $minDepth;
 
@@ -117,7 +118,7 @@ abstract class AbstractRenderer implements RendererInterface
      *
      * @return $this
      */
-    public function setMaxDepth(int $maxDepth = null): static
+    public function setMaxDepth(?int $maxDepth = null): static
     {
         $this->_maxDepth = $maxDepth;
 
@@ -164,8 +165,8 @@ abstract class AbstractRenderer implements RendererInterface
         if (null === $this->_prefixForId) {
             $prefix = get_class($this);
             $this->_prefixForId = str_replace('\\', '-', strtolower(
-                trim(substr($prefix, (int) strrpos($prefix, '_')), '_')
-            )) . '-';
+                    trim(substr($prefix, (int)strrpos($prefix, '_')), '_')
+                )) . '-';
         }
 
         return $this->_prefixForId;
@@ -201,7 +202,7 @@ abstract class AbstractRenderer implements RendererInterface
     /**
      * @return array{page?: Page, depth?: int}
      */
-    public function findActive(Container $container, int $minDepth = null, int $maxDepth = null): array
+    public function findActive(Container $container, ?int $minDepth = null, ?int $maxDepth = null): array
     {
         if (!is_int($minDepth)) {
             $minDepth = $this->getMinDepth();
@@ -258,7 +259,7 @@ abstract class AbstractRenderer implements RendererInterface
     /**
      * Returns an HTML string containing an 'a' element for the given page
      *
-     * @param  Page $page  page to generate HTML for
+     * @param Page $page page to generate HTML for
      *
      * @return string  HTML string for the given page
      */
@@ -280,8 +281,8 @@ abstract class AbstractRenderer implements RendererInterface
         );
 
         return '<a' . $this->_htmlAttribs($attribs) . '>'
-             . htmlspecialchars($label, ENT_COMPAT, 'UTF-8')
-             . '</a>';
+            . htmlspecialchars($label, ENT_COMPAT, 'UTF-8')
+            . '</a>';
     }
 
     // Iterator filter methods:
@@ -302,7 +303,7 @@ abstract class AbstractRenderer implements RendererInterface
         // accept by default
         $accept = true;
 
-        if (!$page->isVisible(false) && !$this->getRenderInvisible()) {
+        if (!$page->isVisible() && !$this->getRenderInvisible()) {
             // don't accept invisible pages
             $accept = false;
         }
@@ -310,7 +311,7 @@ abstract class AbstractRenderer implements RendererInterface
         if ($accept && $recursive) {
             $parent = $page->getParent();
             if ($parent instanceof Page) {
-                $accept = $this->accept($parent, true);
+                $accept = $this->accept($parent);
             }
         }
 
@@ -330,7 +331,7 @@ abstract class AbstractRenderer implements RendererInterface
             $indent = str_repeat(' ', $indent);
         }
 
-        return (string) $indent;
+        return (string)$indent;
     }
 
     /**
@@ -386,7 +387,7 @@ abstract class AbstractRenderer implements RendererInterface
     /**
      * Normalize an ID
      *
-     * @param string $value    ID
+     * @param string $value ID
      *
      * @return string           Normalized ID
      */

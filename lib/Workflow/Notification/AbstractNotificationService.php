@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\Notification;
@@ -53,7 +54,7 @@ class AbstractNotificationService
         if ($roles) {
             //get roles
             $roleList = new User\Role\Listing();
-            $roleList->setCondition('name IN ('.implode(',', array_map([Db::get(), 'quote'], $roles)).')');
+            $roleList->setCondition('name IN (' . implode(',', array_map([Db::get(), 'quote'], $roles)) . ')');
 
             foreach ($roleList->load() as $role) {
                 $userList = new User\Listing();
@@ -72,7 +73,7 @@ class AbstractNotificationService
         if ($users) {
             //get users
             $userList = new User\Listing();
-            $userList->setCondition('name IN ('.implode(',', array_map([Db::get(), 'quote'], $users)).') and active = 1');
+            $userList->setCondition('name IN (' . implode(',', array_map([Db::get(), 'quote'], $users)) . ') and active = 1');
 
             if (!$includeAllUsers) {
                 $userList->addConditionParam('(email IS NOT NULL AND email != "")');

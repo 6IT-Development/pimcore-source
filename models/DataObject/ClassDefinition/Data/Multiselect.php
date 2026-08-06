@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 use Exception;
 use JsonSerializable;
+use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
@@ -148,7 +150,7 @@ class Multiselect extends Data implements
      *
      *
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         if (!$this->isEmpty($data) && is_array($data)) {
             return implode(',', $data);
@@ -157,7 +159,7 @@ class Multiselect extends Data implements
         $defaultValue = $this->handleDefaultValue($data, $object, $params);
 
         if (is_array($defaultValue)) {
-            return implode(',', array_map(fn ($v) => $v['value'] ?? $v, $defaultValue));
+            return implode(',', array_map(fn($v) => $v['value'] ?? $v, $defaultValue));
         }
 
         return $defaultValue;
@@ -168,9 +170,9 @@ class Multiselect extends Data implements
      *
      *
      */
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
-        if (strlen((string) $data)) {
+        if (strlen((string)$data)) {
             return explode(',', $data);
         }
 
@@ -182,11 +184,11 @@ class Multiselect extends Data implements
      *
      *
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         $dataForResource = $this->getDataForResource($data, $object, $params);
         if ($dataForResource) {
-            return ','.$dataForResource.',';
+            return ',' . $dataForResource . ',';
         }
 
         return null;
@@ -197,12 +199,12 @@ class Multiselect extends Data implements
      *
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $this->getDataForResource($data, $object, $params);
     }
 
-    public function getDataForGrid(?array $data, Concrete $object = null, array $params = []): array|string|null
+    public function getDataForGrid(?array $data, ?Concrete $object = null, array $params = []): array|string|null
     {
         $optionsProvider = DataObject\ClassDefinition\Helper\OptionsProviderResolver::resolveProvider(
             $this->getOptionsProviderClass(),
@@ -238,12 +240,12 @@ class Multiselect extends Data implements
      * @see Data::getDataFromEditmode
      *
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): mixed
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): mixed
     {
         return $data;
     }
 
-    public function getDiffDataFromEditmode(array $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDiffDataFromEditmode(array $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         $data = $data[0]['data'];
         if (is_string($data) && $data !== '') {
@@ -259,7 +261,7 @@ class Multiselect extends Data implements
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if (is_array($data)) {
             return implode(',', array_map(function ($v) {
@@ -273,7 +275,7 @@ class Multiselect extends Data implements
     public function checkValidity(mixed $data, bool $omitMandatoryCheck = false, array $params = []): void
     {
         if (!$omitMandatoryCheck && $this->getMandatory() && empty($data)) {
-            throw new Model\Element\ValidationException('Empty mandatory field [ '.$this->getName().' ]');
+            throw new Model\Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
 
         if (!is_array($data) && !empty($data)) {
@@ -326,27 +328,27 @@ class Multiselect extends Data implements
     public function getFilterConditionExt(mixed $value, string $operator, array $params = []): string
     {
         if ($operator === '=' || $operator === 'LIKE') {
-            $name = $params['name'] ? $params['name'] : $this->name;
+            $name = $params['name'] ?: $this->name;
 
-            $db = \Pimcore\Db::get();
+            $db = Db::get();
             $key = $db->quoteIdentifier($name);
             if (!empty($params['brickPrefix'])) {
-                $key = $params['brickPrefix'].$key;
+                $key = $params['brickPrefix'] . $key;
             }
 
             if (str_contains($name, 'cskey') && is_array($value) && !empty($value)) {
                 $values = array_map(function ($val) use ($db) {
-                    return $db->quote('%' .Helper::escapeLike($val). '%');
+                    return $db->quote('%' . Helper::escapeLike($val) . '%');
                 }, $value);
 
                 return $key . ' LIKE ' . implode(' OR ' . $key . ' LIKE ', $values);
             }
 
             $value = $operator === '='
-                ? $db->quote('%,'. $value . ',%')
-                : $db->quote('%,%' .Helper::escapeLike($value). '%,%');
+                ? $db->quote('%,' . $value . ',%')
+                : $db->quote('%,%' . Helper::escapeLike($value) . '%,%');
 
-            return $key.' LIKE '.$value.' ';
+            return $key . ' LIKE ' . $value . ' ';
         }
 
         return '';
@@ -357,13 +359,11 @@ class Multiselect extends Data implements
         return true;
     }
 
-    /** Generates a pretty version preview (similar to getVersionPreview) can be either html or
+    /**
+     * Generates a pretty version preview (similar to getVersionPreview) can be either html or
      * a image URL. See the https://github.com/pimcore/object-merger bundle documentation for details
-     *
-     * @param DataObject\Concrete|null $object
-     *
      */
-    public function getDiffVersionPreview(?array $data, Concrete $object = null, array $params = []): array|string
+    public function getDiffVersionPreview(?array $data, ?Concrete $object = null, array $params = []): array|string
     {
         if ($data) {
             $map = [];
@@ -407,9 +407,7 @@ class Multiselect extends Data implements
             $existingData = [];
         }
 
-        $existingData = array_unique(array_merge($existingData, $additionalData));
-
-        return $existingData;
+        return array_unique(array_merge($existingData, $additionalData));
     }
 
     public function removeData(?array $existingData, array $removeData): array
@@ -418,9 +416,7 @@ class Multiselect extends Data implements
             $existingData = [];
         }
 
-        $existingData = array_unique(array_diff($existingData, $removeData));
-
-        return $existingData;
+        return array_unique(array_diff($existingData, $removeData));
     }
 
     public function isFilterable(): bool
@@ -489,7 +485,7 @@ class Multiselect extends Data implements
 
             try {
                 $options = $optionsProvider->getOptions($context, $this);
-            } catch (Throwable $e) {
+            } catch (Throwable) {
                 // error from getOptions => no values => no comma => no problems
                 $options = null;
             }
@@ -497,8 +493,8 @@ class Multiselect extends Data implements
             $options = $this->getOptions();
         }
         if (is_array($options) && array_reduce($options, static function ($containsComma, $option) {
-            return $containsComma || str_contains((string)$option['value'], ',');
-        }, false)) {
+                return $containsComma || str_contains((string)$option['value'], ',');
+            }, false)) {
             throw new Exception("Field {$this->getName()}: Multiselect option values may not contain commas (,) for now, see <a href='https://github.com/pimcore/pimcore/issues/5010' target='_blank'>issue #5010</a>.");
         }
     }

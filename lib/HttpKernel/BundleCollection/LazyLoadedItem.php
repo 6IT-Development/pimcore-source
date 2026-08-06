@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\HttpKernel\BundleCollection;
@@ -36,10 +36,11 @@ class LazyLoadedItem extends AbstractItem
      */
     public function __construct(
         string $className,
-        int $priority = 0,
-        array $environments = [],
+        int    $priority = 0,
+        array  $environments = [],
         string $source = self::SOURCE_PROGRAMATICALLY
-    ) {
+    )
+    {
         if (!class_exists($className)) {
             throw new InvalidArgumentException(sprintf('The class "%s" does not exist', $className));
         }
@@ -59,7 +60,7 @@ class LazyLoadedItem extends AbstractItem
         if (null === $this->bundle) {
             $className = $this->className;
 
-            $this->bundle = new $className;
+            $this->bundle = new $className();
         }
 
         return $this->bundle;

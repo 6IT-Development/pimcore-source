@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Classificationstore;
@@ -25,9 +26,7 @@ class DefinitionCache
 
     public static function get(int $id, string $type = 'key'): ?KeyConfig
     {
-        $key = $type . $id;
-        $config = isset(self::$cache[$key]) ? self::$cache[$key] : null;
-        if ($config) {
+        if ($config = self::$cache[$type . $id] ?? null) {
             return $config;
         }
 

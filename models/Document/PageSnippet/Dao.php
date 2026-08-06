@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\PageSnippet;
@@ -18,11 +18,12 @@ namespace Pimcore\Model\Document\PageSnippet;
 use Pimcore;
 use Pimcore\Model;
 use Pimcore\Model\Document;
+use Pimcore\Model\Document\PageSnippet;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\Document\PageSnippet $model
+ * @property PageSnippet $model
  */
 abstract class Dao extends Model\Document\Dao
 {

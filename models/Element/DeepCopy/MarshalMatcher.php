@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\DeepCopy;
@@ -25,23 +26,20 @@ use Pimcore\Model\Element\Service;
  */
 class MarshalMatcher extends TypeMatcher
 {
-    private ?string $sourceType = null;
-
-    private ?int $sourceId = null;
 
     /**
      * MarshalMatcher constructor.
-     *
      */
-    public function __construct(?string $sourceType, ?int $sourceId)
+    public function __construct(
+        private readonly ?string $sourceType,
+        private readonly ?int    $sourceId
+    )
     {
-        $this->sourceType = $sourceType;
-        $this->sourceId = $sourceId;
+        parent::__construct(ElementInterface::class);
     }
 
     /**
      * @param mixed $element
-     *
      */
     public function matches($element): bool
     {

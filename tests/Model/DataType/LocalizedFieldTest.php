@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\DataType;
 
 use Exception;
+use Pimcore\Config;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\Fieldcollection;
 use Pimcore\Model\DataObject\Localizedfield;
@@ -37,11 +39,11 @@ class LocalizedFieldTest extends ModelTestCase
         parent::setUp();
 
         if (Version::getMajorVersion() >= 11) {
-            $pimcoreModule = $this->getModule('\\'.Pimcore::class);
+            $pimcoreModule = $this->getModule('\\' . Pimcore::class);
             $this->config = $pimcoreModule->grabService(SystemSettingsConfig::class);
-            $this->originalConfig = $this->config->get();
+            $this->originalConfig = SystemSettingsConfig::get();
         } else {
-            $this->originalConfig = \Pimcore\Config::getSystemConfiguration();
+            $this->originalConfig = Config::getSystemConfiguration();
         }
 
     }
@@ -51,7 +53,7 @@ class LocalizedFieldTest extends ModelTestCase
         if (Version::getMajorVersion() >= 11) {
             $this->config->testSave($this->originalConfig);
         } else {
-            \Pimcore\Config::setSystemConfiguration($this->originalConfig);
+            Config::setSystemConfiguration($this->originalConfig);
         }
 
         Localizedfield::setStrictMode((bool)Localizedfield::STRICT_DISABLED);
@@ -130,7 +132,7 @@ class LocalizedFieldTest extends ModelTestCase
         if (Version::getMajorVersion() >= 11) {
             $this->config->testSave($configuration);
         } else {
-            \Pimcore\Config::setSystemConfiguration($configuration);
+            Config::setSystemConfiguration($configuration);
         }
 
         $object = TestHelper::createEmptyObject();

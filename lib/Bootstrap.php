@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -11,12 +12,11 @@ declare(strict_types=1);
  * LICENSE.md which is distributed with this source code.
  *
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
 
-use const PHP_SAPI;
 use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Model\DataObject;
@@ -27,6 +27,7 @@ use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\ErrorHandler\Debug;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\KernelInterface;
+use const PHP_SAPI;
 
 class Bootstrap
 {
@@ -39,9 +40,7 @@ class Bootstrap
     {
         self::setProjectRoot();
         self::bootstrap();
-        $kernel = self::kernel();
-
-        return $kernel;
+        return self::kernel();
     }
 
     public static function startupCli(): Kernel|KernelInterface
@@ -63,7 +62,7 @@ class Bootstrap
         $_ENV['SHELL_VERBOSITY'] = 0;
         $_SERVER['SHELL_VERBOSITY'] = 0;
 
-        /** @var \Pimcore\Kernel $kernel */
+        /** @var Kernel $kernel */
         $kernel = self::kernel();
 
         if (is_readable($workingDirectory)) {
@@ -95,14 +94,11 @@ class Bootstrap
     {
         // this should already be defined at this point, but we include a fallback for backwards compatibility here
         if (!defined('PIMCORE_PROJECT_ROOT')) {
-            // TODO csak symlink közben
-
             define(
                 'PIMCORE_PROJECT_ROOT',
-                getcwd() ?:
-                    $_SERVER['PIMCORE_PROJECT_ROOT'] ?? $_ENV['PIMCORE_PROJECT_ROOT'] ??
-                    $_SERVER['REDIRECT_PIMCORE_PROJECT_ROOT'] ?? $_ENV['REDIRECT_PIMCORE_PROJECT_ROOT'] ??
-                    realpath(__DIR__ . '/../../../..')
+                $_SERVER['PIMCORE_PROJECT_ROOT'] ?? $_ENV['PIMCORE_PROJECT_ROOT'] ??
+                $_SERVER['REDIRECT_PIMCORE_PROJECT_ROOT'] ?? $_ENV['REDIRECT_PIMCORE_PROJECT_ROOT'] ??
+                realpath(__DIR__ . '/../../../..')
             );
         }
     }
@@ -158,7 +154,7 @@ class Bootstrap
     private static function bootDotEnvVariables(): void
     {
         if (class_exists('Symfony\Component\Dotenv\Dotenv')) {
-            (new Dotenv())->bootEnv(PIMCORE_PROJECT_ROOT . '/.env');
+            new Dotenv()->bootEnv(PIMCORE_PROJECT_ROOT . '/.env');
         }
     }
 

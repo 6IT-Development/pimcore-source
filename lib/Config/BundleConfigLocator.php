@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -11,8 +11,8 @@ declare(strict_types = 1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Config;
@@ -60,14 +60,14 @@ class BundleConfigLocator
         $result = [];
         foreach ($this->kernel->getBundles() as $bundle) {
             $bundlePath = $bundle->getPath();
-            if (!is_dir($dir = $bundlePath.'/Resources/config/pimcore') && !is_dir($dir = $bundlePath.'/config/pimcore')) {
+            if (!is_dir($dir = $bundlePath . '/Resources/config/pimcore') && !is_dir($dir = $bundlePath . '/config/pimcore')) {
                 continue;
             }
 
             // try to find environment specific file first, fall back to generic one if none found (e.g. config_dev.yaml > config.yaml)
             $finder = $this->buildContainerConfigFinder($name, $dir, true);
             if (!$finder->hasResults()) {
-                $finder = $this->buildContainerConfigFinder($name, $dir, false);
+                $finder = $this->buildContainerConfigFinder($name, $dir);
             }
 
             foreach ($finder as $file) {

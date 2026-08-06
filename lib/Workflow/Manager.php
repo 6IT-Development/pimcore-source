@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow;
@@ -86,7 +87,7 @@ class Manager
      *
      * @return $this
      */
-    public function addGlobalAction(string $workflowName, string $action, array $actionConfig, CustomHtmlServiceInterface $customHtmlService = null): static
+    public function addGlobalAction(string $workflowName, string $action, array $actionConfig, ?CustomHtmlServiceInterface $customHtmlService = null): static
     {
         $this->globalActions[$workflowName] = $this->globalActions[$workflowName] ?? [];
         $this->globalActions[$workflowName][$action] = new GlobalAction($action, $actionConfig, $this->expressionService, $workflowName, $customHtmlService);
@@ -117,7 +118,7 @@ class Manager
      *
      * @return PlaceConfig[]
      */
-    public function getOrderedPlaceConfigs(WorkflowInterface $workflow, Marking $marking = null): array
+    public function getOrderedPlaceConfigs(WorkflowInterface $workflow, ?Marking $marking = null): array
     {
         if (is_null($marking)) {
             return $this->placeConfigs[$workflow->getName()] ?? [];
@@ -194,7 +195,7 @@ class Manager
     {
         try {
             $workflow = $this->workflowRegistry->get($subject, $workflowName);
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException) {
             // workflow does not apply to given subject
             return null;
         }
@@ -219,17 +220,18 @@ class Manager
      * @throws Exception
      */
     public function applyWithAdditionalData(
-        WorkflowInterface $workflow,
+        WorkflowInterface          $workflow,
         Asset|PageSnippet|Concrete $subject,
-        string $transition,
-        array $additionalData,
-        bool $saveSubject = false
-    ): Marking {
+        string                     $transition,
+        array                      $additionalData,
+        bool                       $saveSubject = false
+    ): Marking
+    {
         $this->notesSubscriber->setAdditionalData($additionalData);
 
         $marking = $workflow->apply($subject, $transition, $additionalData);
 
-        $this->notesSubscriber->setAdditionalData([]);
+        $this->notesSubscriber->setAdditionalData();
 
         $transition = $this->getTransitionByName($workflow->getName(), $transition);
         $changePublishedState = $transition instanceof Transition ? $transition->getChangePublishedState() : null;
@@ -252,11 +254,12 @@ class Manager
      */
     public function applyGlobalAction(
         WorkflowInterface $workflow,
-        object $subject,
-        string $globalAction,
-        array $additionalData,
-        bool $saveSubject = false
-    ): Marking {
+        object            $subject,
+        string            $globalAction,
+        array             $additionalData,
+        bool              $saveSubject = false
+    ): Marking
+    {
         $globalActionObj = $this->getGlobalAction($workflow->getName(), $globalAction);
         if (!$globalActionObj) {
             throw new LogicException(sprintf('global action %s not found', $globalAction));
@@ -282,7 +285,7 @@ class Manager
         }
 
         $this->eventDispatcher->dispatch($event, WorkflowEvents::POST_GLOBAL_ACTION);
-        $this->notesSubscriber->setAdditionalData([]);
+        $this->notesSubscriber->setAdditionalData();
 
         if ($saveSubject && $subject instanceof ElementInterface) {
             $subject->save();
@@ -313,13 +316,13 @@ class Manager
      * Forces an initial place being set (and stored) if the current place is empty.
      * We cannot apply a regular transition b/c it would be considered invalid by the state machine.
      *
-     * As of Symfony 4.4.8 built-in implementations of @see \Symfony\Component\Workflow\MarkingStore\MarkingStoreInterface
+     * As of Symfony 4.4.8 built-in implementations of @return bool true if initial state was applied
+     *
+     * @throws Exception
+     * @see \Symfony\Component\Workflow\MarkingStore\MarkingStoreInterface
      * use strict `null` comparison when retrieving the current marking and throw an exception otherwise.
      *
      *
-     * @return bool true if initial state was applied
-     *
-     * @throws Exception
      */
     public function ensureInitialPlace(string $workflowName, object $subject): bool
     {
@@ -385,7 +388,7 @@ class Manager
 
             try {
                 $marking = $workflow->getMarking($element);
-            } catch (LogicException $e) {
+            } catch (LogicException) {
                 continue;
             }
 

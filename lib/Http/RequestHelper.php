@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Http;
@@ -27,7 +28,7 @@ use Symfony\Component\Routing\RequestContext;
 
 class RequestHelper
 {
-    const ATTRIBUTE_FRONTEND_REQUEST = '_pimcore_frontend_request';
+    public const string ATTRIBUTE_FRONTEND_REQUEST = '_pimcore_frontend_request';
 
     protected RequestStack $requestStack;
 
@@ -53,7 +54,7 @@ class RequestHelper
         return $this->requestStack->getCurrentRequest();
     }
 
-    public function getRequest(Request $request = null): Request
+    public function getRequest(?Request $request = null): Request
     {
         if (null === $request) {
             $request = $this->getCurrentRequest();
@@ -87,7 +88,7 @@ class RequestHelper
         $this->requestStack->push($request);
     }
 
-    public function isFrontendRequest(Request $request = null): bool
+    public function isFrontendRequest(?Request $request = null): bool
     {
         $request = $this->getRequest($request);
         $attribute = self::ATTRIBUTE_FRONTEND_REQUEST;
@@ -124,7 +125,7 @@ class RequestHelper
      *
      *
      */
-    public function isObjectPreviewRequestByAdmin(Request $request = null): bool
+    public function isObjectPreviewRequestByAdmin(?Request $request = null): bool
     {
         $request = $this->getRequest($request);
 
@@ -137,25 +138,21 @@ class RequestHelper
      *
      *
      */
-    public function isFrontendRequestByAdmin(Request $request = null): bool
+    public function isFrontendRequestByAdmin(?Request $request = null): bool
     {
         $request = $this->getRequest($request);
 
-        $keys = [
+        if (array_any([
             'pimcore_editmode',
             'pimcore_preview',
             'pimcore_admin',
             'pimcore_object_preview',
             'pimcore_version',
-        ];
-
-        foreach ($keys as $key) {
-            if ($request->query->get($key) || $request->request->get($key)) {
-                return true;
-            }
+        ], fn($key) => $request->query->get($key) || $request->request->get($key))) {
+            return true;
         }
 
-        if (preg_match('@^/admin/document_tag/renderlet@', $request->getRequestUri())) {
+        if (str_starts_with($request->getRequestUri(), '/admin/document_tag/renderlet')) {
             return true;
         }
 
@@ -169,7 +166,7 @@ class RequestHelper
      *
      *
      */
-    public function getAnonymizedClientIp(Request $request = null): string
+    public function getAnonymizedClientIp(?Request $request = null): string
     {
         $request = $this->getRequest($request);
 
@@ -201,18 +198,16 @@ class RequestHelper
         }
 
         if ('http' === $scheme && 80 !== $this->requestContext->getHttpPort()) {
-            $port = ':'.$this->requestContext->getHttpPort();
+            $port = ':' . $this->requestContext->getHttpPort();
         } elseif ('https' === $scheme && 443 !== $this->requestContext->getHttpsPort()) {
-            $port = ':'.$this->requestContext->getHttpsPort();
+            $port = ':' . $this->requestContext->getHttpsPort();
         }
 
-        $request = Request::create(
-            $scheme .'://'. $this->requestContext->getHost().$port.$this->requestContext->getBaseUrl().$uri,
+        return Request::create(
+            $scheme . '://' . $this->requestContext->getHost() . $port . $this->requestContext->getBaseUrl() . $uri,
             $this->requestContext->getMethod(),
             $this->requestContext->getParameters()
         );
-
-        return $request;
     }
 
     /**

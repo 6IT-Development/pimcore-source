@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener;
 
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\ResponseInjectionTrait;
+use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,9 +36,10 @@ class MaintenancePageListener implements EventSubscriberInterface
     protected ?string $templateCode = null;
 
     public function __construct(
-        protected KernelInterface $kernel,
+        protected KernelInterface                $kernel,
         protected MaintenanceModeHelperInterface $maintenanceModeHelper
-    ) {
+    )
+    {
     }
 
     public static function getSubscribedEvents(): array
@@ -87,7 +90,7 @@ class MaintenancePageListener implements EventSubscriberInterface
         if ($this->maintenanceModeHelper->isActive($requestSessionId)) {
             $maintenance = true;
         } else {
-            $file = \Pimcore\Tool\Admin::getMaintenanceModeFile();
+            $file = Admin::getMaintenanceModeFile();
 
             if (!is_file($file)) {
                 return;

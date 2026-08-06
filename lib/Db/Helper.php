@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Db;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\Result;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Types\Type;
 use Exception;
 use LogicException;
@@ -39,7 +41,7 @@ class Helper
             $data = $quoteIdentifiers ? self::quoteDataIdentifiers($connection, $data) : $data;
 
             return $connection->insert($table, $data);
-        } catch (\Doctrine\DBAL\Exception\UniqueConstraintViolationException $exception) {
+        } catch (UniqueConstraintViolationException) {
             $critera = [];
             foreach ($keys as $key) {
                 $key = $quoteIdentifiers ? $connection->quoteIdentifier($key) : $key;

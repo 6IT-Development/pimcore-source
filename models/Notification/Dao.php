@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Notification;
@@ -31,7 +31,7 @@ use UnexpectedValueException;
  */
 class Dao extends AbstractDao
 {
-    public const DB_TABLE_NAME = 'notifications';
+    public const string DB_TABLE_NAME = 'notifications';
 
     /**
      *
@@ -73,7 +73,7 @@ class Dao extends AbstractDao
         );
 
         if ($this->model->getId() === null) {
-            $this->model->setId((int) $this->db->lastInsertId());
+            $this->model->setId((int)$this->db->lastInsertId());
         }
     }
 
@@ -154,9 +154,9 @@ class Dao extends AbstractDao
             'message' => $model->getMessage(),
             'linkedElement' => $model->getLinkedElement()?->getId(),
             'linkedElementType' => $model->getLinkedElementType(),
-            'read' => (int) $model->isRead(),
+            'read' => (int)$model->isRead(),
             'payload' => $model->getPayload(),
-            'isStudio' => (int) $model->isStudio(), // TODO: Remove with end of Classic-UI
+            'isStudio' => (int)$model->isStudio(), // TODO: Remove with end of Classic-UI
         ];
     }
 }

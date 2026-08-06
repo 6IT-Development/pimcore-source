@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -23,40 +24,40 @@ final class FieldcollectionDefinitionEvents
      *
      * @var string
      */
-    const PRE_ADD = 'pimcore.fieldcollection.preAdd';
+    public const string PRE_ADD = 'pimcore.fieldcollection.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\FieldcollectionDefinitionEvent")
      *
      * @var string
      */
-    const POST_ADD = 'pimcore.fieldcollection.postAdd';
+    public const string POST_ADD = 'pimcore.fieldcollection.postAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\FieldcollectionDefinitionEvent")
      *
      * @var string
      */
-    const PRE_UPDATE = 'pimcore.fieldcollection.preUpdate';
+    public const string PRE_UPDATE = 'pimcore.fieldcollection.preUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\FieldcollectionDefinitionEvent")
      *
      * @var string
      */
-    const POST_UPDATE = 'pimcore.fieldcollection.postUpdate';
+    public const string POST_UPDATE = 'pimcore.fieldcollection.postUpdate';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\FieldcollectionDefinitionEvent")
      *
      * @var string
      */
-    const PRE_DELETE = 'pimcore.fieldcollection.preDelete';
+    public const string PRE_DELETE = 'pimcore.fieldcollection.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObject\FieldcollectionDefinitionEvent")
      *
      * @var string
      */
-    const POST_DELETE = 'pimcore.fieldcollection.postDelete';
+    public const string POST_DELETE = 'pimcore.fieldcollection.postDelete';
 }

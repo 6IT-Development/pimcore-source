@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
@@ -21,13 +22,16 @@ use Exception;
 use Pimcore;
 use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\Config;
 use Pimcore\Event\Model\TranslationEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Event\TranslationEvents;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\Element\Service;
+use Pimcore\Model\Translation\Dao;
 use Pimcore\SystemSettingsConfig;
 use Pimcore\Tool;
+use Pimcore\Tool\Admin;
 use Pimcore\Translation\TranslationEntriesDumper;
 use stdClass;
 use Symfony\Component\Filesystem\Filesystem;
@@ -35,15 +39,15 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 /**
- * @method \Pimcore\Model\Translation\Dao getDao()
+ * @method Dao getDao()
  */
 final class Translation extends AbstractModel
 {
     use RecursionBlockingEventDispatchHelperTrait;
 
-    const DOMAIN_DEFAULT = 'messages';
+    public const string DOMAIN_DEFAULT = 'messages';
 
-    const DOMAIN_ADMIN = 'admin';
+    public const string DOMAIN_ADMIN = 'admin';
 
     protected ?string $key = null;
 
@@ -89,7 +93,7 @@ final class Translation extends AbstractModel
 
     public static function IsAValidLanguage(string $domain, string $locale): bool
     {
-        return in_array($locale, static::getValidLanguages($domain));
+        return in_array($locale, Translation::getValidLanguages($domain));
     }
 
     public function getKey(): ?string
@@ -100,7 +104,7 @@ final class Translation extends AbstractModel
     /**
      * @return $this
      */
-    public function setKey(string $key): static
+    public function setKey(string $key): Translation
     {
         $this->key = $key;
 
@@ -120,7 +124,7 @@ final class Translation extends AbstractModel
      *
      * @return $this
      */
-    public function setTranslations(array $translations): static
+    public function setTranslations(array $translations): Translation
     {
         $this->translations = $translations;
 
@@ -130,7 +134,7 @@ final class Translation extends AbstractModel
     /**
      * @return $this
      */
-    public function setDate(int $date): static
+    public function setDate(int $date): Translation
     {
         $this->setModificationDate($date);
 
@@ -145,7 +149,7 @@ final class Translation extends AbstractModel
     /**
      * @return $this
      */
-    public function setCreationDate(int $date): static
+    public function setCreationDate(int $date): Translation
     {
         $this->creationDate = $date;
 
@@ -160,7 +164,7 @@ final class Translation extends AbstractModel
     /**
      * @return $this
      */
-    public function setModificationDate(int $date): static
+    public function setModificationDate(int $date): Translation
     {
         $this->modificationDate = $date;
 
@@ -198,14 +202,14 @@ final class Translation extends AbstractModel
     }
 
     /**
+     * @return string[]
      * @internal
      *
-     * @return string[]
      */
     public static function getValidLanguages(string $domain = self::DOMAIN_DEFAULT): array
     {
         if ($domain == self::DOMAIN_ADMIN) {
-            return \Pimcore\Tool\Admin::getLanguages();
+            return Admin::getLanguages();
         }
 
         return Tool::getValidLanguages();
@@ -239,7 +243,7 @@ final class Translation extends AbstractModel
      *
      * @throws Exception
      */
-    public static function getByKey(string $id, string $domain = self::DOMAIN_DEFAULT, bool $create = false, bool $returnIdIfEmpty = false, array $languages = null): ?static
+    public static function getByKey(string $id, string $domain = self::DOMAIN_DEFAULT, bool $create = false, bool $returnIdIfEmpty = false, ?array $languages = null): ?Translation
     {
         $cacheKey = 'translation_' . $id . '_' . $domain;
         if (is_array($languages)) {
@@ -250,10 +254,10 @@ final class Translation extends AbstractModel
             return RuntimeCache::get($cacheKey);
         }
 
-        $translation = new static();
+        $translation = new Translation();
         $translation->setDomain($domain);
         $idOriginal = $id;
-        $languages = $languages ? array_intersect(static::getValidLanguages($domain), $languages) : static::getValidLanguages($domain);
+        $languages = $languages ? array_intersect(Translation::getValidLanguages($domain), $languages) : Translation::getValidLanguages($domain);
 
         try {
             $translation->getDao()->getByKey($id, $languages);
@@ -297,9 +301,7 @@ final class Translation extends AbstractModel
      */
     public static function getRegisteredDomains(): array
     {
-        $translationsConfig = \Pimcore\Config::getSystemConfiguration('translations');
-
-        return $translationsConfig['domains'];
+        return Config::getSystemConfiguration('translations')['domains'];
     }
 
     /**
@@ -308,10 +310,10 @@ final class Translation extends AbstractModel
      *
      * @throws Exception
      */
-    public static function getByKeyLocalized(string $id, string $domain = self::DOMAIN_DEFAULT, bool $create = false, bool $returnIdIfEmpty = false, string $language = null): ?string
+    public static function getByKeyLocalized(string $id, string $domain = self::DOMAIN_DEFAULT, bool $create = false, bool $returnIdIfEmpty = false, ?string $language = null): ?string
     {
         if ($domain == self::DOMAIN_ADMIN) {
-            if ($user = Tool\Admin::getCurrentUser()) {
+            if ($user = Admin::getCurrentUser()) {
                 $language = $user->getLanguage();
             } elseif ($user = Tool\Authentication::authenticateSession()) {
                 $language = $user->getLanguage();
@@ -321,7 +323,7 @@ final class Translation extends AbstractModel
                 $language = Pimcore::getContainer()->get(LocaleServiceInterface::class)->findLocale();
             }
 
-            if (!in_array($language, Tool\Admin::getLanguages())) {
+            if (!in_array($language, Admin::getLanguages())) {
                 $config = SystemSettingsConfig::get()['general'];
                 $language = $config['language'] ?? null;
             }
@@ -344,7 +346,7 @@ final class Translation extends AbstractModel
 
     public static function isAValidDomain(string $domain): bool
     {
-        $translation = new static();
+        $translation = new Translation();
 
         return $translation->getDao()->isAValidDomain($domain);
     }
@@ -381,13 +383,13 @@ final class Translation extends AbstractModel
      *
      * @internal
      */
-    public static function importTranslationsFromFile(string $file, string $domain = self::DOMAIN_DEFAULT, bool $replaceExistingTranslations = true, array $languages = null, stdClass $dialect = null): array
+    public static function importTranslationsFromFile(string $file, string $domain = self::DOMAIN_DEFAULT, bool $replaceExistingTranslations = true, ?array $languages = null, ?stdClass $dialect = null): array
     {
         $delta = [];
 
         if (is_readable($file)) {
             if (!$languages) {
-                $languages = static::getValidLanguages($domain);
+                $languages = Translation::getValidLanguages($domain);
             }
 
             //read import data
@@ -409,7 +411,7 @@ final class Translation extends AbstractModel
 
             // determine csv type if not set
             if (empty($dialect)) {
-                $dialect = Tool\Admin::determineCsvDialect(PIMCORE_SYSTEM_TEMP_DIRECTORY . '/import_translations_original');
+                $dialect = Admin::determineCsvDialect(PIMCORE_SYSTEM_TEMP_DIRECTORY . '/import_translations_original');
             }
 
             //read data
@@ -426,7 +428,7 @@ final class Translation extends AbstractModel
                 $keys = $data[0];
                 // remove wrong quotes in some export/import constellations
                 $keys = array_map(function ($value) {
-                    return trim($value, '﻿""');
+                    return trim($value, '﻿"');
                 }, $keys);
                 $data = array_slice($data, 1);
                 foreach ($data as $row) {
@@ -439,7 +441,7 @@ final class Translation extends AbstractModel
 
                     $textKey = $keyValueArray['key'] ?? null;
                     if ($textKey) {
-                        $t = static::getByKey($textKey, $domain, true);
+                        $t = Translation::getByKey($textKey, $domain, true);
                         $dirty = false;
                         foreach ($keyValueArray as $key => $value) {
                             if (in_array($key, $languages)) {
@@ -470,7 +472,7 @@ final class Translation extends AbstractModel
 
                         if ($dirty) {
                             if (array_key_exists('creationDate', $keyValueArray) && $keyValueArray['creationDate']) {
-                                $t->setCreationDate((int) $keyValueArray['creationDate']);
+                                $t->setCreationDate((int)$keyValueArray['creationDate']);
                             }
                             $t->setModificationDate(time()); //ignore modificationDate from file
                             $t->save();
@@ -482,7 +484,7 @@ final class Translation extends AbstractModel
                         Pimcore::collectGarbage();
                     }
                 }
-                static::clearDependentCache();
+                Translation::clearDependentCache();
             } else {
                 throw new Exception('less than 2 rows of data - nothing to import');
             }

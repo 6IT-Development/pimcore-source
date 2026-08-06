@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\HttpKernel\BundleCollection;
@@ -27,10 +27,11 @@ class Item extends AbstractItem
 
     public function __construct(
         BundleInterface $bundle,
-        int $priority = 0,
-        array $environments = [],
-        string $source = self::SOURCE_PROGRAMATICALLY
-    ) {
+        int             $priority = 0,
+        array           $environments = [],
+        string          $source = self::SOURCE_PROGRAMATICALLY
+    )
+    {
         $this->bundle = $bundle;
 
         parent::__construct($priority, $environments, $source);

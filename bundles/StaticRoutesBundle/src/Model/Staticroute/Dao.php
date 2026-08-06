@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\StaticRoutesBundle\Model\Staticroute;
@@ -29,7 +29,7 @@ use Symfony\Component\Uid\Uuid as Uid;
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
-    private const CONFIG_KEY = 'staticroutes';
+    private const string CONFIG_KEY = 'staticroutes';
 
     public function configure(): void
     {
@@ -59,7 +59,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      *
      * @throws NotFoundException
      */
-    public function getById(string $id = null): void
+    public function getById(?string $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -85,7 +85,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      *
      * @throws NotFoundException
      */
-    public function getByName(string $name = null, int $siteId = null): void
+    public function getByName(?string $name = null, ?int $siteId = null): void
     {
         if ($name != null) {
             $this->model->setName($name);
@@ -124,7 +124,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         }
     }
 
-    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
+    protected function prepareDataStructureForYaml(string $id, mixed $data): array
     {
         return [
             'pimcore_static_routes' => [
@@ -153,7 +153,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $dataRaw = $this->model->getObjectVars();
         $data = [];
         $allowedProperties = ['name', 'pattern', 'reverse', 'controller',
-            'variables', 'defaults', 'siteId', 'priority', 'methods', 'creationDate', 'modificationDate', ];
+            'variables', 'defaults', 'siteId', 'priority', 'methods', 'creationDate', 'modificationDate',];
 
         foreach ($dataRaw as $key => $value) {
             if (in_array($key, $allowedProperties)) {

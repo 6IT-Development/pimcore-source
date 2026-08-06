@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 use InvalidArgumentException;
 use JsonSerializable;
+use Pimcore\Db;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -124,19 +126,15 @@ class Select extends Data implements
      *
      * @see ResourcePersistenceAwareInterface::getDataForResource
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): null|string|int
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): null|string|int
     {
-        $data = $this->handleDefaultValue($data, $object, $params);
-
-        return $data;
+        return $this->handleDefaultValue($data, $object, $params);
     }
 
     /**
-     * @param null|DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
      */
-    public function getDataFromResource(mixed $data, Concrete $object = null, array $params = []): null|string|int
+    public function getDataFromResource(mixed $data, ?Concrete $object = null, array $params = []): null|string|int
     {
         return $data;
     }
@@ -146,7 +144,7 @@ class Select extends Data implements
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?string
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?string
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -157,7 +155,7 @@ class Select extends Data implements
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): null|string|int
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): null|string|int
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -168,7 +166,7 @@ class Select extends Data implements
      * @see Data::getDataFromEditmode
      *
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): null|string|int
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): null|string|int
     {
         return $this->getDataFromResource($data, $object, $params);
     }
@@ -179,9 +177,9 @@ class Select extends Data implements
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
-        return htmlspecialchars((string) $data, ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars((string)$data, ENT_QUOTES, 'UTF-8');
     }
 
     public function isDiffChangeAllowed(Concrete $object, array $params = []): bool
@@ -192,7 +190,7 @@ class Select extends Data implements
     /** See parent class.
      *
      */
-    public function getDiffDataForEditMode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDiffDataForEditMode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         $result = [];
 
@@ -233,7 +231,7 @@ class Select extends Data implements
             return count($data) < 1;
         }
 
-        return (string) $data === '';
+        return (string)$data === '';
     }
 
     /**
@@ -275,11 +273,7 @@ class Select extends Data implements
         return $this;
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataForGrid(mixed $data, Concrete $object = null, array $params = []): array|string|int|null
+    public function getDataForGrid(mixed $data, ?Concrete $object = null, array $params = []): array|string|int|null
     {
         $optionsProvider = DataObject\ClassDefinition\Helper\OptionsProviderResolver::resolveProvider(
             $this->getOptionsProviderClass(),
@@ -320,10 +314,10 @@ class Select extends Data implements
         $value = is_array($value) ? current($value) : $value;
         $name = $params['name'] ?: $this->name;
 
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $key = $db->quoteIdentifier($name);
         if (!empty($params['brickPrefix'])) {
-            $key = $params['brickPrefix'].$key;
+            $key = $params['brickPrefix'] . $key;
         }
 
         if ($operator === '=') {

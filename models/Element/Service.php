@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -19,9 +20,13 @@ namespace Pimcore\Model\Element;
 use __PHP_Incomplete_Class;
 use DeepCopy\DeepCopy;
 use DeepCopy\Filter\Doctrine\DoctrineCollectionFilter;
+use DeepCopy\Filter\KeepFilter;
 use DeepCopy\Filter\SetNullFilter;
+use DeepCopy\Matcher\Matcher;
+use DeepCopy\Matcher\PropertyMatcher;
 use DeepCopy\Matcher\PropertyNameMatcher;
 use DeepCopy\Matcher\PropertyTypeMatcher;
+use DeepCopy\TypeFilter\ReplaceFilter;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Query\QueryBuilder as DoctrineQueryBuilder;
 use Exception;
@@ -54,7 +59,7 @@ use Throwable;
 use UnitEnum;
 
 /**
- * @method \Pimcore\Model\Element\Dao getDao()
+ * @method Dao getDao()
  */
 class Service extends Model\AbstractModel
 {
@@ -82,9 +87,9 @@ class Service extends Model\AbstractModel
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public static function getTypePath(ElementInterface $element): string
     {
@@ -107,9 +112,9 @@ class Service extends Model\AbstractModel
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public static function getSortIndexPath(ElementInterface $element): string
     {
@@ -122,7 +127,7 @@ class Service extends Model\AbstractModel
             $path = self::getSortIndexPath($parentElement);
         }
 
-        $sortIndex = method_exists($element, 'getIndex') ? (int) $element->getIndex() : 0;
+        $sortIndex = method_exists($element, 'getIndex') ? (int)$element->getIndex() : 0;
         $path .= '/' . $sortIndex;
 
         return $path;
@@ -149,9 +154,7 @@ class Service extends Model\AbstractModel
         if ($list instanceof Model\Listing\AbstractListing && method_exists($list, 'loadIdList')) {
             $ids = $list->loadIdList();
         }
-        $ids = array_unique($ids);
-
-        return $ids;
+        return array_unique($ids);
     }
 
     /**
@@ -270,7 +273,7 @@ class Service extends Model\AbstractModel
      *
      * @internal
      */
-    public static function isPublished(ElementInterface $element = null): bool
+    public static function isPublished(?ElementInterface $element = null): bool
     {
         if ($element instanceof ElementInterface) {
             if (method_exists($element, 'isPublished')) {
@@ -399,7 +402,7 @@ class Service extends Model\AbstractModel
                 // temporary remove file extension from sourceKey
                 $sourceKey = preg_replace('/\.' . $fileExtension . '$/i', '', $sourceKey);
             }
-            if (preg_match("/_copy(|_\d*)$/", $sourceKey) === 1) {
+            if (preg_match('/_copy(|_\d*)$/', $sourceKey) === 1) {
                 // If key already ends with _copy or copy_N, append a digit to avoid _copy_copy_copy naming
                 $keyParts = explode('_', $sourceKey);
                 $counterKey = array_key_last($keyParts);
@@ -424,7 +427,7 @@ class Service extends Model\AbstractModel
         return $sourceKey;
     }
 
-    public static function pathExists(string $path, string $type = null): bool
+    public static function pathExists(string $path, ?string $type = null): bool
     {
         return match ($type) {
             'asset' => Asset\Service::pathExists($path),
@@ -442,7 +445,7 @@ class Service extends Model\AbstractModel
                 '11.0',
                 sprintf('Passing id as string to method %s is deprecated', __METHOD__)
             );
-            $id = is_numeric($id) ? (int) $id : 0;
+            $id = is_numeric($id) ? (int)$id : 0;
         }
         $params = self::prepareGetByIdParams($params);
 
@@ -667,7 +670,7 @@ class Service extends Model\AbstractModel
                         $findPath = $uniquePathsKeys[$findIndex];
                         if (str_contains($findPath, $path)) { //it means that we found a children
                             if ($uniquePaths[$findPath] == 1) {
-                                array_push($forbidden[$path], $findPath); //adding list=1 children
+                                $forbidden[$path][] = $findPath; //adding list=1 children
                             }
                         } else {
                             break;
@@ -689,7 +692,7 @@ class Service extends Model\AbstractModel
      *
      * @internal
      */
-    public static function renewReferences(mixed $data, bool $initial = true, string $key = null): mixed
+    public static function renewReferences(mixed $data, bool $initial = true, ?string $key = null): mixed
     {
         if ($data instanceof __PHP_Incomplete_Class) {
             Logger::err(sprintf('Renew References: Cannot read data (%s) of incomplete class.', is_null($key) ? 'not available' : $key));
@@ -832,7 +835,7 @@ class Service extends Model\AbstractModel
 
         $sanitizedPath = '/';
 
-        $itemType = self::getElementType(new $type);
+        $itemType = self::getElementType(new $type());
 
         foreach ($parts as $part) {
             $sanitizedPath = $sanitizedPath . self::getValidKey($part, $itemType) . '/';
@@ -906,7 +909,7 @@ class Service extends Model\AbstractModel
                     $select->andWhere($where);
                 }
 
-                $fromAlias = $select->getQueryPart('from')[0]['alias'] ?? $select->getQueryPart('from')[0]['table'] ;
+                $fromAlias = $select->getQueryPart('from')[0]['alias'] ?? $select->getQueryPart('from')[0]['table'];
 
                 $customViewJoins = $cv['joins'] ?? null;
                 if ($customViewJoins) {
@@ -973,14 +976,7 @@ class Service extends Model\AbstractModel
 
     public static function isValidPath(string $path, string $type): bool
     {
-        $parts = explode('/', $path);
-        foreach ($parts as $part) {
-            if (!self::isValidKey($part, $type)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all(explode('/', $path), fn(string $part) => self::isValidKey($part, $type));
     }
 
     /**
@@ -1087,8 +1083,8 @@ class Service extends Model\AbstractModel
 
     public static function cloneMe(ElementInterface $element): ElementInterface
     {
-        $deepCopy = new \DeepCopy\DeepCopy();
-        $deepCopy->addFilter(new \DeepCopy\Filter\KeepFilter(), new class() implements \DeepCopy\Matcher\Matcher {
+        $deepCopy = new DeepCopy();
+        $deepCopy->addFilter(new KeepFilter(), new class() implements Matcher {
             public function matches($object, $property): bool
             {
                 try {
@@ -1120,7 +1116,7 @@ class Service extends Model\AbstractModel
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('dao'));
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('resource'));
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('writeResource'));
-        $deepCopy->addFilter(new \DeepCopy\Filter\Doctrine\DoctrineCollectionFilter(), new \DeepCopy\Matcher\PropertyTypeMatcher(
+        $deepCopy->addFilter(new DoctrineCollectionFilter(), new PropertyTypeMatcher(
             Collection::class
         ));
 
@@ -1148,7 +1144,7 @@ class Service extends Model\AbstractModel
      */
     public static function cloneProperties(mixed $properties): mixed
     {
-        $deepCopy = new \DeepCopy\DeepCopy();
+        $deepCopy = new DeepCopy();
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('cid'));
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('ctype'));
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('cpath'));
@@ -1305,7 +1301,7 @@ class Service extends Model\AbstractModel
                 );
             }
 
-            $copier->addFilter(new Model\Version\SetDumpStateFilter(true), new \DeepCopy\Matcher\PropertyMatcher(Model\Element\ElementDumpStateInterface::class, Model\Element\ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
+            $copier->addFilter(new Model\Version\SetDumpStateFilter(true), new PropertyMatcher(Model\Element\ElementDumpStateInterface::class, Model\Element\ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
             $element = $copier->copy($element);
         }
 
@@ -1337,7 +1333,7 @@ class Service extends Model\AbstractModel
     public static function getDeepCopyInstance(mixed $element, ?array $context = []): DeepCopy
     {
         $copier = new DeepCopy();
-        $copier->skipUncloneable(true);
+        $copier->skipUncloneable();
 
         if ($element instanceof ElementInterface) {
             if (($context['conversion'] ?? false) === 'marshal') {
@@ -1345,13 +1341,11 @@ class Service extends Model\AbstractModel
                 $sourceId = $element->getId();
 
                 $copier->addTypeFilter(
-                    new \DeepCopy\TypeFilter\ReplaceFilter(
+                    new ReplaceFilter(
                         function ($currentValue) {
                             if ($currentValue instanceof ElementInterface) {
                                 $elementType = Service::getElementType($currentValue);
-                                $descriptor = new ElementDescriptor($elementType, $currentValue->getId());
-
-                                return $descriptor;
+                                return new ElementDescriptor($elementType, $currentValue->getId());
                             }
 
                             return $currentValue;
@@ -1361,12 +1355,10 @@ class Service extends Model\AbstractModel
                 );
             } elseif (($context['conversion'] ?? false) === 'unmarshal') {
                 $copier->addTypeFilter(
-                    new \DeepCopy\TypeFilter\ReplaceFilter(
+                    new ReplaceFilter(
                         function ($currentValue) {
                             if ($currentValue instanceof ElementDescriptor) {
-                                $value = Service::getElementById($currentValue->getType(), $currentValue->getId());
-
-                                return $value;
+                                return Service::getElementById($currentValue->getType(), $currentValue->getId());
                             }
 
                             return $currentValue;

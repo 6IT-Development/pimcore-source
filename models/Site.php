@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
@@ -66,7 +67,7 @@ final class Site extends AbstractModel
      */
     public static function getById(int $id): ?Site
     {
-        $cacheKey = 'site_id_'. $id;
+        $cacheKey = 'site_id_' . $id;
 
         if (RuntimeCache::isRegistered($cacheKey)) {
             $site = RuntimeCache::get($cacheKey);
@@ -74,7 +75,7 @@ final class Site extends AbstractModel
             try {
                 $site = new self();
                 $site->getDao()->getById($id);
-            } catch (NotFoundException $e) {
+            } catch (NotFoundException) {
                 $site = 'failed';
             }
 
@@ -97,7 +98,7 @@ final class Site extends AbstractModel
             $site->getDao()->getByRootId($id);
 
             return $site;
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             return null;
         }
     }
@@ -108,7 +109,7 @@ final class Site extends AbstractModel
     public static function getByDomain(string $domain): ?Site
     {
         // cached because this is called in the route
-        $cacheKey = 'site_domain_'. md5($domain);
+        $cacheKey = 'site_domain_' . md5($domain);
 
         if (RuntimeCache::isRegistered($cacheKey)) {
             $site = RuntimeCache::get($cacheKey);
@@ -116,7 +117,7 @@ final class Site extends AbstractModel
             try {
                 $site = new self();
                 $site->getDao()->getByDomain($domain);
-            } catch (NotFoundException $e) {
+            } catch (NotFoundException) {
                 $site = 'failed';
             }
 
@@ -214,7 +215,7 @@ final class Site extends AbstractModel
     /**
      * @return $this
      */
-    public function setId(int $id): static
+    public function setId(int $id): Site
     {
         $this->id = $id;
 
@@ -224,7 +225,7 @@ final class Site extends AbstractModel
     /**
      * @return $this
      */
-    public function setDomains(array|string $domains): static
+    public function setDomains(array|string $domains): Site
     {
         if (is_string($domains)) {
             $domains = Serialize::unserialize($domains);
@@ -252,7 +253,7 @@ final class Site extends AbstractModel
     /**
      * @return $this
      */
-    public function setRootId(int $rootId): static
+    public function setRootId(int $rootId): Site
     {
         $this->rootId = $rootId;
         $this->rootDocument = Document\Page::getById($this->rootId);
@@ -263,7 +264,7 @@ final class Site extends AbstractModel
     /**
      * @return $this
      */
-    public function setRootDocument(?Document\Page $rootDocument): static
+    public function setRootDocument(?Document\Page $rootDocument): Site
     {
         $this->rootDocument = $rootDocument;
         $this->rootId = $rootDocument?->getId();
@@ -274,7 +275,7 @@ final class Site extends AbstractModel
     /**
      * @return $this
      */
-    public function setRootPath(?string $path): static
+    public function setRootPath(?string $path): Site
     {
         $this->rootPath = $path;
 
@@ -303,7 +304,7 @@ final class Site extends AbstractModel
     /**
      * @return $this
      */
-    public function setLocalizedErrorDocuments(array|string $localizedErrorDocuments): static
+    public function setLocalizedErrorDocuments(array|string $localizedErrorDocuments): Site
     {
         if (is_string($localizedErrorDocuments)) {
             $localizedErrorDocuments = Serialize::unserialize($localizedErrorDocuments);
@@ -350,14 +351,14 @@ final class Site extends AbstractModel
         try {
             Cache::clearTag('site');
         } catch (Exception $e) {
-            Logger::crit((string) $e);
+            Logger::crit((string)$e);
         }
     }
 
     /**
      * @return $this
      */
-    public function setModificationDate(int $modificationDate): static
+    public function setModificationDate(int $modificationDate): Site
     {
         $this->modificationDate = $modificationDate;
 
@@ -372,7 +373,7 @@ final class Site extends AbstractModel
     /**
      * @return $this
      */
-    public function setCreationDate(int $creationDate): static
+    public function setCreationDate(int $creationDate): Site
     {
         $this->creationDate = $creationDate;
 

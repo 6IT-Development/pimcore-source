@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Helper;
@@ -21,7 +22,7 @@ namespace Pimcore\Helper;
  */
 class ReservedWordsHelper
 {
-    public const PHP_KEYWORDS = [
+    public const array PHP_KEYWORDS = [
         'abstract', 'and', 'array', 'as', 'break', 'callable', 'case', 'catch', 'class', 'clone', 'const', 'continue',
         'declare', 'default', 'die', 'do', 'echo', 'else', 'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach',
         'endif', 'endswitch', 'endwhile', 'eval', 'exit', 'extends', 'final', 'finally', 'fn', 'for', 'foreach',
@@ -31,16 +32,16 @@ class ReservedWordsHelper
         'var', 'while', 'xor', 'yield', 'yield_from',
     ];
 
-    public const PHP_CLASSES = [
+    public const array PHP_CLASSES = [
         'self', 'static', 'parent',
     ];
 
-    public const PHP_OTHER_WORDS = [
+    public const array PHP_OTHER_WORDS = [
         'int', 'float', 'bool', 'string', 'true', 'false', 'null', 'void', 'iterable', 'object', 'mixed', 'never',
         'enum', 'resource', 'numeric',
     ];
 
-    public const PIMCORE = [
+    public const array PIMCORE = [
         'data', 'folder', 'permissions', 'dao', 'concrete', 'items',
     ];
 

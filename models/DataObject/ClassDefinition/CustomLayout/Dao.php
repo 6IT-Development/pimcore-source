@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\CustomLayout;
@@ -18,18 +18,19 @@ namespace Pimcore\Model\DataObject\ClassDefinition\CustomLayout;
 use Exception;
 use Pimcore\Config;
 use Pimcore\Model;
+use Pimcore\Model\DataObject\ClassDefinition\CustomLayout;
 use Symfony\Component\Uid\Uuid as Uid;
 use Symfony\Component\Uid\UuidV4;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\ClassDefinition\CustomLayout $model
+ * @property CustomLayout $model
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
     /**
-     * @var Model\DataObject\ClassDefinition\CustomLayout
+     * @var CustomLayout
      */
     protected $model;
 
@@ -50,7 +51,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      *
      * @throws Model\Exception\NotFoundException
      */
-    public function getById(string $id = null): void
+    public function getById(?string $id = null): void
     {
         if ($id != null) {
             $this->model->setId($id);
@@ -58,7 +59,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 
         $data = $this->getDataByName($this->model->getId());
 
-        if ($data instanceof Model\DataObject\ClassDefinition\CustomLayout) {
+        if ($data instanceof CustomLayout) {
             $this->assignVariablesToModel($data->getObjectVars());
         } else {
             if ($data && $id != null) {
@@ -82,7 +83,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     public function getByName(string $name): void
     {
         $list = new Listing();
-        /** @var Model\DataObject\ClassDefinition\CustomLayout[] $definitions */
+        /** @var CustomLayout[] $definitions */
         $definitions = array_values(array_filter($list->getLayoutDefinitions(), function ($item) use ($name) {
             $return = true;
             if ($name && $item->getName() != $name) {
@@ -104,7 +105,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $name = null;
 
         $list = new Listing();
-        /** @var Model\DataObject\ClassDefinition\CustomLayout[] $definitions */
+        /** @var CustomLayout[] $definitions */
         $definitions = array_values(array_filter($list->getLayoutDefinitions(), function ($item) use ($id) {
             $return = true;
             if ($id && $item->getId() != $id) {
@@ -124,7 +125,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     public function getNewId(): UuidV4
     {
         $newId = Uid::v4();
-        $this->model->setId((string) $newId);
+        $this->model->setId((string)$newId);
 
         return $newId;
     }
@@ -158,7 +159,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 
         $data = [];
         $allowedProperties = ['id', 'name', 'description', 'creationDate', 'modificationDate',
-            'userOwner', 'userModification', 'classId', 'default', 'layoutDefinitions', ];
+            'userOwner', 'userModification', 'classId', 'default', 'layoutDefinitions',];
         $dataRaw = $this->model->getObjectVars();
         foreach ($dataRaw as $key => $value) {
             if (in_array($key, $allowedProperties)) {
@@ -183,7 +184,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $this->deleteData($this->model->getId());
     }
 
-    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
+    protected function prepareDataStructureForYaml(string $id, mixed $data): array
     {
         return [
             'pimcore' => [

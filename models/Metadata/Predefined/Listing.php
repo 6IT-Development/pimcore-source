@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Metadata\Predefined;
@@ -22,6 +23,7 @@ use Pimcore\Model\Listing\CallableFilterListingInterface;
 use Pimcore\Model\Listing\CallableOrderListingInterface;
 use Pimcore\Model\Listing\Traits\FilterListingTrait;
 use Pimcore\Model\Listing\Traits\OrderListingTrait;
+use Pimcore\Model\Metadata\Predefined;
 
 /**
  * @internal
@@ -35,12 +37,12 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     use OrderListingTrait;
 
     /**
-     * @var \Pimcore\Model\Metadata\Predefined[]|null
+     * @var Predefined[]|null
      */
     protected ?array $definitions = null;
 
     /**
-     * @return \Pimcore\Model\Metadata\Predefined[]
+     * @return Predefined[]
      */
     public function getDefinitions(): array
     {
@@ -52,7 +54,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     }
 
     /**
-     * @param \Pimcore\Model\Metadata\Predefined[]|null $definitions
+     * @param Predefined[]|null $definitions
      *
      * @return $this
      */
@@ -65,11 +67,11 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
 
     /**
      *
-     * @return \Pimcore\Model\Metadata\Predefined[]|null
+     * @return Predefined[]|null
      *
      * @throws Exception
      */
-    public static function getByTargetType(string $type, array|string $subTypes = null): ?array
+    public static function getByTargetType(string $type, array|string|null $subTypes = null): ?array
     {
         if ($type !== 'asset') {
             throw new Exception('other types than assets are currently not supported');
@@ -98,7 +100,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
         return $list->load();
     }
 
-    public static function getByKeyAndLanguage(string $key, ?string $language, string $targetSubtype = null): ?\Pimcore\Model\Metadata\Predefined
+    public static function getByKeyAndLanguage(string $key, ?string $language, ?string $targetSubtype = null): ?Predefined
     {
         $list = new self();
 
@@ -122,7 +124,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     }
 
     /**
-     * @return \Pimcore\Model\Metadata\Predefined[]
+     * @return Predefined[]
      */
     public function load(): array
     {

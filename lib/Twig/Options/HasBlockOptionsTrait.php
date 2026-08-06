@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Options;
@@ -48,15 +48,15 @@ trait HasBlockOptionsTrait
 
             switch ($name) {
                 case 'limit':
-                    $options->setLimit((int) $value);
+                    $options->setLimit((int)$value);
 
                     break;
                 case 'reload':
-                    $options->setReload((bool) $value);
+                    $options->setReload((bool)$value);
 
                     break;
                 case 'default':
-                    $options->setDefault((int) $value);
+                    $options->setDefault((int)$value);
 
                     break;
                 case 'class':

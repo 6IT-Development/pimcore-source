@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
@@ -40,7 +41,7 @@ final class WorkflowPass implements CompilerPassInterface
     {
         $loader = new YamlFileLoader(
             $container,
-            new FileLocator(__DIR__.'/../../../config')
+            new FileLocator(__DIR__ . '/../../../config')
         );
 
         $workflowManagerDefinition = $container->getDefinition(Manager::class);
@@ -149,7 +150,7 @@ final class WorkflowPass implements CompilerPassInterface
 
             // Create MarkingStore
             if (!is_null($markingStoreType)) {
-                $markingStoreDefinition = new ChildDefinition('workflow.marking_store.'.$markingStoreType);
+                $markingStoreDefinition = new ChildDefinition('workflow.marking_store.' . $markingStoreType);
 
                 if ($markingStoreType === 'state_table' || $markingStoreType === 'data_object_splitted_state') {
                     $markingStoreDefinition->addArgument($workflowName);
@@ -204,7 +205,7 @@ final class WorkflowPass implements CompilerPassInterface
                 $supportStrategyType = $workflowConfig['support_strategy']['type'] ?? null;
 
                 if (!is_null($supportStrategyType)) {
-                    $supportStrategyDefinition = new ChildDefinition('workflow.support_strategy.'.$supportStrategyType);
+                    $supportStrategyDefinition = new ChildDefinition('workflow.support_strategy.' . $supportStrategyType);
 
                     foreach ($workflowConfig['support_strategy']['arguments'] ?? [] as $argument) {
                         $supportStrategyDefinition->addArgument($argument);

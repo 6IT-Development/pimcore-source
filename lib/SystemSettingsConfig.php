@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -28,9 +28,9 @@ use Symfony\Component\EventDispatcher\GenericEvent;
 
 class SystemSettingsConfig
 {
-    private const CONFIG_ID = 'system_settings';
+    private const string CONFIG_ID = 'system_settings';
 
-    private const SCOPE = 'pimcore_system_settings';
+    private const string SCOPE = 'pimcore_system_settings';
 
     private static ?LocationAwareConfigRepository $locationAwareConfigRepository = null;
 
@@ -40,8 +40,9 @@ class SystemSettingsConfig
 
     public function __construct(
         EventDispatcherInterface $eventDispatcher,
-        LocaleServiceInterface $localeService
-    ) {
+        LocaleServiceInterface   $localeService
+    )
+    {
         $this->eventDispatcher = $eventDispatcher;
         $this->localeService = $localeService;
     }
@@ -254,7 +255,7 @@ class SystemSettingsConfig
 
     private static function getConfigValuesFromContainer(): array
     {
-        $containerConfig = \Pimcore\Config::getSystemConfiguration();
+        $containerConfig = Config::getSystemConfiguration();
         $data = [
             'general' => $containerConfig['general'],
             'documents' => $containerConfig['documents'],
@@ -263,6 +264,6 @@ class SystemSettingsConfig
             'email' => $containerConfig['email'],
         ];
 
-        return ['containerConfig' =>$containerConfig, 'config' => $data];
+        return ['containerConfig' => $containerConfig, 'config' => $data];
     }
 }

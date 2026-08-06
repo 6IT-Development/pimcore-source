@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -23,14 +24,14 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const PRE_ADD = 'pimcore.dataobject.preAdd';
+    public const string PRE_ADD = 'pimcore.dataobject.preAdd';
 
     /**
      * @Event("Pimcore\Event\Model\DataObjectEvent")
      *
      * @var string
      */
-    const POST_ADD = 'pimcore.dataobject.postAdd';
+    public const string POST_ADD = 'pimcore.dataobject.postAdd';
 
     /**
      * Arguments:
@@ -40,7 +41,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const POST_ADD_FAILURE = 'pimcore.dataobject.postAddFailure';
+    public const string POST_ADD_FAILURE = 'pimcore.dataobject.postAddFailure';
 
     /**
      * Arguments:
@@ -50,7 +51,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const PRE_UPDATE = 'pimcore.dataobject.preUpdate';
+    public const string PRE_UPDATE = 'pimcore.dataobject.preUpdate';
 
     /**
      * Arguments:
@@ -62,7 +63,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const PRE_UPDATE_VALIDATION_EXCEPTION = 'pimcore.dataobject.preUpdateValidationException';
+    public const string PRE_UPDATE_VALIDATION_EXCEPTION = 'pimcore.dataobject.preUpdateValidationException';
 
     /**
      * Arguments:
@@ -73,7 +74,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const POST_UPDATE = 'pimcore.dataobject.postUpdate';
+    public const string POST_UPDATE = 'pimcore.dataobject.postUpdate';
 
     /**
      * Arguments:
@@ -84,28 +85,28 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const POST_UPDATE_FAILURE = 'pimcore.dataobject.postUpdateFailure';
+    public const string POST_UPDATE_FAILURE = 'pimcore.dataobject.postUpdateFailure';
 
     /**
      * @Event("Pimcore\Event\Model\DataObjectDeleteInfoEvent")
      *
      * @var string
      */
-    const DELETE_INFO = 'pimcore.dataobject.deleteInfo';
+    public const string DELETE_INFO = 'pimcore.dataobject.deleteInfo';
 
     /**
      * @Event("Pimcore\Event\Model\DataObjectEvent")
      *
      * @var string
      */
-    const PRE_DELETE = 'pimcore.dataobject.preDelete';
+    public const string PRE_DELETE = 'pimcore.dataobject.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\DataObjectEvent")
      *
      * @var string
      */
-    const POST_DELETE = 'pimcore.dataobject.postDelete';
+    public const string POST_DELETE = 'pimcore.dataobject.postDelete';
 
     /**
      * Arguments:
@@ -115,7 +116,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const POST_DELETE_FAILURE = 'pimcore.dataobject.postDeleteFailure';
+    public const string POST_DELETE_FAILURE = 'pimcore.dataobject.postDeleteFailure';
 
     /**
      * Arguments:
@@ -125,7 +126,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const POST_LOAD = 'pimcore.dataobject.postLoad';
+    public const string POST_LOAD = 'pimcore.dataobject.postLoad';
 
     /**
      * Arguments:
@@ -135,7 +136,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const PRE_COPY = 'pimcore.dataobject.preCopy';
+    public const string PRE_COPY = 'pimcore.dataobject.preCopy';
 
     /**
      * Arguments:
@@ -145,7 +146,7 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const POST_COPY = 'pimcore.dataobject.postCopy';
+    public const string POST_COPY = 'pimcore.dataobject.postCopy';
 
     /**
      * Arguments:
@@ -160,5 +161,5 @@ final class DataObjectEvents
      *
      * @var string
      */
-    const POST_CSV_ITEM_EXPORT = 'pimcore.dataobject.postCsvItemExport';
+    public const string POST_CSV_ITEM_EXPORT = 'pimcore.dataobject.postCsvItemExport';
 }

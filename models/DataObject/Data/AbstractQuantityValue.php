@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data;
@@ -38,7 +39,7 @@ abstract class AbstractQuantityValue implements OwnerAwareFieldInterface
     /**
      * @throws NotFoundException
      */
-    public function __construct(Unit|string $unit = null)
+    public function __construct(Unit|string|null $unit = null)
     {
         if ($unit instanceof Unit) {
             $this->unit = $unit;
@@ -96,13 +97,13 @@ abstract class AbstractQuantityValue implements OwnerAwareFieldInterface
         if (is_string($unit)) {
             $unitObject = Unit::getByAbbreviation($unit);
             if (!$unitObject instanceof Unit) {
-                throw new InvalidArgumentException('Unit with abbreviation "'.$unit.'" does not exist');
+                throw new InvalidArgumentException('Unit with abbreviation "' . $unit . '" does not exist');
             }
             $unit = $unitObject;
         }
 
         if (!$unit instanceof Unit) {
-            throw new InvalidArgumentException('Please provide unit as '.Unit::class.' object or as string');
+            throw new InvalidArgumentException('Please provide unit as ' . Unit::class . ' object or as string');
         }
 
         /** @var UnitConversionService $converter */

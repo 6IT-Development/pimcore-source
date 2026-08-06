@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -51,8 +52,8 @@ class PermissionChecker
             }
         }
         $db = Db::get();
-        $tableName = 'users_workspaces_'.$type;
-        $tableDesc = $db->fetchAllAssociative('describe '.$tableName);
+        $tableName = 'users_workspaces_' . $type;
+        $tableDesc = $db->fetchAllAssociative('describe ' . $tableName);
 
         $result = [
             'columns' => [],
@@ -96,17 +97,17 @@ class PermissionChecker
 
                 try {
                     $permissionsParent = $db->fetchAssociative(
-                        'SELECT * FROM users_workspaces_'.$type.' , users u WHERE userId = u.id AND cid IN ('.implode(
+                        'SELECT * FROM users_workspaces_' . $type . ' , users u WHERE userId = u.id AND cid IN (' . implode(
                             ',',
                             $parentIds
-                        ).') AND userId IN ('.implode(
+                        ) . ') AND userId IN (' . implode(
                             ',',
                             $userIds
-                        ).') ORDER BY LENGTH(cpath) DESC, FIELD(userId,'.$user->getId().') DESC, `' . $columnName . '` DESC  LIMIT 1'
+                        ) . ') ORDER BY LENGTH(cpath) DESC, FIELD(userId,' . $user->getId() . ') DESC, `' . $columnName . '` DESC  LIMIT 1'
                     );
 
                     if ($permissionsParent) {
-                        $userPermission[$columnName] = $permissionsParent[$columnName] ? true : false;
+                        $userPermission[$columnName] = (bool)$permissionsParent[$columnName];
 
                         $details[] = self::createDetail($user, $columnName, $userPermission[$columnName], $permissionsParent['type'], $permissionsParent['name'], $permissionsParent['cpath']);
 
@@ -116,27 +117,28 @@ class PermissionChecker
                     // exception for list permission
                     if (false === $permissionsParent && $columnName === 'list') {
                         // check for children with permissions
-                        $path = $element->getRealFullPath().'/';
+                        $path = $element->getRealFullPath() . '/';
                         if ($element->getId() == 1) {
                             $path = '/';
                         }
 
                         $permissionsChildren = $db->fetchAssociative(
-                            'SELECT list FROM users_workspaces_'.$type.', users u WHERE userId = u.id AND cpath LIKE ? AND userId IN ('.implode(
+                            'SELECT list FROM users_workspaces_' . $type . ', users u WHERE userId = u.id AND cpath LIKE ? AND userId IN (' . implode(
                                 ',',
                                 $userIds
-                            ).') AND list = 1 LIMIT 1',
-                            [Helper::escapeLike($path) .'%']
+                            ) . ') AND list = 1 LIMIT 1',
+                            [Helper::escapeLike($path) . '%']
                         );
+
                         if ($permissionsChildren) {
-                            $result[$columnName] = $permissionsChildren[$columnName] ? true : false;
+                            $result[$columnName] = (bool)$permissionsChildren[$columnName];
                             $details[] = self::createDetail($user, $columnName, $result[$columnName], $permissionsChildren['type'], $permissionsChildren['name'], $permissionsChildren['cpath']);
 
                             continue;
                         }
                     }
-                } catch (Exception $e) {
-                    Logger::warn('Unable to get permission '.$type.' for object '.$element->getId());
+                } catch (Exception) {
+                    Logger::warn('Unable to get permission ' . $type . ' for object ' . $element->getId());
                 }
             }
             self::getUserPermissions($user, $details);
@@ -170,7 +172,7 @@ class PermissionChecker
 
     protected static function createDetail(User $user, ?string $a = null, ?bool $b = null, ?string $c = null, ?string $d = null, ?string $e = null, ?string $f = null): array
     {
-        $detailEntry = [
+        return [
             'userId' => $user->getId(),
             'a' => $a,
             'b' => $b,
@@ -179,18 +181,16 @@ class PermissionChecker
             'e' => $e,
             'f' => $f,
         ];
-
-        return $detailEntry;
     }
 
     protected static function getUserPermissions(User $user, array &$details): void
     {
         if ($user->isAdmin()) {
-            $details[] = self::createDetail($user, 'ADMIN', true, null, null);
+            $details[] = self::createDetail($user, 'ADMIN', true);
 
             return;
         }
-        $details[] = self::createDetail($user, '<b>User Permissions</b>', null, null, null);
+        $details[] = self::createDetail($user, '<b>User Permissions</b>');
 
         $db = Db::get();
         $permissions = $db->fetchFirstColumn('select `key` from users_permission_definitions');
@@ -212,7 +212,7 @@ class PermissionChecker
             }
 
             if (!$entry) {
-                $entry = self::createDetail($user, $permissionKey, false, null, null);
+                $entry = self::createDetail($user, $permissionKey, false);
             }
             $details[] = $entry;
         }
@@ -225,7 +225,7 @@ class PermissionChecker
         }
 
         if ($element instanceof DataObject\AbstractObject) {
-            $details[] = self::createDetail($user, '<b>Language Permissions</b>', null, null, null);
+            $details[] = self::createDetail($user, '<b>Language Permissions</b>');
 
             $permissions = ['lView' => 'view', 'lEdit' => 'edit'];
             foreach ($permissions as $permissionKey => $permissionName) {

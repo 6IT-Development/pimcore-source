@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -117,7 +118,7 @@ class Menu extends AbstractRenderer
     /**
      * Sets CSS class to use for the first 'ul' element when rendering
      *
-     * @param string $ulClass                   CSS class to set
+     * @param string $ulClass CSS class to set
      *
      * @return $this
      */
@@ -142,7 +143,7 @@ class Menu extends AbstractRenderer
      * Sets unique identifier (id) to use for the first 'ul' element when
      * rendering
      *
-     * @param string|null $ulId                Unique identifier (id) to set
+     * @param string|null $ulId Unique identifier (id) to set
      *
      * @return $this
      */
@@ -169,7 +170,7 @@ class Menu extends AbstractRenderer
     /**
      * Sets CSS class to use for the active elements when rendering
      *
-     * @param string $activeClass               CSS class to set
+     * @param string $activeClass CSS class to set
      *
      * @return $this
      */
@@ -193,7 +194,7 @@ class Menu extends AbstractRenderer
     /**
      * Sets CSS class to use for the parent li elements when rendering
      *
-     * @param string $parentClass              CSS class to set to parents
+     * @param string $parentClass CSS class to set to parents
      *
      * @return $this
      */
@@ -217,7 +218,7 @@ class Menu extends AbstractRenderer
     /**
      * Enables/disables rendering of parent class to the li element
      *
-     * @param bool $flag                        [optional] render with parent
+     * @param bool $flag [optional] render with parent
      *                                          class. Default is true.
      *
      * @return $this
@@ -243,7 +244,7 @@ class Menu extends AbstractRenderer
     /**
      * Sets a flag indicating whether only active branch should be rendered
      *
-     * @param bool $flag                        [optional] render only active
+     * @param bool $flag [optional] render only active
      *                                           branch. Default is true.
      *
      * @return $this
@@ -271,7 +272,7 @@ class Menu extends AbstractRenderer
     /**
      * Sets a flag indicating whether to expand all sibling nodes of the active branch
      *
-     * @param bool $flag                        [optional] expand all siblings of
+     * @param bool $flag [optional] expand all siblings of
      *                                           nodes in the active branch. Default is true.
      *
      * @return $this
@@ -301,7 +302,7 @@ class Menu extends AbstractRenderer
      *
      * See {@link setOnlyActiveBranch()} for more information.
      *
-     * @param bool $flag                        [optional] render parents when
+     * @param bool $flag [optional] render parents when
      *                                           rendering active branch.
      *                                           Default is true.
      *
@@ -376,7 +377,7 @@ class Menu extends AbstractRenderer
      * </li>
      * </code>
      *
-     * @param bool $flag                        [optional] adds CSS class from
+     * @param bool $flag [optional] adds CSS class from
      *                                          page to li element
      *
      * @return $this
@@ -402,7 +403,7 @@ class Menu extends AbstractRenderer
      * Set the inner indentation string for using in {@link render()}, optionally
      * a number of spaces to indent with
      *
-     * @param int|string $indent                          indentation string or
+     * @param int|string $indent indentation string or
      *                                                     number of spaces
      *
      * @return $this  fluent interface,
@@ -431,7 +432,7 @@ class Menu extends AbstractRenderer
      * Returns an HTML string containing an 'a' element for the given page if
      * the page's href is not empty, and a 'span' element if it is empty
      *
-     * @param  Page $page  page to generate HTML for
+     * @param Page $page page to generate HTML for
      *
      * @return string                      HTML string for the given page
      */
@@ -464,14 +465,14 @@ class Menu extends AbstractRenderer
         $attribs = array_merge($attribs, $page->getCustomHtmlAttribs());
 
         return '<' . $element . $this->_htmlAttribs($attribs) . '>'
-             . htmlspecialchars((string) $label, ENT_COMPAT, 'UTF-8')
-             . '</' . $element . '>';
+            . htmlspecialchars((string)$label, ENT_COMPAT, 'UTF-8')
+            . '</' . $element . '>';
     }
 
     /**
      * Normalizes given render options
      *
-     * @param  array $options  [optional] options to normalize
+     * @param array $options [optional] options to normalize
      *
      * @return array           normalized options
      */
@@ -493,15 +494,13 @@ class Menu extends AbstractRenderer
         }
 
         // UL class
-        if (isset($options['ulClass']) && $options['ulClass'] !== null) {
-            $options['ulClass'] = $options['ulClass'];
-        } else {
+        if (!isset($options['ulClass'])) {
             $options['ulClass'] = $this->getUlClass();
         }
 
         // UL id
         if (isset($options['ulId']) && $options['ulId'] !== null) {
-            $options['ulId'] = (string) $options['ulId'];
+            $options['ulId'] = (string)$options['ulId'];
         } else {
             $options['ulId'] = $this->getUlId();
         }
@@ -509,14 +508,14 @@ class Menu extends AbstractRenderer
         // Active class
         if (isset($options['activeClass']) && $options['activeClass'] !== null
         ) {
-            $options['activeClass'] = (string) $options['activeClass'];
+            $options['activeClass'] = (string)$options['activeClass'];
         } else {
             $options['activeClass'] = $this->getActiveClass();
         }
 
         // Parent class
         if (isset($options['parentClass']) && $options['parentClass'] !== null) {
-            $options['parentClass'] = (string) $options['parentClass'];
+            $options['parentClass'] = (string)$options['parentClass'];
         } else {
             $options['parentClass'] = $this->getParentClass();
         }
@@ -524,7 +523,7 @@ class Menu extends AbstractRenderer
         // Minimum depth
         if (array_key_exists('minDepth', $options)) {
             if (null !== $options['minDepth']) {
-                $options['minDepth'] = (int) $options['minDepth'];
+                $options['minDepth'] = (int)$options['minDepth'];
             }
         } else {
             $options['minDepth'] = $this->getMinDepth();
@@ -537,7 +536,7 @@ class Menu extends AbstractRenderer
         // Maximum depth
         if (array_key_exists('maxDepth', $options)) {
             if (null !== $options['maxDepth']) {
-                $options['maxDepth'] = (int) $options['maxDepth'];
+                $options['maxDepth'] = (int)$options['maxDepth'];
             }
         } else {
             $options['maxDepth'] = $this->getMaxDepth();
@@ -577,19 +576,19 @@ class Menu extends AbstractRenderer
      * Renders the deepest active menu within [$minDepth, $maxDeth], (called
      * from {@link renderMenu()})
      *
-     * @param  Container $container     container to render
-     * @param string $ulClass       CSS class for first UL
-     * @param string $indent        initial indentation
-     * @param string $innerIndent   inner indentation
-     * @param int|null $minDepth      minimum depth
-     * @param int|null $maxDepth      maximum depth
-     * @param string|null $ulId          unique identifier (id)
+     * @param Container $container container to render
+     * @param string $ulClass CSS class for first UL
+     * @param string $indent initial indentation
+     * @param string $innerIndent inner indentation
+     * @param int|null $minDepth minimum depth
+     * @param int|null $maxDepth maximum depth
+     * @param string|null $ulId unique identifier (id)
      *                                                  for first UL
-     * @param bool $addPageClassToLi  adds CSS class from
+     * @param bool $addPageClassToLi adds CSS class from
      *                                                      page to li element
-     * @param string|null $activeClass       CSS class for active
+     * @param string|null $activeClass CSS class for active
      *                                                      element
-     * @param string $parentClass       CSS class for parent
+     * @param string $parentClass CSS class for parent
      *                                                      li's
      * @param bool $renderParentClass Render parent class?
      *
@@ -597,17 +596,18 @@ class Menu extends AbstractRenderer
      */
     protected function _renderDeepestMenu(
         Container $container,
-        string $ulClass,
-        string $indent,
-        string $innerIndent,
-        ?int $minDepth,
-        ?int $maxDepth,
-        ?string $ulId,
-        bool $addPageClassToLi,
-        ?string $activeClass,
-        string $parentClass,
-        bool $renderParentClass
-    ): string {
+        string    $ulClass,
+        string    $indent,
+        string    $innerIndent,
+        ?int      $minDepth,
+        ?int      $maxDepth,
+        ?string   $ulId,
+        bool      $addPageClassToLi,
+        ?string   $activeClass,
+        string    $parentClass,
+        bool      $renderParentClass
+    ): string
+    {
         if (!$active = $this->findActive($container, $minDepth - 1, $maxDepth)) {
             return '';
         }
@@ -635,9 +635,9 @@ class Menu extends AbstractRenderer
         $this->skipPrefixForId();
 
         $html = $indent . '<ul'
-                        . $this->_htmlAttribs($attribs)
-                        . '>'
-                        . $this->getEOL();
+            . $this->_htmlAttribs($attribs)
+            . '>'
+            . $this->getEOL();
 
         // Reset prefix for IDs
         $this->_skipPrefixForId = $skipValue;
@@ -662,7 +662,7 @@ class Menu extends AbstractRenderer
             }
             $html .= $indent . $innerIndent . '<li' . $liClass . '>' . $this->getEOL();
             $html .= $indent . str_repeat($innerIndent, 2) . $this->htmlify($subPage)
-                                                           . $this->getEOL();
+                . $this->getEOL();
             $html .= $indent . $innerIndent . '</li>' . $this->getEOL();
         }
 
@@ -674,42 +674,43 @@ class Menu extends AbstractRenderer
     /**
      * Renders a normal menu (called from {@link renderMenu()})
      *
-     * @param  Container                 $container     container to render
-     * @param string|string[] $ulClasses     CSS class for UL levels
-     * @param string $indent        initial indentation
-     * @param string $innerIndent   inner indentation
-     * @param int|null $minDepth      minimum depth
-     * @param int|null $maxDepth      maximum depth
-     * @param bool $onlyActive    render only active branch?
-     * @param bool $expandSibs    render siblings of active
+     * @param Container $container container to render
+     * @param string|string[] $ulClasses CSS class for UL levels
+     * @param string $indent initial indentation
+     * @param string $innerIndent inner indentation
+     * @param int|null $minDepth minimum depth
+     * @param int|null $maxDepth maximum depth
+     * @param bool $onlyActive render only active branch?
+     * @param bool $expandSibs render siblings of active
      *                                                  branch nodes?
-     * @param string|null $ulId          unique identifier (id)
+     * @param string|null $ulId unique identifier (id)
      *                                                  for first UL
-     * @param bool $addPageClassToLi  adds CSS class from
+     * @param bool $addPageClassToLi adds CSS class from
      *                                                      page to li element
-     * @param string|null $activeClass       CSS class for active
+     * @param string|null $activeClass CSS class for active
      *                                                      element
-     * @param string $parentClass       CSS class for parent
+     * @param string $parentClass CSS class for parent
      *                                                      li's
      * @param bool $renderParentClass Render parent class?
      *
      * @return string                                       rendered menu (HTML)
      */
     protected function _renderMenu(
-        Container $container,
+        Container    $container,
         array|string $ulClasses,
-        string $indent,
-        string $innerIndent,
-        ?int $minDepth,
-        ?int $maxDepth,
-        bool $onlyActive,
-        bool $expandSibs,
-        ?string $ulId,
-        bool $addPageClassToLi,
-        ?string $activeClass,
-        string $parentClass,
-        bool $renderParentClass
-    ): string {
+        string       $indent,
+        string       $innerIndent,
+        ?int         $minDepth,
+        ?int         $maxDepth,
+        bool         $onlyActive,
+        bool         $expandSibs,
+        ?string      $ulId,
+        bool         $addPageClassToLi,
+        ?string      $activeClass,
+        string       $parentClass,
+        bool         $renderParentClass
+    ): string
+    {
         $html = '';
 
         // find deepest active
@@ -738,7 +739,7 @@ class Menu extends AbstractRenderer
             if (is_array($ulClasses)) {
                 $ulClass = $ulClasses[$depth] ?? $ulClasses['default'];
             } else {
-                $ulClass = (string) $ulClasses;
+                $ulClass = (string)$ulClasses;
             }
 
             if ($depth < $minDepth || !$this->accept($page)) {
@@ -802,9 +803,9 @@ class Menu extends AbstractRenderer
                 $this->skipPrefixForId();
 
                 $html .= $myIndent . '<ul'
-                                   . $this->_htmlAttribs($attribs)
-                                   . '>'
-                                   . $this->getEOL();
+                    . $this->_htmlAttribs($attribs)
+                    . '>'
+                    . $this->getEOL();
 
                 // Reset prefix for IDs
                 $this->_skipPrefixForId = $skipValue;
@@ -843,11 +844,11 @@ class Menu extends AbstractRenderer
             }
 
             $html .= $myIndent . $innerIndent . '<li'
-                   . $this->_htmlAttribs(['class' => implode(' ', $liClasses)])
-                   . '>' . $this->getEOL()
-                   . $myIndent . str_repeat($innerIndent, 2)
-                   . $this->htmlify($page)
-                   . $this->getEOL();
+                . $this->_htmlAttribs(['class' => implode(' ', $liClasses)])
+                . '>' . $this->getEOL()
+                . $myIndent . str_repeat($innerIndent, 2)
+                . $this->htmlify($page)
+                . $this->getEOL();
 
             // store as previous depth for next iteration
             $prevDepth = $depth;
@@ -858,7 +859,7 @@ class Menu extends AbstractRenderer
             for ($i = $prevDepth + 1; $i > 0; $i--) {
                 $myIndent = $indent . str_repeat($innerIndent . $innerIndent, $i - 1);
                 $html .= $myIndent . $innerIndent . '</li>' . $this->getEOL()
-                         . $myIndent . '</ul>' . $this->getEOL();
+                    . $myIndent . '</ul>' . $this->getEOL();
             }
             $html = rtrim($html, $this->getEOL());
         }
@@ -874,7 +875,7 @@ class Menu extends AbstractRenderer
      *
      * Available $options:
      *
-     * @param  array $options    [optional] options for controlling rendering
+     * @param array $options [optional] options for controlling rendering
      *
      * @return string rendered menu
      */
@@ -932,20 +933,20 @@ class Menu extends AbstractRenderer
      * ));
      * </code>
      *
-     * @param string|null $ulClass    [optional] CSS class to
+     * @param string|null $ulClass [optional] CSS class to
      *                                               use for UL element. Default
      *                                               is to use the value from
      *                                               {@link getUlClass()}.
-     * @param int|string|null $indent     [optional] indentation as
+     * @param int|string|null $indent [optional] indentation as
      *                                               a string or number of
      *                                               spaces. Default is to use
      *                                               the value retrieved from
      *                                               {@link getIndent()}.
-     * @param string|null $ulId       [optional] Unique identifier
+     * @param string|null $ulId [optional] Unique identifier
      *                                               (id) use for UL element
-     * @param bool $addPageClassToLi  adds CSS class from
+     * @param bool $addPageClassToLi adds CSS class from
      *                                                      page to li element
-     * @param int|string|null $innerIndent   [optional] inner
+     * @param int|string|null $innerIndent [optional] inner
      *                                                  indentation as a string
      *                                                  or number of spaces.
      *                                                  Default is to use the
@@ -954,13 +955,14 @@ class Menu extends AbstractRenderer
      * @return string                                   rendered content
      */
     public function renderSubMenu(
-        Container $container,
-        string $ulClass = null,
-        int|string $indent = null,
-        string $ulId = null,
-        bool $addPageClassToLi = false,
-        int|string $innerIndent = null
-    ): string {
+        Container       $container,
+        ?string         $ulClass = null,
+        int|string|null $indent = null,
+        ?string         $ulId = null,
+        bool            $addPageClassToLi = false,
+        int|string|null $innerIndent = null
+    ): string
+    {
         return $this->renderMenu($container, [
             'indent' => $indent,
             'innerIndent' => $innerIndent,
@@ -981,7 +983,7 @@ class Menu extends AbstractRenderer
      * as-is, and will be available in the partial script as 'container', e.g.
      * <code>echo 'Number of pages: ', count($this->container);</code>.
      *
-     * @param array|string|null $partial     [optional] partial view
+     * @param array|string|null $partial [optional] partial view
      *                                               script to use. Default is to
      *                                               use the partial registered
      *                                               in the helper. If an array
@@ -995,16 +997,14 @@ class Menu extends AbstractRenderer
      *
      * @throws Exception   When no partial script is set
      */
-    public function renderTemplate(Container $container, array|string $partial = null): string
+    public function renderTemplate(Container $container, array|string|null $partial = null): string
     {
         if (null === $partial) {
             $partial = $this->getTemplate();
         }
 
         if (empty($partial)) {
-            $e = new Exception('Unable to render menu: No partial view script provided');
-
-            throw $e;
+            throw new Exception('Unable to render menu: No partial view script provided');
         }
 
         $model = [
@@ -1019,7 +1019,7 @@ class Menu extends AbstractRenderer
      *
      *
      */
-    public function renderPartial(Container $container, array|string $partial = null): string
+    public function renderPartial(Container $container, array|string|null $partial = null): string
     {
         return $this->renderTemplate($container, $partial);
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SeoBundle\Model;
@@ -21,6 +22,8 @@ use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Bundle\SeoBundle\Event\Model\RedirectEvent;
 use Pimcore\Bundle\SeoBundle\Event\RedirectEvents;
+use Pimcore\Bundle\SeoBundle\Model\Redirect\Dao;
+use Pimcore\Cache;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Logger;
 use Pimcore\Model\AbstractModel;
@@ -30,21 +33,21 @@ use Pimcore\Model\Site;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * @method \Pimcore\Bundle\SeoBundle\Model\Redirect\Dao getDao()
+ * @method Dao getDao()
  */
 final class Redirect extends AbstractModel
 {
     use RecursionBlockingEventDispatchHelperTrait;
 
-    const TYPE_ENTIRE_URI = 'entire_uri';
+    public const string TYPE_ENTIRE_URI = 'entire_uri';
 
-    const TYPE_PATH_QUERY = 'path_query';
+    public const string TYPE_PATH_QUERY = 'path_query';
 
-    const TYPE_PATH = 'path';
+    public const string TYPE_PATH = 'path';
 
-    const TYPE_AUTO_CREATE = 'auto_create';
+    public const string TYPE_AUTO_CREATE = 'auto_create';
 
-    const TYPES = [
+    public const array TYPES = [
         self::TYPE_ENTIRE_URI,
         self::TYPE_PATH_QUERY,
         self::TYPE_PATH,
@@ -97,7 +100,7 @@ final class Redirect extends AbstractModel
             $redirect->getDao()->getById($id);
 
             return $redirect;
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             return null;
         }
     }
@@ -114,7 +117,7 @@ final class Redirect extends AbstractModel
             $redirect->getDao()->getByExactMatch($request, $site, $override);
 
             return $redirect;
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             return null;
         }
     }
@@ -159,13 +162,13 @@ final class Redirect extends AbstractModel
         $resolvedPath = ($targetDocumentPath ?? $redirectTarget) ?? '';
 
         if (!str_starts_with($resolvedPath, '/')) {
-            return '/'.$resolvedPath;
+            return '/' . $resolvedPath;
         }
 
         return $resolvedPath;
     }
 
-    public function setId(int $id): static
+    public function setId(int $id): Redirect
     {
         $this->id = $id;
 
@@ -194,21 +197,21 @@ final class Redirect extends AbstractModel
         $this->type = $type;
     }
 
-    public function setSource(?string $source): static
+    public function setSource(?string $source): Redirect
     {
         $this->source = $source;
 
         return $this;
     }
 
-    public function setTarget(?string $target): static
+    public function setTarget(?string $target): Redirect
     {
         $this->target = $target;
 
         return $this;
     }
 
-    public function setPriority(int $priority): static
+    public function setPriority(int $priority): Redirect
     {
         if ($priority) {
             $this->priority = $priority;
@@ -222,7 +225,7 @@ final class Redirect extends AbstractModel
         return $this->priority;
     }
 
-    public function setStatusCode(int $statusCode): static
+    public function setStatusCode(int $statusCode): Redirect
     {
         if ($statusCode) {
             $this->statusCode = $statusCode;
@@ -243,20 +246,20 @@ final class Redirect extends AbstractModel
             $statusCode = '301';
         }
 
-        return 'HTTP/1.1 ' . $statusCode . ' ' . $this->getStatusCodes()[$statusCode];
+        return 'HTTP/1.1 ' . $statusCode . ' ' . Redirect::getStatusCodes()[$statusCode];
     }
 
     public function clearDependentCache(): void
     {
         // this is mostly called in Redirect\Dao not here
         try {
-            \Pimcore\Cache::clearTag('redirect');
+            Cache::clearTag('redirect');
         } catch (Exception $e) {
-            Logger::crit((string) $e);
+            Logger::crit((string)$e);
         }
     }
 
-    public function setExpiry(int|string|null $expiry): static
+    public function setExpiry(int|string|null $expiry): Redirect
     {
         if (is_string($expiry) && !is_numeric($expiry)) {
             $expiry = strtotime($expiry);
@@ -281,7 +284,7 @@ final class Redirect extends AbstractModel
         return (bool)$this->regex;
     }
 
-    public function setRegex(?bool $regex): static
+    public function setRegex(?bool $regex): Redirect
     {
         $this->regex = $regex;
 
@@ -293,14 +296,14 @@ final class Redirect extends AbstractModel
         return $this->active;
     }
 
-    public function setActive(bool $active): static
+    public function setActive(bool $active): Redirect
     {
         $this->active = $active;
 
         return $this;
     }
 
-    public function setSourceSite(?int $sourceSite): static
+    public function setSourceSite(?int $sourceSite): Redirect
     {
         $this->sourceSite = $sourceSite;
 
@@ -312,7 +315,7 @@ final class Redirect extends AbstractModel
         return $this->sourceSite;
     }
 
-    public function setTargetSite(?int $targetSite): static
+    public function setTargetSite(?int $targetSite): Redirect
     {
         $this->targetSite = $targetSite;
 
@@ -324,7 +327,7 @@ final class Redirect extends AbstractModel
         return $this->targetSite;
     }
 
-    public function setPassThroughParameters(bool $passThroughParameters): static
+    public function setPassThroughParameters(bool $passThroughParameters): Redirect
     {
         $this->passThroughParameters = $passThroughParameters;
 
@@ -336,7 +339,7 @@ final class Redirect extends AbstractModel
         return $this->passThroughParameters;
     }
 
-    public function setModificationDate(int $modificationDate): static
+    public function setModificationDate(int $modificationDate): Redirect
     {
         $this->modificationDate = $modificationDate;
 
@@ -348,7 +351,7 @@ final class Redirect extends AbstractModel
         return $this->modificationDate;
     }
 
-    public function setCreationDate(int $creationDate): static
+    public function setCreationDate(int $creationDate): Redirect
     {
         $this->creationDate = $creationDate;
 
@@ -401,8 +404,6 @@ final class Redirect extends AbstractModel
      */
     public static function getStatusCodes(): array
     {
-        $pimcore_seo_redirects = Pimcore::getContainer()->getParameter('pimcore_seo.redirects');
-
-        return $pimcore_seo_redirects['status_codes'];
+        return Pimcore::getContainer()->getParameter('pimcore_seo.redirects')['status_codes'];
     }
 }

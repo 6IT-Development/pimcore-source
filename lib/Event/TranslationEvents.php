@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event;
@@ -23,26 +24,26 @@ final class TranslationEvents
      *
      * @var string
      */
-    const PRE_SAVE = 'pimcore.translation.preSave';
+    public const string PRE_SAVE = 'pimcore.translation.preSave';
 
     /**
      * @Event("Pimcore\Event\Model\TranslationEvent")
      *
      * @var string
      */
-    const POST_SAVE = 'pimcore.translation.postSave';
+    public const string POST_SAVE = 'pimcore.translation.postSave';
 
     /**
      * @Event("Pimcore\Event\Model\TranslationEvent")
      *
      * @var string
      */
-    const PRE_DELETE = 'pimcore.translation.preDelete';
+    public const string PRE_DELETE = 'pimcore.translation.preDelete';
 
     /**
      * @Event("Pimcore\Event\Model\TranslationEvent")
      *
      * @var string
      */
-    const POST_DELETE = 'pimcore.translation.postDelete';
+    public const string POST_DELETE = 'pimcore.translation.postDelete';
 }

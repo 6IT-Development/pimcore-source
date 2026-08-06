@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection;
@@ -45,7 +46,7 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
         return 'pimcore';
     }
 
-    public function loadInternal(array $config, ContainerBuilder $container): void
+    protected function loadInternal(array $config, ContainerBuilder $container): void
     {
         // on container build the shutdown handler shouldn't be called
         // for details please see https://github.com/pimcore/pimcore/issues/4709
@@ -244,13 +245,7 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
     private function configurePasswordHashers(ContainerBuilder $container, array $config): void
     {
         $definition = $container->findDefinition('pimcore.security.password_hasher_factory');
-
-        $factoryMapping = [];
-        foreach ($config['security']['password_hasher_factories'] as $className => $factoryConfig) {
-            $factoryMapping[$className] = new Reference($factoryConfig['id']);
-        }
-
-        $definition->replaceArgument(1, $factoryMapping);
+        $definition->replaceArgument(1, array_map(fn($factoryConfig) => new Reference($factoryConfig['id']), $config['security']['password_hasher_factories']));
     }
 
     /**

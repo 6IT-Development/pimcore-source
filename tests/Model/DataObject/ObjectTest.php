@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,15 +11,21 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\DataObject;
 
+use Carbon\Carbon;
 use Exception;
 use Pimcore\Db;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
+use Pimcore\Model\DataObject\ClassDefinition\Data\InputQuantityValue;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Password;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Textarea;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Wysiwyg;
 use Pimcore\Model\DataObject\QuantityValue\Unit;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Element\ValidationException;
@@ -192,7 +199,7 @@ class ObjectTest extends ModelTestCase
      */
     public function testCustomModificationDate(): void
     {
-        $customDateTime = new \Carbon\Carbon();
+        $customDateTime = new Carbon();
         $customDateTime = $customDateTime->subHour();
 
         $object = TestHelper::createEmptyObject();
@@ -228,7 +235,7 @@ class ObjectTest extends ModelTestCase
      */
     public function testDefaultValueAndMandatorySavedToVersion(): void
     {
-        $object = TestHelper::createEmptyObject('', false, true);
+        $object = TestHelper::createEmptyObject('', false);
         $object->setOmitMandatoryCheck(false);
         $object->save();
 
@@ -283,7 +290,7 @@ class ObjectTest extends ModelTestCase
         $object->setTextarea('TextareaValue');
         $object->setWysiwyg('WysiwygValue');
         $object->setPassword('PasswordValue');
-        $iqv = new \Pimcore\Model\DataObject\Data\InputQuantityValue('1', Unit::getByAbbreviation('km')->getId());
+        $iqv = new DataObject\Data\InputQuantityValue('1', Unit::getByAbbreviation('km')->getId());
         $object->setInputQuantityValue($iqv);
         $object->save();
 
@@ -292,11 +299,11 @@ class ObjectTest extends ModelTestCase
         $object->setTextarea('');
         $object->setWysiwyg('');
         $object->setPassword('');
-        $iqv = new \Pimcore\Model\DataObject\Data\InputQuantityValue('', '');
+        $iqv = new DataObject\Data\InputQuantityValue('', '');
         $object->setInputQuantityValue($iqv);
         $object->save();
 
-        $result = $db->fetchAllAssociative('select * from object_store_' . $object->getClassId() . ' where oo_id=' .  $object->getId());
+        $result = $db->fetchAllAssociative('select * from object_store_' . $object->getClassId() . ' where oo_id=' . $object->getId());
         $this->assertTrue($result[0]['input'] === '');
         $this->assertTrue($result[0]['textarea'] === '');
         $this->assertTrue($result[0]['wysiwyg'] === '');
@@ -311,7 +318,7 @@ class ObjectTest extends ModelTestCase
         $object->setInputQuantityValue(null);
         $object->save();
 
-        $result = $db->fetchAllAssociative('select * from object_store_' . $object->getClassId() . ' where oo_id=' .  $object->getId());
+        $result = $db->fetchAllAssociative('select * from object_store_' . $object->getClassId() . ' where oo_id=' . $object->getId());
         $this->assertNull($result[0]['input']);
         $this->assertNull($result[0]['textarea']);
         $this->assertNull($result[0]['wysiwyg']);
@@ -327,45 +334,45 @@ class ObjectTest extends ModelTestCase
         $object = TestHelper::createEmptyObject();
 
         //check empty strings
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Input();
+        $dataType = new Input();
         $value = $dataType->getDataFromEditmode('', $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Textarea();
+        $dataType = new Textarea();
         $value = $dataType->getDataFromEditmode('', $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Wysiwyg();
+        $dataType = new Wysiwyg();
         $value = $dataType->getDataFromEditmode('', $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Password();
+        $dataType = new Password();
         $value = $dataType->getDataFromEditmode('', $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\InputQuantityValue();
+        $dataType = new InputQuantityValue();
         $iqv = ['value' => '', 'unit' => ''];
         $value = $dataType->getDataFromEditmode($iqv, $object);
         $this->assertNull($value);
 
         //check null values
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Input();
+        $dataType = new Input();
         $value = $dataType->getDataFromEditmode(null, $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Textarea();
+        $dataType = new Textarea();
         $value = $dataType->getDataFromEditmode(null, $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Wysiwyg();
+        $dataType = new Wysiwyg();
         $value = $dataType->getDataFromEditmode(null, $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\Password();
+        $dataType = new Password();
         $value = $dataType->getDataFromEditmode(null, $object);
         $this->assertNull($value);
 
-        $dataType = new \Pimcore\Model\DataObject\ClassDefinition\Data\InputQuantityValue();
+        $dataType = new InputQuantityValue();
         $iqv = ['value' => null, 'unit' => null];
         $value = $dataType->getDataFromEditmode($iqv, $object);
         $this->assertNull($value);

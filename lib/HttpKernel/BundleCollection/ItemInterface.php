@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\HttpKernel\BundleCollection;
@@ -21,9 +21,9 @@ use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 
 interface ItemInterface
 {
-    const SOURCE_PROGRAMATICALLY = 'programatically';
+    public const string SOURCE_PROGRAMATICALLY = 'programatically';
 
-    const SOURCE_EXTENSION_MANAGER_CONFIG = 'extension_manager_config';
+    public const string SOURCE_EXTENSION_MANAGER_CONFIG = 'extension_manager_config';
 
     public function getBundleIdentifier(): string;
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow\SupportStrategy;
@@ -54,7 +55,7 @@ class ExpressionSupportStrategy implements WorkflowSupportStrategyInterface
 
         $ret = $this->expressionService->evaluateExpression($workflow, $subject, $this->expression);
 
-        return filter_var($ret, FILTER_VALIDATE_BOOL) ? (bool)$ret : false;
+        return filter_var($ret, FILTER_VALIDATE_BOOL);
     }
 
     private function supportsClass(object $subject): bool
@@ -63,13 +64,7 @@ class ExpressionSupportStrategy implements WorkflowSupportStrategyInterface
             return $subject instanceof $this->className;
         }
 
-        foreach ($this->className as $className) {
-            if ($subject instanceof $className) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->className, fn($className) => $subject instanceof $className);
     }
 
     public function getClassName(): array|string

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -19,7 +20,7 @@ namespace Pimcore\Model\Document\Editable;
 use Pimcore\Model;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Select extends Model\Document\Editable
 {
@@ -35,9 +36,9 @@ class Select extends Model\Document\Editable
         return 'select';
     }
 
-    public function getData(): mixed
+    public function getData(): string
     {
-        return (string) $this->text;
+        return (string)$this->text;
     }
 
     public function getText(): string
@@ -45,7 +46,7 @@ class Select extends Model\Document\Editable
         return $this->getData();
     }
 
-    public function frontend()
+    public function frontend(): ?string
     {
         return $this->text;
     }

@@ -11,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
 
 use InvalidArgumentException;
 use Pimcore\Console\AbstractCommand;
+use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleManager;
 use Symfony\Component\Console\Input\InputOption;
@@ -36,7 +37,7 @@ abstract class AbstractBundleCommand extends AbstractCommand
     /**
      * @return $this
      */
-    protected function configureDescriptionAndHelp(string $description, string $help = null): static
+    protected function configureDescriptionAndHelp(string $description, ?string $help = null): static
     {
         if (null === $help) {
             $help = 'Bundle can be passed as fully qualified class name or as bundle short name (e.g. <comment>PimcoreEcommerceFrameworkBundle</comment>).';
@@ -89,8 +90,6 @@ abstract class AbstractBundleCommand extends AbstractCommand
 
         $activeBundles = $this->bundleManager->getActiveBundles(false);
 
-        $bundle = null;
-
         if (isset($activeBundles[$bundleId])) {
             // try to load bundle via fully qualified class name first
             $bundle = $activeBundles[$bundleId];
@@ -111,7 +110,7 @@ abstract class AbstractBundleCommand extends AbstractCommand
         return $bundle;
     }
 
-    protected function setupInstaller(PimcoreBundleInterface $bundle): ?\Pimcore\Extension\Bundle\Installer\InstallerInterface
+    protected function setupInstaller(PimcoreBundleInterface $bundle): ?InstallerInterface
     {
         $installer = $this->bundleManager->getInstaller($bundle);
         if (null === $installer) {

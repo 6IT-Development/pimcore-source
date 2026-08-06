@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,18 +11,18 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Property\Predefined;
 
-use Pimcore\Model;
 use Pimcore\Model\AbstractModel;
 use Pimcore\Model\Listing\CallableFilterListingInterface;
 use Pimcore\Model\Listing\CallableOrderListingInterface;
 use Pimcore\Model\Listing\Traits\FilterListingTrait;
 use Pimcore\Model\Listing\Traits\OrderListingTrait;
+use Pimcore\Model\Property\Predefined;
 
 /**
  * @internal
@@ -37,7 +38,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     protected ?array $properties = null;
 
     /**
-     * @return \Pimcore\Model\Property\Predefined[]
+     * @return Predefined[]
      */
     public function getProperties(): array
     {
@@ -49,7 +50,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     }
 
     /**
-     * @param \Pimcore\Model\Property\Predefined[] $properties
+     * @param Predefined[] $properties
      *
      * @return $this
      */
@@ -61,7 +62,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     }
 
     /**
-     * @return Model\Property\Predefined[]
+     * @return Predefined[]
      */
     public function load(): array
     {

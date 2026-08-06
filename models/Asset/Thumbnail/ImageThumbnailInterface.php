@@ -11,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Thumbnail;
 
 use Exception;
+use League\Flysystem\FilesystemException;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image\Thumbnail\Config;
 
@@ -56,18 +57,18 @@ interface ImageThumbnailInterface
     public function getFrontendPath(): string;
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     public function getLocalFile(): ?string;
 
     public function exists(): bool;
 
     /**
+     * @throws FilesystemException
      * @internal
      *
-     * @throws \League\Flysystem\FilesystemException
      */
     public function existsOnStorage(?array $pathReference = []): bool;
 

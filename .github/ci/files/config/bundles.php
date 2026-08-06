@@ -1,29 +1,30 @@
 <?php
+
 declare(strict_types=1);
 
 return [
     "Pimcore\\Bundle\\GlossaryBundle\\PimcoreGlossaryBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
     "Pimcore\\Bundle\\SimpleBackendSearchBundle\\PimcoreSimpleBackendSearchBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
     "Pimcore\\Bundle\\SeoBundle\\PimcoreSeoBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
     "Pimcore\\Bundle\\StaticRoutesBundle\\PimcoreStaticRoutesBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
     "Pimcore\\Bundle\\UuidBundle\\PimcoreUuidBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
     "Pimcore\\Bundle\\WordExportBundle\\PimcoreWordExportBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
     "Pimcore\\Bundle\\ApplicationLoggerBundle\\PimcoreApplicationLoggerBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
     "Pimcore\\Bundle\\TinymceBundle\\PimcoreTinymceBundle" => [
-        "all" => TRUE
+        'all' => TRUE
     ],
 ];

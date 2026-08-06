@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data;
@@ -20,9 +21,10 @@ use Exception;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\Data\ElementMetadata\Dao;
 
 /**
- * @method \Pimcore\Model\DataObject\Data\ElementMetadata\Dao getDao()
+ * @method Dao getDao()
  */
 class ElementMetadata extends Model\AbstractModel implements DataObject\OwnerAwareFieldInterface
 {
@@ -42,7 +44,7 @@ class ElementMetadata extends Model\AbstractModel implements DataObject\OwnerAwa
      *
      * @throws Exception
      */
-    public function __construct(?string $fieldname = null, array $columns = [], Model\Element\ElementInterface $element = null)
+    public function __construct(?string $fieldname = null, array $columns = [], ?Model\Element\ElementInterface $element = null)
     {
         $this->fieldname = $fieldname;
         $this->columns = $columns;
@@ -71,7 +73,7 @@ class ElementMetadata extends Model\AbstractModel implements DataObject\OwnerAwa
             if ($idx !== false) {
                 $correctedKey = $this->columns[$idx];
 
-                return isset($this->data[$correctedKey]) ? $this->data[$correctedKey] : null;
+                return $this->data[$correctedKey] ?? null;
             }
 
             throw new Exception("Requested data $key not available");
@@ -201,11 +203,11 @@ class ElementMetadata extends Model\AbstractModel implements DataObject\OwnerAwa
     {
         foreach (get_object_vars($this) as $property => $value) {
             if ($property === 'elementId') {
-                $this->$property = (int) ($data["\0*\0".$property] ?? $value);
+                $this->$property = (int)($data["\0*\0" . $property] ?? $value);
 
                 continue;
             }
-            $this->$property = $data["\0*\0".$property] ?? $value;
+            $this->$property = $data["\0*\0" . $property] ?? $value;
         }
     }
 }

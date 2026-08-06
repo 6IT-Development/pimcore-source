@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\WebDAV;
@@ -20,6 +21,8 @@ use Exception;
 use Pimcore\Logger;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element;
+use Pimcore\Tool\Admin;
+use Pimcore\Tool\Serialize;
 use Sabre\DAV;
 
 /**
@@ -45,8 +48,6 @@ class Tree extends DAV\Tree
 
         try {
             if (dirname($sourcePath) == dirname($destinationPath)) {
-                $asset = null;
-
                 if ($asset = Asset::getByPath('/' . $destinationPath)) {
                     // If we got here, this means the destination exists, and needs to be overwritten
                     $sourceAsset = Asset::getByPath('/' . $sourcePath);
@@ -56,8 +57,8 @@ class Tree extends DAV\Tree
 
                 // see: Asset\WebDAV\File::delete() why this is necessary
                 $log = Asset\WebDAV\Service::getDeleteLog();
-                if (!$asset && array_key_exists('/' .$destinationPath, $log)) {
-                    $asset = \Pimcore\Tool\Serialize::unserialize($log['/' .$destinationPath]['data']);
+                if (!$asset && array_key_exists('/' . $destinationPath, $log)) {
+                    $asset = Serialize::unserialize($log['/' . $destinationPath]['data']);
                     if ($asset) {
                         $sourceAsset = Asset::getByPath('/' . $sourcePath);
                         $asset->setData($sourceAsset->getData());
@@ -77,11 +78,11 @@ class Tree extends DAV\Tree
                 $asset->setParentId($parent->getId());
             }
 
-            $user = \Pimcore\Tool\Admin::getCurrentUser();
+            $user = Admin::getCurrentUser();
             $asset->setUserModification($user->getId());
             $asset->save();
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
         }
     }
 }

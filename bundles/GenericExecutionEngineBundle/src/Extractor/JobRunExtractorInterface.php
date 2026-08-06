@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Extractor;
@@ -23,13 +24,13 @@ use Pimcore\Model\Element\ElementInterface;
 
 interface JobRunExtractorInterface
 {
-    public const ASSET_TYPE = 'asset';
+    public const string ASSET_TYPE = 'asset';
 
-    public const DOCUMENT_TYPE = 'document';
+    public const string DOCUMENT_TYPE = 'document';
 
-    public const FOLDER_TYPE = 'folder';
+    public const string FOLDER_TYPE = 'folder';
 
-    public const OBJECT_TYPE = 'object';
+    public const string OBJECT_TYPE = 'object';
 
     public function getJobRun(GenericExecutionEngineMessageInterface $message, bool $forceReload = false): JobRun;
 
@@ -42,17 +43,17 @@ interface JobRunExtractorInterface
     public function logMessageToJobRun(
         JobRun $jobRun,
         string $translationKey,
-        array $params = []
+        array  $params = []
     ): void;
 
     public function getElementFromMessage(
         GenericExecutionEngineMessageInterface $message,
-        array $types = [JobRunExtractorInterface::ASSET_TYPE]
+        array                                  $types = [JobRunExtractorInterface::ASSET_TYPE]
     ): ?ElementInterface;
 
-    /** @return ElementInterface[]  */
+    /** @return ElementInterface[] */
     public function getElementsFromMessage(
         GenericExecutionEngineMessageInterface $message,
-        array $types = [JobRunExtractorInterface::ASSET_TYPE]
+        array                                  $types = [JobRunExtractorInterface::ASSET_TYPE]
     ): array;
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -98,7 +99,7 @@ abstract class AbstractExtension implements IteratorAggregate, Countable, ArrayA
      */
     public function setAutoEscape(bool $autoEscape = true): static
     {
-        $this->_autoEscape = ($autoEscape) ? true : false;
+        $this->_autoEscape = $autoEscape;
 
         return $this;
     }
@@ -249,7 +250,7 @@ abstract class AbstractExtension implements IteratorAggregate, Countable, ArrayA
     /**
      * ArrayAccess: offsetExists
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      */
     public function offsetExists($offset): bool
@@ -260,7 +261,7 @@ abstract class AbstractExtension implements IteratorAggregate, Countable, ArrayA
     /**
      * ArrayAccess: offsetGet
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      */
     public function offsetGet($offset): mixed
@@ -271,7 +272,7 @@ abstract class AbstractExtension implements IteratorAggregate, Countable, ArrayA
     /**
      * ArrayAccess: offsetSet
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      */
     public function offsetSet($offset, mixed $value): void
@@ -282,7 +283,7 @@ abstract class AbstractExtension implements IteratorAggregate, Countable, ArrayA
     /**
      * ArrayAccess: offsetUnset
      *
-     * @param  string|int $offset
+     * @param string|int $offset
      *
      */
     public function offsetUnset($offset): void

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\DocType;
 
-use Pimcore\Model;
 use Pimcore\Model\AbstractModel;
+use Pimcore\Model\Document\DocType;
 use Pimcore\Model\Listing\CallableFilterListingInterface;
 use Pimcore\Model\Listing\CallableOrderListingInterface;
 use Pimcore\Model\Listing\Traits\FilterListingTrait;
@@ -39,7 +40,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     protected ?array $docTypes = null;
 
     /**
-     * @return \Pimcore\Model\Document\DocType[]
+     * @return DocType[]
      */
     public function getDocTypes(): array
     {
@@ -58,7 +59,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     }
 
     /**
-     * @return Model\Document\DocType[]
+     * @return DocType[]
      */
     public function load(): array
     {

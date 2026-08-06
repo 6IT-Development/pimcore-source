@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -35,7 +36,7 @@ class Geopoint extends AbstractGeo implements
      * @see ResourcePersistenceAwareInterface::getDataForResource
      *
      */
-    public function getDataForResource(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         if ($data instanceof DataObject\Data\GeoCoordinates) {
             return [
@@ -51,12 +52,9 @@ class Geopoint extends AbstractGeo implements
     }
 
     /**
-     * @param null|DataObject\Concrete $object
-     *
      * @see ResourcePersistenceAwareInterface::getDataFromResource
-     *
      */
-    public function getDataFromResource(mixed $data, Concrete $object = null, array $params = []): ?DataObject\Data\GeoCoordinates
+    public function getDataFromResource(mixed $data, ?Concrete $object = null, array $params = []): ?DataObject\Data\GeoCoordinates
     {
         if (is_array($data) &&
             $data[$this->getName() . '__longitude'] &&
@@ -81,7 +79,7 @@ class Geopoint extends AbstractGeo implements
      *
      * @see QueryResourcePersistenceAwareInterface::getDataForQueryResource
      */
-    public function getDataForQueryResource(mixed $data, DataObject\Concrete $object = null, array $params = []): array
+    public function getDataForQueryResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): array
     {
         return $this->getDataForResource($data, $object, $params);
     }
@@ -92,7 +90,7 @@ class Geopoint extends AbstractGeo implements
      * @see Data::getDataForEditmode
      *
      */
-    public function getDataForEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?array
+    public function getDataForEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?array
     {
         if ($data instanceof DataObject\Data\GeoCoordinates) {
             return [
@@ -109,7 +107,7 @@ class Geopoint extends AbstractGeo implements
      *
      * @see Data::getDataFromEditmode
      */
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\GeoCoordinates
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\GeoCoordinates
     {
         if (is_array($data) && ($data['longitude'] || $data['latitude'])) {
             return new DataObject\Data\GeoCoordinates($data['latitude'], $data['longitude']);
@@ -118,11 +116,7 @@ class Geopoint extends AbstractGeo implements
         return null;
     }
 
-    /**
-     * @param null|DataObject\Concrete $object
-     *
-     */
-    public function getDataFromGridEditor(?array $data, Concrete $object = null, array $params = []): ?DataObject\Data\GeoCoordinates
+    public function getDataFromGridEditor(?array $data, ?Concrete $object = null, array $params = []): ?DataObject\Data\GeoCoordinates
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
@@ -133,10 +127,10 @@ class Geopoint extends AbstractGeo implements
      * @see Data::getVersionPreview
      *
      */
-    public function getVersionPreview(mixed $data, DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if ($data instanceof DataObject\Data\GeoCoordinates) {
-            return $data->getLatitude().','.$data->getLongitude();
+            return $data->getLatitude() . ',' . $data->getLongitude();
         }
 
         return '';
@@ -189,11 +183,7 @@ class Geopoint extends AbstractGeo implements
         return null;
     }
 
-    /**
-     * @param DataObject\Concrete|null $object
-     *
-     */
-    public function getDataForGrid(?DataObject\Data\GeoCoordinates $data, Concrete $object = null, array $params = []): ?array
+    public function getDataForGrid(?DataObject\Data\GeoCoordinates $data, ?Concrete $object = null, array $params = []): ?array
     {
         return $this->getDataForEditmode($data, $object, $params);
     }

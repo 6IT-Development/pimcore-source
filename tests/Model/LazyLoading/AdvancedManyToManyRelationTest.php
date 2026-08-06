@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\LazyLoading;
@@ -45,7 +46,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
 
     protected function checkSerialization(LazyLoading $object, string $messagePrefix, bool $contentShouldBeIncluded = false): void
     {
-        parent::checkSerialization($object, $messagePrefix, false);
+        parent::checkSerialization($object, $messagePrefix);
         $serializedString = serialize($object);
         $this->checkSerializedStringForNeedle($serializedString, 'some-metadata', $contentShouldBeIncluded, $messagePrefix);
     }
@@ -162,7 +163,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             // inherited data isn't assigned to a property, it's only returned by the getter and therefore doesn't get serialized
-            $contentShouldBeIncluded = ($objectType === 'inherited') ? false : true;
+            $contentShouldBeIncluded = $objectType !== 'inherited';
 
             //serialize data object and check for (not) wanted content in serialized string
             $this->checkSerialization($object, $messagePrefix, $contentShouldBeIncluded);
@@ -265,7 +266,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $collection = $object->getFieldcollection();
@@ -279,7 +280,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             }
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($objectType, $relationObjects, $messagePrefix) {
@@ -322,7 +323,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $collection = $object->getFieldcollection();
@@ -336,7 +337,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             }
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($objectType, $relationObjects, $messagePrefix) {
@@ -375,7 +376,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $brick = $object->getBricks()->getLazyLoadingTest();
@@ -386,7 +387,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             $this->assertEquals('some-metadata', $relationObjects[2]->getMetaDATAUpper(), $messagePrefix . 'relations metadata not loaded properly');
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($relationObjects, $messagePrefix) {
@@ -446,7 +447,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             $object = LazyLoading::getById($id, ['force' => true]);
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //load relation and check if relation loads correctly
             $brick = $object->getBricks()->getLazyLoadingLocalizedTest();
@@ -457,7 +458,7 @@ class AdvancedManyToManyRelationTest extends AbstractLazyLoadingTest
             $this->assertEquals('some-metadata', $relationObjects[2]->getMetaData(), $messagePrefix . 'relations metadata not loaded properly');
 
             //serialize data object and check for (not) wanted content in serialized string
-            $this->checkSerialization($object, $messagePrefix, false);
+            $this->checkSerialization($object, $messagePrefix);
 
             //check if data also loaded correctly when loaded from cache
             $this->forceSavingAndLoadingFromCache($object, function ($objectCache) use ($relationObjects, $messagePrefix) {

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\Controller;
@@ -24,7 +25,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class DataObjectController extends UserAwareController
 {
-    #[Route("/relation-objects-list", name: "pimcore_bundle_search_dataobject_relation_objects_list", methods: ["GET"])]
+    #[Route('/relation-objects-list', name: 'pimcore_bundle_search_dataobject_relation_objects_list', methods: [Request::METHOD_GET])]
     public function optionsAction(Request $request): JsonResponse
     {
         $fieldConfig = json_decode($request->query->getString('fieldConfig'), true);
@@ -74,7 +75,7 @@ class DataObjectController extends UserAwareController
         $searchRequest->request->set('fields', $visibleFields);
 
         $searchRequest->attributes->set('unsavedChanges', $request->query->getString('unsavedChanges'));
-        $res = $this->forward(SearchController::class.'::findAction', ['request' => $searchRequest]);
+        $res = $this->forward(SearchController::class . '::findAction', ['request' => $searchRequest]);
         $objects = json_decode($res->getContent(), true)['data'];
 
         if ($request->query->has('data')) {
@@ -108,10 +109,10 @@ class DataObjectController extends UserAwareController
                             return null;
                         }
 
-                        $getter = 'get'.ucfirst($visibleField);
+                        $getter = 'get' . ucfirst($visibleField);
                         $visibleFieldValue = $object->$getter();
                         if (count($classes) > 1 && $visibleField == 'key') {
-                            $visibleFieldValue .= ' ('.$object->getClassName().')';
+                            $visibleFieldValue .= ' (' . $object->getClassName() . ')';
                         }
 
                         return $visibleFieldValue;

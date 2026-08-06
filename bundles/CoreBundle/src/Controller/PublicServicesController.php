@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Controller;
@@ -22,6 +23,7 @@ use Pimcore\Controller\Controller;
 use Pimcore\Logger;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Site;
+use Pimcore\Tool;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -39,7 +41,7 @@ class PublicServicesController extends Controller
         $requestedFileExtension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
         $config = [
-            'prefix' => $request->attributes->getString('prefix', ''),
+            'prefix' => $request->attributes->getString('prefix'),
             'type' => $request->attributes->getString('type'),
             'asset_id' => $request->attributes->getInt('assetId'),
             'thumbnail_name' => $request->attributes->getString('thumbnailName'),
@@ -53,7 +55,7 @@ class PublicServicesController extends Controller
                 return $response;
             }
 
-            throw new Exception('Unable to generate '.$config['type'].' thumbnail, see logs for details.');
+            throw new Exception('Unable to generate ' . $config['type'] . ' thumbnail, see logs for details.');
         } catch (Exception $e) {
             Logger::error($e->getMessage());
 
@@ -64,7 +66,7 @@ class PublicServicesController extends Controller
     public function robotsTxtAction(Request $request): Response
     {
         // check for site
-        $domain = \Pimcore\Tool::getHostname();
+        $domain = Tool::getHostname();
         $site = Site::getByDomain($domain);
 
         $config = [];
@@ -108,9 +110,9 @@ class PublicServicesController extends Controller
         $params = $request->query->all();
 
         $url = match (true) {
-            isset($params['token'])    => $this->generateUrl('pimcore_admin_login_check', $params),
+            isset($params['token']) => $this->generateUrl('pimcore_admin_login_check', $params),
             isset($params['deeplink']) => $this->generateUrl('pimcore_admin_login_deeplink', $params),
-            default                    => $this->generateUrl('pimcore_admin_login', $params)
+            default => $this->generateUrl('pimcore_admin_login', $params)
         };
 
         $redirect = new RedirectResponse($url);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\QuantityValue;
@@ -66,7 +67,7 @@ class DefaultConverter implements QuantityValueConverterInterface
         }
 
         if ($fromBaseUnit->getId() !== $toBaseUnit->getId()) {
-            throw new Exception($fromUnit.' must have same base unit as '.$toUnit.' to be able to convert values');
+            throw new Exception($fromUnit . ' must have same base unit as ' . $toUnit . ' to be able to convert values');
         }
 
         $convertedValue = ($quantityValue->getValue() * $fromUnit->getFactor() - $fromUnit->getConversionOffset()) / $toUnit->getFactor() + $toUnit->getConversionOffset();

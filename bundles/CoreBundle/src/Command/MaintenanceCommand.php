@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -34,7 +35,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class MaintenanceCommand extends AbstractCommand
 {
-    public function __construct(private ExecutorInterface $maintenanceExecutor, private LoggerInterface $logger)
+    public function __construct(private readonly ExecutorInterface $maintenanceExecutor, private readonly LoggerInterface $logger)
     {
         parent::__construct();
     }
@@ -43,11 +44,11 @@ class MaintenanceCommand extends AbstractCommand
     {
         $description = 'Asynchronous maintenance jobs of pimcore (needs to be set up as cron job)';
 
-        $help = $description.'. Valid jobs are: '."\n\n";
-        $help .= '  <comment>*</comment> any bundle class name handling maintenance (e.g. <comment>PimcoreEcommerceFrameworkBundle</comment>)'."\n";
+        $help = $description . '. Valid jobs are: ' . "\n\n";
+        $help .= '  <comment>*</comment> any bundle class name handling maintenance (e.g. <comment>PimcoreEcommerceFrameworkBundle</comment>)' . "\n";
 
         foreach ($this->maintenanceExecutor->getTaskNames() as $taskName) {
-            $help .= '  <comment>*</comment> '.$taskName."\n";
+            $help .= '  <comment>*</comment> ' . $taskName . "\n";
         }
 
         $this
@@ -100,8 +101,6 @@ class MaintenanceCommand extends AbstractCommand
             }
         }
 
-        $result = array_unique($result);
-
-        return $result;
+        return array_unique($result);
     }
 }

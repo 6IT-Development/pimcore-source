@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Model\Inheritance;
 
 use Exception;
+use Pimcore\Config;
 use Pimcore\Db;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\Inheritance;
@@ -40,11 +42,11 @@ class LocalizedFieldTest extends ModelTestCase
         \Pimcore::setAdminMode();
 
         if (Version::getMajorVersion() >= 11) {
-            $pimcoreModule = $this->getModule('\\'.Pimcore::class);
+            $pimcoreModule = $this->getModule('\\' . Pimcore::class);
             $this->config = $pimcoreModule->grabService(SystemSettingsConfig::class);
             $this->originalConfig = $this->config->get();
         } else {
-            $this->originalConfig = \Pimcore\Config::getSystemConfiguration();
+            $this->originalConfig = Config::getSystemConfiguration();
         }
 
     }
@@ -54,7 +56,7 @@ class LocalizedFieldTest extends ModelTestCase
         if (Version::getMajorVersion() >= 11) {
             $this->config->testSave($this->originalConfig);
         } else {
-            \Pimcore\Config::setSystemConfiguration($this->originalConfig);
+            Config::setSystemConfiguration($this->originalConfig);
         }
 
         parent::tearDown();
@@ -68,7 +70,7 @@ class LocalizedFieldTest extends ModelTestCase
         if (Version::getMajorVersion() >= 11) {
             $this->config->testSave($configuration);
         } else {
-            \Pimcore\Config::setSystemConfiguration($configuration);
+            Config::setSystemConfiguration($configuration);
         }
         // create root -> one -> two -> three
         $one = new Inheritance();
@@ -257,7 +259,7 @@ class LocalizedFieldTest extends ModelTestCase
         $list->setCondition("input LIKE '%parenttext%'");
         $list->setLocale('xx');
 
-        $listItems = $list->load();
+        $list->load();
     }
 
     public function testQueryTable(): void

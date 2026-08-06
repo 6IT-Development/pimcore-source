@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 // this is a port / excerpt of: CSV Reader By Luke Visinoni which isn't maintained anymore
@@ -198,7 +199,7 @@ class Csv
             }
 
             // calculate average number of appearances
-            $tmp[$char] = array_sum($tmp[$char]) / count($tmp[$char]);
+            $tmp[$char] = array_sum($array) / count($array);
         }
 
         // now, prefer the delimiter with the highest average number of appearances
@@ -222,8 +223,6 @@ class Csv
         foreach ($array as $value) {
             $variance[] = pow($value - $avg, 2);
         }
-        $deviation = sqrt(array_sum($variance) / count($variance));
-
-        return $deviation;
+        return sqrt(array_sum($variance) / count($variance));
     }
 }

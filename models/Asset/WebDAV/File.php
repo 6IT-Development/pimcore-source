@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\WebDAV;
@@ -21,6 +22,7 @@ use Pimcore\File as FileHelper;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element;
 use Pimcore\Tool\Admin as AdminTool;
+use Pimcore\Tool\Serialize;
 use Sabre\DAV;
 
 /**
@@ -81,7 +83,7 @@ class File extends DAV\File
             $log[$this->asset->getRealFullPath()] = [
                 'id' => $this->asset->getId(),
                 'timestamp' => time(),
-                'data' => \Pimcore\Tool\Serialize::serialize($this->asset),
+                'data' => Serialize::serialize($this->asset),
             ];
 
             $this->asset->setInDumpState(false);
@@ -98,14 +100,10 @@ class File extends DAV\File
     }
 
     /**
-     * @param resource $data
-     *
-     * @throws DAV\Exception\Forbidden
      * @throws Exception
-     *
-     * @return null
+     * @throws DAV\Exception\Forbidden
      */
-    public function put($data)
+    public function put($data): null
     {
         if ($this->asset->isAllowed('publish')) {
             // read from resource -> default for SabreDAV

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element\DeepCopy;
@@ -41,8 +42,8 @@ class PimcoreClassDefinitionReplaceFilter implements Filter
     /**
      * Applies the filter to the object.
      *
-     * @param object   $object
-     * @param string   $property
+     * @param object $object
+     * @param string $property
      * @param callable $objectCopier
      */
     public function apply($object, $property, $objectCopier): void

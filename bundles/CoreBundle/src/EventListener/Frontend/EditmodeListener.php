@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
@@ -25,6 +26,7 @@ use Pimcore\Http\Request\Resolver\EditmodeResolver;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Model\Document;
 use Pimcore\Security\User\UserLoader;
+use Pimcore\Tool\Admin;
 use Pimcore\Version;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -49,13 +51,14 @@ class EditmodeListener implements EventSubscriberInterface
     ];
 
     public function __construct(
-        protected EditmodeResolver $editmodeResolver,
-        protected DocumentResolver $documentResolver,
-        protected UserLoader $userLoader,
-        protected PimcoreBundleManager $bundleManager,
-        protected RouterInterface $router,
-        private EditmodeEditableDefinitionCollector $editableConfigCollector
-    ) {
+        protected EditmodeResolver                           $editmodeResolver,
+        protected DocumentResolver                           $documentResolver,
+        protected UserLoader                                 $userLoader,
+        protected PimcoreBundleManager                       $bundleManager,
+        protected RouterInterface                            $router,
+        private readonly EditmodeEditableDefinitionCollector $editableConfigCollector
+    )
+    {
     }
 
     public static function getSubscribedEvents(): array
@@ -116,24 +119,17 @@ class EditmodeListener implements EventSubscriberInterface
         $this->addEditmodeAssets($document, $response);
 
         // set sameorigin header for editmode responses
-        $response->headers->set('X-Frame-Options', 'SAMEORIGIN', true);
+        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
     }
 
     protected function contentTypeMatches(Response $response): bool
     {
-        $contentType = $response->headers->get('Content-Type');
-        if (!$contentType) {
+        if (!$contentType = $response->headers->get('Content-Type')) {
             return true;
         }
 
         // check for substring as the content type could define attributes (e.g. charset)
-        foreach ($this->contentTypes as $ct) {
-            if (str_contains($contentType, $ct)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->contentTypes, fn($ct) => str_contains($contentType, $ct));
     }
 
     /**
@@ -228,14 +224,14 @@ class EditmodeListener implements EventSubscriberInterface
                 $scriptContents .= file_get_contents(PIMCORE_WEB_ROOT . $scriptUrl) . "\n\n\n";
             }
 
-            $headHtml .= '<script src="' . $this->router->generate('pimcore_admin_misc_scriptproxy', \Pimcore\Tool\Admin::getMinimizedScriptPath($scriptContents)) . '"></script>' . "\n";
+            $headHtml .= '<script src="' . $this->router->generate('pimcore_admin_misc_scriptproxy', Admin::getMinimizedScriptPath($scriptContents)) . '"></script>' . "\n";
         }
         $path = $this->router->generate('pimcore_admin_misc_jsontranslationssystem', [
             'language' => $language,
             '_dc' => Version::getRevision(),
         ]);
 
-        $headHtml .= '<script src="'.$path.'"></script>' . "\n";
+        $headHtml .= '<script src="' . $path . '"></script>' . "\n";
         $headHtml .= '<script src="' . $this->router->generate('fos_js_routing_js', ['callback' => 'fos.Router.setData']) . '"></script>' . "\n";
         $headHtml .= "\n\n";
 

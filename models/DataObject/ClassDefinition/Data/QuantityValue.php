@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 use InvalidArgumentException;
+use Pimcore\Db;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
@@ -25,9 +27,9 @@ use Pimcore\Model\Exception\NotFoundException;
 
 class QuantityValue extends AbstractQuantityValue
 {
-    const DECIMAL_SIZE_DEFAULT = 64;
+    public const int DECIMAL_SIZE_DEFAULT = 64;
 
-    const DECIMAL_PRECISION_DEFAULT = 0;
+    public const int DECIMAL_PRECISION_DEFAULT = 0;
 
     /**
      * @internal
@@ -229,10 +231,10 @@ class QuantityValue extends AbstractQuantityValue
         return sprintf('DECIMAL(%d, %d)', $precision, $scale);
     }
 
-    public function getDataFromResource(mixed $data, DataObject\Concrete $object = null, array $params = []): ?Model\DataObject\Data\QuantityValue
+    public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?Model\DataObject\Data\QuantityValue
     {
         $dataValue = $data[$this->getName() . '__value'];
-        $dataUnit =  $data[$this->getName() . '__unit'];
+        $dataUnit = $data[$this->getName() . '__unit'];
 
         if ($dataValue !== null || $dataUnit) {
             if ($dataValue !== null && !is_numeric($dataValue)) {
@@ -259,12 +261,12 @@ class QuantityValue extends AbstractQuantityValue
         return null;
     }
 
-    public function getDataFromGridEditor(array $data, Concrete $object = null, array $params = []): ?Model\DataObject\Data\QuantityValue
+    public function getDataFromGridEditor(array $data, ?Concrete $object = null, array $params = []): ?Model\DataObject\Data\QuantityValue
     {
         return $this->getDataFromEditmode($data, $object, $params);
     }
 
-    public function getDataFromEditmode(mixed $data, DataObject\Concrete $object = null, array $params = []): ?Model\DataObject\Data\QuantityValue
+    public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?Model\DataObject\Data\QuantityValue
     {
         if (strlen((string)$data['value']) > 0 || $data['unit']) {
             if (empty($data['unit']) || $data['unit'] == -1) {
@@ -284,11 +286,11 @@ class QuantityValue extends AbstractQuantityValue
             && $this->getMandatory()
             && ($data === null || $data->getValue() === null || $data->getUnitId() === null)
         ) {
-            throw new Model\Element\ValidationException('Empty mandatory field [ '.$this->getName().' ]');
+            throw new Model\Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
 
         if ($data !== null && !$this->isEmpty($data->getValue()) && !is_numeric($data->getValue())) {
-            throw new Model\Element\ValidationException('field ['.$this->getName().' ] - invalid numeric data [' . $data->getValue() . '] ');
+            throw new Model\Element\ValidationException('field [' . $this->getName() . ' ] - invalid numeric data [' . $data->getValue() . '] ');
         }
 
         if (!empty($data) && !$omitMandatoryCheck) {
@@ -306,36 +308,36 @@ class QuantityValue extends AbstractQuantityValue
             }
 
             if ($this->getInteger() && str_contains((string)$value, '.')) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is not an integer');
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is not an integer');
             }
 
             if ($this->getMinValue() !== null && $this->getMinValue() > $value) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is not at least ' . $this->getMinValue());
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is not at least ' . $this->getMinValue());
             }
 
             if ($this->getMaxValue() !== null && $value > $this->getMaxValue()) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is bigger than ' . $this->getMaxValue());
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is bigger than ' . $this->getMaxValue());
             }
 
             if ($this->getUnsigned() && $value < 0) {
-                throw new Model\Element\ValidationException('Value in field [ '.$this->getName().' ] is not unsigned (bigger than 0)');
+                throw new Model\Element\ValidationException('Value in field [ ' . $this->getName() . ' ] is not unsigned (bigger than 0)');
             }
         }
     }
 
     private function toNumeric(mixed $value): float|int|string
     {
-        $value = str_replace(',', '.', (string) $value);
+        $value = str_replace(',', '.', (string)$value);
 
         if ($this->isDecimalType()) {
             return $value;
         }
 
         if (!str_contains($value, '.')) {
-            return (int) $value;
+            return (int)$value;
         }
 
-        return (float) $value;
+        return (float)$value;
     }
 
     protected function doGetDefaultValue(Concrete $object, array $context = []): ?Model\DataObject\Data\QuantityValue
@@ -401,15 +403,15 @@ class QuantityValue extends AbstractQuantityValue
 
     public function getFilterConditionExt(mixed $value, string $operator, array $params = []): string
     {
-        $db = \Pimcore\Db::get();
+        $db = Db::get();
         $name = $params['name'] ?: $this->name;
         $key = $db->quoteIdentifier($name);
 
         if (!empty($params['brickPrefix'])) {
-            $key = $params['brickPrefix'].$key;
+            $key = $params['brickPrefix'] . $key;
         }
         if (str_starts_with($name, 'cskey_')) {
-            return $key .'.'. $db->quoteIdentifier('value') . ' ' . $operator . ' ' . $value[0][0].' ';
+            return $key . '.' . $db->quoteIdentifier('value') . ' ' . $operator . ' ' . $value[0][0] . ' ';
         }
 
         return $key . ' ' . $operator . ' ' . (is_string($value) ? $db->quote($value) : $value) . ' ';

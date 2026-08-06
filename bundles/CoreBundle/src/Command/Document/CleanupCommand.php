@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command\Document;
@@ -31,7 +31,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class CleanupCommand extends AbstractCommand
 {
-    protected const STANDARD_DOCUMENT_ENUM_TYPES = [
+    protected const array STANDARD_DOCUMENT_ENUM_TYPES = [
         'page',
         'link',
         'snippet',
@@ -40,7 +40,7 @@ class CleanupCommand extends AbstractCommand
         'email',
     ];
 
-    private const PROTECTED_DOCUMENT_TYPES = ['page', 'link', 'snippet', 'folder', 'hardlink', 'email'];
+    private const array PROTECTED_DOCUMENT_TYPES = ['page', 'link', 'snippet', 'folder', 'hardlink', 'email'];
 
     protected function configure(): void
     {
@@ -57,7 +57,7 @@ class CleanupCommand extends AbstractCommand
         $filteredDocumentTypes = [];
         foreach ($documentTypes as $documentType) {
             if (in_array($documentType, self::PROTECTED_DOCUMENT_TYPES)) {
-                $this->output->writeln('<comment>Cannot remove protected document type: ' . $documentType. '</comment>');
+                $this->output->writeln('<comment>Cannot remove protected document type: ' . $documentType . '</comment>');
 
                 continue;
             }

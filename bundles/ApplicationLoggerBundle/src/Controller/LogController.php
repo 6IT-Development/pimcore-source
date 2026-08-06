@@ -12,7 +12,7 @@ declare(strict_types=1);
  * LICENSE.md which is distributed with this source code.
  *
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Controller;
@@ -54,7 +54,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         }
     }
 
-    #[Route("/log/show", name: "pimcore_admin_bundle_applicationlogger_log_show", methods: [Request::METHOD_GET, Request::METHOD_POST])]
+    #[Route('/log/show', name: 'pimcore_admin_bundle_applicationlogger_log_show', methods: [Request::METHOD_GET, Request::METHOD_POST])]
     public function showAction(
         Request    $request,
         Connection $db
@@ -142,7 +142,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         ]);
     }
 
-    #[Route("/log/priority-json", name: "pimcore_admin_bundle_applicationlogger_log_priorityjson", methods: [Request::METHOD_GET])]
+    #[Route('/log/priority-json', name: 'pimcore_admin_bundle_applicationlogger_log_priorityjson', methods: [Request::METHOD_GET])]
     public function priorityJsonAction(): JsonResponse
     {
         $this->checkPermission(self::PERMISSION);
@@ -155,7 +155,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         return $this->jsonResponse(['priorities' => $priorities]);
     }
 
-    #[Route("/log/component-json", name: "pimcore_admin_bundle_applicationlogger_log_componentjson", methods: [Request::METHOD_GET])]
+    #[Route('/log/component-json', name: 'pimcore_admin_bundle_applicationlogger_log_componentjson', methods: [Request::METHOD_GET])]
     public function componentJsonAction(): JsonResponse
     {
         $this->checkPermission(self::PERMISSION);
@@ -168,7 +168,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         return $this->jsonResponse(['components' => $components]);
     }
 
-    #[Route("/log/show-file-object", name: "pimcore_admin_bundle_applicationlogger_log_showfileobject", methods: [Request::METHOD_GET])]
+    #[Route('/log/show-file-object', name: 'pimcore_admin_bundle_applicationlogger_log_showfileobject', methods: [Request::METHOD_GET])]
     public function showFileObjectAction(Request $request): StreamedResponse
     {
         $this->checkPermission(self::PERMISSION);

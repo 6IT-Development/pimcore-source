@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -25,7 +26,7 @@ use Doctrine\Migrations\AbstractMigration;
 final class Version20201113143914 extends AbstractMigration
 {
     private array $tables = ['documents_email', 'documents_newsletter', 'documents_page',
-        'documents_snippet', 'documents_printpage', ];
+        'documents_snippet', 'documents_printpage',];
 
     public function up(Schema $schema): void
     {

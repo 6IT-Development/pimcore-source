@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 /**
@@ -110,13 +111,11 @@ class Container implements RecursiveIterator, Countable
      * This method will inject the container as the given page's parent by
      * calling {@link Page::setParent()}.
      *
-     * @param array|Page $page  page to add
-     *
      * @return $this fluent interface, returns self
      *
      * @throws Exception if page is invalid
      */
-    public function addPage($page): static
+    public function addPage(Page|array $page): static
     {
         if ($page === $this) {
             throw new Exception('A page cannot have itself as a parent');
@@ -149,7 +148,7 @@ class Container implements RecursiveIterator, Countable
     /**
      * Adds several pages at once
      *
-     * @param Page[] $pages  pages to add
+     * @param Page[] $pages pages to add
      *
      * @return $this fluent interface, returns self
      *
@@ -167,7 +166,7 @@ class Container implements RecursiveIterator, Countable
     /**
      * Sets pages this container should have, removing existing pages
      *
-     * @param  Page[] $pages pages to set
+     * @param Page[] $pages pages to set
      *
      * @return $this  fluent interface, returns self
      */
@@ -191,12 +190,9 @@ class Container implements RecursiveIterator, Countable
     /**
      * Removes the given page from the container
      *
-     * @param int|Page $page page to remove, either a page instance or a specific page order
-     * @param bool $recursive [optional] whether to remove recursively
-     *
      * @return bool whether the removal was successful
      */
-    public function removePage($page, bool $recursive = false): bool
+    public function removePage(Page|int $page, bool $recursive = false): bool
     {
         if ($page instanceof Page) {
             $hash = $page->hashCode();
@@ -244,20 +240,15 @@ class Container implements RecursiveIterator, Countable
     /**
      * Checks if the container has the given page
      *
-     * @param Page $page  page to look for
-     * @param bool $recursive  [optional] whether to search recursively. Default is false.
-     *
      * @return bool whether page is in container
      */
-    public function hasPage($page, bool $recursive = false): bool
+    public function hasPage(Page $page, bool $recursive = false): bool
     {
         if (array_key_exists($page->hashCode(), $this->_index)) {
             return true;
         } elseif ($recursive) {
-            foreach ($this->_pages as $childPage) {
-                if ($childPage->hasPage($page, true)) {
-                    return true;
-                }
+            if (array_any($this->_pages, fn(Page $childPage) => $childPage->hasPage($page, true))) {
+                return true;
             }
         }
 
@@ -281,29 +272,14 @@ class Container implements RecursiveIterator, Countable
      */
     public function hasVisiblePages(): bool
     {
-        if ($this->hasPages()) {
-            foreach ($this->getPages() as $page) {
-                if ($page->isVisible()) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return $this->hasPages() && array_any($this->getPages(), static fn(Page $page) => $page->isVisible());
     }
 
     /**
      * Returns a child page matching $property == $value or
      * preg_match($value, $property), or null if not found
-     *
-     * @param string $property          name of property to match against
-     * @param  mixed   $value             value to match property against
-     * @param bool $useRegex          [optional] if true PHP's preg_match
-     *                                    is used. Default is false.
-     *
-     * @return Page|null  matching page or null
      */
-    public function findOneBy(string $property, mixed $value, bool $useRegex = false)
+    public function findOneBy(string $property, mixed $value, bool $useRegex = false): ?Page
     {
         $iterator = new RecursiveIteratorIterator($this, RecursiveIteratorIterator::SELF_FIRST);
 
@@ -316,10 +292,8 @@ class Container implements RecursiveIterator, Countable
                     if (is_array($item)) {
                         // Use regex?
                         if (true === $useRegex) {
-                            foreach ($item as $item2) {
-                                if (preg_match($value, $item2)) {
-                                    return $page;
-                                }
+                            if (array_any($item, fn($item2) => preg_match($value, $item2))) {
+                                return $page;
                             }
                         } else {
                             if (in_array($value, $item)) {
@@ -362,9 +336,9 @@ class Container implements RecursiveIterator, Countable
      * Returns all child pages matching $property == $value or
      * preg_match($value, $property), or an empty array if no pages are found
      *
-     * @param string $property  name of property to match against
-     * @param  mixed  $value     value to match property against
-     * @param bool $useRegex  [optional] if true PHP's preg_match is used.
+     * @param string $property name of property to match against
+     * @param mixed $value value to match property against
+     * @param bool $useRegex [optional] if true PHP's preg_match is used.
      *                           Default is false.
      *
      * @return Page[] array containing only Page instances
@@ -438,20 +412,20 @@ class Container implements RecursiveIterator, Countable
      * Returns page(s) matching $property == $value or
      * preg_match($value, $property)
      *
-     * @param string $property  name of property to match against
-     * @param  mixed  $value     value to match property against
-     * @param bool $all       [optional] whether an array of all matching
+     * @param string $property name of property to match against
+     * @param mixed $value value to match property against
+     * @param bool $all [optional] whether an array of all matching
      *                           pages should be returned, or only the first.
      *                           If true, an array will be returned, even if not
      *                           matching pages are found. If false, null will
      *                           be returned if no matching page is found.
      *                           Default is false.
-     * @param bool $useRegex  [optional] if true PHP's preg_match is used.
+     * @param bool $useRegex [optional] if true PHP's preg_match is used.
      *                           Default is false.
      *
      * @return Page|array<Page>|null  matching page or null
      */
-    public function findBy(string $property, mixed $value, bool $all = false, bool $useRegex = false)
+    public function findBy(string $property, mixed $value, bool $all = false, bool $useRegex = false): Page|array|null
     {
         if ($all) {
             return $this->findAllBy($property, $value, $useRegex);
@@ -472,8 +446,8 @@ class Container implements RecursiveIterator, Countable
      * $nav->findAllByClass('foo');      // $nav->findAllBy('class', 'foo');
      * </code>
      *
-     * @param string $method                       method name
-     * @param array $arguments                    method arguments
+     * @param string $method method name
+     * @param array $arguments method arguments
      *
      * @return mixed  Pimcore\Navigation|array|null    matching page, array of pages
      *                                              or null
@@ -508,11 +482,11 @@ class Container implements RecursiveIterator, Countable
     }
 
     /**
-     * @return Page
+     * @return \Page
      *
      * @throws Exception
      */
-    public function current(): mixed
+    public function current(): \Page
     {
         $this->_sort();
         $hash = key($this->_index);

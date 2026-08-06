@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tool;
@@ -25,6 +26,7 @@ use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\User;
 use Pimcore\Security\User\TokenStorageUserResolver;
 use Pimcore\Tool\Text\Csv;
+use Pimcore\Version;
 use stdClass;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
@@ -84,17 +86,15 @@ class Admin
 
     public static function getMinimizedScriptPath(string $scriptContent): array
     {
-        $scriptPath = 'minified_javascript_core_'.md5($scriptContent).'.js';
+        $scriptPath = 'minified_javascript_core_' . md5($scriptContent) . '.js';
 
         $storage = Storage::get('admin');
         $storage->write($scriptPath, $scriptContent);
 
-        $params = [
+        return [
             'storageFile' => basename($scriptPath),
-            '_dc' => \Pimcore\Version::getRevision(),
+            '_dc' => Version::getRevision(),
         ];
-
-        return $params;
     }
 
     public static function determineCsvDialect(string $file): stdClass
@@ -108,7 +108,7 @@ class Admin
         try {
             $sniffer = new Csv();
             $dialect = $sniffer->detect($sample);
-        } catch (Exception $e) {
+        } catch (Exception) {
             // use default settings
             $dialect = new stdClass();
             $dialect->delimiter = ';';
@@ -141,9 +141,9 @@ class Admin
     }
 
     /**
+     * @throws Exception
      * @deprecated Use MaintenanceModeHelper::activate instead.
      *
-     * @throws Exception
      */
     public static function activateMaintenanceMode(?string $sessionId): void
     {

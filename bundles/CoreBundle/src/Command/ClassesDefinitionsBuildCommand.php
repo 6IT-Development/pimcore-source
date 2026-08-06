@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Command;
@@ -39,12 +40,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 class ClassesDefinitionsBuildCommand extends AbstractCommand
 {
     public function __construct(
-        protected PHPClassDumperInterface $classDumper,
-        protected PHPFieldCollectionClassDumperInterface $collectionClassDumper,
-        protected PHPObjectBrickClassDumperInterface $brickClassDumper,
+        protected PHPClassDumperInterface                     $classDumper,
+        protected PHPFieldCollectionClassDumperInterface      $collectionClassDumper,
+        protected PHPObjectBrickClassDumperInterface          $brickClassDumper,
         protected PHPObjectBrickContainerClassDumperInterface $brickContainerClassDumper,
-        protected PHPSelectOptionsEnumDumperInterface $selectOptionsEnumDumper,
-    ) {
+        protected PHPSelectOptionsEnumDumperInterface         $selectOptionsEnumDumper,
+    )
+    {
         parent::__construct();
     }
 
@@ -61,7 +63,7 @@ class ClassesDefinitionsBuildCommand extends AbstractCommand
         $includedFiles = [];
 
         foreach ($objectClassesFolders as $objectClassesFolder) {
-            $files = glob($objectClassesFolder.'/*.php');
+            $files = glob($objectClassesFolder . '/*.php');
 
             foreach ($files as $file) {
                 $realFile = realpath($file);

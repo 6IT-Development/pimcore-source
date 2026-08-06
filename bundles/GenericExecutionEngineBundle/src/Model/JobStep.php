@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,23 +11,24 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Model;
 
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\SelectionProcessingMode;
 
-final class JobStep implements JobStepInterface
+final readonly class JobStep implements JobStepInterface
 {
     public function __construct(
-        private readonly string $name,
-        private readonly string $messageFQCN,
-        private readonly string $condition,
-        private readonly array $config,
-        private readonly SelectionProcessingMode $selectionProcessingMode = SelectionProcessingMode::FOR_EACH
-    ) {
+        private string                  $name,
+        private string                  $messageFQCN,
+        private string                  $condition,
+        private array                   $config,
+        private SelectionProcessingMode $selectionProcessingMode = SelectionProcessingMode::FOR_EACH
+    )
+    {
     }
 
     public function getName(): string

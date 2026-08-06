@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Event\Cache\FullPage;
@@ -31,9 +31,10 @@ class PrepareTagsEvent extends Event
     private array $tags = [];
 
     public function __construct(
-        private readonly Request $request,
+        private readonly Request  $request,
         private readonly Response $response
-    ) {
+    )
+    {
     }
 
     public function addTag(string $tag): void

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Http;
@@ -35,7 +36,7 @@ class ResponseHelper
         if (!$response->headers->has('Cache-Control') || $force) {
             // set this headers to avoid problems with proxies, ...
             foreach (['no-cache', 'private', 'no-store', 'must-revalidate', 'no-transform'] as $directive) {
-                $response->headers->addCacheControlDirective($directive, true);
+                $response->headers->addCacheControlDirective($directive);
             }
 
             foreach (['max-stale', 'post-check', 'pre-check', 'max-age'] as $directive) {
@@ -43,11 +44,11 @@ class ResponseHelper
             }
 
             // this is for mod_pagespeed
-            $response->headers->addCacheControlDirective('no-transform', true);
+            $response->headers->addCacheControlDirective('no-transform');
         }
 
         if (!$response->headers->has('Pragma') || $force) {
-            $response->headers->set('Pragma', 'no-cache', true);
+            $response->headers->set('Pragma', 'no-cache');
         }
 
         if (!$response->headers->has('Expires') || $force) {

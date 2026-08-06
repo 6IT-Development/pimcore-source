@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Serializer\Normalizer;
@@ -26,7 +26,7 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 class ReferenceLoopNormalizer implements NormalizerInterface
 {
-    public function normalize(mixed $object, string $format = null, array $context = []): array|string|int|float|bool|ArrayObject|null
+    public function normalize(mixed $object, ?string $format = null, array $context = []): array|string|int|float|bool|ArrayObject|null
     {
         $object = Serialize::removeReferenceLoops($object);
 
@@ -35,20 +35,13 @@ class ReferenceLoopNormalizer implements NormalizerInterface
         }
 
         if (is_object($object)) {
-            $propCollection = get_object_vars($object);
-
-            $array = [];
-            foreach ($propCollection as $name => $propValue) {
-                $array[$name] = $propValue;
-            }
-
-            return $array;
+            return array_map(fn($propValue) => $propValue, get_object_vars($object));
         }
 
         return $object;
     }
 
-    public function supportsNormalization(mixed $data, string $format = null, array $context = []): bool
+    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
         return $format === JsonEncoder::FORMAT;
     }

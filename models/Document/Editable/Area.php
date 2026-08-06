@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Editable;
@@ -27,7 +28,7 @@ use Pimcore\Templating\Renderer\EditableRenderer;
 use Pimcore\Tool\HtmlUtils;
 
 /**
- * @method \Pimcore\Model\Document\Editable\Dao getDao()
+ * @method Dao getDao()
  */
 class Area extends Model\Document\Editable
 {
@@ -49,7 +50,7 @@ class Area extends Model\Document\Editable
         return 'area';
     }
 
-    public function getData(): mixed
+    public function getData(): array
     {
         return [
             'type' => $this->type,
@@ -155,7 +156,7 @@ class Area extends Model\Document\Editable
         $blockState->pushBlock(BlockName::createFromEditable($this));
 
         // create info object and assign it to the view
-        $info = $this->buildInfoObject();
+        $this->buildInfoObject();
 
         // start at first index
         $blockState->pushIndex(1);
@@ -245,9 +246,7 @@ class Area extends Model\Document\Editable
         $id = Model\Document\Editable::buildChildEditableName($name, 'area', $parentBlockNames, 1);
         $editable = $document->getEditable($id);
 
-        if ($editable) {
-            $editable->setParentBlockNames($parentBlockNames);
-        }
+        $editable?->setParentBlockNames($parentBlockNames);
 
         return $editable;
     }

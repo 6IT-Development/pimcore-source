@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Workflow;
@@ -26,11 +27,11 @@ class Transition extends \Symfony\Component\Workflow\Transition implements Notes
     use NotesAwareTrait;
     use NotificationTrait;
 
-    public const UNSAVED_CHANGES_BEHAVIOUR_SAVE = 'save';
+    public const string UNSAVED_CHANGES_BEHAVIOUR_SAVE = 'save';
 
-    public const UNSAVED_CHANGES_BEHAVIOUR_IGNORE = 'ignore';
+    public const string UNSAVED_CHANGES_BEHAVIOUR_IGNORE = 'ignore';
 
-    public const UNSAVED_CHANGES_BEHAVIOUR_WARN = 'warn';
+    public const string UNSAVED_CHANGES_BEHAVIOUR_WARN = 'warn';
 
     /**
      * @var array
@@ -74,6 +75,6 @@ class Transition extends \Symfony\Component\Workflow\Transition implements Notes
 
     public function getChangePublishedState(): string
     {
-        return (string) $this->options['changePublishedState'];
+        return (string)$this->options['changePublishedState'];
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model;
@@ -19,6 +20,7 @@ namespace Pimcore\Model;
 use Pimcore\Bundle\AdminBundle\Perspective\Config;
 use Pimcore\File;
 use Pimcore\Helper\TemporaryFileHelperTrait;
+use Pimcore\Image;
 use Pimcore\Model\User\Role;
 use Pimcore\Tool;
 
@@ -100,12 +102,9 @@ final class User extends User\UserRole implements UserInterface
         return $this->password;
     }
 
-    /**
-     * @return $this
-     */
     public function setPassword(?string $password): static
     {
-        if (strlen((string) $password) > 4) {
+        if (strlen((string)$password) > 4) {
             $this->password = $password;
         }
 
@@ -121,11 +120,11 @@ final class User extends User\UserRole implements UserInterface
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
-    public function setPasswordRecoveryToken(?string $passwordRecoveryToken): static
+    public function setPasswordRecoveryToken(?string $passwordRecoveryToken): User
     {
         $this->passwordRecoveryToken = $passwordRecoveryToken;
 
@@ -468,7 +467,7 @@ final class User extends User\UserRole implements UserInterface
                 @fclose($originalImageStream);
                 $targetFile = File::getLocalTempFilePath('png');
 
-                $image = \Pimcore\Image::getInstance();
+                $image = Image::getInstance();
                 if ($image->load($localFile)) {
                     $image->cover($width, $height);
                     $image->save($targetFile, 'png');
@@ -522,7 +521,7 @@ final class User extends User\UserRole implements UserInterface
     }
 
     /**
-     * Returns array of perspectives names related to user and all related roles
+     * Returns an array of perspective names related to user and all related roles
      *
      * @return string[]
      */
@@ -588,9 +587,9 @@ final class User extends User\UserRole implements UserInterface
      * Returns array of languages allowed for editing. If edit and view languages are empty all languages are allowed.
      * If only edit languages are empty (but view languages not) empty array is returned.
      *
+     * @return string[]|null
      * @internal
      *
-     * @return string[]|null
      */
     public function getAllowedLanguagesForEditingWebsiteTranslations(): ?array
     {
@@ -629,9 +628,9 @@ final class User extends User\UserRole implements UserInterface
     /**
      * Returns array of languages allowed for viewing. If view languages are empty all languages are allowed.
      *
+     * @return string[]|null
      * @internal
      *
-     * @return string[]|null
      */
     public function getAllowedLanguagesForViewingWebsiteTranslations(): ?array
     {
@@ -668,7 +667,7 @@ final class User extends User\UserRole implements UserInterface
         $this->keyBindings = $keyBindings;
     }
 
-    public function getTwoFactorAuthentication(string $key = null): mixed
+    public function getTwoFactorAuthentication(?string $key = null): mixed
     {
         if ($this->twoFactorAuthentication === null) {
             // set defaults if no data is present
@@ -736,7 +735,7 @@ final class User extends User\UserRole implements UserInterface
         return $this->datetimeLocale;
     }
 
-    public function setDatetimeLocale(?string $datetimeLocale): static
+    public function setDatetimeLocale(?string $datetimeLocale): User
     {
         $this->datetimeLocale = $datetimeLocale;
 

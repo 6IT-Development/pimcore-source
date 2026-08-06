@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Notification\Service;
@@ -49,12 +49,13 @@ class NotificationService
      * @throws Exception
      */
     public function sendToUser(
-        int $userId,
-        int $fromUser,
-        string $title,
-        string $message,
+        int               $userId,
+        int               $fromUser,
+        string            $title,
+        string            $message,
         ?ElementInterface $element = null
-    ): void {
+    ): void
+    {
         $this->beginTransaction();
 
         $sender = User::getById($fromUser);
@@ -87,12 +88,13 @@ class NotificationService
      * @throws UnexpectedValueException|Exception
      */
     public function sendToGroup(
-        int $groupId,
-        int $fromUser,
-        string $title,
-        string $message,
+        int               $groupId,
+        int               $fromUser,
+        string            $title,
+        string            $message,
         ?ElementInterface $element = null
-    ): void {
+    ): void
+    {
         $group = User\Role::getById($groupId);
 
         if (!$group instanceof User\Role) {
@@ -138,7 +140,7 @@ class NotificationService
         $notification = Notification::getById($id);
 
         if (!$notification instanceof Notification) {
-            throw new UnexpectedValueException("Notification with the ID {$id} doesn't exists");
+            throw new UnexpectedValueException("Notification with the ID $id doesn't exists");
         }
 
         return $notification;
@@ -180,7 +182,7 @@ class NotificationService
     {
         $listing = new Listing();
 
-        $filter  = [...$filter, ...['isStudio' => 0]];
+        $filter = [...$filter, ...['isStudio' => 0]];
 
         $conditions = [];
         $conditionVariables = [];
@@ -204,11 +206,11 @@ class NotificationService
 
         if (is_string($offset)) {
             //TODO: Trigger deprecation
-            $offset = (int) $offset;
+            $offset = (int)$offset;
         }
         if (is_string($limit)) {
             //TODO: Trigger deprecation
-            $limit = (int) $limit;
+            $limit = (int)$limit;
         }
 
         $this->beginTransaction();
@@ -261,7 +263,7 @@ class NotificationService
             'title' => $notification->getTitle(),
             'message' => $notification->getMessage(),
             'sender' => '',
-            'read' => (int) $notification->isRead(),
+            'read' => (int)$notification->isRead(),
             'date' => $notification->getCreationDate(),
             'timestamp' => $carbonTs->getTimestamp(),
             'linkedElementType' => $notification->getLinkedElementType(),

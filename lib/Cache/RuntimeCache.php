@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Cache;
@@ -22,7 +23,7 @@ use Pimcore;
 
 class RuntimeCache extends ArrayObject
 {
-    private const SERVICE_ID = __CLASS__;
+    private const string SERVICE_ID = __CLASS__;
 
     protected static ?RuntimeCache $tempInstance = null;
 
@@ -46,7 +47,7 @@ class RuntimeCache extends ArrayObject
             if ($container->initialized(self::SERVICE_ID)) {
                 $instance = $container->get(self::SERVICE_ID);
             } else {
-                $instance = new self;
+                $instance = new self();
                 $container->set(self::SERVICE_ID, $instance);
             }
 
@@ -68,7 +69,7 @@ class RuntimeCache extends ArrayObject
         // this is necessary because the runtime cache is sometimes in use before the actual service container
         // is initialized
         if (!self::$tempInstance) {
-            self::$tempInstance = new self;
+            self::$tempInstance = new self();
         }
 
         return self::$tempInstance;

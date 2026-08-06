@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -28,6 +29,7 @@ use Pimcore\Messenger\ElementDependenciesMessage;
 use Pimcore\Model;
 use Pimcore\Model\Element\Traits\DirtyIndicatorTrait;
 use Pimcore\Model\User;
+use Pimcore\Tool\Admin;
 use Pimcore\Workflow\Manager;
 
 /**
@@ -123,9 +125,9 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         return $this->parentId;
     }
 
-    public function setParentId(?int $parentId): static
+    public function setParentId(?int $id): static
     {
-        $this->parentId = $parentId;
+        $this->parentId = $id;
         $this->parent = null;
 
         return $this;
@@ -256,10 +258,11 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
     public function setProperty(
         string $name,
         string $type,
-        mixed $data,
-        bool $inherited = false,
-        bool $inheritable = false
-    ): static {
+        mixed  $data,
+        bool   $inherited = false,
+        bool   $inheritable = false
+    ): static
+    {
         $properties = $this->getProperties();
 
         $id = $this->getId();
@@ -311,7 +314,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         $userModificationKey = 'userModification';
         if (!$this->isFieldDirty($userModificationKey)) {
             $userId = 0;
-            $user = \Pimcore\Tool\Admin::getCurrentUser();
+            $user = Admin::getCurrentUser();
             if ($user instanceof User) {
                 $userId = $user->getId();
             }
@@ -353,7 +356,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
 
     public function getVersionCount(): int
     {
-        return $this->versionCount ? $this->versionCount : 0;
+        return $this->versionCount ?: 0;
     }
 
     public function setVersionCount(int $versionCount): static
@@ -447,7 +450,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         $defaultValue = 0;
 
         if (null === $user) {
-            $user = \Pimcore\Tool\Admin::getCurrentUser();
+            $user = Admin::getCurrentUser();
         }
 
         if ((!$user && php_sapi_name() === 'cli') || $user?->isAdmin()) {
@@ -477,7 +480,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
     public function isAllowed(string $type, ?User $user = null): bool
     {
         if (null === $user) {
-            $user = \Pimcore\Tool\Admin::getCurrentUser();
+            $user = Admin::getCurrentUser();
         }
 
         if (!$user) {
@@ -508,7 +511,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         $event = new ElementEvent($this, ['isAllowed' => $isAllowed, 'permissionType' => $type, 'user' => $user]);
         Pimcore::getEventDispatcher()->dispatch($event, ElementEvents::ELEMENT_PERMISSION_IS_ALLOWED);
 
-        return (bool) $event->getArgument('isAllowed');
+        return (bool)$event->getArgument('isAllowed');
     }
 
     /**
@@ -523,16 +526,14 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         // invalidate cache items
         foreach ($ids as $id) {
             $element = Service::getElementById($type, $id);
-            if ($element) {
-                $element->clearDependentCache();
-            }
+            $element?->clearDependentCache();
         }
     }
 
     /**
+     * @throws Exception
      * @internal
      *
-     * @throws Exception
      */
     protected function validatePathLength(): void
     {
@@ -569,7 +570,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
      * @internal
      *
      */
-    protected function doSaveVersion(string $versionNote = null, bool $saveOnlyVersion = true, bool $saveStackTrace = true, bool $isAutoSave = false): Model\Version
+    protected function doSaveVersion(?string $versionNote = null, bool $saveOnlyVersion = true, bool $saveStackTrace = true, bool $isAutoSave = false): Model\Version
     {
         $version = null;
 
@@ -629,9 +630,9 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
     }
 
     /**
+     * @return string[]
      * @internal
      *
-     * @return string[]
      */
     protected function getBlockedVars(): array
     {
@@ -678,7 +679,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
      *
      * @internal
      */
-    public function deleteAutoSaveVersions(int $userId = null): void
+    public function deleteAutoSaveVersions(?int $userId = null): void
     {
         $list = new Model\Version\Listing();
         $list->setLoadAutoSave(true);

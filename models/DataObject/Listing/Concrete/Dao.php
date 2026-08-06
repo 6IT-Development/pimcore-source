@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Listing\Concrete;
@@ -21,12 +21,13 @@ use Pimcore;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\DataObject\Listing\Concrete;
 use Pimcore\Tool;
 
 /**
  * @internal
  *
- * @property \Pimcore\Model\DataObject\Listing\Concrete $model
+ * @property Concrete $model
  */
 class Dao extends Model\DataObject\Listing\Dao
 {
@@ -59,7 +60,7 @@ class Dao extends Model\DataObject\Listing\Dao
     protected function exceptionHandler(Exception $e): array
     {
         // create view if it doesn't exist already // HACK
-        $pdoMySQL = preg_match('/Base table or view not found/', $e->getMessage());
+        $pdoMySQL = str_contains($e->getMessage(), 'Base table or view not found');
         $Mysqli = preg_match("/Table (.*) doesn't exist/", $e->getMessage());
 
         if (($Mysqli || $pdoMySQL) && $this->firstException) {

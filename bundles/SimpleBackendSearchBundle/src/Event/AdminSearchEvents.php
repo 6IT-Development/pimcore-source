@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\SimpleBackendSearchBundle\Event;
@@ -29,7 +30,7 @@ final class AdminSearchEvents
      *
      * @var string
      */
-    const SEARCH_LIST_BEFORE_FILTER_PREPARE = 'pimcore.admin.search.list.beforeFilterPrepare';
+    public const string SEARCH_LIST_BEFORE_FILTER_PREPARE = 'pimcore.admin.search.list.beforeFilterPrepare';
 
     /**
      * Allows you to modify the search backend list before it is loaded.
@@ -43,7 +44,7 @@ final class AdminSearchEvents
      *
      * @var string
      */
-    const SEARCH_LIST_BEFORE_LIST_LOAD = 'pimcore.admin.search.list.beforeListLoad';
+    public const string SEARCH_LIST_BEFORE_LIST_LOAD = 'pimcore.admin.search.list.beforeListLoad';
 
     /**
      * Allows you to modify the the result after the list was loaded.
@@ -57,7 +58,7 @@ final class AdminSearchEvents
      *
      * @var string
      */
-    const SEARCH_LIST_AFTER_LIST_LOAD = 'pimcore.admin.search.list.afterListLoad';
+    public const string SEARCH_LIST_AFTER_LIST_LOAD = 'pimcore.admin.search.list.afterListLoad';
 
     /**
      * Allows you to modify the search backend list before it is loaded.
@@ -71,7 +72,7 @@ final class AdminSearchEvents
      *
      * @var string
      */
-    const QUICKSEARCH_LIST_BEFORE_LIST_LOAD = 'pimcore.admin.quickSearch.list.beforeListLoad';
+    public const string QUICKSEARCH_LIST_BEFORE_LIST_LOAD = 'pimcore.admin.quickSearch.list.beforeListLoad';
 
     /**
      * Allows you to modify the the result after the list was loaded.
@@ -85,5 +86,5 @@ final class AdminSearchEvents
      *
      * @var string
      */
-    const QUICKSEARCH_LIST_AFTER_LIST_LOAD = 'pimcore.admin.quickSearch.list.afterListLoad';
+    public const string QUICKSEARCH_LIST_AFTER_LIST_LOAD = 'pimcore.admin.quickSearch.list.afterListLoad';
 }

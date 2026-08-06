@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Listing;
@@ -27,15 +28,9 @@ use Pimcore\Model\DataObject;
  */
 abstract class Concrete extends Model\DataObject\Listing
 {
-    /**
-     * @var string
-     */
-    protected $classId;
+    protected string $classId;
 
-    /**
-     * @var string
-     */
-    protected $className;
+    protected string $className;
 
     protected ?string $locale = null;
 
@@ -84,9 +79,7 @@ abstract class Concrete extends Model\DataObject\Listing
 
     public function getClass(): DataObject\ClassDefinition
     {
-        $class = DataObject\ClassDefinition::getById($this->getClassId());
-
-        return $class;
+        return DataObject\ClassDefinition::getById($this->getClassId());
     }
 
     public function setLocale(?string $locale): static
@@ -127,7 +120,7 @@ abstract class Concrete extends Model\DataObject\Listing
      *
      * @throws Exception
      */
-    public function addFieldCollection(string $type, string $fieldname = null): void
+    public function addFieldCollection(string $type, ?string $fieldname = null): void
     {
         $this->setData(null);
 
@@ -226,8 +219,8 @@ abstract class Concrete extends Model\DataObject\Listing
     /**
      * Filter by path (system field)
      *
-     * @param float|array|int|string $data  comparison data, can be scalar or array (if operator is e.g. "IN (?)")
-     * @param string $operator  SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
+     * @param float|array|int|string $data comparison data, can be scalar or array (if operator is e.g. "IN (?)")
+     * @param string $operator SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
      *
      * @return $this
      */
@@ -241,8 +234,8 @@ abstract class Concrete extends Model\DataObject\Listing
     /**
      * Filter by key (system field)
      *
-     * @param float|array|int|string $data  comparison data, can be scalar or array (if operator is e.g. "IN (?)")
-     * @param string $operator  SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
+     * @param float|array|int|string $data comparison data, can be scalar or array (if operator is e.g. "IN (?)")
+     * @param string $operator SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
      *
      * @return $this
      */
@@ -256,8 +249,8 @@ abstract class Concrete extends Model\DataObject\Listing
     /**
      * Filter by id (system field)
      *
-     * @param float|array|int|string $data  comparison data, can be scalar or array (if operator is e.g. "IN (?)")
-     * @param string $operator  SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
+     * @param float|array|int|string $data comparison data, can be scalar or array (if operator is e.g. "IN (?)")
+     * @param string $operator SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
      *
      * @return $this
      */
@@ -271,8 +264,8 @@ abstract class Concrete extends Model\DataObject\Listing
     /**
      * Filter by published (system field)
      *
-     * @param float|array|int|string $data  comparison data, can be scalar or array (if operator is e.g. "IN (?)")
-     * @param string $operator  SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
+     * @param float|array|int|string $data comparison data, can be scalar or array (if operator is e.g. "IN (?)")
+     * @param string $operator SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
      *
      * @return $this
      */
@@ -286,8 +279,8 @@ abstract class Concrete extends Model\DataObject\Listing
     /**
      * Filter by creationDate (system field)
      *
-     * @param float|array|int|string $data  comparison data, can be scalar or array (if operator is e.g. "IN (?)")
-     * @param string $operator  SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
+     * @param float|array|int|string $data comparison data, can be scalar or array (if operator is e.g. "IN (?)")
+     * @param string $operator SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
      *
      * @return $this
      */
@@ -301,8 +294,8 @@ abstract class Concrete extends Model\DataObject\Listing
     /**
      * Filter by modificationDate (system field)
      *
-     * @param float|array|int|string $data  comparison data, can be scalar or array (if operator is e.g. "IN (?)")
-     * @param string $operator  SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
+     * @param float|array|int|string $data comparison data, can be scalar or array (if operator is e.g. "IN (?)")
+     * @param string $operator SQL comparison operator, e.g. =, <, >= etc. You can use "?" as placeholder, e.g. "IN (?)"
      *
      * @return $this
      */

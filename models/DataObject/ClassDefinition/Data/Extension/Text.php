@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data\Extension;
@@ -30,7 +31,7 @@ trait Text
 
     public function isEmpty(mixed $data): bool
     {
-        return strlen((string) $data) < 1;
+        return strlen((string)$data) < 1;
     }
 
     public function isDiffChangeAllowed(Concrete $object, array $params = []): bool
@@ -41,7 +42,7 @@ trait Text
     /**
      * @see Data::getVersionPreview
      */
-    public function getVersionPreview(mixed $data, Model\DataObject\Concrete $object = null, array $params = []): string
+    public function getVersionPreview(mixed $data, ?Model\DataObject\Concrete $object = null, array $params = []): string
     {
         return htmlspecialchars((string)$data, ENT_QUOTES, 'UTF-8');
     }

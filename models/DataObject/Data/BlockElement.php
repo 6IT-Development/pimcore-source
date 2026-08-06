@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,22 +11,27 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\Data;
 
 use DeepCopy\DeepCopy;
+use DeepCopy\Filter\KeepFilter;
 use DeepCopy\Filter\SetNullFilter;
+use DeepCopy\Matcher\Matcher;
+use DeepCopy\Matcher\PropertyMatcher;
 use DeepCopy\Matcher\PropertyNameMatcher;
 use DeepCopy\Reflection\ReflectionHelper;
+use DeepCopy\TypeFilter\ReplaceFilter;
 use Pimcore\Cache\Core\CacheMarshallerInterface;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model\AbstractModel;
 use Pimcore\Model\DataObject\OwnerAwareFieldInterface;
 use Pimcore\Model\DataObject\Traits\OwnerAwareFieldTrait;
 use Pimcore\Model\Element\AbstractElement;
+use Pimcore\Model\Element\DeepCopy\MarshalMatcher;
 use Pimcore\Model\Element\DeepCopy\UnmarshalMatcher;
 use Pimcore\Model\Element\ElementDescriptor;
 use Pimcore\Model\Element\ElementDumpStateInterface;
@@ -107,9 +113,9 @@ class BlockElement extends AbstractModel implements OwnerAwareFieldInterface, Ca
     protected function renewReferences(): void
     {
         $copier = new DeepCopy();
-        $copier->skipUncloneable(true);
+        $copier->skipUncloneable();
         $copier->addTypeFilter(
-            new \DeepCopy\TypeFilter\ReplaceFilter(
+            new ReplaceFilter(
                 function ($currentValue) {
                     if ($currentValue instanceof ElementDescriptor) {
                         $cacheKey = $currentValue->getCacheKey();
@@ -123,9 +129,7 @@ class BlockElement extends AbstractModel implements OwnerAwareFieldInterface, Ca
                             RuntimeCache::save(true, $cacheKeyRenewed);
                         }
 
-                        $renewedElement = Service::getElementById($currentValue->getType(), $currentValue->getId());
-
-                        return $renewedElement;
+                        return Service::getElementById($currentValue->getType(), $currentValue->getId());
                     }
 
                     return $currentValue;
@@ -134,7 +138,7 @@ class BlockElement extends AbstractModel implements OwnerAwareFieldInterface, Ca
             new UnmarshalMatcher()
         );
 
-        $copier->addFilter(new \DeepCopy\Filter\KeepFilter(), new class() implements \DeepCopy\Matcher\Matcher {
+        $copier->addFilter(new KeepFilter(), new class() implements Matcher {
             /**
              * @param object $object
              * @param string $property
@@ -203,7 +207,7 @@ class BlockElement extends AbstractModel implements OwnerAwareFieldInterface, Ca
         $this->_language = $language;
     }
 
-    public function marshalForCache(): mixed
+    public function marshalForCache(): \BlockElement|array|object
     {
         $this->needsRenewReferences = true;
 
@@ -212,27 +216,23 @@ class BlockElement extends AbstractModel implements OwnerAwareFieldInterface, Ca
             'conversion' => false,
         ];
         $copier = Service::getDeepCopyInstance($this, $context);
-        $copier->addFilter(new SetDumpStateFilter(false), new \DeepCopy\Matcher\PropertyMatcher(ElementDumpStateInterface::class, ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
+        $copier->addFilter(new SetDumpStateFilter(false), new PropertyMatcher(ElementDumpStateInterface::class, ElementDumpStateInterface::DUMP_STATE_PROPERTY_NAME));
 
         $copier->addTypeFilter(
-            new \DeepCopy\TypeFilter\ReplaceFilter(
+            new ReplaceFilter(
                 function ($currentValue) {
                     if ($currentValue instanceof ElementInterface) {
                         $elementType = Service::getElementType($currentValue);
-                        $descriptor = new ElementDescriptor($elementType, $currentValue->getId());
-
-                        return $descriptor;
+                        return new ElementDescriptor($elementType, $currentValue->getId());
                     }
 
                     return $currentValue;
                 }
             ),
-            new \Pimcore\Model\Element\DeepCopy\MarshalMatcher(null, null)
+            new MarshalMatcher(null, null)
         );
         $copier->addFilter(new SetNullFilter(), new PropertyNameMatcher('_owner'));
 
-        $data = $copier->copy($this);
-
-        return $data;
+        return $copier->copy($this);
     }
 }

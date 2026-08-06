@@ -11,14 +11,15 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Twig\Extension;
 
 use Exception;
 use Pimcore\Document;
+use Pimcore\Image;
 use Pimcore\Twig\Extension\Templating\PimcoreUrl;
 use Pimcore\Video;
 use Symfony\Component\Mime\MimeTypes;
@@ -89,7 +90,7 @@ class HelpersExtension extends AbstractExtension
     public function getImageVersionPreview(string $file): string
     {
         $thumbnail = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/image-version-preview-' . uniqid() . '.png';
-        $convert = \Pimcore\Image::getInstance();
+        $convert = Image::getInstance();
         $convert->load($file);
         $convert->contain(500, 500);
         $convert->save($thumbnail, 'png');
@@ -106,7 +107,7 @@ class HelpersExtension extends AbstractExtension
      */
     public function getAssetVersionPreview(string $file): string
     {
-        $dataUri = 'data:'.MimeTypes::getDefault()->guessMimeType($file).';base64,'.base64_encode(file_get_contents($file));
+        $dataUri = 'data:' . MimeTypes::getDefault()->guessMimeType($file) . ';base64,' . base64_encode(file_get_contents($file));
         unlink($file);
 
         return $dataUri;

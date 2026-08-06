@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Element;
@@ -118,7 +118,7 @@ abstract class Dao extends Model\Dao\AbstractDao
         $userIds[] = $currentUserId;
 
         $highestWorkspaceQuery = '
-            SELECT userId,cid,`'. implode('`,`', $columns) .'` FROM users_workspaces_'.$tableSuffix.'
+            SELECT userId,cid,`' . implode('`,`', $columns) . '` FROM users_workspaces_' . $tableSuffix . '
             WHERE cid IN (' . implode(',', $parentIds) . ') AND userId IN (' . implode(',', $userIds) . ')
             ORDER BY LENGTH(cpath) DESC, FIELD(userId, ' . $currentUserId . ') DESC LIMIT 1
         ';
@@ -129,7 +129,7 @@ abstract class Dao extends Model\Dao\AbstractDao
             //if it's the current user, this is the permission that rules them all, no need to check others
             if ($highestWorkspace['userId'] == $currentUserId) {
                 foreach ($columns as $type) {
-                    $permissions[$type] = (int) $highestWorkspace[$type];
+                    $permissions[$type] = (int)$highestWorkspace[$type];
                 }
 
                 if ($permissions['list'] == 0) {
@@ -143,7 +143,7 @@ abstract class Dao extends Model\Dao\AbstractDao
             //we either have role permission for the same object, or it could be any of its parents permission.
 
             $roleWorkspaceSql = '
-             SELECT userId,`'. implode('`,`', $columns) .'` FROM users_workspaces_'.$tableSuffix.'
+             SELECT userId,`' . implode('`,`', $columns) . '` FROM users_workspaces_' . $tableSuffix . '
              WHERE cid = ' . $highestWorkspace['cid'] . ' AND userId IN (' . implode(',', $userIds) . ')
              ORDER BY FIELD(userId, ' . $currentUserId . ') DESC
              ';
@@ -164,7 +164,7 @@ abstract class Dao extends Model\Dao\AbstractDao
 
         //when list=0, we look for any allowed children, so that can make possible to list the path of the folder in between
         //to reach that children by "exceptionally" turning list=0 to list=1
-        if ($permissions['list']==0) {
+        if ($permissions['list'] == 0) {
             $permissions['list'] = $this->checkChildrenForPathTraversal($tableSuffix, $userIds);
         }
 
@@ -179,9 +179,9 @@ abstract class Dao extends Model\Dao\AbstractDao
         $path = $this->model->getId() == 1 ? '/' : $this->model->getRealFullPath() . '/';
 
         $permissionsChildren = $this->db->fetchOne('
-            SELECT list FROM users_workspaces_'.$tableSuffix.' as uw
+            SELECT list FROM users_workspaces_' . $tableSuffix . ' as uw
             WHERE cpath LIKE ? AND userId IN (' . implode(',', $userIds) . ') AND list = 1
-            AND NOT EXISTS( SELECT list FROM users_workspaces_'.$tableSuffix.' WHERE cid = uw.cid AND list = 0 AND userId ='.end($userIds).')
+            AND NOT EXISTS( SELECT list FROM users_workspaces_' . $tableSuffix . ' WHERE cid = uw.cid AND list = 0 AND userId =' . end($userIds) . ')
             LIMIT 1',
             [Helper::escapeLike($path) . '%']);
 

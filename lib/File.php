@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore;
@@ -20,6 +21,7 @@ use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
 use Pimcore;
 use Pimcore\Helper\LongRunningHelper;
+use Pimcore\Tool\Transliteration;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -34,15 +36,13 @@ class File
 
     public static function getValidFilename(string $tmpFilename, ?string $language = null, string $replacement = '-'): string
     {
-        $tmpFilename = \Pimcore\Tool\Transliteration::toASCII($tmpFilename, $language);
+        $tmpFilename = Transliteration::toASCII($tmpFilename, $language);
         $tmpFilename = strtolower($tmpFilename);
         $tmpFilename = preg_replace('/[^a-z0-9\-\.~_]+/', $replacement, $tmpFilename);
 
         // keys shouldn't start with a "." (=hidden file) *nix operating systems
         // keys shouldn't end with a "." - Windows issue: filesystem API trims automatically . at the end of a folder name (no warning ... et al)
-        $tmpFilename = trim($tmpFilename, '. ');
-
-        return $tmpFilename;
+        return trim($tmpFilename, '. ');
     }
 
     public static function putPhpFile(string $path, string $data): void
@@ -79,7 +79,7 @@ class File
     {
         $filePath = sprintf('%s/temp-file-%s.%s',
             PIMCORE_SYSTEM_TEMP_DIRECTORY,
-            uniqid() . '-' .  bin2hex(random_bytes(15)),
+            uniqid() . '-' . bin2hex(random_bytes(15)),
             $fileExtension ?: 'tmp'
         );
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
@@ -49,10 +50,11 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
 
     public function __construct(
         protected StaticPageGenerator $staticPageGenerator,
-        protected DocumentResolver $documentResolver,
-        protected RequestHelper $requestHelper,
-        private Config $config
-    ) {
+        protected DocumentResolver    $documentResolver,
+        protected RequestHelper       $requestHelper,
+        private readonly Config       $config
+    )
+    {
     }
 
     public static function getSubscribedEvents(): array
@@ -100,7 +102,7 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
                     $path = Site::getCurrentSite()->getRootPath();
                 }
             }
-            $filename = $path .  $filename  . '.html';
+            $filename = $path . $filename . '.html';
 
             if ($storage->fileExists($filename)) {
                 $content = $storage->read($filename);
@@ -108,9 +110,9 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
 
                 $reponse = new Response(
                     $content, Response::HTTP_OK, [
-                    'Content-Type' => 'text/html',
-                    'X-Pimcore-Static-Page-Last-Modified' => $date,
-                ]
+                        'Content-Type' => 'text/html',
+                        'X-Pimcore-Static-Page-Last-Modified' => $date,
+                    ]
                 );
 
                 $event->setResponse($reponse);
@@ -165,7 +167,7 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
                     $this->staticPageGenerator->remove($document);
                 }
             } catch (Exception $e) {
-                Logger::error((string) $e);
+                Logger::error((string)$e);
 
                 return;
             }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,13 +11,13 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
 
-use Pimcore\Routing\Loader\AnnotatedRouteControllerLoader;
+use Pimcore\Routing\Loader\AttributeRouteControllerLoader;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -33,11 +34,11 @@ final class RoutingLoaderPass implements CompilerPassInterface
      */
     public function process(ContainerBuilder $container): void
     {
-        if (!$container->hasDefinition('routing.loader.annotation')) {
+        if (!$container->hasDefinition('routing.loader.attribute')) {
             return;
         }
 
-        $definition = $container->getDefinition('routing.loader.annotation');
-        $definition->setClass(AnnotatedRouteControllerLoader::class);
+        $definition = $container->getDefinition('routing.loader.attribute');
+        $definition->setClass(AttributeRouteControllerLoader::class);
     }
 }

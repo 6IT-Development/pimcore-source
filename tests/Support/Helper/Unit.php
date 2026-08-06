@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Tests\Support\Helper;
@@ -20,11 +21,12 @@ namespace Pimcore\Tests\Support\Helper;
 // all public methods declared in helper class will be available in $I
 
 use Codeception\Lib\ModuleContainer;
+use Codeception\Module;
 use Pimcore\Bundle\GlossaryBundle\Installer;
 use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 use Pimcore\Tests\Support\Util\Autoloader;
 
-class Unit extends \Codeception\Module
+class Unit extends Module
 {
     public function __construct(ModuleContainer $moduleContainer, ?array $config = null)
     {

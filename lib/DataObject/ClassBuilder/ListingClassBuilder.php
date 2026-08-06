@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\DataObject\ClassBuilder;
@@ -22,7 +23,8 @@ class ListingClassBuilder implements ListingClassBuilderInterface
 {
     public function __construct(
         protected ListingClassFieldDefinitionBuilderInterface $fieldDefinitionBuilder
-    ) {
+    )
+    {
     }
 
     public function buildListingClass(ClassDefinition $classDefinition): string
@@ -31,33 +33,33 @@ class ListingClassBuilder implements ListingClassBuilderInterface
         $extendListingClass = 'DataObject\\Listing\\Concrete';
         if ($classDefinition->getListingParentClass()) {
             $extendListingClass = $classDefinition->getListingParentClass();
-            $extendListingClass = '\\'.ltrim($extendListingClass, '\\');
+            $extendListingClass = '\\' . ltrim($extendListingClass, '\\');
         }
 
         // create list class
         $cd = '<?php';
 
         $cd .= "\n\n";
-        $cd .= 'namespace Pimcore\\Model\\DataObject\\'.ucfirst($classDefinition->getName()).';';
+        $cd .= 'namespace Pimcore\\Model\\DataObject\\' . ucfirst($classDefinition->getName()) . ';';
         $cd .= "\n\n";
         $cd .= 'use Pimcore\\Model;';
         $cd .= "\n";
         $cd .= 'use Pimcore\\Model\\DataObject;';
         $cd .= "\n\n";
         $cd .= "/**\n";
-        $cd .= ' * @method DataObject\\'.ucfirst($classDefinition->getName())."|false current()\n";
-        $cd .= ' * @method DataObject\\'.ucfirst($classDefinition->getName())."[] load()\n";
-        $cd .= ' * @method DataObject\\'.ucfirst($classDefinition->getName())."[] getData()\n";
-        $cd .= ' * @method DataObject\\'.ucfirst($classDefinition->getName())."[] getObjects()\n";
+        $cd .= ' * @method DataObject\\' . ucfirst($classDefinition->getName()) . "|false current()\n";
+        $cd .= ' * @method DataObject\\' . ucfirst($classDefinition->getName()) . "[] load()\n";
+        $cd .= ' * @method DataObject\\' . ucfirst($classDefinition->getName()) . "[] getData()\n";
+        $cd .= ' * @method DataObject\\' . ucfirst($classDefinition->getName()) . "[] getObjects()\n";
         $cd .= ' */';
         $cd .= "\n\n";
-        $cd .= 'class Listing extends '.$extendListingClass . "\n";
+        $cd .= 'class Listing extends ' . $extendListingClass . "\n";
         $cd .= '{' . "\n";
 
         $cd .= ClassDefinition\Service::buildUseTraitsCode([], $classDefinition->getListingUseTraits());
 
-        $cd .= 'protected $classId = "'. $classDefinition->getId()."\";\n";
-        $cd .= 'protected $className = "'.$classDefinition->getName().'"'.";\n";
+        $cd .= 'protected $classId = "' . $classDefinition->getId() . "\";\n";
+        $cd .= 'protected $className = "' . $classDefinition->getName() . '"' . ";\n";
 
         $cd .= "\n\n";
 

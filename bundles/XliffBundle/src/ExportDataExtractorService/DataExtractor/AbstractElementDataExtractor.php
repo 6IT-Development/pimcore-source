@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\XliffBundle\ExportDataExtractorService\DataExtractor;
@@ -39,14 +40,10 @@ abstract class AbstractElementDataExtractor implements DataExtractorInterface
     {
         $element = $translationItem->getElement();
 
-        if (!$element instanceof ElementInterface) {
-            throw new Exception('only pimcore elements allowed');
-        }
-
         $result = $this
-                    ->createResultInstance($translationItem)
-                    ->setSourceLanguage($sourceLanguage)
-                    ->setTargetLanguages($targetLanguages);
+            ->createResultInstance($translationItem)
+            ->setSourceLanguage($sourceLanguage)
+            ->setTargetLanguages($targetLanguages);
 
         $this->addProperties($element, $result);
 
@@ -60,7 +57,7 @@ abstract class AbstractElementDataExtractor implements DataExtractorInterface
 
     protected function addProperties(ElementInterface $element, AttributeSet $result): void
     {
-        foreach ($element->getProperties() ?: [] as $property) {
+        foreach ($element->getProperties() as $property) {
             if ($this->doExportProperty($property)) {
                 $result->addAttribute(Attribute::TYPE_PROPERTY, $property->getName(), $property->getData());
             }

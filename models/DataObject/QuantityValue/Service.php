@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\DataObject\QuantityValue;
@@ -49,7 +50,7 @@ class Service
                 } elseif (in_array($unitArray['id'], $baseUnitsArray)) {
                     array_unshift($units, $unit);
                 } else {
-                    array_push($units, $unit);
+                    $units[] = $unit;
                 }
             }
             foreach (array_merge($baseUnits, $units) as $unit) {
@@ -90,9 +91,9 @@ class Service
     }
 
     /**
+     * @return array<string, Unit>|null
      * @internal
      *
-     * @return array<string, Unit>|null
      */
     public static function getQuantityValueUnitsTable(): ?array
     {
@@ -125,7 +126,7 @@ class Service
 
             return $table;
         } catch (Exception $e) {
-            Logger::error((string) $e);
+            Logger::error((string)$e);
 
             return null;
         }

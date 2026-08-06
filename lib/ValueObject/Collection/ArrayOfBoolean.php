@@ -11,20 +11,20 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\ValueObject\Collection;
 
 use ValueError;
 
-final class ArrayOfBoolean
+final readonly class ArrayOfBoolean
 {
     /**
      * @throws ValueError
      */
-    public function __construct(private readonly array $value)
+    public function __construct(private array $value)
     {
         $this->validate();
     }

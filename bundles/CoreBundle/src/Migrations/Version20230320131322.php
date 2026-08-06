@@ -11,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\CoreBundle\Migrations;
@@ -25,6 +25,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Localizedfield;
+use Pimcore\Model\DataObject\Objectbrick;
 use Pimcore\Model\DataObject\Objectbrick\Data\AbstractData;
 
 final class Version20230320131322 extends AbstractMigration
@@ -38,7 +39,7 @@ final class Version20230320131322 extends AbstractMigration
     {
         $classDefinitionListing = new Listing();
         foreach ($classDefinitionListing->getClasses() as $classDefinition) {
-            $relations = Db::get()->fetchAllAssociative('SELECT src_id, ownername, fieldname, position FROM object_relations_'.$classDefinition->getId().' WHERE ownertype=\'localizedfield\' AND ownername LIKE \'/objectbrick~%\'');
+            $relations = Db::get()->fetchAllAssociative('SELECT src_id, ownername, fieldname, position FROM object_relations_' . $classDefinition->getId() . ' WHERE ownertype=\'localizedfield\' AND ownername LIKE \'/objectbrick~%\'');
             foreach ($relations as $relationItem) {
                 if (preg_match('/^\/objectbrick~([^\/]+)/', $relationItem['ownername'], $match)) {
                     $object = Concrete::getById($relationItem['src_id']);
@@ -46,9 +47,9 @@ final class Version20230320131322 extends AbstractMigration
                         continue;
                     }
                     $objectBrickContainerField = $match[1];
-                    $brickGetter = 'get'.$objectBrickContainerField;
+                    $brickGetter = 'get' . $objectBrickContainerField;
 
-                    /** @var \Pimcore\Model\DataObject\Objectbrick $brickContainer */
+                    /** @var Objectbrick $brickContainer */
                     $brickContainer = $object->$brickGetter();
 
                     /** @var AbstractData $objectBrick */
@@ -57,8 +58,8 @@ final class Version20230320131322 extends AbstractMigration
                         $localizedFieldDefinition = $brickDefinition->getFieldDefinition('localizedfields');
                         if ($localizedFieldDefinition instanceof Localizedfields) {
                             if ($localizedFieldDefinition->getFieldDefinition($relationItem['fieldname'])) {
-                                $fieldGetter = 'get'.$relationItem['fieldname'];
-                                $fieldSetter = 'set'.$relationItem['fieldname'];
+                                $fieldGetter = 'get' . $relationItem['fieldname'];
+                                $fieldSetter = 'set' . $relationItem['fieldname'];
                                 $objectBrick->$fieldSetter($objectBrick->$fieldGetter($relationItem['position']), $relationItem['position']);
                                 $objectBrick->markFieldDirty('localizedfields');
                                 $objectBrick->markFieldDirty($relationItem['fieldname']);
@@ -71,7 +72,7 @@ final class Version20230320131322 extends AbstractMigration
                                 $localizedFields->markLanguageAsDirty($relationItem['position']);
                                 $localizedFields->markFieldDirty($relationItem['fieldname']);
 
-                                Db::get()->executeStatement('DELETE FROM object_relations_'.$classDefinition->getId().' WHERE src_id=? AND fieldname=? AND ownertype=\'localizedfield\' AND ownername LIKE \'/objectbrick~%\'', [$object->getId(), $relationItem['fieldname']]);
+                                Db::get()->executeStatement('DELETE FROM object_relations_' . $classDefinition->getId() . ' WHERE src_id=? AND fieldname=? AND ownertype=\'localizedfield\' AND ownername LIKE \'/objectbrick~%\'', [$object->getId(), $relationItem['fieldname']]);
 
                                 $objectBrick->save($object, [
                                     'isUntouchable' => false,
@@ -89,7 +90,7 @@ final class Version20230320131322 extends AbstractMigration
                         }
                     }
 
-                    Cache::remove('object_'.$object->getId());
+                    Cache::remove('object_' . $object->getId());
                 }
             }
         }

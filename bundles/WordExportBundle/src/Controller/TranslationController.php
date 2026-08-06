@@ -9,8 +9,8 @@
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Bundle\WordExportBundle\Controller;
@@ -34,15 +34,18 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route("/translation")]
+#[Route('/translation')]
 class TranslationController extends UserAwareController
 {
     use JsonHelperTrait;
 
-    private const PERMISSION = 'word_export';
+    private const string PERMISSION = 'word_export';
 
-    #[Route("/word-export", name: "pimcore_bundle_wordexport_translation_wordexport", methods: ["POST"])]
-    public function wordExportAction(Request $request, Filesystem $filesystem): JsonResponse
+    #[Route('/word-export', name: 'pimcore_bundle_wordexport_translation_wordexport', methods: [Request::METHOD_POST])]
+    public function wordExportAction(
+        Request    $request,
+        Filesystem $filesystem
+    ): JsonResponse
     {
         $this->checkPermission(self::PERMISSION);
         ini_set('display_errors', 'off');
@@ -68,8 +71,8 @@ class TranslationController extends UserAwareController
 
                 if ($element instanceof ElementInterface) {
                     $output .= '<h1 class="element-headline">' . ucfirst(
-                        $element->getType()
-                    ) . ' - ' . $element->getRealFullPath() . ' (ID: ' . $element->getId() . ')</h1>';
+                            $element->getType()
+                        ) . ' - ' . $element->getRealFullPath() . ' (ID: ' . $element->getId() . ')</h1>';
                 }
 
                 if ($element instanceof PageSnippet) {
@@ -136,9 +139,7 @@ class TranslationController extends UserAwareController
                         $string = str_replace("\r", '', $string);
                         $string = str_replace("\t", '', $string);
                         $string = preg_replace('/&[a-zA-Z0-9]+;/', '', $string); // remove html entities
-                        $string = preg_replace('#[ ]+#', '', $string);
-
-                        return $string;
+                        return preg_replace('#[ ]+#', '', $string);
                     };
 
                     // remove empty tags (where it matters)
@@ -242,12 +243,12 @@ class TranslationController extends UserAwareController
         ]);
     }
 
-    #[Route("/word-export-download", name: "pimcore_bundle_wordexport_translation_wordexportdownload", methods: ["GET"])]
+    #[Route('/word-export-download', name: 'pimcore_bundle_wordexport_translation_wordexportdownload', methods: [Request::METHOD_GET])]
     public function wordExportDownloadAction(Request $request): Response
     {
         $this->checkPermission(self::PERMISSION);
         $id = $this->sanitzeExportId($request->query->getString('id'));
-        $exportFile = $this->getExportFilePath($id, true);
+        $exportFile = $this->getExportFilePath($id);
 
         // no conversion, output html file, works fine with MS Word and LibreOffice
         $content = file_get_contents($exportFile);
@@ -255,7 +256,7 @@ class TranslationController extends UserAwareController
 
         // replace <script> and <link>
         $content = preg_replace('/<link[^>]+>/im', '$1', $content);
-        $content = preg_replace("/<script[^>]+>(.*)?<\/script>/im", '$1', $content);
+        $content = preg_replace('/<script[^>]+>(.*)?<\/script>/im', '$1', $content);
 
         $content =
             "<html>\n" .

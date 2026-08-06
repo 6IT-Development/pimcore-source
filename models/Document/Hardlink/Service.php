@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,15 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Document\Hardlink;
 
 use Exception;
 use Pimcore\Model\Document;
-use Pimcore\Model\Document\Hardlink\Wrapper\Hardlink;
 use Pimcore\Tool\Serialize;
 
 class Service
@@ -52,27 +52,25 @@ class Service
     }
 
     /**
+     * @return Document\Hardlink\Wrapper\WrapperInterface
      * @internal
      *
-     * @return Document\Hardlink\Wrapper\WrapperInterface
      */
     public static function upperCastDocument(Document $doc): Wrapper\WrapperInterface
     {
         $to_class = 'Pimcore\\Model\\Document\\Hardlink\\Wrapper\\' . ucfirst($doc->getType());
 
-        $old_serialized_prefix = 'O:'.strlen(get_class($doc));
-        $old_serialized_prefix .= ':"'.get_class($doc).'":';
+        $old_serialized_prefix = 'O:' . strlen(get_class($doc));
+        $old_serialized_prefix .= ':"' . get_class($doc) . '":';
 
         // unset eventually existing children, because of performance reasons when serializing the document
         $doc->setChildren(null);
 
         $old_serialized_object = Serialize::serialize($doc);
-        $new_serialized_object = 'O:'.strlen($to_class).':"'.$to_class . '":';
+        $new_serialized_object = 'O:' . strlen($to_class) . ':"' . $to_class . '":';
         $new_serialized_object .= substr($old_serialized_object, strlen($old_serialized_prefix));
 
-        $document = Serialize::unserialize($new_serialized_object);
-
-        return $document;
+        return Serialize::unserialize($new_serialized_object);
     }
 
     /**
@@ -93,7 +91,7 @@ class Service
                 $hardLinkedDocument = self::wrap($hardLinkedDocument);
                 $hardLinkedDocument->setHardLinkSource($hardlink);
 
-                $_path = $path != '/' ? $_path = dirname($path) : $path;
+                $_path = $path != '/' ? dirname($path) : $path;
                 $_path = str_replace('\\', '/', $_path); // windows patch
                 $_path .= $_path != '/' ? '/' : '';
 
@@ -134,7 +132,7 @@ class Service
                     $hardLinkedDocument = self::wrap($hardLinkedDocument);
                     $hardLinkedDocument->setHardLinkSource($hardlink);
 
-                    $_path = $path != '/' ? $_path = dirname($p) : $p;
+                    $_path = $path != '/' ? dirname($p) : $p;
                     $_path = str_replace('\\', '/', $_path); // windows patch
                     $_path .= $_path != '/' ? '/' : '';
 

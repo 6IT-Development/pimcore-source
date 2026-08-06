@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,14 +11,14 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\Asset\Video\Thumbnail\Config;
 
-use Pimcore\Model;
 use Pimcore\Model\AbstractModel;
+use Pimcore\Model\Asset\Video\Thumbnail\Config;
 use Pimcore\Model\Listing\CallableFilterListingInterface;
 use Pimcore\Model\Listing\CallableOrderListingInterface;
 use Pimcore\Model\Listing\Traits\FilterListingTrait;
@@ -34,12 +35,12 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     /**
      * @internal
      *
-     * @var \Pimcore\Model\Asset\Video\Thumbnail\Config[]|null
+     * @var Config[]|null
      */
     protected ?array $thumbnails = null;
 
     /**
-     * @return \Pimcore\Model\Asset\Video\Thumbnail\Config[]
+     * @return Config[]
      */
     public function getThumbnails(): array
     {
@@ -51,7 +52,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     }
 
     /**
-     * @param \Pimcore\Model\Asset\Video\Thumbnail\Config[]|null $thumbnails
+     * @param Config[]|null $thumbnails
      *
      * @return $this
      */
@@ -65,7 +66,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     /**
      * Alias of getThumbnails()
      *
-     * @return Model\Asset\Video\Thumbnail\Config[]
+     * @return Config[]
      */
     public function load(): array
     {

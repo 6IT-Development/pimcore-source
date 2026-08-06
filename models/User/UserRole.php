@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -10,8 +11,8 @@ declare(strict_types=1);
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
 namespace Pimcore\Model\User;
@@ -110,9 +111,9 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
     }
 
     /**
+     * @return $this
      * @internal
      *
-     * @return $this
      */
     public function setAllAclToFalse(): static
     {
@@ -125,7 +126,7 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
      *
      * @return $this
      */
-    public function setPermission(string $permissionName, bool $value = null): static
+    public function setPermission(string $permissionName, ?bool $value = null): static
     {
         if (!in_array($permissionName, $this->permissions) && $value) {
             $this->permissions[] = $permissionName;
@@ -157,9 +158,9 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
     /**
      * Generates the permission list required for frontend display
      *
-     * @internal
-     *
      * @return array<string, bool>
+     *
+     * @internal
      *
      * @todo: $permissionInfo should be array, but is declared as null
      */
