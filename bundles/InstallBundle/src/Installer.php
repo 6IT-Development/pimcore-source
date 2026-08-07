@@ -37,7 +37,6 @@ use Pimcore\Bundle\InstallBundle\SystemConfig\ConfigWriter;
 use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
 use Pimcore\Bundle\SimpleBackendSearchBundle\PimcoreSimpleBackendSearchBundle;
 use Pimcore\Bundle\StaticRoutesBundle\PimcoreStaticRoutesBundle;
-use Pimcore\Bundle\TinymceBundle\PimcoreTinymceBundle;
 use Pimcore\Bundle\UuidBundle\PimcoreUuidBundle;
 use Pimcore\Bundle\WordExportBundle\PimcoreWordExportBundle;
 use Pimcore\Bundle\XliffBundle\PimcoreXliffBundle;
@@ -66,7 +65,19 @@ use Throwable;
  */
 class Installer
 {
-    public const array RECOMMENDED_BUNDLES = ['PimcoreSimpleBackendSearchBundle'];
+    public const array RECOMMENDED_BUNDLES = [
+        'PimcoreSimpleBackendSearchBundle',
+        'PimcoreApplicationLoggerBundle',
+        'PimcoreCustomReportsBundle',
+        'PimcoreGlossaryBundle',
+        'PimcoreSeoBundle',
+        'PimcoreSimpleBackendSearchBundle',
+        'PimcoreStaticRoutesBundle',
+        'PimcoreUuidBundle',
+        'PimcoreWordExportBundle',
+        'PimcoreXliffBundle',
+        'PimcoreGenericExecutionEngineBundle',
+    ];
 
     public const array INSTALLABLE_BUNDLES = [
         'PimcoreApplicationLoggerBundle' => PimcoreApplicationLoggerBundle::class,
@@ -75,7 +86,6 @@ class Installer
         'PimcoreSeoBundle' => PimcoreSeoBundle::class,
         'PimcoreSimpleBackendSearchBundle' => PimcoreSimpleBackendSearchBundle::class,
         'PimcoreStaticRoutesBundle' => PimcoreStaticRoutesBundle::class,
-        'PimcoreTinymceBundle' => PimcoreTinymceBundle::class,
         'PimcoreUuidBundle' => PimcoreUuidBundle::class,
         'PimcoreWordExportBundle' => PimcoreWordExportBundle::class,
         'PimcoreXliffBundle' => PimcoreXliffBundle::class,
