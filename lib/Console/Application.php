@@ -23,6 +23,7 @@ use Pimcore\Event\System\ConsoleEvent;
 use Pimcore\Event\SystemEvents;
 use Pimcore\Migrations\FilteredMigrationsRepository;
 use Pimcore\Migrations\FilteredTableMetadataStorage;
+use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
 use Pimcore\Version;
 use RuntimeException;
@@ -69,7 +70,7 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
             $input = $event->getInput();
 
             // skip if maintenance mode is on and the flag is not set
-            if ($maintenanceModeHelper->isActive() && !$this->getInputOption($input, 'ignore-maintenance-mode')) {
+            if (($maintenanceModeHelper->isActive() || Admin::isInMaintenanceMode()) && !$this->getInputOption($input, 'ignore-maintenance-mode')) {
                 throw new RuntimeException('In maintenance mode - set the flag --ignore-maintenance-mode to force execution!');
             }
 
@@ -91,7 +92,7 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
                 $maintenanceModeHelper->activate($maintenanceModeId);
             }
 
-            if ($this->isDoctrineCommand($event->getCommand()) && $prefix = $this->getInputOption($input, 'prefix')) {
+            if ($event->getCommand() && $this->isDoctrineCommand($event->getCommand()) && $prefix = $this->getInputOption($input, 'prefix')) {
                 $container->get(FilteredMigrationsRepository::class)->setPrefix($prefix);
                 $container->get(FilteredTableMetadataStorage::class)->setPrefix($prefix);
             }
@@ -100,6 +101,11 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
         $dispatcher->addListener(ConsoleEvents::TERMINATE, function (ConsoleTerminateEvent $event) use ($maintenanceModeHelper) {
             if ($this->getInputOption($event->getInput(), 'maintenance-mode')) {
                 $event->getOutput()->writeln('Deactivating maintenance mode...');
+
+                //BC Layer for Admin::activateMaintenanceMode, if the maintenance file already exists
+                if (Admin::isInMaintenanceMode()) {
+                    Admin::deactivateMaintenanceMode();
+                }
 
                 if ($maintenanceModeHelper->isActive()) {
                     $maintenanceModeHelper->deactivate();
@@ -119,7 +125,7 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
 
     private function isDoctrineCommand(Command $command): bool
     {
-        return str_starts_with($command->getName(), 'doctrine:') || $command instanceof DoctrineCommand;
+        return str_starts_with((string) $command->getName(), 'doctrine:') || $command instanceof DoctrineCommand;
     }
 
     public function add(Command $command): ?Command

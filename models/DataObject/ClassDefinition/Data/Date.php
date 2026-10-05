@@ -348,7 +348,7 @@ class Date extends Data implements ResourcePersistenceAwareInterface, QueryResou
         return null;
     }
 
-    public function denormalize(mixed $value, array $params = []): ?\Carbon
+    public function denormalize(mixed $value, array $params = []): ?Carbon
     {
         if ($value !== null) {
             return $this->getDateFromTimestamp($value);

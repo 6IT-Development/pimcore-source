@@ -25,7 +25,7 @@ use Pimcore\Marshaller\MarshallerInterface;
  */
 class Date implements MarshallerInterface
 {
-    public function marshal(mixed $value, array $params = []): ?\Carbon
+    public function marshal(mixed $value, array $params = []): ?Carbon
     {
         if ($value !== null) {
             $result = new Carbon();

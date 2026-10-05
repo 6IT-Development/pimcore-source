@@ -71,7 +71,6 @@ class Installer
         'PimcoreCustomReportsBundle',
         'PimcoreGlossaryBundle',
         'PimcoreSeoBundle',
-        'PimcoreSimpleBackendSearchBundle',
         'PimcoreStaticRoutesBundle',
         'PimcoreUuidBundle',
         'PimcoreWordExportBundle',

@@ -39,7 +39,7 @@ class Date extends Model\Document\Editable implements EditmodeDataInterface
         return 'date';
     }
 
-    public function getData(): ?\Carbon
+    public function getData(): ?Carbon
     {
         return $this->date;
     }

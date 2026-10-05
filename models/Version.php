@@ -191,7 +191,7 @@ final class Version extends AbstractModel
         $this->dispatchEvent(new VersionEvent($this), VersionEvents::POST_SAVE);
     }
 
-    private function marshalData(ElementInterface $data): array|\ElementInterface|object
+    private function marshalData(ElementInterface $data): ElementInterface
     {
         $context = [
             'source' => __METHOD__,
@@ -220,7 +220,7 @@ final class Version extends AbstractModel
         return $copier->copy($data);
     }
 
-    private function unmarshalData(ElementInterface $data): array|\ElementInterface|object
+    private function unmarshalData(ElementInterface $data): ElementInterface
     {
         $context = [
             'source' => __METHOD__,

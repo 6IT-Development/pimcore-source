@@ -35,7 +35,7 @@ class DataObject extends Data
         return null;
     }
 
-    public function denormalize(mixed $value, array $params = []): \Pimcore\Model\Document|\Pimcore\Model\Asset|null|\AbstractObject
+    public function denormalize(mixed $value, array $params = []): \Pimcore\Model\Document|\Pimcore\Model\Asset|AbstractObject|null
     {
         $element = null;
         if (is_numeric($value)) {

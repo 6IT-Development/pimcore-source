@@ -482,11 +482,11 @@ class Container implements RecursiveIterator, Countable
     }
 
     /**
-     * @return \Page
+     * @return Page
      *
      * @throws Exception
      */
-    public function current(): \Page
+    public function current(): Page
     {
         $this->_sort();
         $hash = key($this->_index);
