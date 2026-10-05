@@ -17,7 +17,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Model;
 
-use Pimcore\Bundle\AdminBundle\Perspective\Config;
+use Pimcore\Config;
+use Pimcore\Config\LocationAwareConfigRepository;
 use Pimcore\File;
 use Pimcore\Helper\TemporaryFileHelperTrait;
 use Pimcore\Image;
@@ -536,9 +537,8 @@ final class User extends User\UserRole implements UserInterface
             }
             $this->mergedPerspectives = array_values($this->mergedPerspectives);
             if (!$this->mergedPerspectives) {
-                // $perspectives = \Pimcore\Config::getAvailablePerspectives($this);
-                $allPerspectives = Config::get();
-                $this->mergedPerspectives = array_keys($allPerspectives);
+                // nothing assigned: every perspective is allowed
+                $this->mergedPerspectives = self::getDefinedPerspectiveNames();
             }
         }
 
@@ -552,15 +552,30 @@ final class User extends User\UserRole implements UserInterface
      */
     public function getFirstAllowedPerspective(): string
     {
-        $perspectives = $this->getMergedPerspectives();
-        if (!empty($perspectives)) {
-            return $perspectives[0];
-        } else {
-            // all perspectives are allowed
-            $perspectives = Config::getAvailablePerspectives($this);
+        return $this->getMergedPerspectives()[0] ?? 'default';
+    }
 
-            return $perspectives[0]['name'];
-        }
+    /**
+     * Names of the defined perspectives (pimcore.perspectives.definitions), or "default" when none
+     * is defined - the admin UIs fall back to a built-in perspective of that name then.
+     *
+     * Reads the config directly instead of through an admin UI bundle, so permission checks work
+     * with any admin installed.
+     *
+     * @return string[]
+     */
+    private static function getDefinedPerspectiveNames(): array
+    {
+        $config = Config::getSystemConfiguration() ?? [];
+        $repository = new LocationAwareConfigRepository(
+            $config['perspectives']['definitions'] ?? [],
+            'pimcore_perspectives',
+            $config['config_location']['perspectives'] ?? []
+        );
+
+        $names = array_map('strval', $repository->fetchAllKeys());
+
+        return $names ?: ['default'];
     }
 
     /**
