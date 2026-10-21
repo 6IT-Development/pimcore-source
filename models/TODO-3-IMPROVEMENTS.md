@@ -8,15 +8,21 @@ Video, Video/**, Document, Document/**, MetaData/**, WebDAV/**, Enum, Archive/Au
 there (`lib/Messenger/Handler/ElementDependenciesHandler.php`, `models/Element/AbstractElement.php::getDependencies()`,
 the dependency helpers in `models/Element/Service.php:163-263`), the `dependencies` schema
 (`bundles/InstallBundle/dump/install.sql:63-73`) and `tests/Model/Element/DependenciesTest.php`
+**(4)** `models/Translation.php` and `models/Translation/**` (Dao, Listing, Listing/Dao), plus the direct consumers where
+a defect originates in the model interplay (`lib/Translation/TranslationEntriesDumper.php`,
+`lib/Translation/Translator.php::lazyInitialize()` / `checkForEmptyTranslation()` (`:138-298`),
+`models/DataObject/QuantityValue/Service.php::generateDefinitionJson()` (`:66-90`)), the `translations_messages` schema
+(`bundles/InstallBundle/dump/install.sql:432-444`) and `tests/Unit/Translation/TranslatorTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
 
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
-**D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50).
+**D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
+Scope 4 in **H** Translation (I-51–I-63).
 
 ---
 
@@ -533,3 +539,180 @@ forced reload. Add cases for:
 - `getDependencies()` on an unsaved element and after a save without forced reload (B-99, B-100);
 - `limit` without `offset`, and stable paging with ties (B-101, B-102);
 - the filter helpers returning the list key when nothing matches (B-105).
+
+---
+
+## H – Translation (Scope 4)
+
+### [ ] I-51 – Strictness and native types
+
+- Add `declare(strict_types=1)` to `models/Translation/Dao.php` and `Translation/Listing/Dao.php`. Before that, cast the
+  DB values explicitly in hydration (`(int)` dates, `(string)` text, see C-19 / B-109).
+- `Translation::$translations` is `string[]` only in the docblock. Use `array<string, string>`, and validate in
+  `setTranslations()` (today any value, including `null` and arrays, can be stored and saved).
+- `protected ?string $type = 'simple'` with `getType(): string` and `setType(?string)`: make it non-nullable
+  (`TranslationType`, I-52). `setCreationDate(int)` / `setModificationDate(int)` vs `?int` getters: make the setters
+  nullable or the properties non-nullable with a default.
+- Fluent setters are typed `: Translation` with `@return $this`. Use `: static`. `setDomain()`, `setType()`,
+  `setUserOwner()`, `setUserModification()` return `void` – the API is inconsistent; pick one style.
+- `Translation` is `final`, so `protected` members can be `private`.
+- `Listing\Dao::getQueryBuilder(...$columns)` → `getQueryBuilder(string ...$columns)`. `getByKey(?array $languages)` →
+  `@param list<string>|null`. `getAvailableLanguages()` / `getAvailableDomains()` → `@return list<string>`.
+- `/** @var string */` on the typed `public const string TABLE_PREFIX` (`Dao.php:35-38`) is redundant.
+- `Listing::getTranslations(): array` returns `getData(): ?array`; add the `@return Translation[]` guarantee or a
+  `?? []`.
+
+### [ ] I-52 – `TranslationType` enum and one domain validator
+
+- `'simple'` (and "everything else is ICU") is hard-coded in `Translation.php:65`, `:86`, `Translator.php:172`. Add
+  `enum TranslationType: string { case Simple = 'simple'; case Custom = 'custom'; }` (check the admin bundle for the real
+  second value first). `setType(TranslationType|string)` for BC, validated with `TranslationType::from()` (fixes the
+  type part of B-110).
+- Domain validation exists in three variants (`Listing::setDomain()`, `Translator::lazyInitialize()`, none in
+  `Translation`). Add one `TranslationDomain` check (config list + identifier pattern, C-21), used by all entry points,
+  and memoised (I-56).
+- `DOMAIN_DEFAULT` / `DOMAIN_ADMIN` and the hard-coded `'messages'` in `Translator.php:276`: use the constant.
+
+### [ ] I-53 – API naming and deprecations (PHP 8.4 `#[\Deprecated]`)
+
+- `IsAValidLanguage()` → `isValidLanguage()`; `isAValidDomain()` → `isValidDomain()`. Keep the old names as
+  `#[\Deprecated(since: '…')]` aliases (PHP 8.4 attribute; triggers `E_USER_DEPRECATED` natively).
+- `setDate()` is only used by the dead legacy branch in `Listing\Dao::getAllTranslations()` (B-109). Deprecate.
+- `Dao::createOrUpdateTable()` never updates → `createTableIfNotExists()` (and move it out of `save()`, B-112).
+- `getByKey()` mixes three jobs: find, create-if-missing, and "fallback to the key" presentation (C-18). Split into
+  `find(string $key, string $domain, ?array $languages = null): ?self`, `findOrCreate(...)`, and let
+  `getByKeyLocalized()` handle the key fallback. Keep `getByKey()` as a deprecated wrapper.
+- The `translations_` prefix is hard-coded in `Dao.php:157`, `:161`, `:183` and `Listing.php:72`; use `TABLE_PREFIX`.
+
+### [ ] I-54 – Runtime caching through a service instead of `RuntimeCache` + statics
+
+- The per-request translation cache (`RuntimeCache`, B-107), the save queue (`TranslationEntriesDumper::$translations`,
+  static) and the Translator's `$initializedCatalogues` (B-124) are three separate pieces of process state with no reset.
+  Put them in one `TranslationRepository` service that implements `ResetInterface` (`kernel.reset`). It clears the
+  cache on `save()` / `delete()` and returns immutable values or clones.
+- Make the dumper queue an instance property of the (shared) dumper service instead of a static array.
+
+### [ ] I-55 – `Dao::save()` simplification
+
+- One `INSERT … VALUES (…), (…) ON DUPLICATE KEY UPDATE text = VALUES(text), …` for all **changed** languages, inside
+  `$this->db->transactional()`. Do not update `creationDate` / `userOwner` (B-109). Track dirty languages in the model
+  (`addTranslation()` marks the language dirty).
+- Move the editor permission check (C-20, B-111) out of the DAO into the model or a security voter, and throw on
+  violation. The DAO should not call `User::getById()`.
+- Move the HTML sanitising into the model, **before** `PRE_SAVE`, so listeners see the final text. Today the DAO
+  mutates the model in the middle of the save (`Dao.php:107-110`), and only for texts that contain tags.
+- `Logger::warning(sprintf(...))` with `@phpstan-ignore-line` → PSR-3 placeholders and a typed `$user`.
+- `Helper::upsert()` (insert, catch duplicate, update) costs two round trips per existing row. A real upsert costs one.
+
+### [ ] I-56 – Efficiency
+
+- `isAValidDomain()` runs `SELECT * FROM translations_<domain> LIMIT 1` on **every** call. The Translator calls it for
+  every missing key on every request (`Translator.php:240`), `Listing::setDomain()` for every listing. Memoise per
+  request (I-54), and use `SELECT 1`.
+- `Listing\Dao::load()` runs one `getByKey()` query **per key** (N+1). `getAllTranslations()` already loads everything
+  with one query and groups in PHP. Do the same for the page of keys: one query for the keys, one
+  `WHERE key IN (:keys) AND language IN (:languages)` for the texts.
+- `getCount()` loads the list twice (B-118).
+- `cleanup()`: the correlated subqueries are O(n²). Use
+  `SELECT key FROM t GROUP BY key HAVING SUM(COALESCE(text, '') <> '') = 0`, then delete in chunks with
+  `ArrayParameterType::STRING`.
+- CSV import: every `$t->save()` calls `clearDependentCache()` (`Cache::clearTags()`) – 5000 rows = 5000 tag clears plus
+  cache stampedes on the frontend. Clear once at the end (the method already does), and skip it inside the loop.
+- `getByKeyLocalized()` loads all languages of the key to return one. Pass `[$language]`.
+- `Admin::determineCsvDialect()` (`lib/Tool/Admin.php:104-106`) calls `file($file)` **ten times** to build the sample
+  (helper outside scope, called by the import).
+
+### [ ] I-57 – CSV import as a service
+
+- Move `importTranslationsFromFile()` (110 lines, 7 nesting levels, `@internal`) to a
+  `Pimcore\Translation\Import\CsvTranslationImporter` service. Return a typed result
+  (`final readonly class TranslationImportResult { public function __construct(public int $imported, public array $conflicts, public array $skipped) {} }`)
+  instead of the untyped `$delta` array.
+- Use `league/csv` (already a dependency, `^9.11`, used for `EscapeFormula`) with `Reader::createFromPath()`, header
+  offset 0 and `getRecords()`. That streams the file, removes the BOM (`skipInputBOM()`), maps columns to the header,
+  and replaces the temp-file copies and the manual `array_slice` / `for` loop.
+- PHP 8.4: `mb_trim($value, "\u{FEFF}\"")` instead of the byte-wise `trim()` with an invisible BOM in the source
+  (B-116).
+- Guard clauses instead of `if (is_readable) { … if (count > 1) { … } else throw } else throw`.
+- Use `===` / `!==` (B-116). Validate the header (`key` column required, unknown language columns reported).
+- Wrap the import in a transaction or batch it (e.g. 500 keys per transaction) so a failure does not leave half a file
+  imported.
+
+### [ ] I-58 – Listing modernisation and DBAL 4 readiness
+
+- Apply the `languages` filter in SQL (`language IN (:languages)`), so count and page agree (B-118).
+- `$queryBuilder->executeQuery()->fetchAllAssociative()` instead of
+  `fetchAllAssociative($queryBuilder->getSql(), getParameters(), getParameterTypes())` (`Listing/Dao.php:69`, `:104`,
+  `:116`).
+- `sprintf('SELECT COUNT(*) … FROM (%s) AS a', $queryBuilder)` relies on `QueryBuilder::__toString()`; use
+  `getSQL()` explicitly. `QueryBuilderHelperTrait::prepareQueryBuilderForTotalCount()` (shared) uses `getQueryPart()` /
+  `resetQueryParts()`, which DBAL 4 removes; the Translation listing does not use it, so keep it that way.
+- `Dao::getByKey()` builds two SQL strings for `languages` / no `languages`, but `Translation::getByKey()` always passes
+  an array. Drop the `null` branch, and avoid passing an unused `languages` parameter to DBAL.
+- `Dao::delete()` passes `quoteIdentifier('key')` as the criteria key. Fine in DBAL 3/4, but document it (or use
+  `executeStatement('DELETE FROM … WHERE `key` = ?', [$key])`).
+- Remove `$cacheLimit` / `isCacheable()` or use them (B-117).
+
+### [ ] I-59 – Symfony 7.4: dependency injection instead of the service locator
+
+- `Translation::getTranslationSanitizer()` (`Pimcore::getContainer()->get(...)`), `getByKeyLocalized()`
+  (`LocaleServiceInterface`, `Admin::getCurrentUser()`, `authenticateSession()`), `Dao::save()` (`User`, `Admin`) all pull
+  services from the container. The sanitizer is also stored on the model and ends up in the cache (B-117).
+- With the service from I-54, inject `HtmlSanitizerInterface` (`#[Autowire(service: Text::PIMCORE_TRANSLATION_SANITIZER_ID)]`),
+  `LocaleServiceInterface`, `Security` and the DBAL connection. The model stays a plain data object; keep the static
+  methods as thin deprecated wrappers.
+- `Translator` / dumper: implement `ResetInterface` (B-124, B-115).
+
+### [ ] I-60 – Docblocks and readability
+
+- Empty or broken docblocks: `Translation.php:204-208` (`@internal` after `@return` with an empty line), `:241-245`;
+  `Dao.php:45-49`, `:135-138`, `:151-154`, `:170-174`; `Listing.php:24-33`, `:43-46`; `Listing/Dao.php:162-165`.
+- Wrong or outdated texts: `Dao::getAvailableLanguages()` "a array"; comment "make" → "made" (`Translation.php:73`);
+  `TranslationEvent` constructor says "AssetEvent constructor" and mentions a "versionNote"
+  (`lib/Event/Model/TranslationEvent.php:30-34`); "Imports translations from a csv file … an Pimcore".
+- `Translation::` and `self::` are mixed inside the class (`Translation.php:96`, `:260`, `:392`, `:444`, `:487`). Use
+  `self::`. `$this->model::getRegisteredDomains()` (`Dao.php:178`) → `Translation::getRegisteredDomains()`.
+- One-letter / cryptic names: `$t`, `$rd`, `$l`, `$d`, `$transObj`, `$idOriginal`.
+- `Dao::getByKey()`: `if (!empty($data)) { … } else { throw }` → guard clause; set key-level fields once, outside the
+  loop (B-109).
+- `getRegisteredDomains()` indexes `['domains']` without a fallback.
+- `importTranslationsFromFile()` takes an untyped `stdClass $dialect`. Use a small readonly `CsvDialect` value object.
+
+### [ ] I-61 – Events and model lifecycle
+
+- `save()` and `delete()` clear the cache at different points relative to the `POST_*` event (B-113). Use one order.
+- Add events (or one bulk event) for `Listing::cleanup()` and the import (B-122), so integrations can react.
+- `PRE_SAVE` listeners cannot cancel cleanly. Document "throw to cancel", or add a `stopPropagation`-based veto.
+- Keep the recursion guard state (`RecursionBlockingEventDispatchHelperTrait`) out of serialised model data (`__serialize()`
+  or a `WeakMap` in the dispatcher helper), see B-117 / B-125.
+
+### [ ] I-62 – Schema and table lifecycle
+
+- One schema definition for domain tables, used by the installer, the migrations and the lazy creation (today
+  `install.sql:432-444` and `Dao.php:199-210` differ). Create tables for **all configured domains** (incl. `admin`) at
+  install time, in a migration, and through a console command (`pimcore:translations:create-domain-tables`); remove DDL
+  from `save()` (B-112, B-120).
+- `text` nullable → after `UPDATE … SET text = '' WHERE text IS NULL`, make it `NOT NULL` (C-19). `creationDate` /
+  `modificationDate` likewise (B-109).
+- `language` uses the table's default collation (case-insensitive) while `key` is `utf8mb4_bin`. `de` and `DE` are the
+  same PK. Use `ascii_bin` or `utf8mb4_bin` for `language`.
+- `type varchar(10)` → `ENUM` or a check constraint that matches `TranslationType` (I-52).
+
+### [ ] I-63 – Tests
+
+`tests/Unit/Translation/TranslatorTest.php` covers basic translation, parameters, plurals, case sensitivity, a list load,
+cache invalidation on save and sanitising. There is no model-level test for `Translation`, its DAO or the listing.
+Add cases for:
+- `getByKeyLocalized(…, create: true, returnIdIfEmpty: true)` followed by `TranslationEntriesDumper::dumpToDb()` – the stored
+  text must be `''` (C-18);
+- a row with `text = NULL` / `creationDate = NULL` in the catalogue build, `getByKey()` and `getAllTranslations()` (C-19, B-109);
+- `save()` as a user with view-only languages (C-20) and with restricted edit languages (B-111);
+- a domain value that is not registered / contains a backtick (C-21);
+- auto-create for a key that exists in other languages: the other languages must be unchanged (C-22);
+- `getByKey()` with and without `$returnIdIfEmpty` in the same request, and after `delete()` (B-107, B-113);
+- the same key missing in two domains in one request (B-115);
+- import: missing `key` column, `"1"` → `"1.0"`, `"0"`, two imports with different files (B-116);
+- two listings with the same `setCondition()` SQL and different values, and with different `languages` (B-117);
+- `count()` before and after `load()`, and `setOrderKey('creationDate')` (B-118, B-119);
+- `getAvailableLanguages()` under `ONLY_FULL_GROUP_BY` (B-121); `cleanup()` followed by a cached listing (B-122);
+- a `PRE_SAVE` listener that throws once, followed by a second save (B-125).

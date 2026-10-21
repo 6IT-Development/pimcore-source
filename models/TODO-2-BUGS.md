@@ -10,16 +10,21 @@ and `tests/Model/WebsiteSetting/WebsiteSettingTest.php`
 there (`lib/Messenger/Handler/ElementDependenciesHandler.php`, `models/Element/AbstractElement.php::getDependencies()`,
 the dependency helpers in `models/Element/Service.php:163-263`), the `dependencies` schema
 (`bundles/InstallBundle/dump/install.sql:63-73`) and `tests/Model/Element/DependenciesTest.php`
+**(4)** `models/Translation.php` and `models/Translation/**` (Dao, Listing, Listing/Dao), plus the direct consumers where
+a defect originates in the model interplay (`lib/Translation/TranslationEntriesDumper.php`,
+`lib/Translation/Translator.php::lazyInitialize()` / `checkForEmptyTranslation()` (`:138-298`),
+`models/DataObject/QuantityValue/Service.php::generateDefinitionJson()` (`:66-90`)), the `translations_messages` schema
+(`bundles/InstallBundle/dump/install.sql:432-444`) and `tests/Unit/Translation/TranslatorTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
-**WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106.
+**WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125.
 
 ---
 
@@ -1160,3 +1165,321 @@ transaction, or a `LockFactory` lock keyed by `type-id`). Deduplicate `requires`
 
 **Fix direction:** catch and log dependency failures in `addToDependenciesQueue()` (the graph can be rebuilt), or move
 the dispatch after the `POST_*` event. Long term, route `ElementDependenciesMessage` async by default.
+
+---
+
+## Translation (Scope 4)
+
+## [ ] B-107 – `getByKey()` runtime cache: the key ignores `$create` / `$returnIdIfEmpty`, one shared mutable instance, never invalidated
+
+**File:** `models/Translation.php:248-255`, `:283-294`, `:354-373`
+
+- Cache key is `translation_<id>_<domain>[_<languages>]`. A call with `$returnIdIfEmpty = true` stores an object whose
+  empty languages were replaced by the key. A later plain `getByKey($id, $domain)` in the same request gets that
+  object, so the caller sees the key as the "translation", and saving it persists that (see C-18).
+- The cached object is returned **by reference**. Any caller that changes it (`addTranslation()`, import, Translator)
+  changes it for all later callers, including the copy in the dumper queue.
+- `save()` / `delete()` never update or remove the entry. Within the request (and in worker runtimes, where
+  `RuntimeCache` survives, see C-15) `getByKey()` keeps returning a deleted translation or outdated texts.
+- `$returnIdIfEmpty` uses `empty()` (`:286`): a real translation `"0"` is replaced by the key.
+- The key format is ambiguous: id `a_b` + domain `c` and id `a` + domain `b_c` share a key. Domains are config values, so
+  this is unlikely, but the separator should not be a valid character.
+
+**Fix direction:** cache the persisted state only (no presentation flags), return a clone or treat the object as
+immutable, and update/remove the entry in `save()` / `delete()`. Use `=== ''` instead of `empty()`.
+
+## [ ] B-108 – `getByKey()` swallows every `Exception`, but not `TypeError`; DB failures look like "not found"
+
+**File:** `models/Translation.php:262-281`; `models/Translation/Listing/Dao.php:117-123`
+
+- `catch (Exception $e)` turns connection loss, lock timeouts, unknown columns and SQL syntax errors into `null`, or into
+  a fake translation made from the key when `$returnIdIfEmpty` is set. Nothing is logged. The data-loss path is C-22.
+- `TypeError` from hydration (`NULL` text/dates, C-19, B-109) is an `Error` and is **not** caught, so the method can
+  crash and silently return `null` for the same broken key, depending on which column is broken.
+- `NotFoundResourceException` is a Symfony **translation loader** exception ("resource file not found"), used here as a
+  "row not found" signal. `@throws Exception` is documented but almost never thrown.
+- `Listing\Dao::load()` drops keys for which `getByKey()` returns `null` (e.g. no row in the listing's `languages`
+  subset). Pages are shorter than `limit`, and `getTotalCount()` does not match (B-118).
+
+**Fix direction:** catch only the "not found" case (an own `NotFoundException` from the DAO, plus
+`TableNotFoundException` during the transition). Let other DB errors propagate. Log the rest.
+
+## [ ] B-109 – Hydration keeps the newest `creationDate` and the last row's owner/type; `save()` writes them to every language; `NULL` dates crash
+
+**Files:** `models/Translation/Dao.php:53-73`, `:112-122`; `models/Translation/Listing/Dao.php:71-88`; `lib/Db/Helper.php:38-53`
+
+- `getByKey()` orders rows by `creationDate` ascending and calls `setCreationDate()`, `setModificationDate()`,
+  `setType()`, `setUserOwner()`, `setUserModification()` for **each** row. The last row wins: the model gets the
+  **newest** creation date and the owner of the most recently created language, not the oldest one.
+- `Dao::save()` writes these values into **every** language row (`Helper::upsert()` updates all columns). Each save
+  moves the creation date and owner of older languages forward. The history of who created what, and when, is lost.
+- `creationDate` / `modificationDate` are `DEFAULT NULL`. A `NULL` reaches `setCreationDate(int)` /
+  `setModificationDate(int)` and throws a `TypeError` (not caught, see B-108). `Listing\Dao::getAllTranslations()` has
+  the same problem and also calls `setDate(null)` through the "legacy support" branch (`:82-84`), which is dead code
+  anyway: `setModificationDate()` overwrites it two lines later.
+- Different `type` values per language (possible through direct SQL or old data) are flattened to the last row's type
+  on the next save.
+
+**Fix direction:** hydrate key-level fields once with `MIN(creationDate)`, `MAX(modificationDate)`, and the owner of the
+first row. Do not update `creationDate` / `userOwner` on existing rows (`ON DUPLICATE KEY UPDATE` only `text`, `type`,
+`modificationDate`, `userModification`). Treat `NULL` dates as `null` (make the setters nullable).
+
+## [ ] B-110 – `Dao::save()`: rewrites every language on every save, is not atomic, and does not validate key or type
+
+**File:** `models/Translation/Dao.php:82-125`; `models/Translation.php:84-112`
+
+- Every save upserts **all** languages in the model, with a new `modificationDate` and `userModification`, even if
+  only one language changed. The modification info shown in the admin is wrong for the untouched languages, and
+  concurrent editors of different languages overwrite each other (see C-22).
+- One `insert`/`update` round trip per language, without a transaction. A failure in the middle leaves the key
+  partially saved, and `POST_SAVE` is not dispatched.
+- `if ($this->model->getKey() !== '')` lets `null` through (a `new Translation()` without `setKey()`). The insert then
+  fails with "Column 'key' cannot be null", or writes `''` in non-strict SQL mode. An empty key is skipped silently and
+  still dispatches `POST_SAVE`.
+- No length check: keys longer than 190 characters fail with "Data too long" (strict mode), or are **silently
+  truncated** in non-strict mode and then collide with, and overwrite, another key with the same 190-character prefix.
+  Only the Translator checks the length (B-123).
+- `type` is not validated: any string is accepted. Longer than 10 characters fails or is truncated. Anything other
+  than `simple` is treated as ICU by the Translator (`Translator.php:172-176`). A typo makes the message go through
+  `MessageFormatter`, so plain texts with `{`/`}` throw at render time.
+
+**Fix direction:** validate key (non-empty, ≤ 190 **characters**, `mb_strlen`) and type (`TranslationType` enum,
+I-52) in the model. Save only changed languages, in one transaction and with one multi-row statement (I-55).
+
+## [ ] B-111 – Disallowed languages are skipped silently: `save()` reports success, `POST_SAVE` fires, the in-memory object keeps the rejected text
+
+**File:** `models/Translation/Dao.php:92-105`; `models/Translation.php:354-363`
+
+- Languages the user may not edit are skipped with a `Logger::warning` (`:102`). The caller (admin grid, import)
+  is not told: `save()` returns normally, `POST_SAVE` listeners (search index, sync to external systems) receive the
+  model **with** the rejected texts, and the `RuntimeCache` copy (B-107) keeps them for the rest of the request.
+- `importTranslationsFromFile()` counts those rows as imported and does not add them to `$delta`.
+- For a user with language restrictions who browses the frontend, the Translator's auto-create (C-22) writes only
+  the allowed languages. The other locales keep missing the key, so it is queued and saved again on **every**
+  request.
+- The permission is checked against the user resolved by `updateModificationInfos()`, i.e. whoever is logged in
+  when the dumper runs at `kernel.terminate`, not the code that queued the entry.
+
+**Fix direction:** throw an access-denied exception for disallowed languages (or return the skipped list), and do not
+dispatch `POST_SAVE` for data that was not written. Auto-create entries (system writes) should bypass the editor
+permission check explicitly. See C-20 for the bypass in the same check.
+
+## [ ] B-112 – `createOrUpdateTable()` runs DDL on every save: implicit commit of the caller's transaction
+
+**File:** `models/Translation/Dao.php:82-86`, `:191-211`
+
+- `save()` always runs `CREATE TABLE IF NOT EXISTS …`. In MySQL/MariaDB, `CREATE TABLE` causes an **implicit commit**,
+  also when the table already exists. If `Translation::save()` is called inside a transaction (installers, migrations,
+  element save listeners, imports wrapped in `transactional()`), everything before it is committed, and a later
+  `rollBack()` cannot undo it. DBAL still thinks a transaction is open and fails with "There is no active transaction".
+- It takes a metadata lock on every save. Under load, or while a long query or `ALTER` runs on that table, saves wait.
+- The name says "update", but the method never updates an existing table. Schema changes (e.g. a new column) are not
+  applied to existing domain tables.
+- This DDL is a second copy of the schema (`install.sql:432-444`); the copies already differ (`ENGINE=InnoDB` only here).
+
+**Fix direction:** create the domain tables at install/migration time, or when the domain list changes, plus a
+console command (I-62). If lazy creation must stay, run it only after `TableNotFoundException`, never inside an open
+transaction.
+
+## [ ] B-113 – `delete()`: stale runtime cache, a queued auto-create re-creates the key, inconsistent cache/event order
+
+**File:** `models/Translation.php:354-373`; `models/Translation/Dao.php:130-133`; `TranslationEntriesDumper.php:29-40`
+
+- `delete()` does not remove the `RuntimeCache` entry (B-107), so `getByKey()` keeps returning the deleted key in the
+  same request.
+- If the key is also in the dumper queue (Translator saw it missing earlier in the request, or `getByKey(create: true)`
+  queued it), `kernel.terminate` saves it again: the delete is undone.
+- `save()` clears the translator cache **after** `POST_SAVE`, `delete()` clears it **before** `POST_DELETE`. Listeners
+  on `POST_SAVE` that render or translate get the old texts.
+- Deleting a key in a domain whose table does not exist yet throws a `TableNotFoundException`.
+
+**Fix direction:** remove the key from `RuntimeCache` and from the dumper queue in `delete()`. Clear caches before the
+`POST_*` event in both methods.
+
+## [ ] B-114 – `getByKeyLocalized()`: explicit `$language` is ignored for the admin domain; session lookup in the model; unknown language returns `null`
+
+**File:** `models/Translation.php:313-345`
+
+- For the admin domain, a logged-in user's language **overwrites** the `$language` argument (`:316-320`). Code that
+  asks for a specific admin language (e.g. to send a notification in the recipient's language) gets the current user's
+  language instead.
+- The fallback `Tool\Authentication::authenticateSession()` reads the session and unserialises the security token on
+  every call when no token user is set (CLI, frontend requests). It also calls `setLastLoginDate()` on the user object
+  as a side effect. Model code should not depend on the HTTP session.
+- If the resolved language is not one of `getValidLanguages($domain)` (e.g. `de_AT` with only `de` configured), the
+  method returns `null`, even with `$returnIdIfEmpty = true`, because that flag fills only the valid languages.
+- `SystemSettingsConfig::get()['general']` without `?? []` emits a warning if the key is missing.
+
+**Fix direction:** only resolve a language when `$language === null`. Get the user from the token storage only.
+Return `$id` when `$returnIdIfEmpty` is set and the language has no row.
+
+## [ ] B-115 – `TranslationEntriesDumper`: queue keyed by key only (domains overwrite each other); one failing save aborts the dump and keeps a poison queue
+
+**File:** `lib/Translation/TranslationEntriesDumper.php:27-40`
+
+- `self::$translations[$translation->getKey()]`: the same key missing in `messages` and in `admin` (or a custom domain)
+  in one request keeps only the last one. The other domain never gets the entry.
+- `dumpToDb()` saves in a loop and resets the queue only after the loop. If one save throws (key > 190 chars, B-110;
+  table missing; permission exception after B-111), the rest of the queue is lost for this request. In long-running
+  processes (worker runtimes) the static queue is kept, so the same failing entry is retried, and throws, on every
+  later `kernel.terminate`.
+- The exception is thrown from a `kernel.terminate` listener, after the response was sent. It is only visible in logs.
+
+**Fix direction:** key by `domain . '|' . key`. Save each entry in its own `try/catch` (log and drop failures) and
+clear the queue first. See CoreBundle I-52 for flushing in Messenger workers.
+
+## [ ] B-116 – CSV import: shared fixed temp files (concurrent imports mix data), temp files never removed, silent no-ops, lossy comparisons
+
+**File:** `models/Translation.php:386-496`
+
+- Temp files are always `PIMCORE_SYSTEM_TEMP_DIRECTORY/import_translations` and `…_original`. Two imports at the same
+  time (two admins, or two domains) overwrite each other's file between `dumpFile()` and `fopen()`. One import then
+  writes **the other user's CSV into its own domain**. The files are never deleted, so the translation export remains
+  in the temp directory.
+- Both files have the same content; the second one is only used for dialect detection.
+- `file_get_contents()` returning `false` is not checked (`TypeError` in `str_replace` under strict types).
+- No `key` column (wrong delimiter guess, renamed header) → every row is skipped, nothing is reported, and `[]` is
+  returned as if the file matched the DB.
+- A row with more columns than the header raises "Undefined array key" warnings and maps values to key `''`.
+  `str_replace('&quot;', '"', …)` changes texts that really contain the entity.
+- Loose comparisons: `$currentTranslation != $value` treats `"1.0"` and `"1"`, or `"1e3"` and `"1000"`, as equal → the
+  change is not imported. `if (!$currentTranslation)` treats `"0"` as empty → overwritten when
+  `$replaceExistingTranslations` is `false`.
+- `getByKey($textKey, $domain, true)` queues every **new** key for the dumper with empty texts, even if the row is not
+  `$dirty` (e.g. only empty CSV values). The import then saves it (`$t->save()`) and the dumper saves it again at
+  terminate.
+- `trim($value, '﻿"')` uses a byte-wise character list that contains the three UTF-8 BOM bytes. Header names that end
+  in one of those bytes (any non-ASCII header ending in U+xxBB/BF/EF) are cut.
+
+**Fix direction:** read the uploaded file directly as a stream (no temp copy), or use `tempnam()` and remove the file
+in `finally`. Fail on a missing `key` column. Use strict comparisons (`!==`, `=== ''`). See I-57.
+
+## [ ] B-117 – Listing persistent cache key ignores bound condition values and `languages`: wrong results
+
+**File:** `models/Translation/Listing/Dao.php:62-96`, `:107-133`
+
+- `load()` and `getAllTranslations()` cache by `md5((string) $queryBuilder)`. That string contains the **placeholders**
+  (`key LIKE ?`), not the values. The cache is skipped only when `addConditionParam()` was used. A listing built with
+  `setCondition('`key` LIKE ?', ['%foo%'])` caches its result, and the next search with `['%bar%']` returns the
+  **foo** results.
+- `load()` also ignores `$this->model->getLanguages()` in the key. A listing for `['de']` and one for `['en', 'fr']`
+  share the cache and return objects with the wrong set of languages.
+- The cached value is an array of `Translation` objects. They carry the HTML sanitizer service (if
+  `getTranslationSanitizer()` was called) and the event-recursion state (B-125) into the persistent cache.
+- `Listing::$cacheLimit` / `Listing\Dao::isCacheable()` are never called in this repo, so the 5000-row limit has no
+  effect, and huge domains are cached as one item.
+
+**Fix direction:** include the bound values, types and languages in the cache key (or do not cache filtered listings
+at all), and cache rows (arrays), not model objects. Either use `isCacheable()` or remove it.
+
+## [ ] B-118 – Listing counts: `getTotalCount()` changes after `load()`, counts rows instead of keys, and does not match the loaded page
+
+**File:** `models/Translation/Listing/Dao.php:38-60`, `:107-133`; `lib/Model/Listing/AbstractListing.php:467-470`
+
+- `load()` calls `$this->model->setGroupBy(<table>.key)`, i.e. it **changes the listing**. Before `load()`,
+  `getTotalCount()` / `count($listing)` counts **rows** (keys × languages). After `load()`, it counts **keys**. The same
+  listing returns e.g. 600 before and 100 after.
+- `load()` drops keys that have no row in the listing's `languages` (B-108), but the SQL count includes them.
+- `getCount()` calls `load()` twice when the result is not empty (two full loads with N+1 queries without cache).
+
+**Fix direction:** always count `DISTINCT key` (and apply the `languages` filter in SQL, I-58). Do not mutate the
+model in `load()`; build the grouped query locally.
+
+## [ ] B-119 – `Listing::isValidOrderKey()`: `TypeError` without languages, real columns rejected, `type` breaks under `ONLY_FULL_GROUP_BY`
+
+**File:** `models/Translation/Listing.php:56-59`; `models/Translation/Listing/Dao.php:109-111`
+
+- `in_array($key, $this->getLanguages())` with `languages = null` (the default) throws a `TypeError`. So
+  `setOrderKey('creationDate')` crashes instead of throwing the documented `InvalidArgumentException`.
+- Real columns (`creationDate`, `modificationDate`, `language`, `text`) are rejected. Language codes are accepted,
+  but there is no column with that name unless the caller adds one through `onCreateQueryBuilder()` → "Unknown column".
+- `load()` groups by `key` only. `ORDER BY type` (accepted) is not functionally dependent on `key` (the PK is
+  `key, language`), so MySQL with the default `ONLY_FULL_GROUP_BY` fails.
+
+**Fix direction:** `in_array($key, [...columns], true) || in_array($key, $this->languages ?? [], true)`; order by
+`MIN(type)` / `MAX(modificationDate)` in the grouped query.
+
+## [ ] B-120 – Domain checks: `isAValidDomain()` swallows DB errors; the `admin` table is missing on a fresh install; swapped message arguments
+
+**Files:** `models/Translation/Dao.php:175-189`; `models/Translation/Listing.php:66-79`; `install.sql:432-444`
+
+- `isAValidDomain()` returns `false` on **any** exception. During a DB outage, the Translator silently stops loading
+  DB translations (frontend shows keys, and the empty result may be cached), and `Listing::setDomain()` throws
+  "domain is not registered" – a misleading error.
+- `install.sql` creates only `translations_messages`. `admin` is a default domain (`default.yaml:329-331`), but its table
+  is created only by the first `save()` (B-112). Until then `isAValidDomain('admin')` is `false`: the Translator never
+  records missing admin keys (`Translator.php:240`), and `new Listing()->setDomain('admin')` throws.
+- The `NotFoundException` message swaps its arguments: it says domain `translations_<domain>` / table `<domain>`
+  (`Listing.php:71-73`).
+
+**Fix direction:** check the table with `createSchemaManager()->tablesExist()` (or `SHOW TABLES LIKE ?`) and let
+connection errors propagate. Create tables for all configured domains at install/migration time (I-62). Fix the
+message.
+
+## [ ] B-121 – `Dao::getAvailableLanguages()` fails under `ONLY_FULL_GROUP_BY`; `getAvailableDomains()` uses `_` as a LIKE wildcard
+
+**File:** `models/Translation/Dao.php:139-168`
+
+- `SELECT * FROM … GROUP BY language` selects non-aggregated columns. MySQL ≥ 5.7 with the default `sql_mode` fails
+  with "Expression #1 of SELECT list is not in GROUP BY clause". No caller in this repo; the admin bundle may use it.
+- `SHOW TABLES LIKE 'translations_%'`: `_` matches any character (`translationsX…`). `str_replace('translations_', '', …)`
+  removes **every** occurrence, not only the prefix. Both are harmless today only because `isAValidDomain()` filters
+  the result afterwards.
+
+**Fix direction:** `SELECT DISTINCT language`; `LIKE 'translations\_%'` and strip the prefix with `substr()`. Better:
+derive available domains from the config plus a table-exists check.
+
+## [ ] B-122 – `Listing::cleanup()` does not invalidate caches and fires no events
+
+**File:** `models/Translation/Listing/Dao.php:146-160`
+
+- The deleted keys stay in the cached `load()` / `getAllTranslations()` results (tag `translator`) and in the
+  `RuntimeCache` until something else clears the tags. The admin grid keeps showing them.
+- No `PRE_DELETE` / `POST_DELETE` events, so listeners that sync translations (search, external TMS) miss the deletes.
+- The keys are put into one `IN (…)` list with `quote()`. Thousands of empty keys can exceed `max_allowed_packet`.
+
+**Fix direction:** call `Translation::clearDependentCache()` after the delete; dispatch one bulk event (or document
+that cleanup is silent); delete in chunks with bound parameters (I-56).
+
+## [ ] B-123 – Translator auto-create: wrong language list for non-default domains; the 190 check counts bytes and throws during rendering
+
+**File:** `lib/Translation/Translator.php:240-267`
+
+- A new key gets `Translation::getValidLanguages()` **without** the domain (`:261`), i.e. website languages. For the
+  `admin` domain (and any domain whose languages differ) rows are created for the wrong languages, and the admin
+  languages stay missing.
+- `strlen($id) > 190` counts **bytes**; the column is `varchar(190)` in **characters** (utf8mb4). Valid keys with
+  non-ASCII characters are rejected although they fit (100 Cyrillic characters = 200 bytes).
+- The check **throws** `Exception` from `trans()`. One long text used as a key in a template turns the page into a
+  500, but only while the key is missing from the catalogue, so it depends on DB state.
+- `Translation::IsAValidLanguage()` uses loose `in_array()`.
+
+**Fix direction:** `getValidLanguages($domain)`; `mb_strlen()`; log and return the id instead of throwing.
+
+## [ ] B-124 – Translator DB catalogues never refresh in long-running processes (Messenger workers, worker runtimes)
+
+**File:** `lib/Translation/Translator.php:138-212`
+
+- `lazyInitialize()` adds the DB catalogue to the decorated translator's in-memory catalogue once per process and
+  remembers it in `$initializedCatalogues`. `resetCache()` / `resetInitialization()` exist, but nothing calls them, and
+  the class does not implement `ResetInterface`.
+- After an editor changes a translation, the persistent cache is cleared (`clearDependentCache()`), but a Messenger
+  worker (mails, PDFs, exports rendered in the worker) or a FrankenPHP/RoadRunner worker keeps the old texts until it
+  is restarted. Keys added to the catalogue at runtime (`:271`, `:290`) also stay.
+- Same pattern as C-15 (website settings) and CoreBundle C-08.
+
+**Fix direction:** implement `ResetInterface` (tag `kernel.reset`) and reset the in-memory catalogues. Messenger
+already calls `kernel.reset` between messages via `ResetServicesListener`.
+
+## [ ] B-125 – Event recursion guard stays set after a listener exception: later saves of the same instance skip events silently
+
+**File:** `lib/Event/Traits/RecursionBlockingEventDispatchHelperTrait.php:34-42`; `models/Translation.php:354-373`
+
+- `dispatchEvent()` sets `$activeDispatchingEvents[$name] = true`, dispatches, then unsets it, with no `try/finally`. If
+  a `PRE_SAVE` listener throws, the flag stays set on the object.
+- Translations are shared through `RuntimeCache` (B-107). A caller that catches the exception and saves again (import
+  loop, retry) saves **without** `PRE_SAVE` (validation, normalisation listeners) and `POST_SAVE` events, without any
+  error.
+- The flag is a model property, so it is also stored in the persistent listing cache (B-117).
+
+**Fix direction:** `try { … } finally { unset(...) }` in the trait (shared helper, also affects other models that use it).

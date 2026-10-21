@@ -11,6 +11,11 @@ directly call where a defect originates there (`lib/Video/Adapter/Ffmpeg.php`, `
 there (`lib/Messenger/Handler/ElementDependenciesHandler.php`, `models/Element/AbstractElement.php::getDependencies()`,
 the dependency helpers in `models/Element/Service.php:163-263`), the `dependencies` schema
 (`bundles/InstallBundle/dump/install.sql:63-73`) and `tests/Model/Element/DependenciesTest.php`
+**(4)** `models/Translation.php` and `models/Translation/**` (Dao, Listing, Listing/Dao), plus the direct consumers where
+a defect originates in the model interplay (`lib/Translation/TranslationEntriesDumper.php`,
+`lib/Translation/Translator.php::lazyInitialize()` / `checkForEmptyTranslation()` (`:138-298`),
+`models/DataObject/QuantityValue/Service.php::generateDefinitionJson()` (`:66-90`)), the `translations_messages` schema
+(`bundles/InstallBundle/dump/install.sql:432-444`) and `tests/Unit/Translation/TranslatorTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -20,9 +25,11 @@ These items cause **data loss or corruption** (tree paths, binaries, versions), 
 **open DB transactions in workers**, **crashes in core asset flows** (create, folder move, video/PDF processing, frontend
 thumbnail rendering) and **path traversal / false security status**, and in Scope 2 **deleted or outdated website
 settings served indefinitely**, and in Scope 3 **SQL injection in the dependency filter** and **silently lost
-dependency rows** (editors are told an element is unused and delete it).
+dependency rows** (editors are told an element is unused and delete it), and in Scope 4 **translation texts
+overwritten or replaced by their key**, **site-wide 500s from one `NULL` row**, **a translation-language permission
+bypass** and **SQL identifier injection through the domain name**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -411,3 +418,152 @@ decide literal vs. regex matching (B-94). Build the three near-identical queries
 **Fix direction:** wrap the delta in a transaction (`$this->db->transactional(...)`), retry on deadlock
 (`RetryableException`), and insert in bulk (I-45). Optionally add a maintenance command that rebuilds dependencies
 for all elements, so a damaged graph can be repaired.
+
+---
+
+# Scope 4 – Translation
+
+> Notes
+> - `models/Translation.php`, `Translation/Listing.php`, `TranslationEntriesDumper.php` and `Translator.php` are
+>   `strict_types`; `models/Translation/Dao.php` and `Translation/Listing/Dao.php` are not. Even without strict types,
+>   `null` to a non-nullable parameter throws a `TypeError`, and `Translation::getByKey()` catches only `Exception`.
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found (no implicit nullable parameters, no removed APIs; the
+>   `fgetcsv()` `$escape` argument is passed explicitly, so the PHP 8.4 deprecation does not trigger). DBAL 4 readiness and
+>   modernisation are in TODO-3 (I-51–I-63).
+> - `Translation::getByKey()` keeps the loaded object in `RuntimeCache`. The **same instance** is returned to every
+>   later caller in the request and is the one put into `TranslationEntriesDumper`'s save queue, which is written at
+>   `kernel.terminate` / `console.terminate` (`bundles/CoreBundle/src/EventListener/DumpTranslationEntriesListener.php`).
+> - The admin translation controllers (grid, import, export) live in `pimcore/admin-ui-classic-bundle` (not in this repo,
+>   `vendor/` not installed). How they validate the domain or check permissions was **not verified**.
+
+---
+
+## [ ] C-18 – `getByKey(…, create: true, returnIdIfEmpty: true)` saves the key itself as the translation text in every language
+
+**Files:** `models/Translation.php:262-294`; `lib/Translation/TranslationEntriesDumper.php:29-40`; caller
+`models/DataObject/QuantityValue/Service.php:77-82`
+
+- When the key does not exist and `$create` is set, `getByKey()` fills every language with `''` and puts the object into
+  the dumper queue (`:273-280`). Then the `$returnIdIfEmpty` block (`:283-291`) replaces every empty language with
+  `$idOriginal` **on the same object**. At `kernel.terminate` the dumper saves that object, so the key is written as
+  the text of every language.
+- This is reached in core: `QuantityValue\Service::generateDefinitionJson()` calls
+  `getByKeyLocalized($abbreviation, 'admin', true, true)` for every unit. Each unit abbreviation and long name that has
+  no admin translation yet is stored as "translated" with the key in all admin languages (~20 rows per key).
+- Effects: these keys never show up as untranslated in the admin, the `debug_admin_translations` `+key+` marker is
+  lost, and an editor who later translates one language does not see that the others are only the key. Because the
+  object is also in `RuntimeCache`, every later `getByKey($id, 'admin')` in the request returns the same corrupted
+  object (B-107).
+- Same for any custom code that calls `getByKey()` / `getByKeyLocalized()` with both flags.
+
+**Fix direction:** never mutate the queued model for presentation. Queue a separate object (or clone before the
+`$returnIdIfEmpty` step), or better: let `getByKeyLocalized()` return `$translation?->getTranslation($lang) ?: $id`
+and drop `$returnIdIfEmpty` from `getByKey()` (I-53). Add a cleanup migration for rows where `text = key` was written by
+this path (only rows whose `creationDate = modificationDate` and `userModification = 0`, to keep real edits).
+
+---
+
+## [ ] C-19 – One `NULL` in `text` breaks every `|trans` for that domain and locale (frontend 500); `Dao::save()` can write the `NULL`
+
+**Files:** `lib/Translation/Translator.php:158-161`; `models/Translation/Dao.php:64-66`, `:100-122`;
+`models/Translation/Listing/Dao.php:79`; schema `install.sql:437` (`text` is `DEFAULT NULL`),
+`Translation/Dao.php:203`
+
+- `Translator::lazyInitialize()` builds the catalogue from `loadRaw()` and calls
+  `Tool\Text::removeLineBreaks($translation['text'])`. That parameter is `string`, and `Translator.php` is strict. One
+  row with `text IS NULL` throws a `TypeError`. The catalogue is not cached, so **every request** that translates
+  anything in that domain/locale fails until the row is fixed. In practice that is the whole frontend of one language.
+- `Translation\Dao::getByKey()` (`:66`) and `Listing\Dao::getAllTranslations()` (`:79`) call
+  `addTranslation(string $language, string $text)` with the raw column. The `TypeError` is an `Error`, so the
+  `catch (Exception)` in `Translation::getByKey()` does not catch it. The admin grid and `Listing::load()` crash for that key.
+- The schema allows `NULL`, and `Listing\Dao::cleanup()` (`:149`) checks `text IS NULL`, so `NULL`s are expected.
+  Pimcore itself can write one: `setTranslations(array)` does not type its values. `Dao::save()` then compares
+  `$text != strip_tags($text)` (`null == ''`, no sanitising) and upserts `text = NULL`. Old data, migrations, direct
+  SQL and integrations can also contain `NULL`s.
+
+**Fix direction:** treat `NULL` as `''` when reading (`(string) $row['text']` / `?? ''`) in all three places. Validate
+`setTranslations()` / `addTranslation()` values as `string` (I-51). Make the column `NOT NULL` after a data migration
+(`UPDATE … SET text = '' WHERE text IS NULL`, I-62).
+
+---
+
+## [ ] C-20 – View-only translation users can save every language: `Dao::save()` treats "no edit languages" as "no restriction"
+
+**Files:** `models/Translation/Dao.php:92-105`; `models/User.php:601-620`
+
+```php
+if ($user = User::getById($this->model->getUserModification())) {
+    $editableLanguages = $user->getAllowedLanguagesForEditingWebsiteTranslations();
+}
+…
+if (count($editableLanguages) && !in_array($language, $editableLanguages)) { continue; }
+```
+
+- `getAllowedLanguagesForEditingWebsiteTranslations()` says (docblock `User.php:602-603`): "If only edit languages are
+  empty (but view languages not) **empty array is returned**". In that case the user may edit **no** language.
+- The DAO uses `count($editableLanguages)` as "restriction active". `[]` turns the check off, so a user who may only
+  **view** some languages can write **all** languages, including languages they cannot even view.
+- The model layer is the last line of defence for every save path (admin grid, CSV import, REST/GraphQL bundles,
+  custom code). Whether the admin controllers check again before calling `save()` was not verified (see notes).
+- `in_array()` is loose, and the check runs only for non-admin domains (by design). Custom domains use the
+  website-translation permissions, which is not documented.
+
+**Fix direction:** separate "unrestricted" (`null`) from "nothing allowed" (`[]`). Change the user API to return
+`null` for "all languages", or check `$user->isAdmin()` / the view list explicitly in the DAO. Reject disallowed
+languages with an exception instead of skipping them silently (B-111). Move the check from the DAO into the model or
+a voter (I-55).
+
+---
+
+## [ ] C-21 – The translation domain is never validated in the model and goes into SQL identifiers and DDL (`translations_<domain>`)
+
+**Files:** `models/Translation.php:179-182`, `:246-263`, `:386-444`; `models/Translation/Dao.php:40-43`, `:53-56`,
+`:132`, `:191-210`; `models/Translation/Listing/Dao.php:33-36`
+
+- `Translation::setDomain()` accepts any string. `Dao::getDatabaseTableName()` concatenates it into the table name, and
+  every query uses that name **unquoted** (`SELECT * FROM translations_<domain> WHERE …`, `:53`, `:56`, `:141`). Only
+  `Listing::setDomain()` and the Translator check `isAValidDomain()` first. `Translation::getByKey()`,
+  `getByKeyLocalized()`, `importTranslationsFromFile()`, `save()` and `delete()` do not.
+- If a caller passes a request value as the domain (the admin import/grid controllers pass a `domain` request parameter;
+  not verified, see notes), a value like `messages WHERE 1=0 UNION SELECT … -- ` injects SQL into the `SELECT`. The
+  `catch (Exception)` in `getByKey()` hides the error, so blind injection works without visible errors.
+- With `$create = true`, a `TableNotFoundException` for an **unregistered** domain queues the entry. `save()` then runs
+  `CREATE TABLE IF NOT EXISTS \`translations_<domain>\`` (`:199`). Any string creates a new table, and a backtick in the
+  domain breaks out of the quoted identifier. This also bypasses `pimcore.translations.domains`: the table exists,
+  but `isAValidDomain()` still says `false` and the entries cannot be listed.
+- `isAValidDomain()` (`:183`) uses `sprintf('… translations_%s …')` too. It is only safe because it checks the config
+  list first.
+
+**Fix direction:** validate the domain in one place (`setDomain()` and every static entry point): it must be in
+`getRegisteredDomains()` and match `/^[a-z0-9_]+$/i` (also validate the config node in
+`CoreBundle/DependencyInjection/Configuration.php:78-81`). Quote the table name with `quoteIdentifier()` everywhere.
+Never create tables as a side effect of a lookup; create them for the configured domains at install/migration time
+(I-62).
+
+---
+
+## [ ] C-22 – Missing-translation auto-create overwrites existing texts: a stale snapshot of all languages is saved at `kernel.terminate`, and after a swallowed DB error a blank one
+
+**Files:** `lib/Translation/Translator.php:240-267`; `models/Translation.php:246-297`;
+`models/Translation/Dao.php:99-123`; `lib/Translation/TranslationEntriesDumper.php:34-40`
+
+- When a key is missing from the catalogue of the current locale, `checkForEmptyTranslation()` loads the key with
+  `Translation::getByKey($id, $domain)` and queues it for saving. That is the normal case when the key exists in the DB
+  but not for this locale (a language was added in the system settings, or the key was imported for only some
+  languages).
+- **Stale snapshot:** the dumper saves the object at `kernel.terminate`. `Dao::save()` upserts **every language** in
+  the object, not just the new empty one. An editor's change to another language of that key between the load and
+  `kernel.terminate` (or in a long CLI / worker run, much longer) is overwritten with the old text. Admin users get no
+  warning.
+- **Blank overwrite:** `getByKey()` returns `null` for **any** `Exception` (`:262-267`): lost connection ("MySQL server
+  has gone away" in long-running workers), lock wait timeout, a missing column. The Translator then treats the key as
+  new and queues `new Translation()` with `''` for **all** website languages (`:255-264`). If the connection works again
+  at terminate (DBAL reconnects, or the error was transient), the upsert **blanks the existing texts in every
+  language** of that key. Nothing is logged.
+- The same applies to `importTranslationsFromFile()` (`getByKey($textKey, $domain, true)`, `:444`) after a transient
+  error: the import continues with an empty object and writes only the CSV columns, but the dumper also writes the
+  blank object for every language.
+
+**Fix direction:** when auto-creating, **insert only the missing language rows** (`INSERT IGNORE` /
+`INSERT … ON DUPLICATE KEY UPDATE key = key`), never upsert the full snapshot. Let `getByKey()` swallow only "not
+found" (B-108) and rethrow everything else. Save only changed languages in `Dao::save()` (B-110, I-55).
