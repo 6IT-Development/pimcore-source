@@ -27,17 +27,27 @@ Data/**, Listing/**, QuantityValue/**, SelectOptions/**, Service), plus the dire
 originates in the model interplay (`bundles/CoreBundle/config/documents.yaml:49-50`,
 `lib/Routing/Dynamic/DataObjectRouteHandler.php:91`) and the related schema
 (`bundles/InstallBundle/dump/install.sql` – `documents*`, `edit_lock`, `tags`, `recyclebin`)
+**(7)** `models/Metadata/**` (Predefined, Predefined/Dao, Predefined/Listing, Predefined/Listing/Dao), `models/Notification.php`
+and `models/Notification/**` (Dao, Listing, Listing/Dao, Service/NotificationService, Service/NotificationServiceFilterParser,
+Service/UserService), plus the direct consumers where a defect originates in the model interplay
+(`lib/Workflow/Notification/PimcoreNotificationService.php`, `lib/Workflow/Manager.php::applyWithAdditionalData()`
+(`:222-250`), `models/Asset/Service.php::expandMetadataForEditmode()` (`:291-316`),
+`lib/Model/Dao/PimcoreLocationAwareConfigDao.php`, the `assets.metadata.predefined` config node
+(`bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`)), the `notifications` schema
+(`bundles/InstallBundle/dump/install.sql:801-817`, migration `Version20240813085200`) and
+`tests/Unit/Notification/Service/NotificationServiceTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
 
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
+Scope 7: `7d51be3297`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
-DataObject (I-73–I-85).
+DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92).
 
 ---
 
@@ -1056,3 +1066,131 @@ Add model tests for:
   (B-170); workflow state delete with two workflows (B-172);
 - `copyContents()` scheduled tasks (B-182); user referenced in one of two user fields (B-183); listing
   `count()` then `setLocale()` (B-178).
+
+---
+
+## K – Metadata / Notification (Scope 7)
+
+### [ ] I-86 – Strictness and native types (PHP 8.4)
+
+- Add `declare(strict_types=1)` to `Metadata/Predefined/Dao.php`, `Predefined/Listing/Dao.php`, `Notification/Dao.php`
+  and `Notification/Listing/Dao.php`. Prerequisites that rely on coercion today:
+  - legacy predefined definitions migrated from `predefined-asset-metadata.php` have numeric ids; `array_keys()` in
+    `fetchAllKeys()` returns them as `int`, and `Predefined::getById(string)` is called with them in
+    `Listing\Dao::loadList()` → cast to `string` first;
+  - `User::getById($data['sender'])` / `Service::getElementById(…, $data['linkedElement'])` → `(int)` casts.
+- `Predefined` setters declare `: Predefined`; use `: static` like the rest of the codebase. `Listing::getByTargetType():
+  ?array` is never `null` → `array`, `@return list<Predefined>`; `$subTypes` → `string|list<string>|null`.
+- Notification: `public private(set) ?int $id` (PHP 8.4 asymmetric visibility) instead of a public `setId()` used only by
+  the DAO; `creationDate` / `modificationDate` → `?\DateTimeImmutable` (B-194); `type` → a backed enum with the values
+  the UI supports (column `VARCHAR(20)`, default `info`); `linkedElementType` → the existing element-type strings as an
+  enum; the `@internal` tags on the properties of a public model are misleading → remove.
+- Constructor property promotion + `readonly` in `NotificationService`, `UserService`,
+  `NotificationServiceFilterParser` (and `PimcoreNotificationService`).
+- `findAll()` string `offset` / `limit`: replace the two `//TODO: Trigger deprecation` comments
+  (`NotificationService.php:207-214`) with `trigger_deprecation('pimcore/pimcore', …)`.
+- `isStudio` ("Remove with end of Classic-UI"): mark `isStudio()` / `setIsStudio()` with PHP 8.4 `#[\Deprecated]` so
+  the removal is tracked by tooling.
+- Strict comparisons everywhere (`!=` / `==` in `Predefined/Dao.php:52-82`, `Listing.php:109-117`, `:255-263`,
+  parser `:109`).
+
+### [ ] I-87 – `Metadata\Predefined` clean-up
+
+- Three lookups with different semantics: `Predefined::getByName()` → `Dao::getByNameAndLanguage()`,
+  `Listing::getByKeyAndLanguage()` and `getByTargetType()`. Build **one** index (`name|language|subtype` → definition)
+  per listing load and use PHP 8.4 `array_find()` / `array_filter()` on it (B-190).
+- Every lookup loads and hydrates the whole listing. `Asset\Service::expandMetadataForEditmode()` calls `getByName()`
+  per metadata item → O(items × definitions) per asset. Cache the index per request (reset via `kernel.reset`).
+- `minimize()` / `expand()` duplicate the loader lookup and use the service locator
+  (`Pimcore::getContainer()->get(...)`). Move them into a small service with the implementation loader injected and
+  explicit `toStorage()` / `toEditmode()` methods (B-189).
+- `Predefined::__clone()` keeps and rebinds the DAO while `AbstractModel::__clone()` drops it. Pick one behaviour and
+  document it.
+- `Predefined\Listing\Dao` extends the **model** DAO and inherits `save()`, `delete()`, `getById()`,
+  `getByNameAndLanguage()`, which operate on a `Listing` model (`$listing->save()` → `Error` via `__call()`). Use
+  composition or a shared base for `configure()` only. Same pattern in `Property\Predefined\Listing\Dao`.
+- `Listing::getTotalCount()` (via the DAO) reloads and filters the whole list and overwrites `definitions` as a side
+  effect.
+- `Dao::save()`: `$allowedProperties` + `in_array()` loop → `array_intersect_key($vars,
+  array_flip(self::PERSISTED_FIELDS))`.
+- `getByTargetType()` throws a generic `Exception` for every type except `asset`. Use `InvalidArgumentException`, or
+  drop the parameter (only assets are supported).
+- Config tree (`Configuration.php:667-695`): remove the unused `inheritable` node, make `data` match the model (B-192).
+- Docblocks: "specicified" (`Listing/Dao.php:30`); `Dao::delete()` "Deletes object from database" (it is a config
+  entry); `@method void save()` / `delete()` on the model hide the DAO contract → real methods with events
+  (`PRE_SAVE` / `POST_SAVE` like other config models).
+- New ids: `Uuid::v4()` → `Uuid::v7()` (time-ordered, Symfony 7.4) is optional.
+
+### [ ] I-88 – Notification service API and layering
+
+- Replace `AccessDeniedHttpException` (HttpKernel) in the model service with a domain exception that the controllers map
+  to 403, and `UnexpectedValueException` for "not found" with `NotFoundException`.
+- Validation lives in three places (service `sendToUser()`, DAO hydration, nowhere in `save()`). Move it into
+  `Notification::validate()`, called by `save()` (B-193).
+- Replace `array<string, mixed>` filters with raw `condition` strings by a `NotificationFilter` value object (recipient,
+  read, type, title contains, date range) that the listing DAO turns into SQL with the QueryBuilder. This removes the
+  C-35 / B-195 class of problems.
+- Parser: take an `array` / `InputBag` instead of the whole `Request`; `getString()`; `json_decode(…,
+  flags: JSON_THROW_ON_ERROR)`; `match` instead of `switch`; the `KEY_*` / `TYPE_*` / `OPERATOR_*` constants → backed
+  enums; return the filter object directly.
+- `findAll()` returns `array{total, data}` → a small result DTO (or `Countable` + `IteratorAggregate`).
+- Events are dispatched through `RecursionBlockingEventDispatchHelperTrait` → `Pimcore::getEventDispatcher()`; inject
+  the dispatcher into the service and dispatch post events after commit (B-198).
+- `NotificationService` is `public: true` only for `NotificationServiceTest` (`services.yaml:185-186`); the test container
+  can access private services → make it private.
+- Carbon is used only for parsing and `getTimestamp()` → native `DateTimeImmutable`.
+- The class comment "for Studio Bundle you have to use the service bundled there" plus `isStudio = 0` hard-coded in
+  three queries → one constant / scope method until the Classic-UI removal.
+
+### [ ] I-89 – Notification persistence and performance
+
+- `Listing\Dao::load()` is N+1: `SELECT id`, then `getById()` per row, and each hydration loads the sender, the recipient
+  and the **full linked element** (a data object with all fields). A page of 40 notifications costs 120+ queries plus 40
+  element loads, although `format()` only needs the element id. Fetch the rows in one query, hydrate directly, and load
+  the linked element lazily (store id + type, resolve in `getLinkedElement()`).
+- `count()` and `getTotalCount()` are duplicates; `findLastUnread()` runs `count()` + `load()` for one row.
+- `deleteAll()` loads and deletes rows one by one. Use one `DELETE` (document that per-row events are not fired, or fire
+  a bulk event); add a bulk "mark all as read".
+- `Listing::isValidOrderKey()` is identical to the parent method → remove, or restrict it to real columns.
+- `Notification::getById()`: `try { RuntimeCache::get() } catch (Exception)` → `RuntimeCache::isRegistered()`.
+- `Helper::upsert()` for an auto-increment model → explicit `insert()` / `update()` (B-198).
+- DBAL 4: `lastInsertId()` already cast; avoid `SELECT *` in `Dao::getById()`; bind `read` / `isStudio` as
+  `ParameterType::INTEGER`.
+
+### [ ] I-90 – Notification schema
+
+- No FK: `recipient` → `users.id ON DELETE CASCADE`, `sender` → `ON DELETE SET NULL` (B-193), or clean up in
+  `User::delete()`.
+- Only `recipient` is indexed. The unread polling (`countAllUnread()`, `findLastUnread()`) runs every few seconds per
+  open admin; add `(recipient, read, isStudio, creationDate)`.
+- `TIMESTAMP` → `DATETIME` storing UTC (2038 limit, session-timezone conversion, B-194).
+- Schema drift: migration `Version20240813085200` adds `isStudio` as nullable `TINYINT DEFAULT 0` while `install.sql`
+  has `NOT NULL`; `payload` is declared as `text` with `columnDefinition LONGTEXT`. Align with a migration.
+- `payload LONGTEXT` holds free-form strings → `JSON` column with validated encoding.
+- No retention: nothing purges old or read notifications, so the table grows without bound. Add a configurable
+  maintenance task.
+
+### [ ] I-91 – `Notification\Service\UserService`
+
+- Role ids are concatenated into SQL (`UserService.php:38`; ints, safe today). Use `FIND_IN_SET(?, roles)` with bound
+  values. The same `roles = ? OR LIKE … OR LIKE … OR LIKE …` pattern in `NotificationService::sendToGroup()`
+  (`:105-122`) → `FIND_IN_SET(?, roles)` through one shared helper.
+- `findAll()` returns users **and** roles merged into one untyped array → `findRecipientUsers(): list<User>` and
+  `findRecipientRoles(): list<User\Role>`.
+- `filterUsersWithPermission()` → `array_filter()` with `list<User>` types; the permission name `'notifications'` →
+  a constant.
+
+### [ ] I-92 – Tests
+
+- Fix B-200 (`assertSame()`, a group with the permission).
+- C-34: after every failing call (`sendToUser()` with an unknown user, `findAndMarkAsRead()` with a foreign or unknown
+  id, `delete()` with an unknown id) assert `Db::get()->getTransactionNestingLevel() === 0`; a workflow transition whose
+  notification fails must still persist the element.
+- C-35 / B-196: the injection payload from C-35 returns 400 or only the caller's notifications; invalid JSON, missing
+  keys, unknown operator; `gt` / `lt` / `eq` day boundaries.
+- B-195: `findAll(['read' => 0])`; a condition with `OR`. B-193: listing with an empty-title row and a deleted recipient.
+  B-194: `format()` under a non-UTC PHP timezone. B-198: `delete()` then `getById()`.
+- `Metadata\Predefined` has no tests. Add: listing with a stale settings-store id (B-188); `minimize()` / `expand()`
+  twice for the asset, document, object and date types (B-189); `getByName()` with `~` and with per-language
+  definitions (B-190); save with a `disabled` / read-only write target (B-191); legacy numeric ids under `strict_types`
+  (I-86).

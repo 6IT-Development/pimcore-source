@@ -29,6 +29,15 @@ Data/**, Listing/**, QuantityValue/**, SelectOptions/**, Service), plus the dire
 originates in the model interplay (`bundles/CoreBundle/config/documents.yaml:49-50`,
 `lib/Routing/Dynamic/DataObjectRouteHandler.php:91`) and the related schema
 (`bundles/InstallBundle/dump/install.sql` – `documents*`, `edit_lock`, `tags`, `recyclebin`)
+**(7)** `models/Metadata/**` (Predefined, Predefined/Dao, Predefined/Listing, Predefined/Listing/Dao), `models/Notification.php`
+and `models/Notification/**` (Dao, Listing, Listing/Dao, Service/NotificationService, Service/NotificationServiceFilterParser,
+Service/UserService), plus the direct consumers where a defect originates in the model interplay
+(`lib/Workflow/Notification/PimcoreNotificationService.php`, `lib/Workflow/Manager.php::applyWithAdditionalData()`
+(`:222-250`), `models/Asset/Service.php::expandMetadataForEditmode()` (`:291-316`),
+`lib/Model/Dao/PimcoreLocationAwareConfigDao.php`, the `assets.metadata.predefined` config node
+(`bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`)), the `notifications` schema
+(`bundles/InstallBundle/dump/install.sql:801-817`, migration `Version20240813085200`) and
+`tests/Unit/Notification/Service/NotificationServiceTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -36,11 +45,13 @@ B-43 push/pop listener balance is the listener side of B-158)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
+Scope 7: `7d51be3297`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
-**Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187.
+**Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187,
+**Metadata** B-188–B-192, **Notification** B-193–B-200.
 
 ---
 
@@ -2355,3 +2366,237 @@ the DB for id generation; batch deletion.
   resets the map to `null`, i.e. "nothing dirty".
 
 **Fix direction:** cache after a successful load; bound parameters; fix the dirty map logic.
+
+---
+
+## Metadata (Scope 7)
+
+## [ ] B-188 – Predefined metadata listing can contain `null`s → `Error` in every lookup (id list from all stores, data from the read target only)
+
+**Files:** `models/Metadata/Predefined/Listing/Dao.php:35-51`; `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:54-79`;
+`lib/Config/LocationAwareConfigRepository.php:70-96`, `:263-269`; `models/Metadata/Predefined/Listing.php:74-124`;
+`models/Metadata/Predefined/Dao.php:73-94`; `models/Asset/Service.php:308`
+
+- `loadList()` takes ids from `loadIdList()` → `fetchAllKeys()`, which merges the settings-store ids **and** the
+  container-config keys whatever the read target is. `getById()` loads through `loadConfigByKey()`, which honours the
+  read target. Ids from the other store, and definitions whose data is empty, give `getById() === null`, and the
+  `null` goes into the list.
+- Typical trigger: switching `config_location.predefined_asset_metadata` (settings-store ↔ symfony-config) leaves the
+  old entries behind.
+- Consequences: `getByTargetType()` (`$item->getTargetSubtype()`), `getByKeyAndLanguage()` (`$item->getName()`) and the
+  filter closure in `Dao::getByNameAndLanguage()` call methods on `null` → `Error`. `Asset\Service::
+  expandMetadataForEditmode()` calls `getByName()` for every metadata item, so opening **any** asset with metadata in
+  the admin fails. User filter callbacks (`setFilter()`) receive `null`s too.
+- `loadIdListByReadTargets()` exists for this case and is unused here.
+
+**Fix direction:** use `loadIdListByReadTargets()`, skip `null` results (log them), and return `list<Predefined>`.
+
+## [ ] B-189 – `Predefined::minimize()` / `expand()` are not idempotent and crash on a missing type
+
+**Files:** `models/Metadata/Predefined.php:258-280`; `models/Asset/MetaData/ClassDefinition/Data/Asset.php:66-97` (same
+pattern in `Document.php`, `DataObject.php`, `Date.php`)
+
+- The model does not know whether `$data` is in storage form (element id, timestamp) or edit-mode form (path, date
+  string):
+  - `minimize()` on already minimized data: `getDataFromEditMode(42)` – not a string, not an element → returns `''`
+    and **the reference is wiped**;
+  - `expand()` on already expanded data: `getDataForEditMode('/path')` – not numeric → `''`;
+  - saving after `expand()` without `minimize()` stores the path; the next `expand()` returns `''`.
+  Which sequence happens depends on the caller (admin bundle, imports); the model gives no protection.
+- `Date::normalize()` stores `false` when `strtotime()` fails.
+- `$this->type === null` (a definition saved without a type, which `save()` allows, B-191) → `$loader->build(null)` →
+  `TypeError` (strict file). Only `UnsupportedException` is caught.
+
+**Fix direction:** keep the storage form in the model and convert only at the edges (`toEditmode()` returns a copy), or
+let the converters accept both forms; validate `type` on save; catch `\Throwable` from the loader with context logging
+(I-87).
+
+## [ ] B-190 – Name / language lookups: names with `~` are never found, `''` language matches any language
+
+**Files:** `models/Metadata/Predefined.php:75-86`, `:111-116`; `models/Metadata/Predefined/Dao.php:73-94`;
+`models/Metadata/Predefined/Listing.php:103-124`; `models/Asset/Service.php:308-311`
+
+- `getByName()` calls `setName()` (which turns `~` into `---`) but `getByNameAndLanguage()` compares the **raw** `$name`
+  with the stored, normalised names → a definition named `a~b` (stored as `a---b`) is never found. Asset counterpart: B-06.
+- `getByName($name, $language = '')`: `''` is falsy, so the language filter is skipped and the first definition with
+  that name in **any** language is returned (order of the config keys). `Asset\Service::expandMetadataForEditmode()` uses
+  it for every item regardless of `$item['language']` → with per-language definitions of different `config` (select
+  options) the editor gets the options of another language. `Listing::getByKeyAndLanguage()` behaves the same for
+  `null` / `''`.
+- `getByNameAndLanguage(null, …)` returns an arbitrary first definition.
+- Loose `!=` comparisons: numeric-string names compare numerically (`'1e1' != '10'` is `false`).
+
+**Fix direction:** normalise the name before comparing; treat `''` / `null` language as "language-neutral" and match it
+exactly (with an explicit "any language" option where needed); strict comparisons; one shared lookup (I-87).
+
+## [ ] B-191 – `Predefined::save()` ignores writeability, validates nothing and accepts any id
+
+**Files:** `models/Metadata/Predefined/Dao.php:99-129`; `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:27`, `:100-142`;
+`lib/Config/LocationAwareConfigRepository.php:124-140`, `:177-193`, `:236-261`
+
+- `save()` never checks `isWriteable()` (`delete()` does, inside `deleteData()`):
+  - write target `symfony-config` with debug off (`isWriteable()` is `false`): the YAML file is still written into
+    `var/config/predefined_asset_metadata`. It is not loaded until the container is rebuilt, so the editor sees the old
+    values, and the change appears unexpectedly at the next cache clear / deploy;
+  - write target `disabled`: `saveConfig()` writes nothing and `save()` returns normally ("saved").
+- No validation: `name` and `type` can be empty, `type` need not be a registered metadata type (→ B-189),
+  `targetSubtype` need not be an asset type.
+- `setId()` accepts any string; the id becomes the YAML file name (`getVarConfigFile()`: `$directory . '/' . $key .
+  '.yaml'`) and the settings-store key. Same path traversal as C-09; not reachable through the admin (UUID ids), only
+  through code / imports. The fix belongs to the repository (C-09).
+- `delete()` on a definition that was never loaded (`dataSource === null`) does nothing and reports nothing.
+- `PimcoreLocationAwareConfigDao::$cache` is a process-wide static. `save()` / `delete()` invalidate only the current
+  process; in worker runtimes other workers keep serving the old definition (Messenger workers are stopped by
+  `saveConfig()`, HTTP workers are not).
+
+**Fix direction:** check `isWriteable()` in `save()` and throw; a `validate()` step (name, type, subtype, id pattern
+`^[A-Za-z0-9_-]+$`); throw from `delete()` when there is nothing to delete; reset the static cache via `kernel.reset`
+(I-87).
+
+## [ ] B-192 – Predefined metadata small defects
+
+**Files:** `models/Metadata/Predefined/Dao.php:50-67`; `models/Metadata/Predefined/Listing.php:74-101`;
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`
+
+- `Dao::getById('0')`: `$id != null` is `false` for `'0'`, so the model's current id (`null`) is used →
+  `getDataByName(null)` → `TypeError`.
+- `getByTargetType()` returns the `array_filter()` result with its original keys → a JSON object instead of an array
+  when the list is serialised for the admin store. Declared `?array`, but it is never `null`.
+- The config tree accepts `inheritable` (`:682-689`), but the model has no such property; the value is dropped on load
+  and removed from the file on the next save.
+- `data` is a `scalarNode` in the config tree while the model stores `mixed`. A custom metadata type whose storage form
+  is an array would be written to YAML and **break the next container compilation** (only with the `symfony-config` write
+  target; no core type does this today).
+
+**Fix direction:** `$id !== null`; `array_values()`; remove `inheritable` or model it; validate `is_scalar($data)` on
+save, or make `data` a `variableNode`.
+
+---
+
+## Notification (Scope 7)
+
+## [ ] B-193 – One invalid row breaks the whole notification list (and `deleteAll()`): the model writes what the DAO refuses to read
+
+**Files:** `models/Notification/Dao.php:92-142`; `models/Notification.php:107-124`, `:324-329`;
+`models/Notification/Listing/Dao.php:54-77`; `models/User/AbstractUser/Dao.php:153-158`
+
+- `assignVariablesToModel()` throws `UnexpectedValueException` for a missing recipient, an empty title and an empty
+  message. `Notification::getById()` only catches `NotFoundException`, so `Listing\Dao::load()` fails, and with it
+  `findAll()`, `findLastUnread()` and `deleteAll()` → the user's notification panel and unread polling fail, and the
+  rows cannot even be cleared (inside an open transaction, C-34).
+- Such rows are easy to write: `Notification::save()` validates nothing; `title` defaults to `''` in the model and the
+  schema; `message = ''` is accepted. Only `NotificationService::sendToUser()` validates, and other writers (custom code,
+  the Studio bundle's service, payload-only notifications) do not go through it.
+- Deleting a user deletes only the `users` row (`AbstractUser\Dao::delete()`): the user's notifications stay (no FK)
+  and any listing not filtered by that recipient throws.
+- `creationDate` and `modificationDate` both `NULL` → `setCreationDate(null)` → `TypeError`.
+
+**Fix direction:** one `validate()` in `Notification::save()`; when loading, skip broken rows with a warning instead of
+throwing; delete or cascade a user's notifications (I-90).
+
+## [ ] B-194 – `NotificationService::format()` timestamps are shifted by the PHP timezone offset
+
+**Files:** `models/Notification/Dao.php:62`; `models/Notification/Service/NotificationService.php:231-255`, `:257-268`;
+`bundles/InstallBundle/dump/install.sql:810-811`
+
+- `Dao::save()` writes `date('Y-m-d H:i:s')` in the PHP default timezone; the `TIMESTAMP` column returns the same local
+  string. `format()` parses it with `new Carbon(…, 'UTC')`, so `timestamp` is off by the PHP offset (1–2 h in
+  `Europe/Vienna`), and `date` and `timestamp` disagree.
+- `findLastUnread()` converts `$lastUpdate` back with the local `date()`. A client that uses `format()['timestamp']` as
+  its next `lastUpdate` gets notifications repeated or missed (admin-ui-classic polling not verified).
+- Local wall-clock storage is ambiguous in the DST fall-back hour (ordering by `creationDate` is wrong for that hour), and
+  a MySQL session timezone that differs from PHP shifts the stored values.
+
+**Fix direction:** store UTC explicitly (`DateTimeImmutable` in UTC, `DATETIME` column, I-90) and format with the same
+timezone that was used for writing.
+
+## [ ] B-195 – `findAll()` filters: unquoted keys, conditions without parentheses, colliding keys, ignored offset, swallowed count errors
+
+**Files:** `models/Notification/Service/NotificationService.php:181-226`;
+`models/Notification/Service/NotificationServiceFilterParser.php:66-96`; `models/Notification/Listing/Dao.php:32-48`;
+`lib/Model/Listing/Dao/AbstractDao.php:70-81`
+
+- `findAll(['read' => 0])` → `read = :read` → SQL syntax error (`READ` is a reserved word); keys are never quoted.
+- Conditions are joined with a bare `' AND '`. A caller condition that contains `OR` widens the result beyond the
+  `recipient` restriction, even for trusted callers (request input: C-35).
+- `parse()` keys its result by `<property>_<operator>`: two filters on the same property and operator (two `like` on
+  the title) collapse into the last one.
+- `offset` without `limit` is ignored (`getOffsetLimit()` only emits `LIMIT offset, limit`); a negative string limit
+  (`'-1'`) becomes `LIMIT -1` → SQL error.
+- `Listing\Dao::count()` catches every `\Exception` and returns `0`, so the UI shows "0 total" while `getItems()`
+  throws, or shows data with a total of `0`.
+
+**Fix direction:** typed filter object (I-88); quote identifiers; parenthesise each condition; let `count()` throw.
+
+## [ ] B-196 – Filter parser crashes on malformed input (500 instead of 400) and the date operators overlap
+
+**File:** `models/Notification/Service/NotificationServiceFilterParser.php:66-181`
+
+- Invalid JSON → `json_decode()` returns `null` → `foreach` over `null` (warning; `ErrorException` in debug). A
+  non-string scalar `filter` (`filter=1`) → `TypeError` in `json_decode()` (strict file). Missing `type` / `operator` /
+  `property` → undefined-key warnings and a `TypeError` from `getDbProperty(): string`. Unknown operator →
+  `throw new Exception()` without a message. Invalid date → Carbon `InvalidFormatException`. Unknown `type` is
+  silently ignored.
+- Date semantics: `gt` → `> <day> 00:00:00` and `lt` → `< <day> 23:59:59`, so both include the selected day (and `lt`
+  misses its last second), while `eq` covers the whole day. "Before / on / after" overlap (the intended semantics of the
+  admin date filter should be confirmed).
+- `like` values are not escaped: `%` and `_` in the search text act as wildcards.
+
+**Fix direction:** `getString()` + `JSON_THROW_ON_ERROR`, validate each item and throw a dedicated exception that the
+controller maps to 400; `gt` → `>= next day 00:00`, `lt` → `< day 00:00`; escape `LIKE` wildcards.
+
+## [ ] B-197 – `findAndMarkAsRead()` / `delete()`: inconsistent authorization contracts
+
+**File:** `models/Notification/Service/NotificationService.php:155-171`, `:303-314`
+
+- `findAndMarkAsRead($id)` with the default `$recipientId = null` **always** throws `AccessDeniedHttpException` (the
+  recipient id is never `null`), so the optional parameter is effectively required. A foreign recipient throws.
+- `delete($id)` with a foreign or `null` recipient silently does nothing and commits; the caller reports success.
+- An already read notification is saved again (modification date bumped, `PRE_SAVE` / `POST_SAVE` fired).
+- An HTTP exception (`symfony/http-kernel`) is thrown from a model service (I-88).
+
+**Fix direction:** make `$recipientId` required (or a separate admin method without the check); throw the same domain
+exception from both methods; skip the save when nothing changed.
+
+## [ ] B-198 – Deleted notifications stay loadable and can be resurrected; events fire before commit
+
+**Files:** `models/Notification.php:107-124`, `:324-339`; `models/Notification/Dao.php:60-78`; `lib/Db/Helper.php:38-53`
+
+- `delete()` does not remove `notification_<id>` from `RuntimeCache`: `getById()` after a delete in the same process
+  returns the deleted object (in worker runtimes until the runtime cache is reset; Messenger clears it per message).
+- `Dao::save()` uses `Helper::upsert()` with the explicit id: saving a notification whose row was deleted concurrently
+  (mark-as-read racing "delete all") inserts it again.
+- `POST_SAVE` / `POST_DELETE` are dispatched inside the service transaction (C-34); listeners that push to clients see
+  data that is not committed yet (or never will be).
+
+**Fix direction:** remove the runtime-cache entry in `delete()`; `update()` with an affected-rows check for existing
+ids; dispatch post events after commit.
+
+## [ ] B-199 – Notification small defects
+
+**Files:** `models/Notification.php:66`, `:201-214`; `models/Notification/Service/NotificationService.php:59-74`,
+`:90-133`; `bundles/CoreBundle/config/pimcore/default.yaml:148`; `bundles/InstallBundle/dump/install.sql:804-805`
+
+- `$title` is a non-nullable `string`, but `setTitle(?string)` / `getTitle(): ?string` → `setTitle(null)` throws
+  `TypeError` ("Cannot assign null to property").
+- `sendToUser()` rejects the title or message `'0'` (`empty()`).
+- `sendToUser()` with a non-existent `$fromUser` stores no sender without any notice.
+- With `sql_mode = ''`, titles over 250 characters and types over 20 characters are truncated silently (workflow titles
+  contain the full element path).
+- `sendToGroup()` is not atomic: an error at user *n* leaves users before *n* notified and the rest not, and the
+  transaction open (C-34).
+
+**Fix direction:** `?string` → `string` consistently; `=== ''` checks; validate the sender and the lengths in the model.
+
+## [ ] B-200 – Notification tests assert nothing; `testSendToGroup` expects a count that cannot happen
+
+**File:** `tests/Unit/Notification/Service/NotificationServiceTest.php:83-158`
+
+- `$this->equalTo($count, $notifications['total'])` only builds a PHPUnit constraint and discards it. No assertion runs,
+  so `testSendToUser`, `testSendToUserWithElement` and `testSendToGroup` pass whatever the result is.
+- `testSendToGroup` expects `3` for one recipient. That user has neither the `notifications` permission nor a role
+  with it, so `filterUsersWithPermission()` removes them and **0** notifications are sent; a real assertion fails.
+- `testSendToNoExistUser` leaves a DB transaction open for the following tests (C-34).
+
+**Fix direction:** `assertSame()`; give the group the permission and expect `1`; assert the transaction nesting level
+(I-92).

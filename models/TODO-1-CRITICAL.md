@@ -30,6 +30,15 @@ Data/**, Listing/**, QuantityValue/**, SelectOptions/**, Service), plus the dire
 originates in the model interplay (`bundles/CoreBundle/config/documents.yaml:49-50`,
 `lib/Routing/Dynamic/DataObjectRouteHandler.php:91`) and the related schema
 (`bundles/InstallBundle/dump/install.sql` – `documents*`, `edit_lock`, `tags`, `recyclebin`)
+**(7)** `models/Metadata/**` (Predefined, Predefined/Dao, Predefined/Listing, Predefined/Listing/Dao), `models/Notification.php`
+and `models/Notification/**` (Dao, Listing, Listing/Dao, Service/NotificationService, Service/NotificationServiceFilterParser,
+Service/UserService), plus the direct consumers where a defect originates in the model interplay
+(`lib/Workflow/Notification/PimcoreNotificationService.php`, `lib/Workflow/Manager.php::applyWithAdditionalData()`
+(`:222-250`), `models/Asset/Service.php::expandMetadataForEditmode()` (`:291-316`),
+`lib/Model/Dao/PimcoreLocationAwareConfigDao.php`, the `assets.metadata.predefined` config node
+(`bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`)), the `notifications` schema
+(`bundles/InstallBundle/dump/install.sql:801-817`, migration `Version20240813085200`) and
+`tests/Unit/Notification/Service/NotificationServiceTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -46,9 +55,12 @@ its root page is renamed or moved** and **site definitions permanently lost when
 Scope 6 **document / object / tag tree paths corrupted on move**, **open DB transactions after an `Error` in document
 and object saves**, **frontend 500s from scheduled blocks**, **a path-less nearest-document cache serving the wrong
 document**, **encrypted data and URL slugs silently destroyed**, **code / SQL injection through class definitions**
-and **other classes' tables dropped on class delete**.
+and **other classes' tables dropped on class delete**, and in Scope 7 **element / workflow writes silently lost
+after a notification error leaves a DB transaction open** and **SQL injection in the notification filter exposing every
+user's notifications**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
+Scope 7: `7d51be3297`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -904,3 +916,105 @@ name, class id, field names and select-option ids, checked in the setters and in
 **Fix direction:** build the exact table names from the known brick / field-collection keys and valid languages (or
 query `information_schema.tables` with escaped `_` / `%` and the exact `_<key>_<id>` structure); better, track the
 tables owned by a class.
+
+---
+
+# Scope 7 – Metadata / Notification
+
+> Notes
+> - `models/Notification.php`, `Notification/Listing.php` and `Notification/Service/**` are `strict_types`;
+>   `Notification/Dao.php`, `Notification/Listing/Dao.php`, `Metadata/Predefined/Dao.php` and
+>   `Metadata/Predefined/Listing/Dao.php` are not (I-86). `Metadata/Predefined.php` and `Predefined/Listing.php` are strict.
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found (no implicit nullable parameters, no removed APIs; Carbon is
+>   `^3.0`, DBAL `^3.8`). Modernisation is in TODO-3 (I-86–I-92).
+> - The admin controllers (`NotificationController`, predefined-metadata settings) live in
+>   `pimcore/admin-ui-classic-bundle`, which is not in this repo (`vendor/` is not installed). Statements about how they
+>   call the services are based on the upstream bundle source and were **not verified locally**.
+> - `bundles/CoreBundle/config/pimcore/default.yaml:148` sets `sql_mode = ''`: over-long values are truncated silently
+>   instead of failing (relevant for B-199).
+> - No Scope 7 metadata item is critical. The predefined-metadata id goes into a YAML file path like the thumbnail
+>   config name in C-09; it is only reachable through code and imports (the admin creates UUIDs), so it is listed as B-191
+>   and covered by the repository-level fix of C-09.
+
+---
+
+## [ ] C-34 – `NotificationService` opens DB transactions and never rolls them back: after any error, later writes in the same request / worker are silently lost
+
+**Files:** `models/Notification/Service/NotificationService.php:59-84` (`sendToUser()`), `:155-171`
+(`findAndMarkAsRead()`), `:216-223` (`findAll()`), `:245-252` (`findLastUnread()`), `:303-314` (`delete()`), `:324-330`
+(`deleteAll()`), `:336-347`; `lib/Workflow/Notification/PimcoreNotificationService.php:72-78`;
+`lib/Workflow/Manager.php:232-243`
+
+```php
+$this->beginTransaction();
+$sender = User::getById($fromUser);
+$recipient = User::getById($userId);
+if (!$recipient instanceof User) {
+    throw new UnexpectedValueException(...);   // transaction stays open
+}
+```
+
+- Every public method calls `Db::getConnection()->beginTransaction()` and `commit()` with no `try` / `rollBack()`. Exits
+  that skip `commit()`:
+  - `sendToUser()`: unknown recipient, empty title or message (validated **after** the transaction is opened), any DB
+    error, any exception from a `NotificationEvents::PRE_SAVE` / `POST_SAVE` listener;
+  - `findAndMarkAsRead()`: unknown id (`find()` throws), foreign notification (`AccessDeniedHttpException`), and without an
+    exception when `$recipientId` is `0` (the second `if` is falsy, nothing commits);
+  - `delete()`: unknown id; `findAll()` / `findLastUnread()` / `deleteAll()`: DB or hydration errors (B-193).
+- The shared DBAL connection then stays at nesting level ≥ 1. Later `beginTransaction()` / `commit()` pairs (element
+  saves, versions, notes, dependencies) only change the nesting level, so nothing is committed. When the request ends
+  the connection closes and MySQL **rolls back everything written after the failure**, although every save reported
+  success.
+- Concrete path: a workflow transition with `notificationSettings` → `Manager::applyWithAdditionalData()` →
+  `$workflow->apply()` → `NotificationSubscriber` → `PimcoreNotificationService::sendPimcoreNotification()` →
+  `sendToUser()` throws → caught and only logged (`PimcoreNotificationService.php:76-78`) → `$subject->save()`
+  (`Manager.php:243`) runs inside the orphaned transaction → the element data, new workflow place, version and note are
+  lost, and the UI shows success.
+- Worker runtimes (CoreBundle C-08) and long CLI processes keep the connection: every later request in that process
+  writes into the never-committed transaction and holds row locks, so other processes hit lock wait timeouts. When
+  the process ends, all of it is rolled back. A single "mark as read" on a notification that was already deleted
+  elsewhere (not found) is enough to trigger it from the admin UI.
+- `tests/Unit/Notification/Service/NotificationServiceTest.php:53-66` (`testSendToNoExistUser`) leaves the transaction
+  open, so the following tests in the same process run inside it (B-200).
+- The transactions protect nothing: each method writes a single row (or deletes rows one by one). Only `findAll()` gains
+  a consistent `count` / `select` snapshot.
+
+**Fix direction:** remove the transactions from single-statement operations; where one is needed use
+`$db->transactional(fn () => …)` (it rolls back on any `Throwable`); validate before opening a transaction; never catch
+and continue around a failed transaction (`PimcoreNotificationService`). Add a test that asserts
+`getTransactionNestingLevel() === 0` after every failing service call (I-92).
+
+---
+
+## [ ] C-35 – Notification filter: the request `property` (and `findAll()` filter keys) go into SQL unvalidated (SQL injection, every user's notifications readable)
+
+**Files:** `models/Notification/Service/NotificationServiceFilterParser.php:66-96`, `:103-123`, `:130-174`, `:176-181`;
+`models/Notification/Service/NotificationService.php:181-200`
+
+```php
+$property = $this->properties[$property] ?? $property;          // raw request value
+"$property LIKE :$key"                                           // $key = $property . '_like'
+$condition = implode(' AND ', $conditions);                      // findAll(): no parentheses
+```
+
+- `getDbProperty()` maps `title` and `timestamp` and returns every other value unchanged. That value becomes both the
+  SQL expression and the placeholder name in `parseString()` / `parseDate()` (`LIKE`, `BETWEEN`, `>`, `<`).
+  `findAll()` joins all conditions with a bare `' AND '` and, in the `else` branch, writes the filter keys unquoted
+  (`$key . ' = :' . $key`).
+- The parser reads the raw admin request (`$request->request->get('filter')`). Upstream admin-ui-classic
+  `NotificationController::findAllAction()` merges `parse()` into `['recipient' => <current user id>]` and passes it to
+  `findAll()` (not verified locally, see notes).
+- Example: `filter=[{"type":"string","operator":"like","property":"isStudio OR 1=1 OR @a","value":"x"}]` produces
+  `isStudio OR 1=1 OR @a LIKE :isStudio OR 1=1 OR @a_like`. The only placeholder, `:isStudio`, is bound by `findAll()`'s
+  own `isStudio` filter; the unused named parameter is ignored (DBAL 3 expands only the placeholders found in the SQL –
+  not verified locally, `vendor/` missing); `@a` / `@a_like` are MySQL user variables. Because `AND` binds tighter than
+  `OR`, the `WHERE` is true for every row: the caller gets **every user's notifications** (title, message, payload,
+  linked elements). With a subquery instead of `1=1`, it becomes a boolean-blind read of the whole database
+  (for example `users.password`).
+- Any other non-identifier property causes an SQL error (500). Who can trigger it: every backend user with the
+  `notifications` permission.
+
+**Fix direction:** allowlist the filterable properties (`title`, `timestamp` → `creationDate`, …) and reject everything
+else with a 400; use fixed placeholder names; quote identifiers; wrap each condition in parentheses; replace the
+`condition` strings with a typed filter object that the DAO turns into SQL (I-88). Related: B-195 (`findAll()` keys),
+B-196 (parser robustness).
