@@ -11,6 +11,9 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 `PimcoreCoreExtension`, re-scan of `Compiler/*`) and related config: `config/pimcore/*.yaml` and every `config/*.yaml`
 loaded by the extension, plus the direct consumers of the helper (`lib/Kernel.php:87-131`,
 `lib/Config/LocationAwareConfigRepository.php:289-329`)
+**(5)** `src/Controller/**`, `src/OptionsProvider/**`, `src/Request/**` and related config: `config/routing.yaml`,
+`config/services.yaml:58-62,116-118`, plus the model code they drive (`models/Asset/WebDAV/*`,
+`models/Asset/Service.php` thumbnail delivery, `SelectionProviderTrait`, `AbstractObject::getById()`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md)
 
@@ -1010,3 +1013,143 @@ say so.
   - `addConfigLocationTargetNode()` with an absolute folder outside `PIMCORE_PROJECT_ROOT` (C-11);
   - `SecurityPolicy` denies method/property access on non-allowlisted objects (C-12);
   - `PimcoreCoreExtension::load()` with an empty config: compiles without notices (I-56).
+
+---
+
+# Scope 5 – `Controller` / `OptionsProvider` / `Request` (+ `config/routing.yaml`, `config/services.yaml`)
+
+IDs continue from I-64. Line numbers are from commit `1a059513b7`. Grouped: **R** Symfony 7.4 / configuration,
+**S** PHP 8.4 / code style, **T** logic / structure, **U** tests.
+
+---
+
+## R – Symfony 7.4 / configuration
+
+### [ ] I-65 – Controller service and route definitions
+
+**Files:** `config/services.yaml:58-62`, `config/routing.yaml`, `src/Controller/*.php`
+
+- `public: true` + `tags: ['controller.service_arguments']` on `Pimcore\Bundle\CoreBundle\Controller\` is redundant:
+  with `autoconfigure: true`, classes extending `AbstractController` get the tag automatically (and are made public by
+  the controller resolver pass). Drop both, or use `#[AsController]` if the base class ever changes.
+- Restrict methods: `robots.txt`, common files and thumbnails → `methods: [GET, HEAD]`. WebDAV must stay unrestricted.
+- `_pimcore_service_common_files`: `robots\.txt` in the requirement is dead (the exact `/robots.txt` route above wins);
+  `\.crl` only matches the literal path `/.crl` – if `*.crl` was intended, write `.+\.crl`, otherwise document it.
+  `apple\-touch\-icon.*` needs no escaped `-`.
+- `_pimcore_service_thumbnail` duplicates its regex in `Asset\Service::extractThumbnailInfoFromUri()` (the comment there
+  points at this file). Move the patterns into class constants on `Asset\Service` (or a small `ThumbnailUri` value
+  object) and reference them from the route via `requirements` in a PHP route file / `#[Route]` attribute.
+- `_fos_js_routing` imports `routing-sf4.xml`. Symfony 7.4 deprecates XML configuration for routing/DI (removal in 8.0).
+  Switch to the PHP/YAML variant if the installed `friendsofsymfony/jsrouting-bundle` ships one, otherwise track it as an
+  8.0 blocker. (Verify the deprecation in the app with `bin/console debug:router` + deprecation log.)
+- Consider `#[Route]` attributes on the four actions instead of YAML. Keep the explicit ordering requirement (thumbnail
+  route before `_pimcore_bundle_auto` and the document catch-all) documented either way.
+
+### [ ] I-66 – `DataObjectParamResolver` wiring and Symfony 7.4 resolver features
+
+**Files:** `config/services.yaml:116-118`, `src/Request/ParamResolver/DataObjectParamResolver.php`
+
+- Use `$argument->getAttributesOfType(DataObjectParam::class)` (returns typed instances) instead of
+  `getAttributes(..., IS_INSTANCEOF)` + `$options[0]` indexing; store `$attribute = … [0] ?? null` once.
+- Do not write back into `$request->attributes` (54, 71). Value resolvers are expected to be side-effect free; other
+  code reading the attribute later gets an object instead of the raw ID. If templates rely on it, document and keep
+  it behind a flag.
+- Priority `101` is only there to beat `RequestAttributeValueResolver` (100). Document that in the YAML, or make the
+  resolver targeted (`#[AsTargetedValueResolver('pimcore_data_object')]` + `#[ValueResolver]`) so it only runs where
+  asked, with automatic type-based resolution kept as the default.
+- Inject the admin check (`Tool::isElementRequestByAdmin()` is static) through a small service so the resolver can be
+  unit-tested without a kernel.
+- Class is `@internal` but the `DataObjectParam` attribute is public API – move user docs to the attribute.
+
+### [ ] I-67 – Move WebDAV server setup into a service; dependency hygiene
+
+**Files:** `src/Controller/WebDavController.php`, root `composer.json` (`sabre/dav: ^4.1.2`, conflict `4.2.2`)
+
+- Create a `WebDavServerFactory` service (inject `Connection`, `UrlGeneratorInterface`, `%kernel.debug%`) and keep the
+  controller to "build, run, return response" (see B-64). Table name `webdav_locks` → constant shared with the
+  migration `Version20210505093841`.
+- Raise `sabre/dav` to a release that declares PHP 8.4 support (4.7.x line; older 4.x emit implicit-nullable
+  deprecations on 8.4) and drop the stale `4.2.2` conflict once the minimum is above it.
+- Use `Sabre\DAV\Locks\Backend\PDO` only with a `\PDO` (B-64), otherwise fall back to `Locks\Backend\File` in
+  `var/` or disable locking.
+- Browser plugin only in debug / read-only (C-14).
+
+---
+
+## S – PHP 8.4 / code style
+
+### [ ] I-68 – `PublicServicesController` readability
+
+**File:** `src/Controller/PublicServicesController.php`
+
+- Mark `final` (it is `@internal`) and inject `LoggerInterface` instead of the static `Pimcore\Logger`.
+- `thumbnailAction()`: "throw to catch three lines later" (58-63) is control flow by exception → `if (!$response)
+  { return …; }`. The `$config` array keys (`asset_id`, `thumbnail_name`, …) are a de-facto DTO; a small
+  `readonly` class (or at least a `@phpstan-type`) would make `Asset\Service` signatures explicit.
+- `robotsTxtAction()`: the `// check for site`, `// send correct headers` comments describe the next line; fold
+  `$siteId` into `$site?->getId() ?? 0`; `$config[$siteId] ?? ''` instead of `array_key_exists`; default content as a
+  class constant.
+- `commonFilesAction()`: body `"HTTP/1.1 404 Not Found\nFiltered by common files filter"` puts a status line into the
+  body. Use `Response::HTTP_NOT_FOUND` and a plain body (or `throw $this->createNotFoundException()` so the error page /
+  logging policy applies); add `Content-Type: text/plain`.
+- Unused `Request $request` parameters (`robotsTxtAction`, `commonFilesAction`) can go.
+- `match (true)` in `customAdminEntryPointAction()`: trailing comma; `Cookie::create()` / `withExpires()`.
+
+### [ ] I-69 – Move `robots.txt` delivery into SeoBundle
+
+**Files:** `src/Controller/PublicServicesController.php:21,66-101`, `config/routing.yaml:1-3`
+
+- CoreBundle imports `Pimcore\Bundle\SeoBundle\Config` and probes it with `class_exists()`: a core → optional-bundle
+  dependency. SeoBundle owns the robots settings (admin UI, SettingsStore scope `robots.txt`); it should own the route
+  too, with CoreBundle keeping only the "allow all" fallback (or none – a missing `robots.txt` is a 404 that means
+  "allow all" to crawlers).
+- Add `Cache-Control: public, max-age=…` (and invalidate on save) – the file changes rarely and is requested often.
+
+### [ ] I-70 – `SelectOptionsOptionsProvider` polish
+
+**File:** `src/OptionsProvider/SelectOptionsOptionsProvider.php`
+
+- The FQCN is persisted in class definitions and checked in `SelectOptions\Config::isConfiguredAsOptionsProvider()` (`models/DataObject/SelectOptions/Config.php:320-340`): document it as
+  stable API (`@api`) so nobody renames/moves it.
+- `fn(SelectOption $o)` → `static fn (SelectOption $o)`; a dedicated exception
+  (`Pimcore\Model\Exception\NotFoundException` or a `SelectOptionsConfigNotFoundException`) instead of `\Exception`
+  with a timestamp code.
+- `getOptions()` silently returns `[]` for a field that does not implement `OptionsProviderInterface`. That can only
+  happen through misconfiguration – log a warning.
+- `hasStaticOptions(): true` – add a comment why (options come from a versioned config, not from object data), since
+  it disables the "dynamic options" handling in `SelectionProviderTrait`.
+- Widen the return type of `getDefaultValue()` to `string|array|null` (B-60).
+
+---
+
+## T – Logic / structure
+
+### [ ] I-71 – Clarify the WebDAV / thumbnail security model in code, not only in `security.yaml` and docs
+
+**Files:** `src/Controller/WebDavController.php`, `src/Controller/PublicServicesController.php`,
+`doc/04_Assets/05_Accessing_Assets_via_WebDAV.md`
+
+- The two public-facing controllers in CoreBundle depend on project config being exactly right (`pimcore_webdav`
+  firewall "DO NOT CHANGE", web server rules for `/var/assets`, thumbnail route). Put the minimum guarantees into the
+  code (C-14 `IsGranted`, C-15 variant validation) and keep the docs as the second line.
+- Add a `pimcore.assets.webdav.enabled` / `pimcore.assets.thumbnails.on_demand_generation` style switch so
+  installations that do not need on-demand generation or WebDAV can turn the routes off.
+
+---
+
+## U – Tests
+
+### [ ] I-72 – Tests for controllers, provider and resolver
+
+There are no tests for any class in this scope. Minimum set:
+- `PublicServicesController::thumbnailAction` (functional): existing variant → 200 + cache headers; unknown asset /
+  config / disabled format → 404, not 302 (B-65); invalid high-res factor / page / time → 404 without a new file (C-15);
+  filename with `+` (B-69).
+- `robotsTxtAction`: per-site content, fallback, no output buffers closed (B-66, B-67).
+- WebDAV: `MOVE`, `PUT`, `DELETE`, `MKCOL` as a user without the permission → 403 and no change (C-13); browser plugin
+  `POST` rejected (C-14); response returned through the kernel (B-64).
+- `SelectOptionsOptionsProvider` (unit): options mapping, missing / empty / unknown config ID (B-61), Select and
+  Multiselect default value (B-60).
+- `DataObjectParamResolver` (unit, with a stub admin checker): concrete class, `Folder`, `AbstractObject`, nullable
+  empty value, unknown ID, unpublished with/without `unpublished: true`, `class` override mismatch, `options` passed to
+  `getById()` (B-62, B-63).

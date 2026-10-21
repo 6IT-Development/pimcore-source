@@ -11,14 +11,18 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 `PimcoreCoreExtension`, re-scan of `Compiler/*`) and related config: `config/pimcore/*.yaml` and every `config/*.yaml`
 loaded by the extension, plus the direct consumers of the helper (`lib/Kernel.php:87-131`,
 `lib/Config/LocationAwareConfigRepository.php:289-329`, `lib/Twig/Sandbox/SecurityPolicy.php`)
+**(5)** `src/Controller/**`, `src/OptionsProvider/**`, `src/Request/**` and related config: `config/routing.yaml`,
+`config/services.yaml:58-62,116-118`, plus the model code they drive (`models/Asset/WebDAV/*`,
+`models/Asset/Service.php` thumbnail delivery, `SelectionProviderTrait`, `AbstractObject::getById()`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
 
 These items cause **data loss or corruption, SQL injection, a command that cannot do its one job, or wrong exit codes
 that hide failures from cron/CI**, in Scope 3 **content leaking between visitors, access-control/maintenance
-bypass and an open redirect**, and in Scope 4 **lost configuration data and a Twig sandbox escape**.
+bypass and an open redirect**, in Scope 4 **lost configuration data and a Twig sandbox escape**, and in Scope 5 **asset permission bypass and
+CSRF via WebDAV, and anonymous disk/CPU exhaustion through the thumbnail route**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `7cb7841b76` (Scope 3:
-`43948f45d7`, Scope 4: `402145a525`, same code).
+`43948f45d7`, Scope 4: `402145a525`, Scope 5: `1a059513b7`, same code).
 
 > Notes
 > - No hard Symfony 7.4 / PHP 8.4 incompatibility was found in the commands. None of them override the deprecated
@@ -456,3 +460,111 @@ twig:
   only the sandbox, or check `$obj instanceof AppVariable` / `ContainerInterface` and deny it.
 - Add a test that renders `{{ container.… }}`, `{{ app.request… }}` and a method call on a mail param in the sandbox and
   expects `SecurityError`.
+
+---
+
+# Scope 5 – `Controller` / `OptionsProvider` / `Request` (+ `config/routing.yaml`, `config/services.yaml`)
+
+> Notes
+> - Files: `src/Controller/PublicServicesController.php`, `src/Controller/WebDavController.php`,
+>   `src/OptionsProvider/SelectOptionsOptionsProvider.php`, `src/Request/ParamResolver/DataObjectParamResolver.php`,
+>   `config/routing.yaml`, `config/services.yaml:58-62,116-118`. The model code these four classes drive was read too
+>   (`models/Asset/WebDAV/*`, `models/Asset/Service.php` thumbnail delivery, `SelectionProviderTrait`,
+>   `AbstractObject::getById()`), because most of the real risk sits there.
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found. `ValueResolverInterface` is the current resolver API,
+>   `AbstractController` is used as intended, all files declare `strict_types`. The one hard break is a runtime one:
+>   `WebDavController` ends with `exit` (B-64). Modernisation is in TODO-3 (I-65 … I-72).
+> - No `vendor/` tree was available in this session, so Symfony/Sabre behaviour is quoted from their public APIs
+>   (sabre/dav 4.x `Browser\Plugin::__construct($enablePost = true)`, `Server::start()`). Each item says how to confirm.
+> - Line numbers are from commit `1a059513b7`.
+
+---
+
+## [ ] C-13 – WebDAV `MOVE` renames, moves, overwrites and deletes assets without any permission check
+
+**Files:** `src/Controller/WebDavController.php:39-40` (wires the tree), `models/Asset/WebDAV/Tree.php:39-91`,
+`models/Asset/WebDAV/Folder.php:69-95`
+
+- Every other WebDAV write path checks the element permission (`Folder::createFile()` → `isAllowed('create')`,
+  `File::delete()` → `isAllowed('delete')`, `setName()` → `isAllowed('rename')`, `put()` → `isAllowed('publish')`).
+  `Tree::move()` overrides Sabre's default move (which would go through those node methods) and checks **nothing**:
+  - same directory → `setFilename()` (rename without `rename` permission);
+  - other directory → `setPath()` / `setParentId()` into any folder (no `create` on the target, no `delete`/`rename` on
+    the source);
+  - destination exists → `$asset->setData($sourceAsset->getData()); $sourceAsset->delete();` (lines ~51-56): the target
+    asset is **overwritten** and the source **deleted**, again without `publish`/`delete` permission.
+- `Folder::getChild()` resolves any path by name and does not check `view`/`list`. A user can address assets outside
+  their workspace directly by path (not only via the filtered `getChildren()`), and use them as `MOVE` source.
+- A Pimcore user with only "view" on a folder can therefore rename, relocate, overwrite or delete any asset whose path
+  they know. Asset versions keep the data, but references (`setData` keeps the target's ID) silently change content.
+- `Admin::getCurrentUser()` is only read **after** the overwrite/delete (line ~81). If the `/asset/webdav` firewall is
+  missing or misconfigured (see C-14), an **anonymous** `MOVE` onto an existing name deletes the source asset before
+  the `null->getId()` error aborts the request.
+- `Serialize::unserialize()` of `webdav-delete.dat` (lines ~58-67) restores whole asset objects from a temp file. That
+  file is only as trustworthy as `PIMCORE_SYSTEM_TEMP_DIRECTORY` (shared `/tmp` on some hosts).
+
+**Verify:** create a non-admin user with only `view`+`list` on `/test`, then
+`curl -u user:pass -X MOVE -H 'Destination: /asset/webdav/test/b.jpg' https://host/asset/webdav/test/a.jpg` → the asset
+is renamed. Repeat with an existing `b.jpg` → `b.jpg` gets `a.jpg`'s data and `a.jpg` is deleted.
+
+**Fix direction:** in `Tree::move()` resolve the user first (fail with `Sabre\DAV\Exception\Forbidden` when there is
+none) and check `rename` (same folder) or `delete`+`create` on source/target parent, `publish` on an overwritten target
+and `delete` on the removed source. Check `view` in `Folder::getChild()`. Replace the serialised delete log with a DB
+table or the TmpStore. Add a functional test per write verb (I-72).
+
+---
+
+## [ ] C-14 – WebDAV endpoint relies entirely on the project firewall, and the Sabre browser plugin accepts cross-site POSTs (CSRF with cached Basic credentials)
+
+**Files:** `src/Controller/WebDavController.php:34-61` (esp. `:54`), `config/routing.yaml:35-39`,
+`.github/ci/files/config/packages/security.yaml:11-15`, `doc/04_Assets/05_Accessing_Assets_via_WebDAV.md`
+
+- The controller has no `#[IsGranted]`, no `denyAccessUnlessGranted()`, no user check. Authentication exists only if the
+  project's `security.yaml` contains the documented `pimcore_webdav` firewall (`http_basic`). Pimcore's skeleton has it,
+  but nothing in the bundle enforces or verifies it. Without it, reads fail only by accident (`filterAccessibleByUser(null)`
+  → `TypeError`) and C-13's anonymous delete path is open.
+- `new Plugin()` (`Sabre\DAV\Browser\Plugin`) is created with `$enablePost = true`. The HTML browser then accepts
+  `POST` form actions (`mkcol`, file upload) on `/asset/webdav/*`.
+- Browsers re-send cached **HTTP Basic** credentials automatically, also on cross-site top-level form POSTs; `SameSite`
+  does not apply to Basic auth. Any page an editor visits after using WebDAV in the browser can upload files (e.g. an
+  SVG/HTML with script, then served from the site's own origin under `/var/assets`) or create folders in their name.
+  There is no CSRF token on these forms.
+- `http_basic` on the `pimcore_admin` provider authenticates with username + password only. If the project enforces
+  2FA for the admin UI, WebDAV bypasses it (confirm against the project's 2FA setup).
+
+**Verify:** log in once via the browser at `/asset/webdav/`, then from another origin submit
+`<form method=post action="https://host/asset/webdav/" enctype=multipart/form-data><input type=hidden name=sabreAction value=mkcol><input name=name value=csrf>` → folder `csrf` is created.
+
+**Fix direction:** `new Plugin(false)` (read-only HTML browser), or register the browser plugin only when
+`kernel.debug` is on. Add `#[IsGranted('ROLE_PIMCORE_USER')]` (or an explicit `getUser()` check returning 401 with
+`WWW-Authenticate`) to the action, so a missing firewall fails closed. Document that WebDAV bypasses 2FA, or add a
+`pimcore.assets.webdav.enabled` switch (default off) and route only when enabled.
+
+---
+
+## [ ] C-15 – Public thumbnail route lets anonymous clients generate and store unbounded thumbnail variants (disk / CPU exhaustion)
+
+**Files:** `src/Controller/PublicServicesController.php:38-64`, `config/routing.yaml:17-25`,
+`models/Asset/Service.php:359-469,562-594`, `models/Asset/Image/Thumbnail/Processor.php:162-163`
+
+- `_pimcore_service_thumbnail` is public by design (deferred thumbnail generation on first request). Any asset ID and any
+  **named** thumbnail config can be requested, which is fine. But the URL also carries free parameters that each produce
+  a **new file that is stored permanently** in the thumbnail storage:
+  - `@<float>x` high-res factor (`Service.php:452-461`): `@1.0001x`, `@1.0002x`, … each give a different filename
+    (`Processor.php:163`). The factor is capped only inside the transformation math, not in the filename;
+  - `~-~media--<name>--query` (`:464-466`), `~-~time-<n>` for video frames (`:416-418`, one ffmpeg run per `n`),
+    `~-~page-<n>` for document pages (`:424-426`, one Ghostscript/LibreOffice run per `n`);
+  - the requested extension when it differs from the generated one (`:496-505`): a copy is written per extension.
+- Each request is unauthenticated, cannot be rate-limited by the cache (every URL is new), and leaves a file behind.
+  A simple loop over `@1.000Nx` fills the thumbnail volume; the video/page variants burn CPU.
+- The controller adds nothing on top: it passes `filename`/`prefix` straight through and has no allowlist, limit or
+  signature.
+
+**Verify:** `for i in $(seq 1 50); do curl -so /dev/null "https://host/<path>/image-thumb__<id>__<name>/x@1.00$i""x.jpg"; done`
+then count new files in the thumbnail storage folder for that asset.
+
+**Fix direction:** in the controller (before calling the service) validate the variant parameters: high-res factor
+from an allowlist (e.g. the configured `high_resolution` values / `1, 1.5, 2, 3`), media names from the thumbnail config,
+time/page within the asset's duration/page count, extension from the enabled auto formats. Otherwise return 404 without
+generating. Optionally sign deferred URLs (HMAC of the path with `kernel.secret`) the way Symfony's `UriSigner` does,
+and only generate for signed URLs. Add a functional test (I-72).

@@ -11,6 +11,9 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 `PimcoreCoreExtension`, re-scan of `Compiler/*`) and related config: `config/pimcore/*.yaml` and every `config/*.yaml`
 loaded by the extension, plus the direct consumers of the helper (`lib/Kernel.php:87-131`,
 `lib/Config/LocationAwareConfigRepository.php:289-329`)
+**(5)** `src/Controller/**`, `src/OptionsProvider/**`, `src/Request/**` and related config: `config/routing.yaml`,
+`config/services.yaml:58-62,116-118`, plus the model code they drive (`models/Asset/WebDAV/*`,
+`models/Asset/Service.php` thumbnail delivery, `SelectionProviderTrait`, `AbstractObject::getById()`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
 
@@ -1120,3 +1123,220 @@ if the handler really must release it. Otherwise remove the `release()` call.
 
 **Fix direction:** add `symfony/web-link: ^7.4` to `composer.json` (and enable `framework.web_link` in `default.yaml`),
 or drop the `webLink` feature and the alias.
+
+---
+
+# Scope 5 – `Controller` / `OptionsProvider` / `Request` (+ `config/routing.yaml`, `config/services.yaml`)
+
+Same rules: IDs continue from B-59 and are stable. Line numbers are from commit `1a059513b7`. Items are ordered by
+impact. Related critical items: C-13 (WebDAV `MOVE` permission bypass), C-14 (WebDAV auth/CSRF), C-15 (thumbnail
+variant exhaustion).
+
+---
+
+## [ ] B-60 – `SelectOptionsOptionsProvider` wipes the default value of every Multiselect field that uses it
+
+**Files:** `src/OptionsProvider/SelectOptionsOptionsProvider.php:54-61`,
+`models/DataObject/ClassDefinition/DynamicOptionsProvider/SelectionProviderTrait.php:56-57`,
+`models/DataObject/ClassDefinition/Data/Multiselect.php:133-143`,
+`models/DataObject/ClassDefinition/DynamicOptionsProvider/SelectOptionsProviderInterface.php:39`
+
+- `getDefaultValue()` returns the field's default only for `Data\Select`. For `Data\Multiselect` it returns `null`.
+- `SelectionProviderTrait::doEnrichDefinitionDefinition()` always calls
+  `$this->setDefaultValue($optionsProvider->getDefaultValue(...))`. Every enrichment (field definition and layout,
+  i.e. every object load in the admin and `enrichFieldDefinition()` calls) therefore **sets the Multiselect default to
+  `null`**. The default configured in the class editor is never applied to new objects.
+- The interface already allows `string|array|null`; the provider narrows it to `?string`, which is why the array case
+  was dropped.
+
+**Verify:** class with a Multiselect using "Select Options" + a default value → create a new object → the field is
+empty. `$def->enrichFieldDefinition(); $def->getDefaultValue()` → `null`.
+
+**Fix direction:** return `$fieldDefinition->getDefaultValue()` for both `Data\Select` and `Data\Multiselect` (or for
+any field that has `getDefaultValue()`), widen the return type to `string|array|null`. Add a unit test (I-72).
+
+---
+
+## [ ] B-61 – `SelectOptionsOptionsProvider`: an unset select-options ID crashes with a `TypeError` (object editor fails to open)
+
+**File:** `src/OptionsProvider/SelectOptionsOptionsProvider.php:34-38`
+
+- `getOptionsProviderData()` is `?string`. `Config::getById(string $id)` is strict and the file declares
+  `strict_types=1`, so a field with provider class `SelectOptionsOptionsProvider` but empty "options provider data"
+  throws `TypeError: Argument #1 ($id) must be of type string, null given` instead of the intended
+  "Missing select options configuration" exception.
+- This happens during layout enrichment, so the object editor of every object of that class fails to load. The same
+  applies to an ID with stray whitespace (the enum check in `SelectOptions\Config.php:331` trims, `getById()` does not).
+- Generic `\Exception` with only the ID gives no hint which class/field is misconfigured.
+
+**Fix direction:** `$id = trim((string) $fieldDefinition->getOptionsProviderData()); if ($id === '') { throw … }`.
+Include the field name (and class via `$context['class']` when present) in the message and use a specific exception
+type (I-70).
+
+---
+
+## [ ] B-62 – `DataObjectParamResolver` crashes for folder-typed arguments and ignores `AbstractObject`
+
+**File:** `src/Request/ParamResolver/DataObjectParamResolver.php:41-69`
+
+- `is_subclass_of($class, AbstractObject::class)` accepts `DataObject\Folder` and `DataObject` (the generic model class),
+  so `getById()` may return a `Folder`. `Folder` has no `isPublished()` (only `Concrete` does), so
+  `$object->isPublished()` → `Error: Call to undefined method` → HTTP 500 instead of resolving the folder.
+- `is_subclass_of()` is false for the class itself, so an argument typed `AbstractObject` is not resolved at all and
+  falls through to Symfony's resolvers ("could not resolve argument"), while the narrower `DataObject` type works.
+- The `/** @var Concrete|null */` annotation hides both cases from static analysis.
+
+**Verify:** `public function a(#[DataObjectParam] DataObject\Folder $folder)` on a route `/{folder}` → 500.
+
+**Fix direction:** `is_a($class, AbstractObject::class, true)`; only apply the published check when
+`$object instanceof Concrete`; drop the wrong `@var`. Add resolver tests (I-72).
+
+---
+
+## [ ] B-63 – `DataObjectParamResolver`: deprecation on every call, `DataObjectParam::$options` ignored, `class` override can mismatch the argument
+
+**Files:** `src/Request/ParamResolver/DataObjectParamResolver.php:39-60`, `lib/Request/Attribute/DataObjectParam.php:28-33`,
+`models/DataObject/AbstractObject.php:190-201`
+
+- Route attributes are strings. `$class::getById($value)` with a string triggers
+  `trigger_deprecation('Passing id as string … is deprecated')` on **every** resolved request (log noise; breaks once the
+  string branch is removed). Non-numeric values are silently mapped to `0` → 404, which is fine, but should be explicit.
+- `DataObjectParam` has a public `?array $options` ("options for the loader") that the resolver never reads. Users who
+  pass e.g. `options: ['force' => true]` get no effect and no error.
+- `#[DataObjectParam(class: Foo::class)]` is used **instead of** the argument type. If it is not a subtype of the
+  declared type, Symfony fails later with a generic `TypeError` when calling the controller. If the attribute names a
+  non-existent class, the argument is skipped silently.
+- Nullable handling is half-done: only an empty value (`''`, `'0'`) resolves to `null`; a nullable argument whose ID
+  **does not exist** still throws 404. Decide which is intended and document it on `DataObjectParam`.
+- `Tool::isElementRequestByAdmin()` authenticates the admin session (and may start it) for every unpublished hit on a
+  frontend request.
+
+**Fix direction:** cast with `filter_var($value, FILTER_VALIDATE_INT)` and 404 on failure; pass
+`$options[0]->options ?? []` as `$params` to `getById()`; validate `is_a($attrClass, $argument->getType(), true)` and
+throw a `\LogicException` with the controller/argument name otherwise.
+
+---
+
+## [ ] B-64 – `WebDavController` ends with `exit` and swallows errors (worker runtimes, kernel events, empty 200 responses)
+
+**File:** `src/Controller/WebDavController.php:34-61`
+
+- `Server::start()` writes headers and body itself, then the action calls `exit`. The Symfony response cycle is skipped:
+  no `kernel.response` (security headers, CORS, profiler), no `kernel.terminate` (e.g. `DumpTranslationEntriesListener`,
+  profiler storage, Messenger "after response" work). The controller's declared `void` return is not valid for Symfony
+  (only works because the process dies first).
+- Under worker runtimes (FrankenPHP worker mode, RoadRunner, Swoole via symfony/runtime) `exit` terminates or restarts
+  the worker on **every** WebDAV request. With C-08's shared state that is the least of the problems, but it is a hard
+  incompatibility with how Symfony 7.4 apps are increasingly deployed.
+- `catch (Exception $e)` covers only setup. When it triggers, nothing is sent and `exit` produces an **empty `200`**.
+  Typical failures are `Error`s that are not caught at all:
+  - `Asset::getById(1)` returns `null` (e.g. broken tree) → `TypeError` in `new Folder(null)`;
+  - `getNativeConnection()` is a `PDO` only for `pdo_mysql`; with `mysqli` (a supported DBAL driver) it is a
+    `mysqli` → `TypeError` in `new Locks\Backend\PDO()`. The `/** @var PDO */` hides this.
+- `Logger::error((string)$e)` logs the full trace as the message (no context array).
+
+**Fix direction:** build the Sabre server in a service (I-67) and return a `StreamedResponse` whose callback runs
+`$server->start()` with `$server->sapi` replaced by a small Sapi that writes through the Symfony response, or at least
+return a `Response` and let Symfony send it (`Server::$httpResponse` → `Response`). Check
+`$pdo instanceof \PDO` and fail with a clear message; 500 + log with context on setup failure.
+
+---
+
+## [ ] B-65 – Thumbnail errors are turned into a `302` to an admin-bundle SVG (404s become redirects, `NotFoundHttpException` swallowed)
+
+**Files:** `src/Controller/PublicServicesController.php:52-63`, `models/Asset/Service.php:362-365,436-443`
+
+- The action throws a generic `Exception` when the service returns `null` and catches **every** `Exception`:
+  - unknown asset ID, unknown thumbnail name, prefix that does not match the asset path → `null` → redirect;
+  - `NotFoundHttpException('Requested thumbnail format is disabled')` thrown by the service on purpose → caught →
+    redirect;
+  - storage / Imagick / ffmpeg errors → redirect.
+  All of them become `302 Found` to `/bundles/pimcoreadmin/img/filetype-not-supported.svg`. Crawlers see soft-404s,
+  CDNs cache a redirect for an image URL, and real failures are indistinguishable from bad URLs.
+- The target is an asset of `pimcore/admin-ui-classic-bundle`, which is optional (`suggest`). Without it (headless
+  setups) the redirect points to a 404.
+- No cache headers on the redirect → every hit of a broken thumbnail URL re-runs the lookup/generation.
+- `Logger::error($e->getMessage())` drops the exception class, trace and the request path.
+- `Error`s (e.g. `TypeError` from a storage adapter) are not caught at all, unlike the `Exception`s.
+
+**Fix direction:** return 404 (`throw $this->createNotFoundException()`) when the asset/config does not exist or the
+format is disabled; let `HttpException`s through; for generation errors log with context and return 500 (or the
+placeholder **content** with `Cache-Control: no-store`, not a redirect). Make the placeholder path configurable / ship
+it in CoreBundle `public/`.
+
+---
+
+## [ ] B-66 – `robotsTxtAction` sends raw headers and flushes every output buffer
+
+**File:** `src/Controller/PublicServicesController.php:83-85`
+
+```php
+header('Content-Type: text/plain; charset=utf8');
+while (@ob_end_flush()) ;
+```
+
+- `utf8` is not a valid charset label (`UTF-8`); the returned `Response` sets `text/plain` again, so two code paths
+  disagree on the header.
+- `ob_end_flush()` closes **all** output buffers, including the ones owned by symfony/runtime or
+  PHPUnit/Codeception (the test is then marked risky). If any buffer holds output, headers are
+  sent right there; `Response::sendHeaders()` then sees `headers_sent()` and silently drops every header set by
+  listeners (cache, security, `Content-Language`, …).
+- Under worker runtimes the raw `header()` call bypasses the response object entirely.
+- `@` hides the notice that tells you there was no buffer.
+
+**Fix direction:** delete both lines; return `new Response($content, 200, ['Content-Type' => 'text/plain; charset=UTF-8'])`.
+
+---
+
+## [ ] B-67 – `robotsTxtAction` resolves the site differently from the rest of the frontend
+
+**Files:** `src/Controller/PublicServicesController.php:68-91`, `models/Site.php:109-134`,
+`bundles/SeoBundle/src/Config.php:31-52`
+
+- The site is looked up with `Site::getByDomain(Tool::getHostname())` instead of the site the routing layer already
+  resolved for this request (`SiteResolver` / request attribute). The two can differ (e.g. `redirect_to_maindomain`,
+  `SiteResolver` overrides in projects).
+- Every distinct `Host` header produces a cache entry without lifetime (`site_domain_<md5>` = `'failed'`, tags
+  `system`, `site`) – robots.txt is the endpoint bots hit most, often with odd hosts. (Only relevant when
+  `framework.trusted_hosts` is not set.)
+- `class_exists(SeoBundle\Config::class)` is true whenever the package is installed, even when the bundle is **not
+  enabled**: robots content edited while the bundle was active is still served after it was disabled.
+- Empty config value (`''`/`'0'`) falls back to "allow all" via `empty()`; a deliberately empty robots.txt cannot be
+  served.
+
+**Fix direction:** use the site resolved for the request (`Pimcore\Http\Request\Resolver\SiteResolver::getSite()`);
+check the bundle via `kernel.bundles` (or move the action into SeoBundle, I-69); use `=== null` instead of
+`empty()`.
+
+---
+
+## [ ] B-68 – `customAdminEntryPointAction` fails without the admin bundle and forwards all query parameters
+
+**Files:** `src/Controller/PublicServicesController.php:108-126`
+
+- The action is not routed anywhere in this repository; it is only reachable when pimcore/admin-ui-classic-bundle routes
+  it. `getParameter('pimcore_admin.custom_admin_path_identifier')` is defined only by that bundle → without it a
+  `ParameterNotFoundException` (500).
+- The whole query string (`$request->query->all()`) is passed to `generateUrl()` for login routes. Arbitrary extra
+  parameters (incl. nested arrays) end up in the login URL; whether that is harmless depends on the admin bundle's
+  login handling (`_target_path`, `perspective`, …). Pass only the known keys (`token`, `deeplink`, `perspective`).
+- `!=` comparison of the cookie value (`'0' == ''`-style surprises; use `!==`).
+- `strtotime('+1 year')` returns `int|false`; with `false` the cookie becomes a session cookie.
+
+**Fix direction:** move the action into the admin bundle, or guard with `$this->container->has('parameter_bag') &&
+…->has(...)`; whitelist query keys; `Cookie::create(...)->withExpires(new \DateTimeImmutable('+1 year'))`.
+
+---
+
+## [ ] B-69 – Thumbnail path decoding uses `urldecode()` (a literal `+` becomes a space) and checks the wrong string length
+
+**Files:** `src/Controller/PublicServicesController.php:53`, `models/Asset/Service.php:565,573`
+
+- `getPathInfo()` is URL-encoded. `urldecode()` is the form-encoding decoder: `+` → space. An asset/thumbnail filename
+  containing `+` (allowed by `Element\Service::getValidKey()`) never matches the stored file and is regenerated (and
+  stored again) on every request, or fails.
+- `strlen($uri) > 10` checks the raw URI, not the prefix-stripped `$storagePath` that is actually used.
+- The controller passes `getPathInfo()` (no base URL) while `extractThumbnailInfoFromUri()` callers elsewhere pass full
+  URIs; consistent only by accident.
+
+**Fix direction:** `rawurldecode()`; check `$storagePath`; document that the argument is the path info.
