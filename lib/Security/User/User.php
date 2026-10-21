@@ -74,6 +74,7 @@ class User implements UserInterface, EquatableInterface, GoogleTwoFactorInterfac
         return $this->user->getPassword();
     }
 
+    #[\Deprecated]
     public function eraseCredentials(): void
     {
         // TODO: Implement eraseCredentials() method.
