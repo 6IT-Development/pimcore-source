@@ -16,6 +16,11 @@ a defect originates in the model interplay (`lib/Translation/TranslationEntriesD
 `lib/Translation/Translator.php::lazyInitialize()` / `checkForEmptyTranslation()` (`:138-298`),
 `models/DataObject/QuantityValue/Service.php::generateDefinitionJson()` (`:66-90`)), the `translations_messages` schema
 (`bundles/InstallBundle/dump/install.sql:432-444`) and `tests/Unit/Translation/TranslatorTest.php`
+**(5)** `models/Site.php` and `models/Site/**` (Dao, Listing, Listing/Dao), plus the direct consumers where a defect
+originates in the model interplay (`lib/Tool/Frontend.php::getSiteMapping()` (`:70-95`),
+`bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php::resolveSite()` (`:101-127`),
+`lib/Document/Renderer/DocumentRenderer.php:95-103`, `models/Document.php:690-830` (site path rewriting)), the `sites`
+schema (`bundles/InstallBundle/dump/install.sql:370-383`) and `tests/Model/Tool/FrontendTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -27,9 +32,10 @@ thumbnail rendering) and **path traversal / false security status**, and in Scop
 settings served indefinitely**, and in Scope 3 **SQL injection in the dependency filter** and **silently lost
 dependency rows** (editors are told an element is unused and delete it), and in Scope 4 **translation texts
 overwritten or replaced by their key**, **site-wide 500s from one `NULL` row**, **a translation-language permission
-bypass** and **SQL identifier injection through the domain name**.
+bypass** and **SQL identifier injection through the domain name**, and in Scope 5 **a whole site answering 404 after
+its root page is renamed or moved** and **site definitions permanently lost when the root page is deleted**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -567,3 +573,88 @@ Never create tables as a side effect of a lookup; create them for the configured
 **Fix direction:** when auto-creating, **insert only the missing language rows** (`INSERT IGNORE` /
 `INSERT … ON DUPLICATE KEY UPDATE key = key`), never upsert the full snapshot. Let `getByKey()` swallow only "not
 found" (B-108) and rethrow everything else. Save only changed languages in `Dao::save()` (B-110, I-55).
+
+---
+
+# Scope 5 – Site
+
+> Notes
+> - `models/Site.php` and `Site/Listing.php` are `strict_types`; `Site/Dao.php` and `Site/Listing/Dao.php` are not.
+>   Hydration goes through the non-strict `AbstractModel::setValue()`, so DB strings/ints are coerced into the typed
+>   setters. No hard Symfony 7.4 / PHP 8.4 incompatibility was found (no implicit nullable parameters, no removed APIs,
+>   DBAL is `^3.8`, `ext-intl` for `idn_to_ascii()` is required in `composer.json`). DBAL 4 readiness and modernisation
+>   are in TODO-3 (I-64–I-72).
+> - `Site::$currentSite` never being reset between HTTP requests in worker runtimes is already **CoreBundle C-08**; it
+>   is not repeated here. The CLI / Messenger side is B-126.
+> - The admin site editor (`DocumentController` "use as site" / "remove site") lives in
+>   `pimcore/admin-ui-classic-bundle` (not in this repo, `vendor/` not installed). Whether it clears caches beyond
+>   `Site::save()` / `delete()` was **not verified**.
+> - No code in this repo listens to `SiteEvents::*`.
+
+---
+
+## [ ] C-23 – The persistent site cache stores a serialized copy of the root page and is only cleared by the `site` tag: renaming or moving a site root makes the whole site answer 404
+
+**Files:** `models/Site.php:68-92`, `:109-134`, `:256-262`, `:285-292`, `:348-356`; `lib/Tool/Frontend.php:70-95`;
+`bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:111-124`; `models/Document.php:516-526`
+
+```php
+Cache::save($site, $cacheKey, ['system', 'site'], null, 999);   // $site->rootDocument is a full Document\Page
+```
+
+- Hydration calls `setRootId()` (`:256-262`), which loads `Document\Page::getById()` into `$rootDocument`. `Site` has
+  no `__sleep()` / `__serialize()` of its own, so `AbstractModel::__sleep()` keeps `rootDocument`, and the cache entries
+  `site_id_<id>` / `site_domain_<md5(host)>` contain a **frozen copy of the root page** (path, key, properties, …).
+- `CoreCacheHandler::prepareCacheTags()` adds element tags only when the cached value itself is an element. The entry
+  is tagged `system` + `site` only, so `Document::clearDependentCache()` (`document_<id>`, `document_properties`,
+  `output`) never clears it.
+- `getRootPath()` (`:285-292`) is derived from that copy. After the root page is renamed (`/en` → `/english`) or moved,
+  `RoutingListener::resolveSite()` keeps prefixing the **old** root path to every request path on the site's domains,
+  so **every page of the site returns 404**. `Document::getPath()` / `getFullPath()` (`Document.php:696-764`, `:812-822`)
+  strip the old prefix, so links on other sites are wrong too. It only recovers after a full cache clear (or any other
+  `site` / `system` tag clear).
+- The same applies to every other root-page change that the site logic reads (published flag, properties, type
+  conversion – B-134).
+- `Frontend::getSiteMapping()` caches `root path → site id` under `sites_path_mapping` with tags `system`, `resource`.
+  `Site::clearDependentCache()` clears only `site`, so **creating, deleting or re-rooting a site** leaves the mapping
+  stale: `getSiteForDocument()` / `getSiteIdForDocument()` return no site or the wrong one (cross-site links, static
+  page paths, preview host).
+- The cached object is also big: every site lookup unserializes a full page document.
+
+**Fix direction:**
+- Never serialize the root document: add `__serialize()` / `__sleep()` that drops `rootDocument` (keep `rootId`), and
+  load it lazily in `getRootDocument()` through `Document\Page::getById()`, which has its own correctly tagged cache.
+  Compute `getRootPath()` from that lazy document.
+- Tag the site entries with `document_<rootId>` as well (or clear `site` from a document save/move listener when the
+  document is a site root), and tag `sites_path_mapping` with `site` so `clearDependentCache()` covers it.
+- Long term: one cached "site registry" (I-67) instead of per-key entries.
+
+---
+
+## [ ] C-24 – Deleting a site's root page silently deletes the site through the FK cascade: the site definition is lost for good, the domain keeps routing to the deleted path
+
+**Files:** `bundles/InstallBundle/dump/install.sql:381-382`; `models/Site.php:399-408`; `models/Site/Dao.php:149-159`;
+`models/Document.php:648`; `models/Element/Recyclebin/**`
+
+```sql
+CONSTRAINT `fk_sites_documents` FOREIGN KEY (`rootId`) REFERENCES `documents` (`id`) ON DELETE CASCADE
+```
+
+- When the root page (or any ancestor folder) is deleted, MySQL removes the `sites` row. `Document::delete()` and
+  `Document\Dao` know nothing about sites, so `Site::delete()` never runs:
+  - no `SiteEvents::PRE_DELETE` / `POST_DELETE`;
+  - `UrlSlug::handleSiteDeleted()` is skipped → `object_url_slugs` rows for that site id stay;
+  - `Site::clearDependentCache()` is skipped → `site_domain_<md5>` / `site_id_<id>` keep returning the deleted site.
+    `RoutingListener` still sets it as the current site and prefixes the deleted root path: the domain answers **404 for
+    every URL** instead of falling back to the main site, until a full cache clear (C-23).
+- **Data loss:** the recycle bin stores the document tree only. Restoring the page brings back the documents but **not
+  the site** (domains, main domain, error pages, redirect flag). An accidental delete of a site root – or of a folder
+  that contains one – loses the site configuration permanently; editors usually notice only when the domain is down.
+- Admin UI behaviour (warning before deleting a site root) was not verified (see notes).
+
+**Fix direction:**
+- Change the FK to `ON DELETE RESTRICT` (or `SET NULL` with a disabled-site state) in a migration, and in
+  `Document::delete()` (or a `DocumentEvents::PRE_DELETE` listener in the model layer) refuse to delete a site root
+  unless the site is removed first, or call `Site::delete()` explicitly inside the same transaction.
+- Store the site definition in the recycle bin item of its root page and restore it together with the page.
+- Clear the site caches and run the slug cleanup on every deletion path (B-135).

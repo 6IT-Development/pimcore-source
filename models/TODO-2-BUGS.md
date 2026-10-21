@@ -15,16 +15,21 @@ a defect originates in the model interplay (`lib/Translation/TranslationEntriesD
 `lib/Translation/Translator.php::lazyInitialize()` / `checkForEmptyTranslation()` (`:138-298`),
 `models/DataObject/QuantityValue/Service.php::generateDefinitionJson()` (`:66-90`)), the `translations_messages` schema
 (`bundles/InstallBundle/dump/install.sql:432-444`) and `tests/Unit/Translation/TranslatorTest.php`
+**(5)** `models/Site.php` and `models/Site/**` (Dao, Listing, Listing/Dao), plus the direct consumers where a defect
+originates in the model interplay (`lib/Tool/Frontend.php::getSiteMapping()` (`:70-95`),
+`bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php::resolveSite()` (`:101-127`),
+`lib/Document/Renderer/DocumentRenderer.php:95-103`, `models/Document.php:690-830` (site path rewriting)), the `sites`
+schema (`bundles/InstallBundle/dump/install.sql:370-383`) and `tests/Model/Tool/FrontendTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
-**WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125.
+**WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137.
 
 ---
 
@@ -1483,3 +1488,221 @@ already calls `kernel.reset` between messages via `ResetServicesListener`.
 - The flag is a model property, so it is also stored in the persistent listing cache (B-117).
 
 **Fix direction:** `try { … } finally { unset(...) }` in the trait (shared helper, also affects other models that use it).
+
+---
+
+## Site (Scope 5)
+
+## [ ] B-126 – `Site::$currentSite` cannot be unset: CLI / Messenger rendering keeps the first document's site for every later document
+
+**Files:** `models/Site.php:38`, `:166-193`; `lib/Document/Renderer/DocumentRenderer.php:95-103`;
+`models/Document.php:696-764`, `:812-822`
+
+- `setCurrentSite(Site $site)` accepts no `null` and there is no reset method. Once set, `isSiteRequest()` is `true`
+  for the rest of the process.
+- Outside an HTTP request `DocumentRenderer` calls `Site::setCurrentSite($site)` for the rendered document's site and
+  never restores the previous value. A Messenger worker or CLI command that renders documents of several sites (mails,
+  PDFs, static page generation, sitemaps) renders the **second document with the first document's site**:
+  `Document::getPath()` strips the wrong root, `getFullPath()` builds links with the wrong main domain, and a document
+  from the main tree (no site) still gets site paths.
+- `MessengerClearRuntimeCacheListener` clears `RuntimeCache` only, not this static (also listed in CoreBundle TODO-2).
+- HTTP worker runtimes: CoreBundle **C-08** (not repeated).
+
+**Fix direction:** add `Site::resetCurrentSite()` (or make `setCurrentSite(?Site)`), restore the previous site in
+`DocumentRenderer` with `try/finally`, reset it on `kernel.reset`. Long term, replace the static with the
+`SiteResolver` / request attribute (I-68).
+
+## [ ] B-127 – `Site::getBy()` throws `TypeError` for a numeric string
+
+**File:** `models/Site.php:139-152`
+
+- `Site.php` is `strict_types`. `is_numeric('5')` is `true`, then `self::getById('5')` is called with a string for an
+  `int` parameter → `TypeError`. Same for `5.0`. Route parameters (`StaticRoutesBundle Router.php:120`, `url()` helper
+  with `site: '3'`) and request values are strings, so the documented "id or domain" use crashes.
+- Any other type (array, `null`, a `Document`) silently returns `null`.
+
+**Fix direction:** type the parameter as `int|string|Site`, cast with `(int)` after an `ctype_digit()` check, and throw
+`InvalidArgumentException` for unsupported values.
+
+## [ ] B-128 – Domains are stored un-normalised: IDN domains never match, uppercase causes redirect loops, wildcards are case-sensitive
+
+**Files:** `models/Site.php:228-251`, `:322-328`; `models/Site/Dao.php:60-95`;
+`bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:160` (see CoreBundle **B-41**)
+
+- `setDomains()` / `setMainDomain()` validate with `idn_to_ascii()` but store the **original** value: no `trim()`, no
+  lower-casing, no punycode conversion.
+- `Request::getHost()` is lower-case and, for IDN hosts, punycode (`xn--bcher-kva.de`). A site configured as
+  `bücher.de` is **never found** by `getByDomain()`.
+- `mainDomain = ?` / `LIKE` use the case-insensitive table collation, but the wildcard check (`Dao.php:85`) uses
+  `preg_match()` without `i`: `*.Example.com` never matches. Exact and wildcard matching behave differently.
+- `RoutingListener` compares `getMainDomain() != getHost()` case-sensitively: a main domain `Example.com` with
+  "redirect to main domain" gives an **endless 301 loop** (the browser lower-cases the host). The root cause is the
+  missing normalisation here; CoreBundle B-41 covers the listener side.
+- `getByDomain()` callers that do not go through `getHost()` (e.g. `Tool::getHostname()`, redirects controller) produce
+  separate cache entries for `Example.com` and `example.com`.
+
+**Fix direction:** normalise once in the setters: `trim()`, `mb_strtolower()`, `idn_to_ascii()` (store ASCII, show
+Unicode in the UI); remove empty and duplicate entries with `array_values(array_unique())`. Normalise the lookup
+input in `getByDomain()` the same way. Migrate existing rows.
+
+## [ ] B-129 – Loading a site validates and unserializes stored data: one legacy or corrupt row throws on every load
+
+**Files:** `models/Site.php:228-251`, `:307-315`; `lib/Model/AbstractModel.php:163-190`; `lib/Tool/Serialize.php:33-40`;
+`lib/Tool/Frontend.php:70-95`
+
+- DB hydration calls the same `setDomains()` that validates input. A domain stored before validation existed, or one
+  that `FILTER_FLAG_HOSTNAME` rejects (an underscore in a label such as `my_shop.example.com`, a label longer than 63
+  characters, a value with a port), throws `InvalidArgumentException` **while reading**. `getById()` / `getByDomain()`
+  only catch `NotFoundException`, so the routing listener answers **500 on every request for that host**, and
+  `Frontend::getSiteMapping()` (which loads **all** sites) fails for every site that needs the mapping.
+- `Serialize::unserialize()` on a string that is not valid serialized data returns `false` with an `E_WARNING`:
+  - `setDomains()` turns that into `[]` silently: the site loses all its domains without any error;
+  - `setLocalizedErrorDocuments()` assigns `false` (or `''` for an empty string) to the `array` property →
+    **`TypeError`** on load.
+- Both setters also accept the string form from `setValues()` / `Site::create()` callers. A plain domain string
+  (`'example.com'`) is not serialized data → warning + domains silently cleared.
+
+**Fix direction:** separate hydration from input validation (hydrate through a dedicated `fromDbRow()` / DAO mapping
+without validation; validate in `save()`, I-69). Decode defensively: `unserialize($v, ['allowed_classes' => false])`,
+check `is_array()`, log and fall back to `[]`. Remove the string branch from the public setters (or accept only
+arrays and a list of domains).
+
+## [ ] B-130 – `getByDomain()` matching: unescaped `LIKE` wildcards, empty host matches, arbitrary winner for duplicates and overlapping wildcards
+
+**File:** `models/Site/Dao.php:60-95`
+
+- `domains LIKE '%"' . $domain . '"%'` does not escape `_` / `%`. `Request::getHost()` allows `_`, so a host
+  `exampl_.com` resolves to the site of `example.com` (and is cached under its own key). Harmless for routing but wrong,
+  and it makes B-131 cheaper.
+- An empty domain (`''`, e.g. `Tool::getHostname()` without a configured system domain, `PublicServicesController`)
+  matches `mainDomain = ''`. `Dao::update()` writes `''` (not `NULL`) for every site without a main domain, so an
+  **arbitrary site** is returned.
+- Neither query has `ORDER BY`. Nothing prevents two sites from claiming the same domain (no uniqueness check, no
+  unique index), so the winner depends on the storage order.
+- Wildcards: `$wildcardDomains[$siteDomain] = $site['id']` overwrites duplicates, and the match loop does not `break`,
+  so the **last** matching pattern wins, not the most specific one (`*.example.com` vs `shop.*.example.com`).
+- `strpos($site['domains'], '*')` is used as a boolean; it works only because a serialized string never starts with
+  `*`.
+
+**Fix direction:** reject empty input; escape with `addcslashes($domain, '%_\\')` or (better) match on a normalised
+domain table (I-65); enforce unique domains across sites in `save()` (I-69); sort wildcard candidates by specificity
+(longest literal part first) and stop at the first match.
+
+## [ ] B-131 – Every unknown `Host` header writes a permanent cache entry and scans the whole `sites` table
+
+**Files:** `models/Site.php:109-134`; `models/Site/Dao.php:60-95`;
+`bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:111` (see CoreBundle **B-67**)
+
+- `RoutingListener` calls `getByDomain($request->getHost())` on **every** frontend request. For a host without a site
+  the DAO runs the `LIKE '%…%'` query (full scan), then loads **all** sites and unserializes their domains, and
+  `Site::getByDomain()` stores `'failed'` under `site_domain_<md5(host)>` **without lifetime** and with priority 999.
+- Without `framework.trusted_hosts`, any client can send arbitrary hosts (scanners do): one DB scan and one permanent
+  cache item per distinct value. On Redis this grows until eviction, which then evicts useful entries. CoreBundle B-67
+  mentions this for `robots.txt`; the cause is here and it affects all frontend URLs.
+
+**Fix direction:** resolve against one cached domain → site map (all sites, one entry, I-66/I-67) and do not cache
+misses per host; or cache misses only in `RuntimeCache` / with a short lifetime. Document `trusted_hosts` as required
+for multi-site setups.
+
+## [ ] B-132 – Runtime caches are never updated on `save()` / `delete()`: deleted sites are returned, new sites are `null`, listings contain `null`
+
+**Files:** `models/Site.php:68-92`, `:109-134`, `:348-356`; `models/Site/Listing/Dao.php:33-45`;
+`lib/Tool/Frontend.php:70-95`
+
+- `clearDependentCache()` clears the persistent `site` tag only. `RuntimeCache` keys `site_id_<id>`,
+  `site_domain_<md5>` and `sites_path_mapping` keep their values for the rest of the process (request, CLI command,
+  Messenger message; in worker runtimes even longer, CoreBundle C-08).
+- After `delete()`, `getById()` / `getByDomain()` return the deleted object. A lookup **before** creating a site caches
+  `null` under `site_id_<id>`; after the site is created with that id, `getById()` still returns `null`.
+- `Listing\Dao::load()` maps ids through `Site::getById()` and appends the result without a check, so the list can
+  contain `null`. `Frontend::getSiteMapping()` then calls `$site->getRootPath()` on `null` → `Error`.
+- All callers get the **same mutable instance** from `RuntimeCache`; a caller that changes it (e.g. `setRootPath()`
+  for a preview) changes it for everyone.
+
+**Fix direction:** in `save()` / `delete()` remove the runtime entries for the id, all domain keys and the path mapping
+(or use one registry service that is reset as a whole, I-67). Skip (and log) `null` results in `Listing\Dao::load()`.
+
+## [ ] B-133 – `Dao::save()` is not atomic and does not validate: half-created rows, raw DBAL errors, "saved" sites that do not exist
+
+**Files:** `models/Site/Dao.php:97-147`; `models/Site.php:388-397`
+
+- A new site is written as `INSERT (rootId)` followed by `UPDATE` with all columns, without a transaction. If the
+  update fails (serialization error, connection loss), a row with only `rootId` stays, and `rootId` is `UNIQUE`: the
+  next attempt fails with a duplicate-key error while the half row has no domains.
+- There is no validation before the write: `rootId` may be `null` (a site without root, B-134), point to a non-page
+  document or to a page that is already a site root (raw `UniqueConstraintViolationException` instead of a domain
+  error), domains may be used by another site (B-130).
+- `update()` ignores the affected row count: saving a `Site` object whose row was deleted in the meantime does nothing,
+  but `POST_SAVE` fires and callers assume success.
+- `PRE_SAVE` runs before any validation, `POST_SAVE` after the cache clear; there is no `PRE_ADD` / `POST_ADD`, so
+  listeners cannot tell a new site from an update.
+
+**Fix direction:** one `INSERT` with all columns for new sites (or a transaction around both statements); validate in
+`Site::save()` before `PRE_SAVE` (I-69); throw `NotFoundException` when `update()` affects 0 rows and the row does not
+exist.
+
+## [ ] B-134 – A site whose root is missing or not a page: the domain serves the main tree, and site path code fatals
+
+**Files:** `models/Site.php:205-213`, `:256-273`, `:285-292`;
+`bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:118-124`; `models/Document.php:698-704`, `:744`,
+`:757-764`
+
+- `setRootId()` uses `Document\Page::getById()`, which returns `null` when the document is not a `Page` (converted
+  to a link/snippet/hardlink, or root id `null`). `rootDocument` is then `null` without any error, and
+  `getRootPath()` returns `null`.
+- `RoutingListener` builds `$site->getRootPath() . $path` = `$path`: requests for the site's domains are resolved
+  against the **main document tree**, i.e. the site serves the wrong content without any error.
+- `Document::getFullPath()` calls `$site->getRootDocument()->getId()` without a null check (`:701`, `:760`, also
+  `:744`). That is an `Error`, not an `Exception`, so the surrounding `catch (Exception)` does not catch it → 500 when
+  rendering links.
+
+**Fix direction:** validate the root on save (B-133); on load, treat a site without a valid root page as disabled
+(log it, `getByDomain()` returns `null`); null-safe access in `Document`, or make `getRootDocument()` throw a clear
+exception.
+
+## [ ] B-135 – `delete()`: not atomic, leaves references to the deleted site, keeps runtime caches
+
+**Files:** `models/Site.php:399-408`; `models/Site/Dao.php:149-159`;
+`bundles/InstallBundle/dump/install.sql:603-615` (`website_settings.siteId`)
+
+- The `sites` row and the URL slugs are deleted in two statements without a transaction. A failure after the first
+  leaves slugs for a site id that no longer exists.
+- Only URL slugs are cleaned up. `website_settings.siteId` (Scope 2), SeoBundle redirects / robots.txt entries
+  (SeoBundle TODO-2 B-27) and static route `siteId` lists keep pointing to the deleted id (static routes at least
+  skip unknown ids at runtime, `StaticRoutesBundle/src/Model/Staticroute.php:329`). With no `SiteEvents` listeners in the
+  repo, nothing else reacts.
+- `delete()` on an unsaved site (`id = null`) matches no row, but still fires both events and clears the cache.
+- Runtime caches: B-132. FK-cascade deletes bypass all of this: C-24.
+
+**Fix direction:** transaction around the delete and the cleanup; move the cleanup of dependent data into
+`SiteEvents::POST_DELETE` listeners in the owning bundles (or document it); throw when `id` is `null`.
+
+## [ ] B-136 – Error documents are stored as unvalidated paths: renaming or deleting the error page silently breaks error handling
+
+**Files:** `models/Site.php:294-320`; `bundles/CoreBundle/src/EventListener/ResponseExceptionListener.php:163-185`
+
+- `errorDocument` and `localizedErrorDocuments` are free strings (paths). Nothing checks that the document exists, and
+  they are not part of the dependency graph, so the error page shows as "not used" and can be deleted, and a rename of
+  the page or of an ancestor folder (path change) breaks it without warning. The visitor then gets the generic error
+  output.
+- `setLocalizedErrorDocuments()` accepts any array shape (non-string values, non-locale keys).
+- A site with an empty error document replaces the system default error page with `''` instead of falling back to
+  it (`ResponseExceptionListener:165-170`).
+
+**Fix direction:** store document ids (or resolve paths to ids on save and track them as dependencies); validate keys
+against the valid languages and values as existing pages; fall back to the system error page when the site value is
+empty.
+
+## [ ] B-137 – Small defects: `getByRootId()` error message, `getTotalCount()` swallows errors, `getRootPath()` override
+
+**Files:** `models/Site.php:94-104`, `:278-292`; `models/Site/Dao.php:47-53`; `models/Site/Listing/Dao.php:47-54`
+
+- `Dao::getByRootId()` reports "Unable to load site with ID `<rootId>`": the value is a document id, which misleads
+  debugging.
+- `Listing\Dao::getTotalCount()` catches every `Exception` and returns `0`. A broken condition (SQL error) looks like
+  "no sites", while `load()` with the same condition throws.
+- `setRootPath()` sets a value that overrides the root document's path in `getRootPath()`, is never persisted and has
+  no caller in this repo. On the shared cached instance (B-132) it changes the routing prefix for everyone.
+
+**Fix direction:** fix the message; let `getTotalCount()` throw (or log at error level); deprecate `setRootPath()`
+(I-70).

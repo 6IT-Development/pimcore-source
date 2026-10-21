@@ -13,16 +13,21 @@ a defect originates in the model interplay (`lib/Translation/TranslationEntriesD
 `lib/Translation/Translator.php::lazyInitialize()` / `checkForEmptyTranslation()` (`:138-298`),
 `models/DataObject/QuantityValue/Service.php::generateDefinitionJson()` (`:66-90`)), the `translations_messages` schema
 (`bundles/InstallBundle/dump/install.sql:432-444`) and `tests/Unit/Translation/TranslatorTest.php`
+**(5)** `models/Site.php` and `models/Site/**` (Dao, Listing, Listing/Dao), plus the direct consumers where a defect
+originates in the model interplay (`lib/Tool/Frontend.php::getSiteMapping()` (`:70-95`),
+`bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php::resolveSite()` (`:101-127`),
+`lib/Document/Renderer/DocumentRenderer.php:95-103`, `models/Document.php:690-830` (site path rewriting)), the `sites`
+schema (`bundles/InstallBundle/dump/install.sql:370-383`) and `tests/Model/Tool/FrontendTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
 
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
-Scope 4 in **H** Translation (I-51–I-63).
+Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72).
 
 ---
 
@@ -716,3 +721,120 @@ Add cases for:
 - `count()` before and after `load()`, and `setOrderKey('creationDate')` (B-118, B-119);
 - `getAvailableLanguages()` under `ONLY_FULL_GROUP_BY` (B-121); `cleanup()` followed by a cached listing (B-122);
 - a `PRE_SAVE` listener that throws once, followed by a second save (B-125).
+
+---
+
+## I – Site (Scope 5)
+
+### [ ] I-64 – Strictness and native types (PHP 8.4)
+
+- Add `declare(strict_types=1)` to `models/Site/Dao.php` and `Site/Listing/Dao.php`. Before that, make the hydration
+  casts explicit (`(int)` ids/dates, `(bool)` `redirectToMainDomain`), because hydration relies on the non-strict
+  `AbstractModel::setValue()` today.
+- Fluent API is inconsistent: `setId()`, `setDomains()`, `setRootId()`, … return `Site` (`@return $this`), while
+  `setErrorDocument()`, `setMainDomain()`, `setRedirectToMainDomain()` return `void`. Use `: static` everywhere.
+- `Site` is `final`: `protected static $currentSite` and the `protected` properties can be `private`.
+- Precise array types: `@var list<string>` for `$domains`, `@var array<string, string>` (locale → path/id) for
+  `$localizedErrorDocuments`; `Listing::getSites()` → `@return list<Site>` and `?? []` (`getData()` is nullable).
+- `setCreationDate(int)` / `setModificationDate(int)` vs `?int` getters: pick one (non-nullable with `0` default matches
+  the schema).
+- PHP 8.4 asymmetric visibility fits the read-mostly fields: `public private(set) ?int $id`, and a property hook on
+  `$domains` / `$mainDomain` can hold the normalisation from B-128 instead of setter logic.
+- `getBy(mixed $mixed)` → `getBy(int|string|Site $site)` (B-127).
+
+### [ ] I-65 – Storage format and DBAL 4 readiness
+
+- `domains` and `localizedErrorDocuments` are PHP-`serialize()`d text. Use JSON columns (`json_encode` / `json_decode`
+  with `JSON_THROW_ON_ERROR`) in a migration. Until then, `unserialize(..., ['allowed_classes' => false])` everywhere
+  (`Site/Dao.php:70` calls raw `unserialize()`, `Serialize::unserialize()` too).
+- Better: move domains to a `sites_domains (domain PK, siteId, isWildcard)` table. That gives an indexed exact lookup,
+  a unique constraint across sites (B-130) and a simple wildcard query, and removes the `LIKE` on serialized text.
+- `Dao::update()` writes every property that happens to match a column name (`getObjectVars()` + `in_array()`
+  filter), including `id`. Use an explicit column map.
+- DBAL 4: `lastInsertId()` returns `int|string`; use `Types::*` parameter types for the `IN` / int parameters; avoid
+  `SELECT *`.
+
+### [ ] I-66 – Domain resolution as one service
+
+- Extract `getByDomain()` matching into a `SiteDomainResolver` (or `SiteRepository::findByHost()`): normalise input
+  (B-128), exact match first, then wildcards ordered by specificity, `str_contains()` instead of `strpos()` as a boolean,
+  no regex rebuilding per request (compile once and cache), resolve the `@TODO: refactor this to be more clear`
+  (`Site/Dao.php:65`).
+- Use it from `RoutingListener`, `PublicServicesController`, `RedirectHandler`, `RedirectsController` and
+  `Document\Service::getByUrl()` (`models/Document/Service.php:404-421`, which duplicates the domain check and
+  concatenates a `Document` object into a path string).
+- Fix the exception text `` `…´ `` (acute accent instead of a backtick, `Site/Dao.php:91`).
+
+### [ ] I-67 – Caching: one site registry instead of `RuntimeCache` + per-key entries + a sentinel string
+
+- `getById()` and `getByDomain()` duplicate the same 20 lines; the `RuntimeCache::set()` after a runtime hit is
+  redundant; the `'failed'` string sentinel mixes types in one variable.
+- The `sites` table is tiny. Load **all** sites once into one cached registry (id → data, domain → id, root path → id),
+  tagged `site` + the root documents' tags, reset via `ResetInterface` / `kernel.reset`. This replaces
+  `site_id_*`, `site_domain_*`, `sites_path_mapping` (`lib/Tool/Frontend.php:70-95`) and the uncached
+  `getByRootId()` (called twice per page node by `models/Element/AdminStyle.php:87`, `:101`, each a query plus a root
+  page load), and fixes C-23, B-131, B-132 in one place.
+- Do not cache objects with embedded documents (C-23); cache plain data and hydrate.
+- `Listing\Dao::load()` is N+1 (`SELECT id` then `getById()` per row, each loading the root page on a cold cache). Fetch
+  the rows in one query and hydrate them, with the root page loaded lazily.
+
+### [ ] I-68 – Current site: request state instead of a static
+
+- Deprecate `Site::setCurrentSite()` / `getCurrentSite()` / `isSiteRequest()` with PHP 8.4 `#[\Deprecated]` in favour
+  of `Pimcore\Http\Request\Resolver\SiteResolver` (request attribute), as CoreBundle TODO-3 already suggests for the
+  listeners. For CLI rendering, pass the site explicitly (B-126).
+- `getCurrentSite()` throws a generic `\Exception` for a normal condition; callers wrap it in `try/catch` and check
+  `instanceof Site` on a non-nullable return. Offer `?Site` (`findCurrentSite()`) or a dedicated exception.
+- `isSiteRequest()` → `return self::$currentSite !== null;`.
+
+### [ ] I-69 – Validation and lifecycle
+
+- One `validate()` called by `save()` before `PRE_SAVE`: root id set and a `Document\Page`, root not used by another
+  site, domains valid and unique across sites, main domain valid (and optionally part of the domains), error documents
+  exist (B-129, B-130, B-133, B-134, B-136). Throw a `ValidationException`, not `InvalidArgumentException` from setters
+  during hydration.
+- Wrap `Dao::save()` / `delete()` in a transaction; dispatch `PRE_ADD` / `POST_ADD` for new sites (B-133).
+- Error documents by id and part of the dependency graph (B-136).
+- `create(array $data)` returns an unsaved site; name it clearly or add `createAndSave()`; document that `domains`
+  must be a list of strings.
+- Event dispatch uses `RecursionBlockingEventDispatchHelperTrait` without `try/finally` (shared helper, see B-125).
+
+### [ ] I-70 – Readability and dead code
+
+- `setDomains()` uses `array_map()` for its side effect (throwing). Use `foreach`, or PHP 8.4
+  `array_any($domains, fn (string $d): bool => !self::isValidDomain($d))` and one shared `isValidDomain()` for
+  `setDomains()` and `setMainDomain()` (the `idn_to_ascii()` + `FILTER_VALIDATE_DOMAIN` logic is duplicated, and the
+  `'anystring'` placeholder trick deserves a named constant/comment).
+- `array_filter($domains)` keeps the keys → a non-list array is serialized; add `array_values()`.
+- Remove or deprecate `$rootPath` / `setRootPath()` (no caller in the repo, never persisted, B-137).
+- `getRootDocument()` returns a possibly stale embedded object; with lazy loading (C-23) the `$rootDocument` property
+  can go.
+- Docblocks: `Listing\Dao::load()` "Loads a list of thumanils for the specicifies parameters, returns an array of
+  Thumbnail elements"; `@method Model\Site|false current()` on the listing; `Dao` comments ("it's a good idea to use
+  save() instead") on `@internal` methods; empty `/** * @throws */` blocks. `Site::clearDependentCache()` comment "this
+  is mostly called in Site\Dao not here" describes nothing useful.
+- `getById()` / `getByDomain()` declare `@throws Exception` but only rethrow DB errors; document the real contract.
+
+### [ ] I-71 – Schema
+
+- `redirectToMainDomain tinyint(1) DEFAULT NULL` → `NOT NULL DEFAULT 0`; `mainDomain` / `errorDocument` `NULL` vs `''`
+  (the model writes `''`, the schema defaults to `NULL`): pick one (`NOT NULL DEFAULT ''` matches the model).
+- `creationDate` / `modificationDate` are `int(11) unsigned` (2106 limit); fine, but align with the other models
+  (`bigint` / `datetime` if those move).
+- Index (or unique) on `mainDomain`, or the domain table from I-65.
+- Reconsider `fk_sites_documents … ON DELETE CASCADE` (C-24).
+- `domains` / `localizedErrorDocuments` `text` → `json` (I-65).
+
+### [ ] I-72 – Tests
+
+There is no model test for `Site`; `tests/Model/Tool/FrontendTest.php` only covers `isDocumentInSite()`. Add cases for:
+- renaming / moving the root page, then `getByDomain()` + `getRootPath()` with a warm persistent cache (C-23);
+- deleting the root page, then `getByDomain()`, slugs and recycle-bin restore (C-24);
+- rendering two documents of different sites in one CLI process (B-126);
+- `getBy('5')`, `getBy(5)`, `getBy('example.com')` (B-127);
+- `bücher.de`, `Example.com`, `*.Example.com` against lower-case / punycode hosts (B-128);
+- loading a row with an underscore domain and with corrupt serialized data (B-129);
+- `exampl_.com`, an empty host, two sites with the same domain, overlapping wildcards (B-130);
+- `getById()` before create / after delete in the same process, listing after delete (B-132);
+- save with a missing / non-page / already-used root, save of a deleted site (B-133, B-134);
+- delete with dependent website settings and slugs (B-135).
