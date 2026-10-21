@@ -33,12 +33,17 @@ final class Version20251217000100 extends AbstractMigration
             return;
         }
 
-        $this->addSql('
-            ALTER TABLE `http_error_log`
-                DROP COLUMN `parametersPost`,
-                DROP COLUMN `cookies`,
-                DROP COLUMN `serverVars`
-        ');
+        $table = $schema->getTable('http_error_log');
+        $drops = [];
+        foreach (['parametersPost', 'cookies', 'serverVars'] as $column) {
+            if ($table->hasColumn($column)) {
+                $drops[] = sprintf('DROP COLUMN `%s`', $column);
+            }
+        }
+
+        if ($drops) {
+            $this->addSql('ALTER TABLE `http_error_log` ' . implode(', ', $drops));
+        }
     }
 
     public function down(Schema $schema): void

@@ -18,21 +18,22 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Migrations;
 
 use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Schema\Table;
 use Doctrine\Migrations\AbstractMigration;
 
 final class Version20250416120333 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Add index to versions.public"';
+        return 'Add index to versions.public';
     }
 
     public function up(Schema $schema): void
     {
         $versionsTable = $schema->getTable('versions');
 
-        if (!$versionsTable->hasIndex('public')) {
-            $versionsTable->addIndex(['public']);
+        if (!$this->findPublicIndex($versionsTable)) {
+            $versionsTable->addIndex(['public'], 'public');
         }
     }
 
@@ -40,8 +41,24 @@ final class Version20250416120333 extends AbstractMigration
     {
         $versionsTable = $schema->getTable('versions');
 
-        if ($versionsTable->hasIndex('public')) {
-            $versionsTable->dropIndex('public');
+        $indexName = $this->findPublicIndex($versionsTable);
+        if ($indexName) {
+            $versionsTable->dropIndex($indexName);
         }
+    }
+
+    /**
+     * Earlier runs of this migration created the index with a generated name (IDX_...),
+     * so look it up by its columns instead of by name.
+     */
+    private function findPublicIndex(Table $table): ?string
+    {
+        foreach ($table->getIndexes() as $index) {
+            if (!$index->isPrimary() && $index->getColumns() === ['public']) {
+                return $index->getName();
+            }
+        }
+
+        return null;
     }
 }
