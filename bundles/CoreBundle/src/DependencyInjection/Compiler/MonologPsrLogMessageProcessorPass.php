@@ -28,7 +28,7 @@ use Symfony\Component\DependencyInjection\Definition;
  * if a handler using the PSR log message processor is registered). As the application
  * logger fails if the processor service is missing, we register it conditionally here.
  */
-class MonologPsrLogMessageProcessorPass implements CompilerPassInterface
+final class MonologPsrLogMessageProcessorPass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void
     {

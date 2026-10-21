@@ -32,8 +32,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class DataObjectParamResolver implements ValueResolverInterface
 {
     /**
-     *
-     *
      * @throws NotFoundHttpException When invalid data object ID given
      */
     public function resolve(Request $request, ArgumentMetadata $argument): iterable

@@ -37,7 +37,7 @@ use Symfony\Component\Finder\Finder;
  */
 final class AreabrickPass implements CompilerPassInterface
 {
-    private Inflector $inflector;
+    private readonly Inflector $inflector;
 
     public function __construct()
     {
@@ -104,9 +104,9 @@ final class AreabrickPass implements CompilerPassInterface
      */
     private function autoloadAreabricks(
         ContainerBuilder $container,
-        Definition       $areaManagerDefinition,
-        array            $locatorMapping,
-        array            $excludedClasses
+        Definition $areaManagerDefinition,
+        array $locatorMapping,
+        array $excludedClasses
     ): array
     {
         $bundles = $container->getParameter('kernel.bundles_metadata');

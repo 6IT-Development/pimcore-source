@@ -37,8 +37,6 @@ trait PimcoreContextAwareTrait
 
     /**
      * Check if the request matches the given pimcore context (e.g. admin)
-     *
-     *
      */
     protected function matchesPimcoreContext(Request $request, array|string $context): bool
     {

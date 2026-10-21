@@ -49,8 +49,8 @@ final class ConfigurationHelper
         }
 
         if (in_array(LocationAwareConfigRepository::READ_TARGET, $additionalNodes)) {
-            $node->
-            arrayNode($name)
+            $node
+                ->arrayNode($name)
                 ->addDefaultsIfNotSet()
                 ->children()
                 ->arrayNode(LocationAwareConfigRepository::WRITE_TARGET)
@@ -81,8 +81,8 @@ final class ConfigurationHelper
                 ->end()
                 ->end();
         } else {
-            $node->
-            arrayNode($name)
+            $node
+                ->arrayNode($name)
                 ->addDefaultsIfNotSet()
                 ->children()
                 ->arrayNode(LocationAwareConfigRepository::WRITE_TARGET)
