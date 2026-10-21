@@ -6,16 +6,20 @@ directly call where a defect originates there (`lib/Video/Adapter/Ffmpeg.php`, `
 **(2)** `models/WebsiteSetting.php` and `models/WebsiteSetting/**` (Dao, Listing, Listing/Dao), plus the direct consumer
 `lib/Config.php::getWebsiteConfig()` (`:173-262`), the `website_settings` schema (`bundles/InstallBundle/dump/install.sql:603-615`)
 and `tests/Model/WebsiteSetting/WebsiteSettingTest.php`
+**(3)** `models/Dependency.php` and `models/Dependency/Dao.php`, plus the direct consumers where a defect originates
+there (`lib/Messenger/Handler/ElementDependenciesHandler.php`, `models/Element/AbstractElement.php::getDependencies()`,
+the dependency helpers in `models/Element/Service.php:163-263`), the `dependencies` schema
+(`bundles/InstallBundle/dump/install.sql:63-73`) and `tests/Model/Element/DependenciesTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`).
+`7f0331cab9`, Scope 3: `2d382456c7`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
-**WebsiteSetting** B-83–B-91.
+**WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106.
 
 ---
 
@@ -923,3 +927,236 @@ affected (or make `setId()` `@internal`).
   config is tagged `output`.) Needs a decision on whether this is intended; document it if so.
 
 **Fix direction:** clear `output` as well (as document saves do), or document the expected delay in the admin UI.
+
+---
+
+## Dependency (Scope 3)
+
+## [ ] B-92 – `ElementDependenciesHandler` leaks `hideUnpublished = false` / `getInheritedValues = false` into the rest of the process on any exception
+
+**File:** `lib/Messenger/Handler/ElementDependenciesHandler.php:47-75`
+
+- `showUnpublished()` (`:49`) and `setGetInheritedValues(false)` (`:51`) change process-wide statics. They are restored
+  at `:70-71` with no `try/finally`. An exception from `resolveDependencies()` (broken relation, missing class
+  definition, a field getter throwing) skips the restore.
+- The handler runs **synchronously inside the web request / CLI command** by default (see TODO-1 Scope 3 notes). If the
+  caller catches the save exception (importers, REST APIs, `try { $obj->save(); } catch …`), every later listing and getter
+  in that process sees **unpublished documents/objects** and **no inherited values**. In messenger workers and
+  long-running imports this lasts until restart. Unpublished content can end up in frontend output, feeds, sitemaps or
+  search indexes.
+- `Dao::save()` (`:73`) runs after the restore, so its errors do not leak state. The resolve step is the risk.
+
+**Fix direction:** wrap the resolve loop in `try { … } finally { restore }`, or run it through the existing scoped helper
+`DataObject\Service::useInheritedValues(false, fn () => …)` (`models/DataObject/Service.php:1962`) plus an equivalent
+helper for `hideUnpublished`.
+
+## [ ] B-93 – `getFilterRequiredByPath()` joins on `targettype` instead of `sourcetype`: wrong or missing "required by" results
+
+**File:** `models/Dependency/Dao.php:152`, `:157`, `:162`
+
+```sql
+INNER JOIN objects o ON o.id = d.sourceid AND d.targettype = 'object'
+WHERE d.targettype = '<targetType>' …
+```
+
+- The join condition should restrict `d.sourcetype`. Combined with `WHERE d.targettype = :targetType`, only the branch
+  whose literal equals the **target** type can return rows. That branch joins **every** source id (any type) against
+  that one table.
+- Example: asset 10 is required by object 5 and document 7. Filtering the asset's "required by" list only runs the
+  `assets` branch. It matches `assets.id = 5` and `assets.id = 7` (unrelated assets, or none), filters on **their**
+  paths and returns `{id: 5, type: 'object'}` when the unrelated asset 5's path matches. Real sources whose own path
+  matches are never found.
+- `getRequiredByWithPath()` (`:343`, `:348`, `:353`) has the correct condition (`d.sourceType = …`). Compare with it.
+
+**Fix direction:** `AND d.sourcetype = 'object'` / `'document'` / `'asset'` in the three joins. Add a test with mixed
+source types (I-50).
+
+## [ ] B-94 – Filter value is an unescaped, case-sensitive regex: uppercase never matches, `.`/`(`/`[` misbehave, empty value errors
+
+**File:** `models/Dependency/Dao.php:94-104`, `:153-163`; schema `install.sql` (`objects`/`documents`/`assets`
+`path`, `key`, `filename` are `utf8_bin`)
+
+- `LOWER(CONCAT(path, key)) RLIKE '<value>'` lowercases only the column side. The columns are `utf8_bin`, so the regex
+  comparison is case-sensitive: searching `Logo` never matches `/Logo.png`, unless the caller lowercases the value.
+- The value is a regex. `image.jpg` also matches `imageXjpg`. `file(1)` matches `file1` but not `file(1)`. An
+  unbalanced `[`, `(` or a trailing `\` raises a MySQL regex error → 500. Editors type file names, not regexes.
+- `$value` defaults to `null` (`Dependency.php:105`, `:112`) → `RLIKE ''`. MySQL 8 (ICU) rejects an empty pattern
+  ("Illegal argument to a regular expression", not verified at runtime); MariaDB matches everything.
+
+**Fix direction:** treat the value as a literal: `LIKE :value` with `'%' . Helper::escapeLike(mb_strtolower($value)) . '%'`
+(and `LOWER()` on both sides, or a `_ci` collation in the expression). Reject or short-circuit an empty value.
+
+## [ ] B-95 – Search value goes through `sprintf()`: `%` in the filter text throws or rewrites the query
+
+**File:** `models/Dependency/Dao.php:108-110`, `:167-169`
+
+```php
+$query = sprintf($query . ' LIMIT %d,%d', $offset, $limit);
+```
+
+- `$query` already contains the raw `$value` (C-16). Any `%` in it is parsed as a format specifier: `100%` makes the
+  following characters into a specifier (`%'`), `50%s` consumes an argument. Results are `ValueError` /
+  `ArgumentCountError` (PHP 8) or a silently changed pattern / `LIMIT`. Searching for `%` only works without pagination.
+- `getRequiredBy()` (`:302`) uses the same pattern. It is safe today (no user input in the query) but fragile.
+
+**Fix direction:** append `' LIMIT ' . (int)$offset . ', ' . (int)$limit` (as `getRequiredByWithPath()` does,
+`:357-359`), or use DBAL `setFirstResult()` / `setMaxResults()` (I-43).
+
+## [ ] B-96 – `getFilterRequires*ByPath()` whitelist `orderBy = 'path'`, but the queries select no `path` column
+
+**File:** `models/Dependency/Dao.php:79`, `:88-106`, `:138`, `:147-165`
+
+- Both filter queries return `SELECT id, type` only. `orderBy: 'path'` passes the whitelist and fails with
+  "Unknown column 'path' in 'order clause'".
+- Not reachable through the model wrappers today (`Dependency.php:105-117` do not forward `$orderBy` /
+  `$orderDirection`), so sorting a filtered list by path is impossible and calling the DAO directly crashes.
+
+**Fix direction:** select `CONCAT(…) AS path` in each `UNION` branch (as in `getRequiredByWithPath()`) and forward
+`$orderBy` / `$orderDirection` from the model (I-43).
+
+## [ ] B-97 – Rows pointing to deleted elements are never removed for several element types; counts and `isRequired()` include them
+
+**Files:** `models/Dependency/Dao.php:185-203`, `:368-371`; `models/Dependency.php:160-177`;
+`lib/Messenger/Handler/SanityCheckHandler.php` (`performSanityCheck()`)
+
+- On delete, `cleanAllForElement()` removes only rows where the element is the **source**. Rows where it is the
+  **target** are expected to vanish when the sanity check re-saves each source. `performSanityCheck()` returns early
+  for everything that is not `PageSnippet`, `Concrete` or `Asset`: document folders, links and hardlinks, and data object
+  folders (e.g. a property on a folder, or a link target). Their rows to the deleted element stay forever. The same
+  happens for all elements while `pimcore.dependency.enabled` is `false`.
+- Effects:
+  - `getRequiresTotalCount()` (in-memory list) and `getRequiredByTotalCount()` / `isRequired()` (SQL `COUNT(*)`) count
+    rows whose element no longer exists.
+  - `Element\Service::get*DependenciesForFrontend()` silently drops them (`getDependedElement()` → `null`), so pages are
+    shorter than `$limit` and the total does not match the rows shown.
+  - `getBySourceId()` / `getRequiredBy()` `LEFT JOIN` and keep orphans; `getRequiredByWithPath()` / filter queries use
+    `INNER JOIN` and hide them. The same element shows different counts in different tabs.
+
+**Fix direction:** in `cleanAllForElement()` also delete rows where the element is the **target**. The sanity check is
+still needed to clean the sources' data, but the graph must not depend on it. Count with the same join the list uses.
+
+## [ ] B-98 – `cleanAllForElement()` dispatches sanity checks before deleting and swallows DB errors inside the element's delete transaction
+
+**File:** `models/Dependency/Dao.php:185-203`; callers `models/Asset.php:1018`, `models/Document.php:640`,
+`models/DataObject/AbstractObject.php:438` (all inside `beginTransaction()` … `commit()`)
+
+- `SanityCheckMessage`s are dispatched **before** the rows are deleted and before the element delete is committed.
+  This is safe with the default `pimcore_core` transport (`doctrine://default`, same connection, enqueued inside the
+  transaction). With a `sync://`, AMQP or Redis transport (a common production change) the message is handled before
+  commit. The source is re-saved while the target still exists, its dependency rows to the target are recreated, and
+  they stay (B-97). If the delete is rolled back, the sources still get a needless "Sanity Check" version.
+- `catch (Exception $e) { Logger::error(...) }` (`:200-202`) hides DB failures. The element delete then **commits**
+  with its dependency rows intact. No caller or `POST_DELETE_FAILURE` listener is told.
+
+**Fix direction:** delete first, dispatch after commit (collect messages and dispatch them from the caller, or use
+`DispatchAfterCurrentBusStamp` / a post-commit hook). Let DB exceptions propagate so the element transaction rolls
+back.
+
+## [ ] B-99 – Uninitialized typed properties and `null` ids crash `Dependency` (`Error` / `TypeError`)
+
+**Files:** `models/Dependency.php:32`, `:38`, `:51-57`, `:91-94`, `:148-151`; `models/Dependency/Dao.php:41-46`;
+`models/Element/AbstractElement.php:613-620`
+
+- `protected int $sourceId; protected string $sourceType;` have no default. `new Dependency()` followed by any getter
+  or DAO method except `cleanAllForElement()` throws "must not be accessed before initialization".
+- `Dependency::getBySourceId(0, 'asset')`: `Dao::getBySourceId()` skips the setters when `$id` is falsy
+  (`if ($id && $type)`, `:43`) and then reads `getSourceId()` → `Error`.
+- `AbstractElement::getDependencies()` on an **unsaved** element passes `getId()` (`null`) to
+  `getBySourceId(int $id, …)` → `TypeError`.
+- `addRequirement(int $id, …)` (`Dependency.php:63`) receives the ids from `resolveDependencies()`. A relation to an
+  unsaved element (`getId()` `null`, e.g. `Property::resolveDependencies()`, `models/Property.php:270`) throws
+  `TypeError` in the strict handler. Combined with B-92 and C-17 this leaks state and leaves the graph incomplete.
+
+**Fix direction:** constructor with required `int $sourceId, string|ElementType $sourceType` (I-41/I-42), or nullable
+properties with explicit checks. Return an empty `Dependency` for unsaved elements in `getDependencies()`. Skip
+requirements with a `null`/`0` id in the handler.
+
+## [ ] B-100 – `AbstractElement::getDependencies()` is cached on the element and never reset after save or delete
+
+**File:** `models/Element/AbstractElement.php:47`, `:613-620` (reset only in `__clone()`, `:675`)
+
+- Elements are shared through `RuntimeCache`. After `$element->save()` the sync handler rewrites the rows, but
+  `$element->getDependencies()` keeps returning the `requires` list loaded before the save. This lasts for the rest of the request, or for the whole worker in messenger consumers and
+  long-running imports.
+- `DependenciesTest` reloads with `['force' => true]` before asserting, so the test hides this.
+- The cached object also keeps the full `requires` array (I-44) in memory for the element's lifetime.
+
+**Fix direction:** set `$this->dependencies = null` in `save()` / `delete()` (or in `addToDependenciesQueue()`), or do not
+cache at all (the getter is cheap once I-44 lands).
+
+## [ ] B-101 – Pagination: `$limit` without `$offset` is ignored in `getRequires()` and the SQL getters
+
+**Files:** `models/Dependency.php:96-103`; `models/Dependency/Dao.php:108`, `:167`, `:301`, `:357`
+
+- `getRequires(null, 25)` returns **all** rows. `array_slice()` runs only when `$offset !== null`. The DAO getters
+  apply `LIMIT` only when both are non-null. Callers that pass only a limit ("first 25") get everything.
+
+**Fix direction:** treat `null` offset as `0` when a limit is given, in all getters.
+
+## [ ] B-102 – No unique tie-breaker in `ORDER BY`: pages overlap or skip rows
+
+**File:** `models/Dependency/Dao.php:55`, `:106`, `:165`, `:298`, `:355`
+
+- `getRequiredByWithPath()` / filter queries sort by `type` or `path` only. Many rows share a type, and `id` is not
+  unique across types (object 5 and asset 5). MySQL may return ties in a different order per query, so `LIMIT`-based
+  paging in the admin shows duplicates and misses rows.
+- `getBySourceId()` / `getRequiredBy()` sort by the `LEFT JOIN`ed path columns. `NULL`s sort first, so the result is
+  "all assets, then documents, then objects" by accident, with no final tie-breaker (e.g. two rows with the same
+  `path`/`key` after a broken move).
+
+**Fix direction:** always append `, type, id` (or `d.id`) to the `ORDER BY`. Sort the mixed list by one computed `path`
+expression if a global path order is wanted.
+
+## [ ] B-103 – Concurrent / out-of-order dependency saves for the same source: the older state can win
+
+**Files:** `models/Dependency/Dao.php:222-283`; `lib/Messenger/Handler/ElementDependenciesHandler.php:39-45`
+
+- The handler re-loads the element and recomputes the rows. With an async `pimcore_dependencies` transport and several
+  consumers, or two web requests saving the same element, two `save()` calls interleave (read existing → delete →
+  insert). The one that **finishes** last wins even if it computed from an older element state. Rows the newer state
+  needs can be deleted.
+- Duplicate entries in `requires` (two properties pointing to the same element) are inserted twice. The second insert
+  hits the `combi` unique key, and the exception is swallowed (`:279-280`).
+
+**Fix direction:** serialise per source (row lock on the element with `SELECT … FOR UPDATE` inside the C-17
+transaction, or a `LockFactory` lock keyed by `type-id`). Deduplicate `requires` before the delta (I-45).
+
+## [ ] B-104 – Invalid source types: HTTP exception from the model layer, silently stored elsewhere
+
+**Files:** `models/Dependency/Dao.php:73-77`, `:132-136`, `:323-327`; `models/Dependency.php:153-158`;
+`install.sql:66`, `:68` (`ENUM('document','asset','object')`)
+
+- Only the three path getters validate the type, and they throw `Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException`.
+  Symfony turns it into an HTTP **400** and logs it as a security event. In CLI / messenger it is an unexpected HTTP type.
+- `setSourceType()`, `addRequirement()`, `getBySourceId()`, `getRequiredBy()` and `save()` accept any string.
+  `addRequirement(5, 'Object')` or `'dataobject'` is stored as `''` (empty enum value) under Pimcore's `sql_mode = ''`
+  (see B-87). The row is never found again and blocks the slot in the `combi` key.
+
+**Fix direction:** validate once in the setters / `addRequirement()` with an `ElementType` enum (I-42) and throw
+`\InvalidArgumentException` (or `\ValueError` from `ElementType::from()`).
+
+## [ ] B-105 – Filter helpers in `Element\Service` omit the `requires` / `requiredBy` key when nothing matches
+
+**File:** `models/Element/Service.php:207-242`
+
+- `getRequiredByDependenciesForFrontend()` / `getRequiresDependenciesForFrontend()` initialise the list key to `[]`.
+  The filter variants `getFilterRequiresForFrontend()` / `getFilterRequiredByPathForFrontend()` do not. An empty search
+  returns `{hasHidden: false}` without `requires` / `requiredBy`. The admin store then has to handle a missing root, and
+  `$dependencies[...]` in PHP consumers raises "Undefined array key".
+
+**Fix direction:** initialise the key in both, or merge the four helpers into one (I-47).
+
+## [ ] B-106 – Sync dependency handler errors make a committed element save look failed and skip `POST_*` events
+
+**Files:** `models/Asset.php:611` (before `POST_UPDATE`/`POST_ADD` at `:622-629`, failure events `:633-644`), `models/Document.php:386`,
+`models/DataObject/AbstractObject.php:609`; `lib/Messenger/Handler/ElementDependenciesHandler.php`
+
+- With the default sync routing, `addToDependenciesQueue()` runs the handler immediately. Any exception from it
+  (C-17, B-92, B-99, B-103) is wrapped in `HandlerFailedException` and escapes from `save()` **after** the element
+  transaction was committed.
+- The caller (admin UI, importer) reports "save failed" although the data is stored. `Asset::save()` catches it and
+  dispatches `POST_UPDATE_FAILURE` / `POST_ADD_FAILURE` for a committed write, while `POST_ADD` / `POST_UPDATE`
+  listeners (search index, cache warmers, workflows) never run. Retrying creates another version.
+
+**Fix direction:** catch and log dependency failures in `addToDependenciesQueue()` (the graph can be rebuilt), or move
+the dispatch after the `POST_*` event. Long term, route `ElementDependenciesMessage` async by default.

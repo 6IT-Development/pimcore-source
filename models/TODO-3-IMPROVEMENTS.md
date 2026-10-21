@@ -4,15 +4,19 @@ Scope: **(1)** `models/Asset.php` and `models/Asset/**` (Dao, Listing, Service, 
 Video, Video/**, Document, Document/**, MetaData/**, WebDAV/**, Enum, Archive/Audio/Text/Unknown)
 **(2)** `models/WebsiteSetting.php` and `models/WebsiteSetting/**` (Dao, Listing, Listing/Dao), plus the direct consumer
 `lib/Config.php::getWebsiteConfig()` (`:173-262`) and `tests/Model/WebsiteSetting/WebsiteSettingTest.php`
+**(3)** `models/Dependency.php` and `models/Dependency/Dao.php`, plus the direct consumers where a defect originates
+there (`lib/Messenger/Handler/ElementDependenciesHandler.php`, `models/Element/AbstractElement.php::getDependencies()`,
+the dependency helpers in `models/Element/Service.php:163-263`), the `dependencies` schema
+(`bundles/InstallBundle/dump/install.sql:63-73`) and `tests/Model/Element/DependenciesTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
 
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`).
+`7f0331cab9`, Scope 3: `2d382456c7`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
-**D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40).
+**D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50).
 
 ---
 
@@ -388,3 +392,144 @@ Extend `tests/Model/WebsiteSetting/WebsiteSettingTest.php`. Today it covers only
 - duplicate rows, empty name, invalid type (B-86, B-87);
 - `save()` with a non-existent id (B-88);
 - listing with a concurrently deleted row (B-90).
+
+---
+
+## G – Dependency (Scope 3)
+
+### [ ] I-41 – Strictness, native types and a typed target value object
+
+- Add `declare(strict_types=1)` to `models/Dependency/Dao.php`. It currently coerces DB strings into
+  `addRequirement(int …)` (`Dao.php:59`). Once strict, cast explicitly, or rely on PDO native ints (PHP 8.1+).
+- `protected array $requires` and all `array` returns are untyped shapes. Introduce
+  `final readonly class DependencyTarget { public function __construct(public ElementType $type, public int $id) {} }`
+  (or at least `@return list<array{id: int, type: string}>`) for `getRequires()`, `getRequiredBy()`, `addRequirement()`
+  and `setRequires()`. `getRequiredByWithPath()` / filters return a different shape (`id`, `type`, `path`); document both.
+- `Dao::getBySourceId(?int $id = null, ?string $type = null)` (`Dao.php:41`): the model always passes both. Make them
+  required and drop the falsy check (see B-99).
+- Constructor promotion for `sourceId` / `sourceType` (fixes the uninitialized state, B-99). `getBySourceId()` →
+  `: static` with `new static()`.
+- PHP 8.4: `getSourceId()` / `getSourceType()` + setters could become `public private(set)` properties once callers
+  stop using the setters. Keep the setters as deprecated BC shims.
+
+### [ ] I-42 – `ElementType` enum for `sourceType` / `targetType`
+
+- `'object' | 'document' | 'asset'` is hard-coded in `Dao.php:73`, `:132`, `:323`, every SQL branch, the schema enum,
+  `Element\Service::getDependedElement()` (`Service.php:257-262`) and `Element\Service::getElementType()`. No shared enum
+  exists in `models/Element`.
+- Add `enum ElementType: string { case Asset = 'asset'; case Document = 'document'; case DataObject = 'object'; }` (shared
+  with the rest of `models/`). Accept `ElementType|string` in `setSourceType()` / `addRequirement()` for BC and validate
+  there. This replaces the three `in_array(…) / SuspiciousOperationException` blocks (B-104).
+
+### [ ] I-43 – One query builder for the three path queries; bound parameters; consistent API
+
+- `getFilterRequiresByPath()`, `getFilterRequiredByPath()` and `getRequiredByWithPath()` (`Dao.php:63-119`, `:121-178`,
+  `:319-362`) are about 90 % identical: the same validation, the same `ORDER BY` whitelist, three `UNION` branches that
+  differ only by table / path expression, and three different `LIMIT` styles (`sprintf`, `sprintf`, concatenation).
+  Extract one private method `fetchWithPath(direction: requires|requiredBy, ?string $filter, …)` that builds the branches
+  from a map `['object' => ['objects', 'CONCAT(o.path, o.key)'], …]`. This also fixes C-16, B-93, B-95 and B-96
+  structurally.
+- Bind every value (`:sourceId`, `:sourceType`, `:value`) – DBAL 4 readiness, same as I-08. Use
+  `setFirstResult()` / `setMaxResults()` (DBAL QueryBuilder) instead of string `LIMIT`.
+- Use single quotes for SQL string literals: `dependencies.targettype="object"` (`Dao.php:51-53`, `:294-296`) breaks
+  under `ANSI_QUOTES` (double quotes become identifiers).
+- `if (count($x) > 0) return $x; else return [];` (`:114-118`, `:173-177`) → `return $this->db->fetchAllAssociative(...)`.
+- Model wrappers: `getFilterRequiresByPath()` / `getFilterRequiredByPath()` (`Dependency.php:105-117`) do not forward
+  `$orderBy` / `$orderDirection`, while `getRequiredByWithPath()` does. There is no `getRequiresWithPath()` counterpart at
+  all. Make the four public methods symmetrical, and give the filter queries a matching `…TotalCount()`; the admin
+  cannot page a filtered list correctly without it.
+
+### [ ] I-44 – Efficiency
+
+- `Asset::delete()` (`Asset.php:1018`) and `Document::doDelete()` (`Document.php:640`) call `$this->getDependencies()`
+  only to call `cleanAllForElement()`. That loads **all** `requires` rows with three `LEFT JOIN`s and a filesort first.
+  Use `new Dependency()` like `AbstractObject::doDelete()` (`:438`), or a static `Dependency::cleanAllForElement()`.
+- `getBySourceId()` always loads and path-sorts the full `requires` list, then `getRequires($offset, $limit)` slices it in
+  PHP (`Dependency.php:96-103`) and `getRequiresTotalCount()` counts it in PHP. Objects with thousands of relations pay
+  this on every tab open. Make `requires` lazy and add SQL-side `getRequires($offset, $limit)` and `COUNT(*)`, mirroring
+  `getRequiredBy()` / `getRequiredByTotalCount()`. Keep the in-memory list only for building a new set in `save()`.
+- `getRequiredBy()` / `getBySourceId()` sort on columns of three `LEFT JOIN`ed tables, so MySQL always filesorts the
+  whole result before `LIMIT`. Sorting by `(type, id)` for paging, or by one computed path in a derived table, is
+  cheaper.
+- `Element\Service::get*ForFrontend()` loads every listed element fully (`getById()` per row, N+1) just to read id,
+  path, type, subtype and the `list` permission. Use `getRequiredByWithPath()`-style rows plus a batch permission check.
+- `cleanAllForElement()` / `clear()`: `Helper::selectAndDeleteWhere()` with `quoteInto()` string building. For one
+  `(sourcetype, sourceid)` prefix of the unique `combi` index a plain
+  `$this->db->delete('dependencies', ['sourcetype' => $type, 'sourceid' => $id])` is enough. If the select-then-delete
+  is there on purpose (avoids gap locks), document the reason.
+
+### [ ] I-45 – `Dao::save()` simplification
+
+- Typo `$existingDepencies` (`Dao.php:228-236`, `:252`, `:259`).
+- Deduplicate `requires` by `type . '_' . id` before computing the delta (B-103). Then the
+  `catch (UniqueConstraintViolationException) {}` (`:279`) is only needed for concurrency and should log, not hide.
+- `if ($targetType && $targetId)` (`:246`) drops invalid entries silently. Validate in `addRequirement()` instead
+  (I-42, B-99).
+- Bulk statements: one multi-row `INSERT` (or `INSERT IGNORE`) instead of one round trip per target, and the delete via
+  `executeStatement('DELETE … WHERE id IN (?)', [$ids], [ArrayParameterType::INTEGER])` instead of `implode()` into SQL
+  (`:265-268`).
+- Wrap in a transaction (C-17).
+- `Helper::quoteInto()` passes a second `$type` argument to `Connection::quote()` (`lib/Db/Helper.php:106`). DBAL 4
+  removes that parameter and accepts only `string`. `clear()` / `cleanAllForElement()` pass int ids. Bound parameters
+  avoid the issue (DBAL 4 readiness).
+
+### [ ] I-46 – Docblocks and readability in `Dependency.php` / `Dao.php`
+
+- Wrong docs:
+  - `Dependency::cleanAllForElement()` (`:71-75`) says "schedules a sanity check for the affected **targets**". It
+    schedules the **sources** that require the element.
+  - `Dao::cleanAllForElement()` (`Dao.php:180-184`) says "Clear all relations in the database". It clears only rows
+    where the element is the source (see B-97).
+  - `Dao::getRequiredBy()` "Loads the relations that need the given source element" – the term "source" is used for
+    the element in both directions throughout the class. Rename the model fields (`elementId` / `elementType`) or add
+    one class docblock that explains requires vs. required-by.
+- Empty docblock lines (`Dependency.php:28-45`, `:47-50`, `:59-62`, `:170-173`; `Dao.php:36-40`, `:180-184`, `:218-221`,
+  `:285-289`, `:364-367`), the blank lines inside `getFilterRequiresByPath()` / `getFilterRequiredByPath()`
+  (`Dependency.php:106-109`, `:113-116`; `Dao.php:69`, `:128`), and the column-aligned parameter style
+  (`?int    $offset`, `Dependency.php:125-128`; `Dao.php:64-68`, `:122-126`) differ from the rest of `models/`.
+- `@method void save()` (`Dependency.php:24`): document that it writes the delta for `requires` only. `clean()`
+  (`:85-89`) has no caller in this repo; deprecate or document it.
+- The class is `@internal`, but `ElementInterface::getDependencies(): Dependency` exposes it publicly. Either drop
+  `@internal` from the read API or return an interface / read-only view.
+- `isRequired()` docblock: "an other" → "another".
+
+### [ ] I-47 – `Element\Service` dependency helpers: one implementation
+
+- `getRequiredByDependenciesForFrontend()`, `getRequiresDependenciesForFrontend()`, `getFilterRequiresForFrontend()` and
+  `getFilterRequiredByPathForFrontend()` (`Service.php:163-242`) are four copies of the same loop. They differ only in
+  the result key and in whether the rows come from the model or from an array. Extract one
+  `buildDependenciesForFrontend(iterable $rows, string $key): array` (fixes B-105).
+- `getDependedElement()` (`:255-263`) duplicates `Service::getElementById()`; use it.
+
+### [ ] I-48 – `ElementDependenciesHandler` clean-up
+
+- `try/finally` for the global state (B-92), using the existing `DataObject\Service::useInheritedValues()`.
+- `showUnpublished()` returns the previous value and has the opposite meaning of its name. Rename to
+  `disableHideUnpublished()` and `restoreHideUnpublished()`. `$hideUnpublished` holds the **previous** state.
+- Self-reference skip uses loose `==` (`:63`). With typed ids (I-41) use `===`.
+- `Service::getElementById($type, $id)` (`:41`) uses the cached instance. For async transports, pass `['force' => true]`
+  so the dependencies are computed from the committed state, not a stale cached element.
+- Skip the work when `pimcore.dependency.enabled` was switched off after the message was queued.
+- `#[\Override]` does not apply; mark the class `final` (it is `@internal`).
+
+### [ ] I-49 – Schema and maintenance
+
+- `dependencies.id` is `BIGINT` while `sourceid` / `targetid` are `INT UNSIGNED`. The surrogate key is only used for
+  the delta delete in `save()`. The unique `combi` key could be the primary key, making `id` unnecessary and deletes
+  simpler. Check `install.sql:64-73` and the migration impact first.
+- There is no command that rebuilds the dependency graph for all elements, or one that purges rows whose source or
+  target no longer exists (B-97, C-17). Add a maintenance task or a console command
+  (`pimcore:dependencies:rebuild` / `:cleanup`).
+
+### [ ] I-50 – Tests
+
+Extend `tests/Model/Element/DependenciesTest.php`. Today it covers only basic `getRequires()` / `getRequiredBy()` after a
+forced reload. Add cases for:
+- filter values with `'`, `%`, uppercase letters, regex metacharacters and an empty value (C-16, B-94, B-95);
+- `getFilterRequiredByPath()` with sources of mixed types (B-93);
+- `orderBy: 'path'` on all path queries (B-96);
+- deleting a target whose source is a folder / link, then checking counts and `isRequired()` (B-97);
+- an exception in `resolveDependencies()` leaving `hideUnpublished` / `getInheritedValues` unchanged (B-92);
+- `getDependencies()` on an unsaved element and after a save without forced reload (B-99, B-100);
+- `limit` without `offset`, and stable paging with ties (B-101, B-102);
+- the filter helpers returning the list key when nothing matches (B-105).

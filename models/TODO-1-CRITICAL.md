@@ -7,6 +7,10 @@ directly call where a defect originates there (`lib/Video/Adapter/Ffmpeg.php`, `
 **(2)** `models/WebsiteSetting.php` and `models/WebsiteSetting/**` (Dao, Listing, Listing/Dao), plus the direct consumer
 `lib/Config.php::getWebsiteConfig()` (`:173-262`), `lib/Twig/Extension/WebsiteConfigExtension.php`, the
 `website_settings` schema (`bundles/InstallBundle/dump/install.sql:603-615`) and `tests/Model/WebsiteSetting/WebsiteSettingTest.php`
+**(3)** `models/Dependency.php` and `models/Dependency/Dao.php`, plus the direct consumers where a defect originates
+there (`lib/Messenger/Handler/ElementDependenciesHandler.php`, `models/Element/AbstractElement.php::getDependencies()`,
+the dependency helpers in `models/Element/Service.php:163-263`), the `dependencies` schema
+(`bundles/InstallBundle/dump/install.sql:63-73`) and `tests/Model/Element/DependenciesTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -15,9 +19,10 @@ the public thumbnail route; they are not repeated here; C-08 covers request stat
 These items cause **data loss or corruption** (tree paths, binaries, versions), **source files deleted outside Pimcore**,
 **open DB transactions in workers**, **crashes in core asset flows** (create, folder move, video/PDF processing, frontend
 thumbnail rendering) and **path traversal / false security status**, and in Scope 2 **deleted or outdated website
-settings served indefinitely**.
+settings served indefinitely**, and in Scope 3 **SQL injection in the dependency filter** and **silently lost
+dependency rows** (editors are told an element is unused and delete it).
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`).
+`7f0331cab9`, Scope 3: `2d382456c7`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -345,3 +350,64 @@ result as `UNKNOWN`/unsafe unless the PDF is actually parsed; return the `PdfSca
   site/language, so per-key removal cannot be correct), and clear the `getWebsiteConfig` runtime entries.
 - Include the site id in `getWebsiteConfigRuntimeCacheKey()`.
 - Reset `RuntimeCache` per main request in worker runtimes (together with CoreBundle C-08).
+
+---
+
+# Scope 3 – Dependency
+
+> Notes
+> - `models/Dependency.php` and `ElementDependenciesHandler.php` are `strict_types`; `models/Dependency/Dao.php` is not.
+>   No hard Symfony 7.4 / PHP 8.4 incompatibility was found (no implicit nullable parameters, no removed APIs; DBAL is
+>   `^3.8`). DBAL 4 / modernisation items are in TODO-3 (I-41–I-50).
+> - Dependency resolving is **synchronous** by default (`ElementDependenciesMessage` routing is commented out in
+>   `bundles/CoreBundle/config/pimcore/default.yaml:38-51`). The handler runs inside `Asset/Document/DataObject::save()`,
+>   **after** the element transaction is committed and **before** `POST_ADD` / `POST_UPDATE` (e.g. `Asset.php:611`).
+> - The admin controllers that call `getFilterRequiresByPath()` / `getFilterRequiredByPath()` / `getRequiredByWithPath()`
+>   live in `pimcore/admin-ui-classic-bundle` (not in this repo, `vendor/` not installed). How they sanitise the filter
+>   value was **not verified**.
+
+---
+
+## [ ] C-16 – Dependency filter concatenates the raw search value into SQL (SQL injection; any `'` breaks the query)
+
+**Files:** `models/Dependency/Dao.php:94`, `:99`, `:104` (`getFilterRequiresByPath()`), `:153`, `:158`, `:163`
+(`getFilterRequiredByPath()`); public wrappers `models/Dependency.php:105-117`
+
+```php
+"... AND LOWER(CONCAT(o.path, o.key)) RLIKE '" . $value . "'"
+```
+
+- `$value` is put between single quotes with **no** escaping or binding, three times per query. Source type, id and
+  `ORDER BY` are whitelisted/cast; the search value is not. `Dependency` is `@internal`, but it is returned from the
+  public `ElementInterface::getDependencies()`, and the filter value comes straight from the admin "dependencies" search
+  field.
+- Unless every caller escapes the value (not verifiable here, see notes), an authenticated user can inject SQL
+  (`x' UNION SELECT … -- `) and read any table (users, password hashes, API keys). This bypasses the per-element
+  `isAllowed('list')` check that `Element\Service::getFilterRequiresForFrontend()` applies later.
+- Even with honest input: a search for `o'brien` or `kid's` throws a DBAL syntax error (500 in the admin).
+- The value is also passed through `sprintf()` (B-95) and interpreted as a regex (B-94).
+
+**Fix direction:** bind the value as a parameter (`… RLIKE :value` / `LIKE :value`, three times or once in a CTE), and
+decide literal vs. regex matching (B-94). Build the three near-identical queries in one place (I-43). Add a test with
+`'` and `%` in the value (I-50).
+
+---
+
+## [ ] C-17 – `Dependency\Dao::save()` is not atomic: a failure mid-way silently drops dependency rows ("not used" → editor deletes a referenced element)
+
+**Files:** `models/Dependency/Dao.php:222-283`; caller `lib/Messenger/Handler/ElementDependenciesHandler.php:73`;
+`models/Asset.php:611`, `models/Document.php:386`, `models/DataObject/AbstractObject.php:609`
+
+- `save()` runs a `DELETE … WHERE id IN (…)` (`:265-268`) and then one `INSERT` per new target (`:270-282`) without a
+  transaction. The caller has already committed the element transaction (see notes), so nothing wraps it.
+- Any error after the `DELETE` (deadlock on the `combi` unique index with a concurrent save, lost connection,
+  `max_allowed_packet`, a `TypeError` for a bad target, B-99) leaves the source with **fewer** rows than it really
+  requires. Only `UniqueConstraintViolationException` is caught (and ignored); everything else propagates.
+- The `dependencies` table drives the admin "Required by" tab, `isRequired()` / `getRequiredByTotalCount()` and the
+  "element is still used" warnings on delete. Missing rows make a referenced asset/document/object look unused. Editors
+  delete it and break live pages and relations. Nothing repairs the rows until the source element is saved again.
+- With the sync default, the exception also escapes from the element's `save()` after commit, see B-106.
+
+**Fix direction:** wrap the delta in a transaction (`$this->db->transactional(...)`), retry on deadlock
+(`RetryableException`), and insert in bulk (I-45). Optionally add a maintenance command that rebuilds dependencies
+for all elements, so a damaged graph can be repaired.
