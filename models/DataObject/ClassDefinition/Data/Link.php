@@ -355,7 +355,7 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
         return null;
     }
 
-    public function denormalize(mixed $value, array $params = []): ?\DataObject\Data\Link
+    public function denormalize(mixed $value, array $params = []): ?DataObject\Data\Link
     {
         if (is_array($value)) {
             $link = new DataObject\Data\Link();

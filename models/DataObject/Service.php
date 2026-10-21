@@ -1455,7 +1455,7 @@ class Service extends Model\Element\Service
      *
      * @internal
      */
-    public static function getCalculatedFieldValueForEditMode(Concrete $object, array $params, ?Data\CalculatedValue $data): ?string
+    public static function getCalculatedFieldValueForEditMode(Concrete $object, array $params, ?DataObject\Data\CalculatedValue $data): ?string
     {
         if (!$data) {
             return null;
@@ -1506,7 +1506,7 @@ class Service extends Model\Element\Service
         });
     }
 
-    public static function getCalculatedFieldValue(Fieldcollection\Data\AbstractData|Objectbrick\Data\AbstractData|Concrete $object, ?Data\CalculatedValue $data): mixed
+    public static function getCalculatedFieldValue(Fieldcollection\Data\AbstractData|Objectbrick\Data\AbstractData|Concrete $object, ?DataObject\Data\CalculatedValue $data): mixed
     {
         if (!$data) {
             return null;

@@ -39,7 +39,7 @@ class ObjectBrickContainerClassBuilder implements ObjectBrickContainerClassBuild
         $cd .= 'class ' . $className . ' extends \\Pimcore\\Model\\DataObject\\Objectbrick {';
         $cd .= "\n\n";
 
-        $cd .= 'protected $brickGetters = [' . "'" . implode("','", $brickKeys) . "'];\n";
+        $cd .= 'protected array $brickGetters = [' . "'" . implode("','", $brickKeys) . "'];\n";
         $cd .= "\n\n";
 
         foreach ($brickKeys as $brickKey) {
