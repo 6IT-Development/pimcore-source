@@ -35,7 +35,7 @@ abstract class AbstractModel implements ModelInterface
 {
     use ObjectVarTrait;
 
-    protected ?AbstractDao $dao = null;
+    protected ?DaoInterface $dao = null;
 
     private static array $daoClassCache = [];
 
