@@ -58,8 +58,8 @@ class ListingClassBuilder implements ListingClassBuilderInterface
 
         $cd .= ClassDefinition\Service::buildUseTraitsCode([], $classDefinition->getListingUseTraits());
 
-        $cd .= 'protected $classId = "' . $classDefinition->getId() . "\";\n";
-        $cd .= 'protected $className = "' . $classDefinition->getName() . '"' . ";\n";
+        $cd .= 'protected string $classId = "' . $classDefinition->getId() . "\";\n";
+        $cd .= 'protected string $className = "' . $classDefinition->getName() . '"' . ";\n";
 
         $cd .= "\n\n";
 
