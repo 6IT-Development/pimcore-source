@@ -18,16 +18,26 @@ originates in the model interplay (`lib/Tool/Frontend.php::getSiteMapping()` (`:
 `bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php::resolveSite()` (`:101-127`),
 `lib/Document/Renderer/DocumentRenderer.php:95-103`, `models/Document.php:690-830` (site path rewriting)), the `sites`
 schema (`bundles/InstallBundle/dump/install.sql:370-383`) and `tests/Model/Tool/FrontendTest.php`
+**(6)** `models/DataObject.php`, `models/Document.php`, `models/Document/**` (Dao, Service, PageSnippet, Page, Snippet,
+Email, Link, Hardlink/**, Folder, DocType/**, Listing/**, Editable/**), `models/Element/**` (AbstractElement, Dao,
+Service, Recyclebin/**, Editlock/**, Note/**, Tag/**, WorkflowState/**, PermissionChecker, AdminStyle, DeepCopy/**,
+Traits/**, Data/**) and `models/DataObject/**` (AbstractObject/**, Concrete/** incl. InheritanceHelper,
+Localizedfield/**, Fieldcollection/**, Objectbrick/**, Classificationstore/**, ClassDefinition/** incl. Data/**,
+Data/**, Listing/**, QuantityValue/**, SelectOptions/**, Service), plus the direct consumers where a defect
+originates in the model interplay (`bundles/CoreBundle/config/documents.yaml:49-50`,
+`lib/Routing/Dynamic/DataObjectRouteHandler.php:91`) and the related schema
+(`bundles/InstallBundle/dump/install.sql` – `documents*`, `edit_lock`, `tags`, `recyclebin`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
 
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
-Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72).
+Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
+DataObject (I-73–I-85).
 
 ---
 
@@ -838,3 +848,211 @@ There is no model test for `Site`; `tests/Model/Tool/FrontendTest.php` only cove
 - `getById()` before create / after delete in the same process, listing after delete (B-132);
 - save with a missing / non-page / already-used root, save of a deleted site (B-133, B-134);
 - delete with dependent website settings and slugs (B-135).
+
+---
+
+## J – Document / Element / DataObject (Scope 6)
+
+### [ ] I-73 – Strictness: `declare(strict_types=1)` in the 65 files without it
+
+- Missing in almost every DAO of the scope (`Document/Dao.php`, all `Document/*/Dao.php`, `Element/Dao.php`,
+  `Element/*/Dao.php`, `DataObject/AbstractObject/Dao.php`, `Concrete/Dao.php`, `Localizedfield/Dao.php`,
+  `Fieldcollection/**/Dao.php`, `Objectbrick/**/Dao.php`, `Classificationstore/**/Dao.php`,
+  `ClassDefinition/**/Dao.php`, `QuantityValue/Unit/**/Dao.php`, `Listing/**/Dao.php`, `Data/*Metadata/Dao.php`) and
+  in `Document/Editable/Areablock.php`, `DataObject/ClassDefinition/Data.php`, `ClassDefinition/Data/Input.php`,
+  `ClassDefinition/Data/Consent.php`, `ClassDefinition/Data/ClassSavedInterface.php`, `QuantityValue/Unit.php`
+  (`grep -rL 'strict_types' …`).
+- The DAOs rely on coercion during hydration (`assignVariablesToModel()` with DB strings, `lastInsertId()` as string,
+  `(bool)` only for `published`). Add explicit casts first (ids, dates, `index`, `versionCount`, booleans), then enable
+  strict types per directory.
+- Strict editables and data types currently fail on legacy data (B-163); normalise in the setters before tightening.
+
+### [ ] I-74 – PHP 8.4 language features and typing
+
+- Untyped / loosely typed members: `ClassDefinition\Dao::$model`, `Editable::admin()` / several `frontend()`
+  implementations returning `string|void`, `Areablock::start()/end()` returning `$this|string|void`,
+  `Renderlet::frontend()`, `Document\Service\Dao::getTranslationSourceId(): mixed`, `Note`/`Tag`/`Editlock` setters
+  returning the concrete class instead of `static`.
+- `func_get_args()` as cache key (`Document::getChildren()`, `getSiblings()`, `AbstractObject::getChildren()`,
+  `Hardlink::getChildren()`) and as optional argument (`Video::frontend()` `$inAdmin`) → explicit parameters.
+- Enums / constants for string literals: element type (`document`/`asset`/`object`), document type, object type
+  (`folder`/`object`/`variant` constants exist, string literals still used), link type (`internal`/`direct`), internal
+  type, tree lock (`self`/`propagate`), note data types, video types, relation owner types, `ROOT_ID = 1` (magic `1`
+  in ~20 places).
+- `#[\Override]` on all overridden model methods (`save()`, `update()`, `delete()`, `getCacheTags()`,
+  `resolveDependencies()`, Dao `getById()` overrides with different nullability).
+- `#[\Deprecated]` (PHP 8.4) for `Recyclebin\Item::getStoreageFile()`, the `contentMasterDocumentId` BC alias in
+  `PageSnippet`, `DataObject\Service::getInheritedData()`, `gridObjectData()` / `gridElementData()`.
+- Small idioms: `(bool)strpos(…)` → `str_contains()` (`Recyclebin\Item.php:197`), `@usort` (`Tag\Dao.php:130`),
+  nested `if/else` type dispatch → `match` (`PermissionChecker::check()`, `Tag\Dao::getElementsForTag()` map,
+  `Note\Dao`), `array_any()` / `array_find()` where loops search (`updateChildren()`, `Relations::setElements()`).
+- PHP 8.4 asymmetric visibility for read-mostly ids (`public private(set) ?int $id`) on `Note`, `Tag`, `Editlock`,
+  `Recyclebin\Item`, `WorkflowState`.
+
+### [ ] I-75 – Serialization formats and object injection hardening
+
+- `documents_editables.data`, `properties.data`, `notes_data`, `schedule_tasks.data`, recycle-bin and
+  `Hardlink\Service::upperCastDocument()` use PHP `serialize()`. Editable data are arrays only → `unserialize(…,
+  ['allowed_classes' => false])` in `Editable::getUnserializedData()`; same for `ClassDefinition\Data\*`
+  `getDataFromResource()` (Table, Geo*, Link, Video, ImageGallery, Hotspotimage, Block) where possible; JSON for new
+  rows.
+- `Hardlink\Service::upperCastDocument()` rewrites the class name inside a serialized string → replace with
+  composition (wrapper holding the source document) or an explicit copy constructor.
+- `ClassDefinition\Data\Block::getDataFromResource()` repairs string lengths in serialized data with
+  `preg_replace_callback()` → migrate the stored format.
+- `Localizedfield::__sleep()`, `Data\EncryptedField::__sleep()`, `AbstractElement::__sleep()` mutate the instance
+  (B-176, B-184) → `__serialize()` / `__unserialize()`.
+
+### [ ] I-76 – Bound parameters and DBAL 4 readiness
+
+- Concatenated SQL to replace with parameters / `ArrayParameterType::INTEGER`: `Document\Dao` (`hasChildren()`,
+  `getChildAmount()`, `isLocked()`, `unlockPropagate()`, `isAllowed()`, `getProperties()`), `Element\Dao`
+  (`InheritingPermission()`, `permissionByTypes()`), `AbstractObject\Dao` (object types `IN ('…')`, permission
+  queries, `getChildPermissions()`), `ScheduledTasksDaoTrait::deleteAllTasks()`, `Tag\Dao` (`delete()`,
+  `batchAssignTagsToElement()`, `getElementsForTag()`), `Element\Service::filterUnpublishedAdvancedElements()` /
+  `findForbiddenPaths()`, `PermissionChecker`, `Fieldcollection\Dao`, `Classificationstore\Dao`,
+  `Localizedfield\Dao` (`$language`, object id), `InheritanceHelper` (CTE with `$currentParentId`, `$fields`).
+- `QueryBuilder::getQueryPart()` and `add()` (`Element\Service::addTreeFilterJoins()`, `:906-934`) are deprecated in
+  DBAL 3 and removed in DBAL 4.
+- `executeQuery()` used for DML/DDL → `executeStatement()`; `lastInsertId()` returns `int|string`;
+  `fetchAssociative()` of `SELECT *` joins with duplicate columns (B-148).
+- Generated `filterBy<Field>($data, $operator)` and `DataObject\Listing::addFilterByField()` concatenate the operator
+  into SQL → allowlist operators (`=`, `!=`, `<`, `<=`, `>`, `>=`, `LIKE`, `IN (?)`, `NOT IN (?)`, `IS NULL`).
+
+### [ ] I-77 – Worker runtimes: replace static process state
+
+- Static flags with process lifetime: `Document::$hideUnpublished`, `AbstractObject::$hideUnpublished`,
+  `$getInheritedValues`, `$disableDirtyDetection`, `PageSnippet::$getInheritedValues`,
+  `Localizedfield::$getFallbackValues`, `$strictMode`, `EncryptedField::$strictMode`,
+  `AbstractElement::$doNotRestoreKeyAndPath`, `InheritanceHelper::$useRuntimeCache` / `$runtimeCache`,
+  `Model\Version::$disabled` (via Recyclebin).
+- Introduce one request-scoped context service (`ElementRuntimeContext`, `ResetInterface`, `kernel.reset`) with scoped
+  helpers (`withUnpublished(fn)`, `withInheritedValues(fn)`, `withoutDirtyDetection(fn)`) and deprecate the static
+  setters (fixes B-175 structurally, see also B-92 / B-125).
+- Shared services with per-request caches: `Document\Service::$nearestPathCache` (C-27); RuntimeCache entries of
+  tags (`tags_<id>`), class definitions (`class_<id>`), unit table, object-brick definitions (cleared only by
+  `MessengerClearRuntimeCacheListener`).
+
+### [ ] I-78 – Shared logic and duplication between the element DAOs and services
+
+- `Document\Dao` and `AbstractObject\Dao` duplicate `hasChildren()` / `getChildAmount()` (permission SQL, ties to I-14),
+  `isLocked()`, `unlockPropagate()`, `getProperties()`, `updateChildPaths()` (C-25), `updateWorkspaces()`,
+  `isAllowed()`, `getVersionCountForUpdate()`, `__isBasedOnLatestData()` → move to `Element\Dao` with the table /
+  ctype as configuration; one permission-SQL builder for all three element types.
+- `Document::save()`, `AbstractObject::save()` and `Asset::save()` copy the deadlock retry loop with different
+  exception types (`DeadlockException` vs `RetryableException`) and random sources (`rand()` vs `random_int()`) →
+  one `TransactionRetry` helper.
+- The five document type DAOs (`Page`, `Snippet`, `Email`, `Link`, `Hardlink`) differ only in the table name →
+  one generic DAO driven by `type_definitions` (also fixes B-148).
+- `Document\Service::copyRecursive()` / `copyAsChild()` and `DataObject\Service::copyRecursive()` / `copyAsChild()` /
+  `copy()` share 80 % of their code; `getUniqueKey()` exists three times and issues one query per attempt (recursive)
+  → one query `key REGEXP '^<key>(_[0-9]+)?$'`.
+- `Area::renderDialogBoxEditables()` and `Areablock::renderDialogBoxEditables()` are near copies; the
+  `rewritePath` closures in `Editable\Image` exist three times; the `__sleep()` "blocked vars" loop is copied into
+  ~10 editables and documents → helper or `__serialize()`.
+
+### [ ] I-79 – `Document.php` and `Document\Service` readability
+
+- `getFullPath()` (`Document.php:692-788`, "dirtiest hack" comments) mixes site rewriting, hardlink path resolution and
+  cross-domain links → extract a `DocumentPathResolver` service (ties to I-66), keep `getFullPath()` a thin wrapper.
+- `correctPath()` / `update()` validation (key, parent, first-level keys, path length) → one `validate()` called before
+  the transaction; reuse for `AbstractObject`.
+- `getTypes()` / `getTypesConfiguration()` read the system configuration on every call.
+- `Document\Service` mixes rendering, copying, translations (via `__call` to the DAO), URL lookup, preview generation
+  and nearest-path routing → split; `generatePagePreview()` uses a fixed temp file name per document (`:548`) and does
+  not delete it on failure.
+- `Document\Listing::getCount()` / `DataObject\Listing\Dao::getCount()` load the whole id list to count → `COUNT(*)`.
+
+### [ ] I-80 – Editable architecture
+
+- Editables pull services from `Pimcore::getContainer()` in ~20 places (`EditableHandler`, `BlockStateStack`,
+  `AreabrickManagerInterface`, `EditableRenderer`, `FullPageCacheListener`, `OutputTimestampResolver`,
+  `DocumentTargetingConfigurator`, `RequestHelper`) → inject through the `EditableLoader` / a factory.
+- Output via `echo` / `outputEditmode()` (`Block`, `Areablock::content()`, `Area::frontend()`) → return strings, let
+  the renderer echo; removes the need for `ob_start()` in `Block::getIterator()`.
+- `Editable\Video` (1076 lines) → one renderer per provider with Twig templates; the `'url'` branch in `frontend()` and
+  `getUrlCode()` are dead (`'url'` is not in `ALLOWED_TYPES`).
+- Non-deterministic markup: `Pdf::frontend()` uses `uniqid()` ids (breaks full-page-cache diffs / tests).
+- `Embed::frontend()` caches by `crc32(serialize(...))` → collisions serve another URL's embed → `xxh128`.
+- Side effects in getters: `Document\Link::getHref()` writes `$this->href`; `Editable\Image::getConfig()` writes
+  `$this->config`; `Editable\Link::getData()` mutates `$this->data`.
+- `Editable::buildEditableName()` dispatches an event and reads the container per editable render → cache the block
+  state and dispatcher.
+
+### [ ] I-81 – `Element\**` clean-up
+
+- `Element\Service` (1424 lines) → split into path utilities, copy/clone, session storage, CSV escaping, permission
+  paths; `cloneMe()` creates an anonymous `Matcher` class per call.
+- N+1 loads in listings: `Tag\Listing\Dao`, `Note\Listing\Dao`, `Recyclebin\Item\Listing\Dao`,
+  `WorkflowState\Listing\Dao` (`SELECT id` then `getById()` per row), `Tag\Dao::getTagsForElement()`,
+  `Tag\Dao::getByPath()` (one query per segment), `Tag\Dao::getElementsForTag()` (`getById()` per row).
+- `PermissionChecker`: one query per column per user, `createDetail()` with positional `a`…`f` parameters and HTML
+  (`<b>`) in data → a DTO and markup in the UI.
+- `Editlock::lock()` should upsert by `(cid, ctype)` (B-169); `Recyclebin::flush()` deletes the DB rows before the
+  storage (`Recyclebin.php:29-33`) – reverse order, or a transactional outbox.
+- `AdminStyle` builds HTML (`'<br>' . …`) in model code and calls `Site::getByRootId()` twice per page node (I-67).
+- `ValidationException::getAggregatedMessage()` uses only `contextStack[0]`.
+
+### [ ] I-82 – `DataObject\**` clean-up
+
+- `DataObject\Service` (1973 lines) → split (grid / CSV export, layouts, copy, calculated values, permissions).
+- `evaluateExpression()` creates a new `ExpressionLanguage` per calculated value (`Service.php:1440-1451`) → one cached
+  instance (compiled expressions).
+- `Localizedfield`: `getFieldDefinition()`, `getFieldDefinitions()` and `setLocalizedValue()` resolve the container
+  definition three different ways → one resolver; `Localizedfield\Dao::save()` is a ~350-line method.
+- `AbstractRelations::calculateDelta()` inserts rows for field collections – a "calculate" method with side effects.
+- `ObjectMetadata\Dao::load()` / `ElementMetadata\Dao::load()` run one query per relation item (N+1).
+- `Concrete::save()` disables dirty detection for every object older than the last class save
+  (`Concrete.php:619-626`) → every save after any class edit writes all fields; store a "schema version" instead.
+- `Classificationstore\Dao::save()` deletes and re-inserts the whole store on every dirty save.
+- QuantityValue unit table cache (`QuantityValue/Service.php:98-128`) has no tags → `Cache::clearTags()` never clears
+  it.
+
+### [ ] I-83 – Class / brick / collection definitions and code generation
+
+- Generated PHP code is built by string concatenation in `ClassDefinition\Data::getGetterCode()` / `getSetterCode()`
+  and the class builders → a code generator (e.g. `nette/php-generator`) that escapes identifiers (C-32).
+- Definitions are written with `var_export()` and loaded with `@include` (`ClassDefinition.php:238`, `:1218`) → load
+  errors are silent (B-185); use `Symfony\Component\VarExporter` and explicit error handling.
+- `@unlink()` (`ClassDefinition.php:555-558`, `Fieldcollection\Definition.php:239-240`,
+  `Objectbrick\Definition.php:329`, `:486-487`, `SelectOptions\Config\Dao.php:141`) → `Filesystem::remove()` with
+  logging.
+- DDL is concatenated with backticks (`ClassDefinition\Dao`, `Helper\Dao`, `Localizedfield\Dao::createUpdateTable()`)
+  → `quoteIdentifier()`; `SHOW TABLES LIKE` → explicit names (C-33).
+- `ClassDefinition::getById()` uses exceptions for control flow (`throw new Exception('Forced load')`).
+
+### [ ] I-84 – Schema
+
+- `edit_lock`: unique `(cid, ctype)`, `ctype` `NOT NULL`, `sessionId` index (B-169).
+- `documents.type` is an `enum('page','link','snippet','folder','hardlink','email')` while document types are
+  configurable (`type_definitions`) → `varchar` + validation.
+- `documents_page.prettyUrl`: index (and uniqueness per site, B-153).
+- `documents_translations`: no FK / index on `sourceId` for the "source deleted" cleanup.
+- `tags.idPath varchar(190)` limits the tree depth (~20 levels with 8-digit ids); `recyclebin.amount int(3)`;
+  `recyclebin.deletedby varchar(50)` vs user name length.
+- `notes.date` / `notes.user` nullable while the model types them as `int`.
+
+### [ ] I-85 – Tests
+
+Add model tests for:
+- renaming / moving a document and an object whose path contains the old segment twice; properties of other element
+  types below the same path (C-25); `getByPath()` of old paths after a move in the same process (B-138);
+- an `\Error` thrown inside `Document::save()` / `DataObject::save()` followed by a second save in the same process
+  (C-26, B-175);
+- `getNearestDocumentByPath()` for two different paths on the same service instance (C-27);
+- a scheduled block whose entries are all in the past, with and without full-page cache (C-28, B-156);
+- moving a root tag with children and grandchildren, then renaming a child and deleting the root (C-29, B-171);
+- loading and saving an object with an encrypted field under a wrong key (C-30, B-184);
+- slug resolution for a mixed-type field collection, and with an unloadable class definition (C-31);
+- class save with names / ids / field names containing `-`, `../`, spaces, backticks (C-32);
+- deleting class `archive` while class `news_archive` with bricks and localized fields exists (C-33);
+- recursive delete where a grandchild fails (B-139); `missingRequiredEditable` publish via API (B-140);
+  inherited-editables save (B-141); content-main cycle (B-142); unknown editable type in DB (B-143);
+- link document `getHtml()` with parameters / anchor / no name (B-145); hardlink to itself / deleted source (B-147);
+- image editable hotspots with element links → dependencies (B-162); legacy image data types (B-163);
+- unsaved elements under different parents reading properties (B-165); workspace `/foo` vs `/foobar` for documents and
+  objects (B-167);
+- recycle-bin restore without publish permission (B-168); two locks for one element (B-169); note `POST_ADD`
+  (B-170); workflow state delete with two workflows (B-172);
+- `copyContents()` scheduled tasks (B-182); user referenced in one of two user fields (B-183); listing
+  `count()` then `setLocale()` (B-178).

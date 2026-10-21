@@ -21,6 +21,15 @@ originates in the model interplay (`lib/Tool/Frontend.php::getSiteMapping()` (`:
 `bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php::resolveSite()` (`:101-127`),
 `lib/Document/Renderer/DocumentRenderer.php:95-103`, `models/Document.php:690-830` (site path rewriting)), the `sites`
 schema (`bundles/InstallBundle/dump/install.sql:370-383`) and `tests/Model/Tool/FrontendTest.php`
+**(6)** `models/DataObject.php`, `models/Document.php`, `models/Document/**` (Dao, Service, PageSnippet, Page, Snippet,
+Email, Link, Hardlink/**, Folder, DocType/**, Listing/**, Editable/**), `models/Element/**` (AbstractElement, Dao,
+Service, Recyclebin/**, Editlock/**, Note/**, Tag/**, WorkflowState/**, PermissionChecker, AdminStyle, DeepCopy/**,
+Traits/**, Data/**) and `models/DataObject/**` (AbstractObject/**, Concrete/** incl. InheritanceHelper,
+Localizedfield/**, Fieldcollection/**, Objectbrick/**, Classificationstore/**, ClassDefinition/** incl. Data/**,
+Data/**, Listing/**, QuantityValue/**, SelectOptions/**, Service), plus the direct consumers where a defect
+originates in the model interplay (`bundles/CoreBundle/config/documents.yaml:49-50`,
+`lib/Routing/Dynamic/DataObjectRouteHandler.php:91`) and the related schema
+(`bundles/InstallBundle/dump/install.sql` – `documents*`, `edit_lock`, `tags`, `recyclebin`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -33,9 +42,13 @@ settings served indefinitely**, and in Scope 3 **SQL injection in the dependency
 dependency rows** (editors are told an element is unused and delete it), and in Scope 4 **translation texts
 overwritten or replaced by their key**, **site-wide 500s from one `NULL` row**, **a translation-language permission
 bypass** and **SQL identifier injection through the domain name**, and in Scope 5 **a whole site answering 404 after
-its root page is renamed or moved** and **site definitions permanently lost when the root page is deleted**.
+its root page is renamed or moved** and **site definitions permanently lost when the root page is deleted**, and in
+Scope 6 **document / object / tag tree paths corrupted on move**, **open DB transactions after an `Error` in document
+and object saves**, **frontend 500s from scheduled blocks**, **a path-less nearest-document cache serving the wrong
+document**, **encrypted data and URL slugs silently destroyed**, **code / SQL injection through class definitions**
+and **other classes' tables dropped on class delete**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -43,6 +56,10 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 >   but `null` to a non-nullable parameter still throws `TypeError`. The rest of `models/Asset/**` is strict.
 > - No hard Symfony 7.4 / PHP 8.4 incompatibility (removed API, implicit nullable parameter) was found. The remaining
 >   compatibility work is modernisation and is listed in TODO-3.
+> - Scope 6: 65 files have **no** `declare(strict_types=1)` – nearly all DAOs, plus `Document/Editable/Areablock.php`,
+>   `DataObject/ClassDefinition/Data.php`, `ClassDefinition/Data/Input.php`, `Consent.php`, `QuantityValue/Unit.php`
+>   (I-73). No implicit nullable parameter was found; DBAL 4 blockers (`QueryBuilder::getQueryPart()` / `add()`) are in
+>   I-76. The project pins `doctrine/dbal: ^3.8`, so they are not critical today.
 
 ---
 
@@ -63,7 +80,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
   no `AND ctype = 'asset'`. Renaming asset folder `/products` rewrites `cpath` of every document/object property under
   `/products/`. `cpath` is `utf8_general_ci`, so different casing matches too. Property inheritance (ordered by `cpath`)
   silently changes.
-- `Document/Dao.php:214` and `DataObject/AbstractObject/Dao.php:173` use the same pattern (outside scope, same fix).
+- `Document/Dao.php:214` and `DataObject/AbstractObject/Dao.php:173` use the same pattern (Scope 6: **C-25**).
 
 **Fix direction:** anchor the replacement with bound parameters:
 `` SET `path` = CONCAT(:new, SUBSTRING(`path`, CHAR_LENGTH(:old) + 1)) WHERE `path` LIKE :oldLike ``. Same for both
@@ -658,3 +675,232 @@ CONSTRAINT `fk_sites_documents` FOREIGN KEY (`rootId`) REFERENCES `documents` (`
   unless the site is removed first, or call `Site::delete()` explicitly inside the same transaction.
 - Store the site definition in the recycle bin item of its root page and restore it together with the page.
 - Clear the site caches and run the slug cleanup on every deletion path (B-135).
+
+---
+
+## Document / Element / DataObject (Scope 6)
+
+## [ ] C-25 – Document and object move/rename rewrites every occurrence of the old path in DB (children, workspaces, and *other element types'* properties)
+
+**Files:** `models/Document/Dao.php:196-217` (`:208`, `:211`, `:214`); `models/DataObject/AbstractObject/Dao.php:154-179`
+(`:167`, `:170`, `:173`); callers `models/Document.php:328-341`, `models/DataObject/AbstractObject.php:540-548`
+
+- Same pattern as C-01: `` `path` = replace(`path`, '<old>/', '<new>/') `` with a `WHERE … LIKE '<old>/%'`. MySQL
+  `REPLACE()` replaces **all** occurrences; the `WHERE` only selects the rows.
+  - Renaming document `/en` → `/de` turns `/en/products/en/teaser` into `/de/products/de/teaser`. The child row now
+    points to a parent path that does not exist: `getByPath()` fails, the `(path, key)` unique index can collide, and
+    the next save of the child (`correctPath()` re-reads the parent path) moves it somewhere else again.
+  - Same for objects (`/products/shoes/products/x`).
+- `users_workspaces_document.cpath` / `users_workspaces_object.cpath` (`:211`, `:170`) get the same corruption →
+  permissions move to the wrong subtree.
+- `properties` (`:214`, `:173`) has no `AND ctype = 'document'` / `'object'`: moving document folder `/products`
+  rewrites the `cpath` of **asset and object** properties below `/products/…` (and with `utf8_general_ci`, below
+  `/Products/…`). Property inheritance (sorted by `cpath`) silently changes for the other element types.
+- C-01 already noted these two places as "outside scope, same fix"; they are tracked here.
+
+**Fix direction:** one helper in `Element\Dao` used by all three element types:
+`` SET `path` = CONCAT(:new, SUBSTRING(`path`, CHAR_LENGTH(:old) + 1)) WHERE `path` LIKE :oldLike `` with bound
+parameters; the same for both `cpath` updates, plus `AND ctype = :ctype` on `properties`.
+
+---
+
+## [ ] C-26 – Document / DataObject `save()` and `delete()` catch only `Exception`: an `Error` leaves the DB transaction open (and global flags changed) in workers
+
+**Files:** `models/Document.php:310-366` (inner retry `catch (Exception $e)` at `:346`), `:399`, `delete()` `:648-690`
+(`:672`); `models/DataObject/AbstractObject.php:518-590` (`:557`), `:626`, `delete()` `:448-492` (`:468`);
+`models/Document/PageSnippet.php:208`; `models/DataObject/Concrete.php:235-286` (`:277`)
+
+- Same defect as C-05 (Asset). Any `\Error` between `beginTransaction()` and `commit()` skips `rollBack()` and the
+  `POST_*_FAILURE` events. Reachable `Error`s inside the transaction (the files are `strict_types`):
+  - `Classificationstore\Dao::save()`: `reset([])->getKeyId()` for an empty group, `DefinitionCache::get()` `null` for a
+    deleted key (B-181);
+  - `InheritanceHelper::doUpdate()`: `$result['id']` on `false`, `Concrete::getById()` `null` (B-186);
+  - `PageSnippet::update()` → `Editable::save()` / `getDataForResource()` with typed-property `TypeError`s (B-163);
+  - listeners of version events (`saveVersion()` runs inside the transaction).
+- `AbstractObject::save()` additionally sets `hideUnpublished = false` before `beginTransaction()` (`:520-521`) and
+  restores it only on success and in `catch (Exception)` (`:552`, `:566`). After an `Error` the flag stays `false`
+  for the process: frontend listings and relation getters start returning unpublished objects. Dirty detection stays
+  disabled for new objects as well (B-175).
+- In PHP-FPM the connection is reset at request end. In Messenger workers / FrankenPHP / RoadRunner the connection is
+  long-lived: every later `beginTransaction()` nests inside the dead transaction and **nothing is committed again**
+  until the worker restarts (silent data loss).
+- `Document::delete()` calls `$this->rollBack()` unguarded in its `catch` (`:673`): a failing rollback replaces the
+  original exception (AbstractObject guards it).
+
+**Fix direction:** catch `\Throwable` in the inner retry loop and in the outer handlers of `save()`, `delete()` and
+`saveVersion()` (rethrow after rollback + failure event); restore `hideUnpublished` / dirty detection in `finally`.
+
+---
+
+## [ ] C-27 – `Document\Service::getNearestDocumentByPath()` caches its result without the path: the shared service returns the first document for every later lookup
+
+**Files:** `models/Document/Service.php:461-526` (`:467`, `:470-471`, `:488`, `:502`); service definition
+`bundles/CoreBundle/config/documents.yaml:49-50` (shared, public, no reset); callers
+`bundles/CoreBundle/src/EventListener/Frontend/DocumentFallbackListener.php:109`,
+`bundles/CoreBundle/src/EventListener/ResponseExceptionListener.php:147`,
+`lib/Routing/Dynamic/DocumentRouteHandler.php:138`
+
+```php
+$cacheKey = $ignoreHardlinks . implode('-', $types);   // path and site are not part of the key
+if (isset($this->nearestPathCache[$cacheKey])) { $document = $this->nearestPathCache[$cacheKey]; }
+```
+
+- `nearestPathCache` lives on the container service. The key contains only the hardlink flag and the type list.
+- PHP-FPM: within one request every further call with a different path (sub-requests, hardlink resolution in
+  `DocumentRouteHandler`, the 404 handler after a fallback lookup for another path) gets the first result.
+- Worker runtimes (FrankenPHP, RoadRunner, Swoole): the container survives the request, so **every following request**
+  gets the nearest document of the first request. `DocumentFallbackListener` sets `_locale`, the content document and
+  the site context from it → wrong language, wrong site, wrong error page and wrong hardlink target for all visitors
+  until the worker restarts.
+- A result found through the site pretty-URL branch (`:492-505`) is reused for requests of other sites.
+
+**Fix direction:** key by `[path, site id, ignoreHardlinks, types]` (small bounded array) or drop the cache;
+implement `ResetInterface` and tag the service with `kernel.reset`.
+
+---
+
+## [ ] C-28 – Scheduled block: frontend 500 as soon as no entry lies in the future (`updateOutputCacheLifetime()` receives `null`)
+
+**File:** `models/Document/Editable/Scheduledblock.php:70-122` (`:83`, `:87-89`, `:95`, `:110`)
+
+```php
+$nextElement = null;
+foreach ($this->indices as $element) { if ($element['date'] <= $outputTimestamp) { $currentElement = $element; } elseif (empty($nextElement)) { $nextElement = $element; } … }
+$this->updateOutputCacheLifetime($outputTimestamp, $nextElement);   // private function …(int $outputTimestamp, array $nextElement)
+```
+
+- The file is `strict_types`. When every entry date is in the past, `$nextElement` stays `null` → `TypeError`.
+- This is the normal state of every scheduled block once its last scheduled change has passed. A new block gets one
+  default entry with `date => time()` (`setDefault()`, `:58-68`), which is in the past on the next request.
+- The call happens before the full-page-cache check, so it fails with or without output cache. Editmode returns all
+  entries (`:72-73`) and never reaches the call, so editors do not see the error; only frontend visitors do (Twig
+  `pimcore_iterate_block` → page 500).
+- Logic error behind it: "no future entry" must leave the cache lifetime alone; the old untyped code computed a negative
+  lifetime from `null['date']`.
+
+**Fix direction:** `?array $nextElement`, return early for `null`, only lower the lifetime for a positive value.
+
+---
+
+## [ ] C-29 – Moving a root-level tag corrupts the `idPath` of its whole subtree
+
+**Files:** `models/Element/Tag/Dao.php:51-87` (`:62-65`, `:75-77`); `models/Element/Tag.php:238-245` (`setParentId()`),
+`:325-339` (`correctPath()`)
+
+```php
+// tag 5 at root: idPath '/', child 7: '/5/'. Move 5 under 3 → new idPath '/3/'
+UPDATE tags SET idPath = REPLACE(idPath, '/', '/3/') WHERE idPath LIKE '/5/%'   -- '/5/' → '/3/5/3/', '/5/7/' → '/3/5/3/7/3/'
+```
+
+- The original `idPath` of a top-level tag is `'/'` (truthy), so `REPLACE()` rewrites **every slash** of every
+  descendant path. Deeper moves are only safe by accident (ids are unique path segments).
+- Consequences: descendants get paths that do not match their parents. As soon as any tag in the chain is saved again
+  (rename, move), `correctPath()` recomputes the correct prefix, the subtree `REPLACE`/`LIKE` no longer matches, and:
+  - `getElementsForTag(…, considerChildTags: true)` misses child tags and their elements;
+  - `Tag::delete()` (`LIKE '<fullIdPath>%'`, `:99`) leaves orphaned child tags and their `tags_assignment` rows;
+  - `idPath` grows three times per move → `varchar(190)` overflow → save errors in deeper trees; the
+    `(idPath, name)` unique index can collide.
+- Dragging a root tag under another tag is a normal admin action.
+
+**Fix direction:** anchored `CONCAT(:new, SUBSTRING(idPath, CHAR_LENGTH(:old) + 1))` with bound parameters; a repair
+migration that recomputes every `idPath` from `parentId`.
+
+---
+
+## [ ] C-30 – Encrypted fields: a decryption failure loads `null`, and the next save overwrites the ciphertext
+
+**Files:** `models/DataObject/ClassDefinition/Data/EncryptedField.php:112-150` (`:119-125`, `:139-144`), `:66-86`,
+strict-mode default `:42-50`, `:315-323`; write path `models/DataObject/Concrete/Dao.php:230-259`
+
+- In the default non-strict mode a key that cannot be loaded (missing / rotated / different
+  `pimcore.encryption.secret`, e.g. after a deploy or on a copied database) and any `Crypto::decrypt()` failure only log
+  and return `null`.
+- The object loads with the field empty. Store-table columns are written on **every** save (they are never
+  "untouchable"), so the next save by an editor, workflow, import, scheduled task or maintenance job writes
+  `getDataForResource(null)` → `NULL`: the encrypted value is destroyed permanently, with only a log line.
+- Same in localized fields, bricks and field collections.
+
+**Fix direction:** never turn a failed decryption into `null`. Return a value object that keeps the raw ciphertext and
+is written back unchanged (or skip the column on save), and refuse edits of that field; consider making strict mode
+the default.
+
+---
+
+## [ ] C-31 – Frontend slug resolution deletes slug rows when the field definition lookup fails; the field-collection branch always inspects item 0
+
+**Files:** `models/DataObject/Data/UrlSlug.php:249-346` (`:318-336`, `:340-344`); callers
+`lib/Routing/Dynamic/DataObjectRouteHandler.php:91`, `models/DataObject/ClassDefinition/Data/UrlSlug.php:207-212`
+
+- `getAction()` runs on every slug route match (anonymous public requests). If it cannot find a `UrlSlug` field
+  definition it calls `$this->delete()` and throws.
+- Field collections: the slug row stores the item index in `position` (`ClassDefinition/Data/UrlSlug.php:275`), but
+  `getAction()` reads `$fcValue->get(0)` (`:330`). In a collection with mixed types, where item 0 is a type without
+  this slug field, **the first request for the slug of item n deletes it** → the URL answers 404 for good, until the
+  object is saved again.
+- `ClassDefinition::getById()` returns `null` for any include error of the definition file (B-185): during a deploy
+  window or a broken definition every requested slug of that class is deleted.
+- `ClassDefinition\Data\UrlSlug::checkValidity()` calls `getAction()` for an existing slug while saving another
+  object (`:207-212`), so the same deletion happens from admin saves.
+- Deleting data from a GET handler is also racy (two requests, cache entries keep the deleted slug, `:345`).
+
+**Fix direction:** resolve with `get((int)$this->getPosition())`; never delete during request handling (log and
+answer 404); move the cleanup to class save / a maintenance task; cache the resolved action per
+`(classId, ownertype, ownername, fieldname)`.
+
+---
+
+## [ ] C-32 – Class names, class ids, field names and select-option ids are not validated with anchored patterns: they reach generated PHP code, file paths and DDL
+
+**Files:** `models/DataObject/ClassDefinition.php:331-367` (`:350`, `:355`, `:359`), `getDefinitionFile()` `:576-579`,
+`getPhpClassFile()` `:584-587`; `models/DataObject/ClassDefinition/Data.php:1297-1312` (`isForbiddenName()`, no
+character check); `models/DataObject/ClassDefinition/Dao.php:96-222` (name and id inside DDL strings, `:117-118`);
+`models/DataObject/ClassDefinition/Helper/Dao.php:25-110` (field names in backticks, not escaped);
+`models/DataObject/SelectOptions/Config.php:78-91`, `:372-375`; generators in `lib/DataObject/ClassBuilder/**`
+
+```php
+if (!preg_match('/[a-zA-Z]\w+/', $this->getName())) …                 // matches anywhere in the string
+if (!preg_match('/[a-zA-Z0-9]([a-zA-Z0-9_]+)?/', $this->getId())) …     // same
+```
+
+- `Foo-Bar`, `../../public/ab`, `X extends Concrete {} … class Y` all pass.
+  - The name becomes the PHP file path `DataObject/<Name>.php` / `definition_<name>.php` (path traversal → a PHP file
+    written outside `var/classes`, e.g. into the web root) and the class name in generated code (code injection, or a
+    syntax error that fatals every request autoloading the class).
+  - The id becomes the table names `object_store_<id>`, `object_query_<id>`, `object_relations_<id>` that are
+    concatenated into DDL and DML across the model (`ClassDefinition/Dao.php:104-150`, InheritanceHelper, listings), and is written as
+    `DEFAULT '<id>'` / `DEFAULT '<name>'` into DDL → SQL injection / broken schema.
+- Field names are only checked against the forbidden-name list: any character is accepted and ends up in generated
+  getters/setters (`get<Name>`) and in backtick-quoted column names without escaping (a backtick breaks out).
+- Select-options ids are only checked against reserved words and become enum class names and file names.
+- Field-collection and object-brick keys are already validated with `^[a-zA-Z]\w*$`
+  (`Fieldcollection/Definition.php:308`, inherited by bricks); the gap is classes, fields and select options.
+- Who can trigger it: users with the `classes` permission (not necessarily admins), definition imports
+  (`pimcore:definition:import:class`, admin JSON import), custom tooling. Validation in the admin UI bundle was not
+  checked here; the model accepts everything.
+
+**Fix direction:** anchored patterns (`^[A-Za-z][A-Za-z0-9_]*$` plus length limits and PHP reserved words) for class
+name, class id, field names and select-option ids, checked in the setters and in `save()`; quote identifiers with
+`quoteIdentifier()` everywhere; generate code with a code generator instead of string concatenation (I-83).
+
+---
+
+## [ ] C-33 – Deleting a class drops tables of other classes: unescaped `SHOW TABLES LIKE` patterns
+
+**File:** `models/DataObject/ClassDefinition/Dao.php:240-296` (`:260`, `:267`, `:273`, `:282`)
+
+```php
+"SHOW TABLES LIKE 'object\_collection\_%\_" . $id . "'"      // suffix match
+"SHOW TABLES LIKE 'object\_brick\_%\_" . $id . "'"           // suffix match
+"SHOW TABLES LIKE 'object\_localized\_query\_" . $id . "\_%'" // prefix match
+```
+
+- The class id is not escaped (an `_` in it is a wildcard) and `%` spans `_`. Custom ids (`[A-Za-z0-9_]` is allowed):
+  - deleting class `archive` drops `object_brick_store_<key>_news_archive` and `object_collection_<key>_news_archive`,
+    i.e. the brick and field-collection **store** tables of class `news_archive` → data loss;
+  - deleting class `news` drops `object_localized_query_news_archive_<lang>` and the `object_localized_news_archive_*`
+    views.
+- The numeric default ids are not affected; projects with readable class ids are.
+
+**Fix direction:** build the exact table names from the known brick / field-collection keys and valid languages (or
+query `information_schema.tables` with escaped `_` / `%` and the exact `_<key>_<id>` structure); better, track the
+tables owned by a class.

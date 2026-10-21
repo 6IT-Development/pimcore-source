@@ -20,16 +20,27 @@ originates in the model interplay (`lib/Tool/Frontend.php::getSiteMapping()` (`:
 `bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php::resolveSite()` (`:101-127`),
 `lib/Document/Renderer/DocumentRenderer.php:95-103`, `models/Document.php:690-830` (site path rewriting)), the `sites`
 schema (`bundles/InstallBundle/dump/install.sql:370-383`) and `tests/Model/Tool/FrontendTest.php`
+**(6)** `models/DataObject.php`, `models/Document.php`, `models/Document/**` (Dao, Service, PageSnippet, Page, Snippet,
+Email, Link, Hardlink/**, Folder, DocType/**, Listing/**, Editable/**), `models/Element/**` (AbstractElement, Dao,
+Service, Recyclebin/**, Editlock/**, Note/**, Tag/**, WorkflowState/**, PermissionChecker, AdminStyle, DeepCopy/**,
+Traits/**, Data/**) and `models/DataObject/**` (AbstractObject/**, Concrete/** incl. InheritanceHelper,
+Localizedfield/**, Fieldcollection/**, Objectbrick/**, Classificationstore/**, ClassDefinition/** incl. Data/**,
+Data/**, Listing/**, QuantityValue/**, SelectOptions/**, Service), plus the direct consumers where a defect
+originates in the model interplay (`bundles/CoreBundle/config/documents.yaml:49-50`,
+`lib/Routing/Dynamic/DataObjectRouteHandler.php:91`) and the related schema
+(`bundles/InstallBundle/dump/install.sql` – `documents*`, `edit_lock`, `tags`, `recyclebin`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
-[CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated)
+[CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
+B-43 push/pop listener balance is the listener side of B-158)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
-`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`).
+`7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
-**WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137.
+**WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
+**Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187.
 
 ---
 
@@ -1706,3 +1717,641 @@ empty.
 
 **Fix direction:** fix the message; let `getTotalCount()` throw (or log at error level); deprecate `setRootPath()`
 (I-70).
+
+
+## Document (Scope 6)
+
+## [ ] B-138 – `Document::save()` after a move/rename clears the wrong runtime-cache path keys
+
+**Files:** `models/Document.php:328-341`, `:368-378`; `models/Document/Dao.php:196-199`
+
+- `updateChildPaths()` selects `CONCAT(path, key)` **before** the UPDATE, i.e. the old paths. `save()` treats them as
+  new paths: `substr_replace($doc['path'], $oldPath, 0, strlen($newPath))`. When old and new path differ in length
+  (`/a` → `/abc`), the computed "old path" is garbage, so `document_path_<md5(old)>` runtime entries survive and
+  `Document::getByPath('/a/x')` keeps returning the moved document in the same process (CLI imports, workers).
+- The moved document's own old path key is never cleared either.
+- The SELECT uses `LIKE '<old>%'` without `/`: siblings such as `/ab…` are included (needless flush, wrong old path).
+
+**Fix direction:** select `LIKE '<old>/%'`, use the selected value as the old path and compute the new one; clear the
+document's own old path key.
+
+## [ ] B-139 – Recursive delete fires the children's `POST_DELETE` and side effects before the parent's transaction commits
+
+**Files:** `models/Document.php:621-690`; `models/DataObject/AbstractObject.php:429-492`;
+`models/Document/PageSnippet.php:220-231`; `models/DataObject/Concrete.php:216-226`
+
+- Every child `delete()` opens a nested transaction (only the nesting level changes), then clears caches and the
+  RuntimeCache, dispatches `POST_DELETE` and a `VersionDeleteMessage`. When a later sibling or the parent fails, the
+  outer `rollBack()` restores the rows, but listeners (search index, Data Hub, workflows, caches) already treated the
+  children as deleted, and versions are gone if the message transport is not the same DB connection (see B-17).
+- `Document::doDelete()` switches `hideUnpublished` off and back without `finally` (`:626-633`).
+- The whole subtree is loaded into memory through recursive `getChildren(true)`.
+
+**Fix direction:** collect the subtree ids, delete in one transaction, dispatch events / messages after commit
+(DBAL after-commit callback or `DispatchAfterCurrentBusStamp`); `finally` for the flag.
+
+## [ ] B-140 – `missingRequiredEditable` is never re-evaluated once it is `true`
+
+**Files:** `models/Document/PageSnippet.php:126-136`, `:581-594`, `:610-644`; column
+`documents_page.missingRequiredEditable`
+
+- The check runs only while the property is `null`. The value is persisted and loads as `true`, so after the editable
+  has been filled `$page->setPublished(true)->save()` still throws "Prevented publishing document" unless the caller
+  resets the flag (only `Document\Service::copyAsChild()` sets `false`). Publishing from code, imports and workflows
+  stays blocked.
+- The check renders a clone of the document on every save (controller, Twig, sub-requests), also in CLI / Messenger,
+  and catches only `Exception` – a Twig `\Error` makes the save fail.
+
+**Fix direction:** reset to `null` (recompute) before every publish check, or compute on demand; catch `\Throwable`.
+
+## [ ] B-141 – `getEditables()` with inherited values stores the content-main editables as the document's own
+
+**Files:** `models/Document/PageSnippet.php:462-477`, `:138-157`
+
+- With `PageSnippet::$getInheritedValues = true` (dependency handler, rendering helpers) the main document's editable
+  **instances** (not cloned, `inherited = false`) are merged into `$this->editables` and stay on the cached instance
+  after the flag is reset.
+- A later `save()` saves them as own editables and calls `setDocumentId(<child>)` on the main document's objects →
+  content inheritance is flattened silently, and the main document's in-memory editables now point to the child.
+
+**Fix direction:** keep inherited editables out of `$this->editables`; use clones flagged `inherited` (as
+`getEditable()` does).
+
+## [ ] B-142 – Content-main cycles are accepted: the chain is only checked with `$validate = true`
+
+**Files:** `models/Document/PageSnippet.php:393-424`, `:359-385`, `:431-438`
+
+- The loop condition ends with `&& $validate`; the default (`false`, used by `setValues()` from the admin UI) only
+  checks the direct self-reference. `A → B`, `B → A` is accepted and `getEditable()` recurses A → B → A … → stack
+  overflow on render. Chains longer than 20 are accepted silently.
+
+**Fix direction:** always walk the full chain; guard `getEditable()` with a visited set.
+
+## [ ] B-143 – One unknown or corrupt editable row breaks the whole document
+
+**Files:** `models/Document/PageSnippet/Dao.php:45-63`; `models/Document/Editable.php:713-728`
+
+- `EditableLoader::build()` throws for a type that no longer exists (bundle removed), and `getUnserializedData()`
+  throws for a corrupt / legacy serialized value. `getEditables()` then fails for the whole document: frontend 500,
+  the document cannot be opened in the admin to fix it, versions and the recycle bin fail as well.
+
+**Fix direction:** skip unknown / broken rows with a warning (keep the raw row so a re-save does not lose it).
+
+## [ ] B-144 – `Document\Service\Dao::getTranslations()` loses links and can fatal
+
+**Files:** `models/Document/Service/Dao.php:41-88`
+
+- In the `'open'` task `$linkedData` is reassigned per loop iteration (`:61-64`): only the last linked set is merged.
+- `Document::getById()` can return `null` (source removed, race) → `->getProperty()` on `null`; a missing `language`
+  property produces an `''` key. `getTranslationSourceId()` returns `mixed` (a DB string).
+
+**Fix direction:** accumulate `$linkedData`, null checks, `int` casts.
+
+## [ ] B-145 – `Document\Link::getHtml()`: parameters and anchor twice, no escaping, `TypeError` without `navigation_name`
+
+**File:** `models/Document/Link.php:177-192`, `:310-334`
+
+- `getLink()` already appends `?<parameters>#<anchor>`; `getHtml()` appends both again (`:322`) → `/x?a=1#top` becomes
+  `/x?a=1#topa=1top`.
+- `href` and the `navigation_*` attribute values are concatenated without escaping (markup breaks on `"`, stored XSS
+  by editors).
+- `htmlspecialchars($this->getProperty('navigation_name'))` with a missing property → `TypeError` (strict).
+
+**Fix direction:** remove the second append, escape `href` and attribute values, cast to string.
+
+## [ ] B-146 – `Document\Link`: object targets are neither dependencies nor cache tags; a lookup error wipes the target
+
+**Files:** `models/Document/Link.php:81-115`, `:259-304`; `models/Document/Link/Dao.php:34-52`
+
+- `resolveDependencies()` and `getCacheTags()` handle documents and assets only. Links to data objects are invisible
+  in the dependency graph (the object can be deleted as unused) and the link-generator href is not invalidated when
+  the object changes.
+- `setObjectFromId()` catches every `Exception` and sets `internalType = ''`, `internal = null`; the next save
+  persists the empty link.
+- `Dao::getById()` calls `getHref()` on every load (target load and link generator for a plain document load).
+
+**Fix direction:** add objects; never change persistent fields on read errors; compute the href lazily.
+
+## [ ] B-147 – Hardlinks: no source validation, `null` dereferences after the source is deleted, custom types crash
+
+**Files:** `models/Document/Hardlink.php:51-58`, `:102-107`, `:156-184`; `models/Document/Hardlink/Service.php:29-74`;
+`models/Document/Hardlink/Wrapper.php:108-128`; `models/Document/Hardlink/Wrapper/Link.php:30-60`
+
+- `sourceId` may be the hardlink itself, one of its ancestors, or a hardlink pointing back → with
+  `childrenFromSource` navigation and sitemaps recurse without end.
+- `Wrapper::getProperty()` and `Wrapper\Link::getHref()` call
+  `getHardLinkSource()->getSourceDocument()->getRealFullPath()` without a `null` check → `Error` once the source was
+  deleted (frontend 500).
+- `upperCastDocument()` builds `Wrapper\<Type>` from `getType()`. Custom document types (`type_definitions`) have no
+  wrapper → `__PHP_Incomplete_Class` → `TypeError`.
+- `Hardlink::hasChildren()` loads and wraps every source child just to count them.
+
+**Fix direction:** validate the source on save (not self, not an ancestor, no hardlink cycle); null-safe wrappers; a
+configurable wrapper map with a generic fallback.
+
+## [ ] B-148 – Document type DAOs: a missing type row overwrites `id` with `NULL`
+
+**Files:** `models/Document/Page/Dao.php:35-52`, `Snippet/Dao.php:34-51`, `Email/Dao.php:35-52`, `Link/Dao.php:34-52`,
+`Hardlink/Dao.php:34-51`
+
+- `SELECT documents.*, documents_<type>.* … LEFT JOIN`: without a type row the second `id` is `NULL` and wins in
+  `fetchAssociative()` → the model has `id = null`. `save()` then tries an INSERT and fails with
+  `DuplicateFullPathException`; documents imported or converted without the type row cannot be saved.
+
+**Fix direction:** list the type columns explicitly (without `id`) or assign `documents.id` last.
+
+## [ ] B-149 – Document / object keys: `null` key gives a `TypeError`, the auto-key path is unreachable
+
+**Files:** `models/Document.php:415-443`, `:475-478`; `models/DataObject/AbstractObject.php:644-671`;
+`models/Document/Dao.php:82-97`; `models/DataObject/AbstractObject/Dao.php:73-84`;
+`models/Element/Service.php:972-975`
+
+- `correctPath()` calls `isValidKey($this->getKey())` with a `?string` → `TypeError` for a new element without key
+  instead of the descriptive exception.
+- A document with key `''` is rejected ("Document requires key, generated key automatically") before
+  `Dao::create()` could set `key = id` → dead code and a misleading message.
+- The first-level key check (`install`, `admin`, `plugin`) is case-sensitive (`Admin` passes).
+
+**Fix direction:** explicit `null` check and message; decide whether auto keys are supported; compare
+case-insensitively.
+
+## [ ] B-150 – `Element\Service::createFolderByPath()` returns non-folders and does not survive concurrent creation
+
+**File:** `models/Element/Service.php:820-894`
+
+- If the full path exists, `$type::getByPath()` is returned: a `Page` (the document root `/` is a page), a `Concrete`
+  object or an image → `TypeError` on the `Asset\Folder|DataObject\Folder|Document\Folder|null` return type.
+  Non-folder elements in the middle of the path are used as parents silently.
+- Two workers importing into the same path → `DuplicateFullPathException` / unique violation instead of returning the
+  folder.
+- `userOwner` is hard-coded to `1`, `userModification` to `0`; `$options` are applied after parent and path and can
+  override them.
+
+**Fix direction:** throw a clear exception for non-folders (or widen the return type); catch the duplicate and reload.
+
+## [ ] B-151 – `Element\Service::updateChildren()` resolves the copy by subtype: `null` ends up in the target's children
+
+**File:** `models/Element/Service.php:569-586`; callers `models/Document/Service.php:138`, `:202`,
+`models/DataObject/Service.php:173`, `:198`
+
+- `getElementById($new->getType(), …)` passes `page`, `snippet`, `folder`, `variant`, `image` … instead of the element
+  type → `null` for everything except objects of type `object`. The target's cached children listing gets a `null`
+  entry; iterating `$target->getChildren()` later in the same request (recursive copy, navigation) hits `null`.
+
+**Fix direction:** append `$new` directly or use `getElementType($new)`.
+
+## [ ] B-152 – `Element\Service::correctPath()` URL-decodes stored keys: object paths with `%xx` resolve to another element
+
+**File:** `models/Element/Service.php:772-787`
+
+- Object keys may contain `%` (`getValidKey()` only strips `<>` for objects). `/shop/50%25` is decoded to `/shop/50%`
+  and `/a%20b` to `/a b` → `getByPath()` / `pathExists()` find a different object or none; `createFolderByPath()`
+  creates duplicates. `rtrim($path, '/ ')` also strips trailing spaces of keys.
+
+**Fix direction:** decode only in request routing, not in model lookups.
+
+## [ ] B-153 – Pretty URLs are not validated: duplicates and collisions resolve arbitrarily
+
+**Files:** `models/Document/Page.php:96-108`; `models/Document/Dao.php:61-80`; `models/Document/Service/Dao.php:31-39`
+
+- No uniqueness check across pages or against real paths. `Dao::getByPath()` falls back to
+  `SELECT id FROM documents_page WHERE prettyUrl = ?` with no order and no site restriction → an arbitrary page is
+  served. `prettyUrl` has no index, so every unknown path scans `documents_page`.
+
+**Fix direction:** validate on save (unique per site, no clash with real paths); add an index.
+
+## [ ] B-154 – Document tree counts and listings: published flag and unqualified column
+
+**Files:** `models/Document/Dao.php:329-389`; `models/Document/Listing.php:85-98`
+
+- `getChildAmount()` ignores `published` / `hideUnpublished`, `hasChildren()` applies it → child counts and "has
+  children" disagree.
+- `Listing::getCondition()` appends an unqualified `published = 1`; with custom-view joins
+  (`Element\Service::addTreeFilterJoins()`) to a table that also has `published` the query fails (ambiguous column).
+
+**Fix direction:** same filter in both methods; `documents.published`.
+
+## [ ] B-155 – `DocType::create()` persists an invalid definition; lookups hide errors
+
+**Files:** `models/Document/DocType.php:95-122`; `models/Document/DocType/Dao.php:52-95`
+
+- `create()` saves immediately, without `name` / `type` (typed and uninitialised, skipped by `getObjectVars()`) →
+  later `getName()` / `getType()` throw `Error`.
+- `getById()` swallows every `Exception`; the not-found message prints `$this->model->getId()` (still `null`).
+
+**Fix direction:** validate in `save()`, return an unsaved instance from `create()`, catch only `NotFoundException`.
+
+## Document editables (Scope 6)
+
+## [ ] B-156 – Scheduled block: wrong index in the frontend, stale active entry in long-running processes
+
+**File:** `models/Document/Editable/Scheduledblock.php:43-56`, `:70-104`, `:171-212`, `:239-243`
+
+- `getCurrentIndex()` and `blockStart()` read `$this->indices[...]` (unfiltered) while `blockConstruct()` pushes the
+  key of the filtered (active) element → in the frontend the iterator yields the first entry's key, not the active one.
+- `cachedCurrentElement` is reset only in `__wakeup()`: an instance kept in RuntimeCache (workers, CLI rendering)
+  never switches to the next scheduled entry.
+- `setDataFromEditmode()` assigns unvalidated data and `usort()`s it (`TypeError` for non-arrays).
+
+**Fix direction:** iterate the filtered list; reset the cache per render; validate input.
+
+## [ ] B-157 – Areablock: brick limits are counted across renders; positional and pointer-based iteration are mixed
+
+**File:** `models/Document/Editable/Areablock.php:130-182`, `:211-234`, `:254-271`, `:583-586`, `:611-626`
+
+- `brickTypeUsageCounter` is never reset (`end()` resets only `current`). Rendering the same instance a second time
+  (template prints it twice, instance kept in RuntimeCache, clones keep the counter) disables bricks above
+  `config.limits`.
+- `loop()` advances with `current()` / `next()`, but `blockConstruct()` and `blockStart()` use
+  `$this->indices[$this->current]`. Non-list indices (editmode JSON object, removed entries) → undefined offset →
+  `pushIndex(null)` `TypeError`.
+- `setDataFromEditmode()` accepts anything (brick type not checked against `allowed`, keys not unique);
+  `getElement()` passes a possibly `null` document to `Areablock\Item` (`TypeError`).
+
+**Fix direction:** reset the counter in `start()`; `array_values()` the indices; validate editmode data.
+
+## [ ] B-158 – Block-type editables leave `BlockStateStack` unbalanced when a child throws
+
+**Files:** `models/Document/Editable/Block.php:105-145`, `:197-221`; `Areablock.php:304-347`; `Area.php:147-209`;
+`Scheduledblock.php:124-169`
+
+- `pushBlock()` / `pushIndex()` have no `try/finally`. `Block::getIterator()` in editmode opens `ob_start()` and
+  stashes the editable collector without restoring either on exception → every following editable gets a wrong name
+  (and is saved under that name) and the output buffer leaks. Model side of CoreBundle **B-43**.
+
+**Fix direction:** `try/finally` around every push/pop pair and around `ob_start()` / `stashPush()`.
+
+## [ ] B-159 – `Editable\Link::frontend()` mutates its config, emits internal data as attributes, does not escape `href`
+
+**File:** `models/Document/Editable/Link.php:70-127`, `:129-164`
+
+- `textPrefix`, `textSuffix`, `noText`, `disabledFields` are `unset()` from `$this->config`; a second render of the
+  same instance loses them.
+- Every string/numeric entry of `$this->data` becomes an attribute: `path`, `text`, `linktype`, `internalType`,
+  `internalId`, `parameters`, `anchor` … → invalid markup and leaked internal ids (the allowlist was removed upstream,
+  #16025, without a replacement filter).
+- `href="' . $url . '"`: the path / direct URL is not escaped (only parameters and anchor are).
+- `checkValidity()` logs the document id as the missing target id (`:138`, `:147`, `:156`).
+
+**Fix direction:** work on a local copy of the config; skip the internal keys (or allowlist + `data-*` / `aria-*`);
+`htmlspecialchars()` the href.
+
+## [ ] B-160 – Relation / Snippet editables keep the old target after `rewriteIds()`; Snippet skips lazy loading
+
+**Files:** `models/Document/Editable/Relation.php:273-278`; `models/Document/Editable/Snippet.php:69-79`, `:180-194`,
+`:217-223`
+
+- `rewriteIds()` changes the id but keeps `$this->element` / `$this->snippet` → after a copy with inheritance the new
+  document renders and depends on the source's target until reloaded (`Renderlet` resets via `setO(null)`).
+- `Snippet::resolveDependencies()` and `getDataEditmode()` do not call `load()`: on an instance from the persistent
+  cache (`snippet` is excluded in `__sleep()`) the dependency is missing.
+
+**Fix direction:** reset the cached element in `rewriteIds()`; call `load()` first.
+
+## [ ] B-161 – `Relations` iterator lets unpublished elements through
+
+**File:** `models/Document/Editable/Relations.php:50-63`, `:248-262`
+
+- `valid()` skips at most one unpublished element; with two consecutive unpublished targets the second is returned in
+  the frontend.
+- `setElements()` re-queries on every call when all targets are missing (`empty()` check).
+
+**Fix direction:** loop until a published element or the end; use a `null` "not loaded" sentinel.
+
+## [ ] B-162 – Image editable: hotspot / marker element links never become dependencies or cache tags
+
+**File:** `models/Document/Editable/Image.php:460-539` (`:477-486`, `:519-529`)
+
+- The metadata entries are `MarkerHotspotItem` objects that store the **id** (`offsetSet()`). `getCacheTags()` and
+  `resolveDependencies()` convert them with `get_object_vars()`, so `value` is an int, never an `ElementInterface` →
+  no dependency rows (linked assets, documents and objects look unused and can be deleted) and no cache tags.
+
+**Fix direction:** read through `$metaData['value']` (`offsetGet()` resolves the element) or resolve by type/id.
+
+## [ ] B-163 – Editables assign unnormalised values to typed properties: `TypeError` while loading or saving
+
+**Files:** `models/Document/Editable/Image.php:332-344`; `models/Element/Data/MarkerHotspotItem.php:31-70`;
+`Snippet.php:159-167`; `Renderlet.php:204-214`; `Relation.php:120-129`; `Date.php` (`setDataFromEditmode()`,
+`setDateFromTimestamp()` `:120-124`); `Input.php` / `Textarea.php` (`setDataFromEditmode()`, `frontend()`);
+`Video.php:343-378`; `Embed.php`, `Pdf.php` (`setDataFromEditmode()`)
+
+- `Image::setData()`: legacy rows with `cropPercent` `0/1`, string crop values or a string id → `TypeError` on the
+  `bool` / `float` / `?int` properties → the whole document cannot load (B-143).
+- `MarkerHotspotItem::setName()` / `setType()` with `null` → `TypeError`.
+- Snippet / Renderlet / Relation assign editmode ids as strings to `?int`.
+- `Date::setDataFromEditmode()`: `strtotime()` returns `false` → `setDateFromTimestamp(int)` `TypeError`.
+- `Input` / `Textarea`: `html_entity_decode(null)`; `Textarea::frontend()` calls `htmlspecialchars(null)` for a new
+  empty editable → `TypeError`, swallowed by `__toString()` and logged as an error on every render.
+- `Video`: `Asset::getByPath($data['poster'])` with a missing key → `TypeError`; `Embed` / `Pdf` read
+  `$data['url']` / `$data['id']` unchecked.
+
+**Fix direction:** normalise in the setters (`(int)` / `(float)` / `(bool)` after validation), null-safe input handling.
+
+## [ ] B-164 – Editor-supplied values are output without escaping
+
+**Files:** `models/Document/Editable/Video.php:537-566`, `:640-663`, `:750-812`, `:822-924`; `Numeric.php`,
+`Select.php`, `Multiselect.php`, `Table.php`, `Pdf.php` (`frontend()`)
+
+- Video: a YouTube "id" that is not a URL is used verbatim in the iframe `src`; Dailymotion ids match `[^_]+`;
+  attributes are emitted as `key="value"` without escaping; the JSON-LD block is `json_encode()`d without
+  `JSON_HEX_TAG`, so a title / description containing `</script>` breaks out.
+- Numeric / Select / Multiselect: values are not validated (numeric, allowed options) in `setDataFromEditmode()` and
+  are returned raw.
+- Table: cells are output raw (document it as HTML or escape).
+- Editors are semi-trusted, but this is stored XSS on public pages.
+
+**Fix direction:** escape attribute/URL/JSON output; validate against the configured options / numeric format.
+
+## Element (Scope 6)
+
+## [ ] B-165 – Properties of unsaved elements are cached under a shared key
+
+**Files:** `models/Element/AbstractElement.php:229-248`; `models/Element/Service.php:1416-1423`
+
+- With `id = null` the cache key is `document_properties_` / `object_properties_` / `asset_properties_`. The first
+  unsaved element that reads properties stores its parent's inherited properties; every other unsaved element of that
+  type (other parent) gets them until the next save clears the `*_properties` tag (imports that build several
+  elements before saving; `setProperty()` triggers the read).
+
+**Fix direction:** do not use the persistent cache when the id is `null`.
+
+## [ ] B-166 – `getUserPermissions()` and `isAllowed()` disagree for admins and workflow denials
+
+**File:** `models/Element/AbstractElement.php:439-515`
+
+- `getUserPermissions()` returns `1` for every permission of an admin without the workflow check; `isAllowed()` denies
+  what the workflow denies → the UI offers actions that then fail.
+- Without a user: CLI gets all `1`, HTTP all `0` – undocumented.
+
+**Fix direction:** apply `isDeniedInWorkflow()` per permission type in both paths.
+
+## [ ] B-167 – Workspace path matching is not anchored for documents and objects (B-28 extended)
+
+**Files:** `models/Element/Service.php:624-688` (`:642-646`, `:671`); `models/Document/Dao.php:344-346`, `:381-383`;
+`models/DataObject/AbstractObject/Dao.php:306-310`, `:405-407`, `:611-632`; `models/Element/Dao.php:81-95`
+
+- `findForbiddenPaths()` uses `str_contains($findPath, $path)`: a forbidden `/foo` treats `/foobar` and `/x/foo` as
+  its children (exception list) → tree listings hide or allow the wrong subtrees.
+- The role query groups by `cpath` with a non-aggregated `userid` (fails when `sql_mode` is not overridden by the
+  default `SET sql_mode = ''`).
+- `hasChildren()` / `getChildAmount()` use `LOCATE(CONCAT(path, key), cpath) = 1` and `getChildPermissions()` uses
+  `LIKE '<path>%'` without `/` → a workspace on `/foobar` lists `/foo`, children permissions of `/foobar` show up for
+  `/foo`.
+- `InheritingPermission()` uses `getPath()`, which is site-rewritten for documents in the frontend.
+
+**Fix direction:** compare with `/` appended on both sides (`str_starts_with($findPath, $path . '/')`); use
+`getRealPath()`.
+
+## [ ] B-168 – Recycle bin: global state leaks, permission check after side effects, swallowed errors
+
+**Files:** `models/Element/Recyclebin/Item.php:87-148`, `:150-189`, `:191-206`, `:208-240`;
+`models/Element/Recyclebin/Item/Dao.php:51-63`; `Item/Listing/Dao.php:33-45`
+
+- `restore()`: `Version::disable()` / `enable()` (`:112-123`) and the dirty-detection switch (`:134-139`) are not in
+  `finally` → a failing dummy save disables versioning for the rest of the process (no versions in workers).
+- The `publish` permission check (`:126-131`) runs **after** the dummy object with the deleted id was saved and
+  outside the `try` → the empty dummy object stays in the tree.
+- Name collisions are handled for the root only and only once (`_restore` may exist too).
+- `save()`: `Item\Dao::save()` swallows insert errors and returns `true` → `getStorageFile()` reads the
+  uninitialised typed `$id` → `Error`; the DB row is written before the storage file (orphans on storage errors).
+- `loadChildren()` sets dump state on the **live** elements; if the delete fails afterwards they stay in dump state.
+- `delete()` lists the whole `<type>` storage directory for every item (slow on remote storage, quadratic when many
+  items are removed); the listing can contain `null` entries.
+
+**Fix direction:** `finally` blocks, permission check first, propagate DB errors, one storage directory per item.
+
+## [ ] B-169 – Edit locks: several rows per element, unlock removes one, uninitialised `cpath`
+
+**Files:** `models/Element/Editlock.php:47-112`, `:202-205`; `models/Element/Editlock/Dao.php:33-68`;
+`bundles/InstallBundle/dump/install.sql:188-198`
+
+- No unique `(cid, ctype)`: `lock()` inserts a new row every time, `getByElement()` returns an arbitrary row,
+  `unlock()` deletes one → the element stays locked by a stale row (until the 1 h expiry).
+- `isLocked()` + `lock()` is not atomic → two editors can both "own" the lock.
+- `getCpath()` throws `Error` when the element no longer exists (typed, uninitialised).
+
+**Fix direction:** unique index + upsert; atomic insert-if-free; nullable `cpath`.
+
+## [ ] B-170 – Notes: `POST_ADD` never fires; element ids are loaded as strings
+
+**Files:** `models/Element/Note.php:102-119`; `models/Element/Note/Dao.php:39-143`
+
+- `if (!$this->getId())` is evaluated after `Dao::save()` has set the id → `NoteEvents::POST_ADD` is never dispatched.
+- `notes_data.data` is text: `Document::getById('12')`, `Asset::getById('12')` … trigger the "Passing id as string"
+  deprecation for every value.
+- `save()` / `delete()` are not atomic (`notes` vs `notes_data`).
+
+**Fix direction:** remember "is new" before saving; `(int)` casts; transaction.
+
+## [ ] B-171 – Tags: moving a tag below itself hangs; batch assignment is not atomic
+
+**Files:** `models/Element/Tag.php:238-245`, `:325-339`; `models/Element/Tag/Dao.php:184-199`
+
+- `correctPath()` walks `getParent()` without a cycle guard: moving a tag below itself or one of its descendants loops
+  forever (memory exhaustion).
+- `batchAssignTagsToElement()` deletes and inserts without a transaction (N×M upserts).
+- Cached `children` of a tag are never invalidated after adding / deleting children.
+
+**Fix direction:** reject a new parent inside the own subtree; transaction + multi-row insert.
+
+## [ ] B-172 – `WorkflowState\Dao::delete()` deletes the states of every workflow on the element
+
+**File:** `models/Element/WorkflowState/Dao.php:58-64`
+
+- The `WHERE` misses `workflow` (part of the primary key) → removing the state of one workflow removes all.
+
+**Fix direction:** add `'workflow' => $this->model->getWorkflow()`.
+
+## [ ] B-173 – `PermissionChecker::check()`: child permissions written to the wrong array, undefined columns, deleted roles
+
+**File:** `models/Element/PermissionChecker.php:117-139`, `:156-171`, `:186-219`
+
+- `$result[$columnName] = …` instead of `$userPermission[$columnName]` → "list allowed through a child workspace"
+  is never shown. The query selects only `list` but reads `type`, `name`, `cpath` (undefined → `null` details).
+- `User\Role::getById()` returns `null` for a deleted role → `Error`.
+- `collectParentIds()` has no loop guard; one query per column per user.
+
+**Fix direction:** write to `$userPermission`, select the needed columns, null-check roles.
+
+## [ ] B-174 – `Element\Service` small defects
+
+**File:** `models/Element/Service.php:94-134`, `:394-428`, `:1392-1411`
+
+- `getTypePath()` / `getSortIndexPath()` call `getElementById($type, null)` for unsaved elements → `TypeError`.
+- `getSafeCopyName()` interpolates the file extension unquoted into a regex (`preg_replace('/\.' . $ext . '$/i')`).
+- `escapeCsvRecord()` uses `= - + @` only (League's default also covers `\t` and `\r`) and escapes negative numbers;
+  `unEscapeCsvRecord()` strips a leading `'` from legitimate values (lossy round trip).
+
+**Fix direction:** null checks, `preg_quote()`, League defaults and a reversible escaping scheme.
+
+## DataObject (Scope 6)
+
+## [ ] B-175 – Global static flags are not restored on exceptions (dirty detection, inherited values, fallback values, `hideUnpublished`, inheritance runtime cache)
+
+**Files:** `models/DataObject/AbstractObject.php:500-507`, `:621`; `models/DataObject/Concrete.php:136-143`;
+`models/DataObject/Localizedfield.php:194-205`, `:371-380`; `models/DataObject/Localizedfield/Dao.php:129-141`,
+`:436-440`; `models/DataObject/Fieldcollection.php:249-252`; `models/DataObject/Objectbrick.php:286-288`;
+`models/DataObject/ClassDefinition/Data/Classificationstore.php:619-621`, `Objectbricks.php:546`,
+`Localizedfields.php:661`; `models/DataObject/Service.php:182-221`; generated setters
+`models/DataObject/ClassDefinition/Data.php:579-590` (also `:706`, `:825`, `:933`); `models/Document.php:626-633`;
+`models/Element/Recyclebin/Item.php:112-139`
+
+- All pairs of `set…(x)` / `set…(previous)` run without `try/finally`:
+  - `AbstractObject::save()` disables dirty detection for **new** objects and restores it only on success → after a
+    failed create every later save in the process writes all fields and all relation deltas.
+  - `Concrete::update()` sets `getInheritedValues = true` for the inherited re-check and restores it only when that
+    check passes – i.e. a **validation failure** (the normal reason for this path) leaves it `true`: later reads in
+    the process return inherited values where callers expect own values.
+  - `Localizedfield\Dao::save()` leaves `getFallbackValues = true` and the InheritanceHelper runtime cache enabled
+    with stale trees (B-186) → later saves propagate inherited values with an outdated tree.
+  - The generated setters of every class switch `hideUnpublished` off around the dirty check.
+- PHP-FPM ends the effect with the request; Messenger workers, CLI imports and worker runtimes keep it.
+
+**Fix direction:** one scoped helper (`DataObject\Service::useInheritedValues()` already does it right) for every
+flag, used everywhere, plus a `kernel.reset` reset (I-77). Related: B-92, B-125.
+
+## [ ] B-176 – `Localizedfield::__sleep()` mutates the live object when it is written to the cache
+
+**File:** `models/DataObject/Localizedfield.php:600-619`
+
+- For cache serialization it removes the lazy-loaded values from `$this->items` and unmarks their lazy keys **on the
+  live instance**. When the cache handler serializes the object before it is saved (write queue flushed at its size
+  limit, immediate-write mode in CLI), in-memory changes of lazy localized relations are dropped, the fields become
+  "untouchable" and are not saved; the next read reloads the old values.
+
+**Fix direction:** `__serialize()` that returns a filtered copy and leaves the instance alone.
+
+## [ ] B-177 – Every object load reads the store row with `FOR UPDATE`
+
+**File:** `models/DataObject/Concrete/Dao.php:133-136`
+
+- `SELECT * FROM object_store_<id> WHERE oo_id = ? FOR UPDATE` runs in `getData()` for every load. Inside any
+  surrounding transaction (saving A loads related B, workflows, sync dependency handler, imports wrapped in a
+  transaction) it row-locks every loaded object → lock waits and deadlocks in parallel imports.
+
+**Fix direction:** a plain `SELECT`; lock explicitly only where needed (the inheritance parent lock is separate).
+
+## [ ] B-178 – Listing locale changes after the first query are ignored
+
+**Files:** `models/DataObject/Listing/Concrete.php:85-106`; `models/DataObject/Listing/Concrete/Dao.php:60-81`,
+`:113-158`
+
+- The DAO caches `tableName` (`object_localized_<class>_<lang>`) on first use. `setLocale()` and
+  `setIgnoreLocalizedFields()` reset the data but not that cache → `count()` then `setLocale('de')` still queries the
+  first language.
+- `exceptionHandler()` string-matches driver messages to create missing tables, and only for `loadIdList()`.
+
+**Fix direction:** reset the DAO table name in both setters; create tables in class/language management.
+
+## [ ] B-179 – Localized fields: deferred table creation rolls back the caller's transaction; `delete()` swallows errors
+
+**File:** `models/DataObject/Localizedfield/Dao.php:226-285`, `:447-519`, `:547-583`
+
+- On `TableNotFoundException` the DAO calls `$this->db->rollBack()` itself, runs DDL (implicit commit) and throws a
+  `RetryableException`. If the object save runs inside an outer transaction (a listener of a document save, an import
+  using `transactional()`), the nested rollback only lowers the nesting level, the DDL commits the outer work, and the
+  DBAL nesting level no longer matches MySQL → later `commit()` / `rollBack()` fail ("no active transaction").
+- `delete()` catches every other exception and only logs → failed deletes of store / query rows continue into the
+  upserts (stale languages remain).
+- `ownername LIKE '/fieldcollection~<name>/<index>/%'`: `_` in field names is not escaped.
+
+**Fix direction:** create language tables when languages / classes change, never during a data save; propagate errors;
+escape `LIKE` values.
+
+## [ ] B-180 – Field collections: a read error loads an empty collection that the next save persists; DDL inside the save transaction
+
+**File:** `models/DataObject/Fieldcollection/Dao.php:44-60`, `:129-160`
+
+- `load()` turns every DB exception into `$results = []` → the collection is empty in memory; the save path deletes all
+  rows of the field and re-inserts the in-memory items → items wiped.
+- `delete()` calls `createUpdateTable()` (DDL → implicit commit of the object save) for **any** SELECT error, not only
+  a missing table.
+- Ids and field names are concatenated into the SELECTs.
+
+**Fix direction:** catch `TableNotFoundException` only; create tables in definition save; bound parameters.
+
+## [ ] B-181 – Classification store save: `Error`s for empty groups and deleted keys
+
+**File:** `models/DataObject/Classificationstore/Dao.php:52-183`, `:185-197`
+
+- `$firstKey = reset($groupKeys)` on a group without keys → `false` → `->getKeyId()` `Error`;
+  `DefinitionCache::get($keyId)` returns `null` for a deleted key config → `->getType()` `Error`. Both inside the
+  object save transaction (C-26).
+- `in_array(array_keys($groupKeys), $alreadySavedKeyIds)` compares an array with ints → always `false`.
+- `delete()` ignores `fieldname` (removes the data of every classification store field of the object).
+
+**Fix direction:** skip empty groups / unknown keys with a warning; `array_intersect()`; filter by field name.
+
+## [ ] B-182 – `DataObject\Service::copyContents()` moves the source's scheduled tasks to the target
+
+**Files:** `models/DataObject/Service.php:252-288` (`:279`); `models/Element/Traits/ScheduledTasksTrait.php:52-67`;
+`models/Schedule/Task/Dao.php:42-49`
+
+- `setScheduledTasks($source->getScheduledTasks())` shares the `Task` objects (with ids). `saveScheduledTasks()` sets
+  `cid = <target>` and saves by id → the tasks now belong to the target and are gone from the source.
+- `Element\Service::cloneMe()` deep-copies already loaded tasks with their ids too (copy after the source's tasks were
+  read in the same request).
+
+**Fix direction:** clone tasks with `id = null`.
+
+## [ ] B-183 – `getObjectsReferencingUser()` combines user fields with `AND`
+
+**File:** `models/DataObject/Service.php:96-130`
+
+- Objects that reference the user in only one of several user fields are not found → user deletion / reassignment
+  checks miss references.
+
+**Fix direction:** `OR`.
+
+## [ ] B-184 – Encrypted field value object loses falsy values and its delegate in serialization
+
+**File:** `models/DataObject/Data/EncryptedField.php:58-110`
+
+- `__sleep()` returns `[]` when `plain` is falsy (`'0'`, `0`, `false`, `[]`) → the value is lost after a cache /
+  version round trip. `delegate` is never serialized → uninitialised typed property after wakeup (`getDelegate()`
+  `Error`). `_setOwner(null)` is applied to the live value.
+- A key problem on wakeup throws "could not load key": a cache read crashes instead of being a miss.
+
+**Fix direction:** `__serialize()` / `__unserialize()` with explicit fields and `!== null` checks.
+
+## [ ] B-185 – Class definition lifecycle: destructive order and swallowed errors
+
+**Files:** `models/DataObject/ClassDefinition.php:217-247`, `:283-291`, `:348-352`, `:488-550`
+
+- `rename()` deletes the generated PHP classes before `save()`; a failing save leaves the class without PHP files →
+  every object of the class fatals until the classes are rebuilt.
+- `getById()`: `@include` plus broad catches → any error in a definition file (deploy race, OPcache) returns `null`
+  and is logged at info level. Callers treat `null` as "class deleted" (C-31, `PimcoreClassDefinitionMatcher`).
+- New ids are `MAX(CAST(id AS SIGNED)) + 1` without a lock → concurrent creations get the same id.
+- `delete()` loads and deletes every object of the class in one request (memory / time limits), then drops tables.
+
+**Fix direction:** regenerate / rename files after a successful save; distinguish "missing" from "broken"; lock or use
+the DB for id generation; batch deletion.
+
+## [ ] B-186 – InheritanceHelper: missing rows and a static runtime cache
+
+**File:** `models/DataObject/Concrete/Dao/InheritanceHelper.php:157-248`, `:255-...`, `:354-430`
+
+- `doUpdate()`: `$result` is `false` when the store row is missing (bricks / localized contexts) → `$result['id']` is
+  `null` → `buildTree(null)` `TypeError`; `Concrete::getById($oo_id)` can be `null` → `->getClassId()` `Error`. Both
+  inside the save transaction (C-26).
+- `static $runtimeCache` is enabled by `Localizedfield\Dao::save()` and not reset on exceptions (B-175) → stale trees
+  for later saves (children not updated).
+- `doDelete()` is marked "NOT FINISHED - NEEDS TO BE COMPLETED".
+
+**Fix direction:** null checks; scoped cache; finish or remove `doDelete()`.
+
+## [ ] B-187 – DataObject small defects
+
+**Files:** `models/DataObject/AbstractObject.php:229-231`, `:1034-1076`; `models/DataObject/AbstractObject/Dao.php:324-326`,
+`:365-367`, `:394-396`; `models/DataObject/Localizedfield.php:709-726`
+
+- `getById()` puts the new object into RuntimeCache **before** `Dao::getById()`; a `NotFoundException` (concurrent
+  delete) leaves a half-initialised object for later calls in the same process.
+- `__callStatic()` `getBy<Column>()`: `$limit['condition']` is appended without `AND` / parentheses.
+- `hasChildren()` / `hasSiblings()` / `getChildAmount()` interpolate `$objectTypes` into `IN ('…')` – public API,
+  injectable if callers pass request input.
+- `Localizedfield::markLanguageAsDirty($lang, false)` never unmarks a language; with "all languages dirty" (`[]`) it
+  resets the map to `null`, i.e. "nothing dirty".
+
+**Fix direction:** cache after a successful load; bound parameters; fix the dirty map logic.
