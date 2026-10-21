@@ -7,6 +7,10 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 **(3)** `src/EventListener/**` (incl. `Traits/`) and related: `config/event_listeners.yaml`,
 `PimcoreCoreExtension.php:230-240` (TranslationDebugListener wiring), and the helpers the listeners depend on
 (`lib/Http/ResponseStack.php`, `lib/Document/Renderer/DocumentRenderer.php`, `lib/Tool/MaintenanceModeHelper.php`, `models/Site.php`)
+**(4)** `src/DependencyInjection/**` (`Configuration`, `ConfigurationHelper`, `Config/Processor/PlaceholderProcessor`,
+`PimcoreCoreExtension`, re-scan of `Compiler/*`) and related config: `config/pimcore/*.yaml` and every `config/*.yaml`
+loaded by the extension, plus the direct consumers of the helper (`lib/Kernel.php:87-131`,
+`lib/Config/LocationAwareConfigRepository.php:289-329`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
 
@@ -930,3 +934,189 @@ Build the chain matchers once and `break` after the first match.
   `null`. PHPStan level ≥ 7 flags it.
 
 **Fix direction:** make the parameter `?string` and treat `null` like the default context, or return early.
+
+---
+
+# Scope 4 – `DependencyInjection` (+ `config/pimcore/*.yaml`, extension-loaded `config/*.yaml`)
+
+Same rules: IDs continue from B-53 and are stable. Line numbers are from commit `402145a525`. Items are ordered by
+impact. For the verification setup (symfony/config 7.4.17 `Processor` script) see the note at the top of Scope 4 in
+TODO-1. Related critical items: C-11 (config directory prefix), C-12 (Twig sandbox).
+
+---
+
+## [ ] B-54 – `beforeNormalization()` casts break env placeholders: `'%env(bool:X)%'` and `"false"` both become `true`
+
+**File:** `src/DependencyInjection/Configuration.php`. Nodes with `->beforeNormalization()->ifString()->then(fn => (bool)$v)`:
+`general.redirect_to_maindomain` (208-216), `general.disable_usage_statistics` (252-260),
+`general.debug_admin_translations` (261-270), `applicationlog.mail_notification.send_log_summary` (323-332),
+`assets.image.thumbnails.clip_auto_support` (478-487), `…auto_clear_temp_files` (514-523),
+`assets.versions.use_hardlinks` (620-628), `assets.versions.disable_stack_trace` (629-637),
+`assets.metadata.predefined.definitions.*.inheritable` (682-689), `objects.ignore_localized_query_fallback` (726-734),
+`objects.versions.disable_stack_trace` (745-753), `documents.doc_types.definitions.*.staticGeneratorEnabled`
+(861-867, `always()`), `documents.versions.disable_stack_trace` (883-891), `documents.generate_preview` (918-926),
+`documents.areas.autoload` (948-956), `properties.predefined.definitions.*.inheritable` (1860-1866).
+Same root cause, CSV variant: `general.valid_languages` / `required_languages` (221-237, `explode(',', $v)`).
+
+- `BaseNode::normalize()` (symfony/config 7.4) runs the `beforeNormalization` closures **before** it resolves env
+  placeholders. During container build `'%env(bool:REDIRECT)%'` is the string
+  `env_<hash>_bool_REDIRECT_<hash>`, and `(bool)` turns it into `true`. The env var is **never read**, and the option is
+  permanently on. Reproduced: env placeholder → `bool(true)`.
+- Any YAML/settings value that arrives as a string is cast with PHP truthiness: `"false"`, `"no"`, `"off"` → `true`
+  (reproduced). Only `""` and `"0"` give `false`.
+- Real effects: `redirect_to_maindomain` forced on (all hosts redirected to the main domain, multi-site broken),
+  `areas.autoload` cannot be switched off per environment, `generate_preview` / `clip_auto_support` /
+  `use_hardlinks` ignore their env value.
+- CSV variant: `explode(',', 'env_…_LANGS_…')` gives a one-element list containing the placeholder. The env value
+  `"en,de"` is then **one** language `"en,de"`. A plain YAML string `"en, de"` keeps the space (`" de"`, no trim).
+
+**Verify:** `REDIRECT=0` + `pimcore.general.redirect_to_maindomain: '%env(bool:REDIRECT)%'`, then
+`bin/console debug:config pimcore general` (shows `true`), or the test from I-64.
+
+**Fix direction:** remove the casting closures. `BooleanNode` already accepts real booleans and `%env(bool:…)%`. If
+string input from the settings store must be supported, use
+`->ifString()->then(fn (string $v) => filter_var($v, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $v)` and **skip**
+env placeholders (`str_starts_with($v, 'env_')` is not enough; prefer converting the settings-store values in
+`SystemSettingsConfig` before they reach the tree). For CSV, use `%env(csv:LANGS)%` in docs and `array_map('trim', …)`
+for literal strings.
+
+---
+
+## [ ] B-55 – `ConfigurationHelper::getConfigNodeFromSymfonyTree()` shallow-merges config files (`config_location` lost; Kernel and runtime disagree)
+
+**Files:** `src/DependencyInjection/ConfigurationHelper.php:103-150`, `lib/Kernel.php:87-131`,
+`lib/Config/LocationAwareConfigRepository.php:289-329`
+
+```php
+$containerConfig = $container->getExtensionConfig($nodeName);   // one array per file
+$containerConfig = array_merge(...$containerConfig);             // shallow!
+$containerConfig = $processor->processConfiguration($configuration, [$nodeName => $containerConfig]);
+```
+
+- `array_merge()` replaces whole **top-level** keys. If `pimcore.config_location` appears in two files (CoreBundle
+  `default.yaml:343-346` already defines `config_location.select_options`; projects usually add their own in
+  `config/packages/*.yaml`, often split per environment), only the last file's `config_location` survives. The same
+  happens for any other subtree. Reproduced: `{loc:{a}}` + `{loc:{b}}` → `a` falls back to its default.
+- The real container config (`pimcore.config`) is merged correctly by the extension. So **the Kernel decides with a
+  different config than the runtime**:
+  - `Kernel::registerContainerConfiguration()` imports `var/config/<key>/*.yaml` although the project switched that key
+    to `settings-store` in another file, so stale YAML definitions are loaded. Or it imports from the default directory
+    although a custom `options.directory` was set in another file, so the definitions are missing.
+  - The same applies to `LocationAwareConfigRepository::loadSymfonyConfigFiles()` (custom reports, static routes).
+- Further defects in the same helper:
+  - `getSymfonyConfigFiles()` returns Finder results **unsorted**. When two YAML files define the same key, the winner
+    depends on the filesystem. The Kernel path imports via `$loader->import($dir)`, which sorts, so the two paths can
+    even disagree.
+  - `getExtension($nodeName)->getConfiguration()` can return `null`. This is hidden by `@phpstan-ignore-next-line`
+    (line 143), and `getExtension()` throws for an unknown alias.
+  - `resolveValue()` leaves env placeholders as `env_…` strings. A `config_location.*.type: '%env(…)%'` therefore never
+    matches a `LOCATION_*` constant.
+
+**Verify:** put `pimcore.config_location.image_thumbnails.write_target.type: settings-store` in
+`config/packages/a.yaml` and any other `pimcore.config_location.*` key in `b.yaml`. Add a stale
+`var/config/image_thumbnails/x.yaml`. Its definition still shows up in `debug:config pimcore assets.image.thumbnails`.
+
+**Fix direction:** `return $resolvingBag->resolveValue($processor->processConfiguration($configuration,
+$container->getExtensionConfig($nodeName)));`. Pass the list as-is, so the `Processor` does the deep merge. Add
+`->sortByName()` to the Finder. Replace the phpstan-ignore with an `instanceof ConfigurationInterface` check that throws a
+clear `LogicException`. De-duplicate the Kernel/repository loaders (I-63).
+
+---
+
+## [ ] B-56 – Workflow `placeholders` are kept on the `Configuration` instance: order-dependent, leak into other workflows, applied only partly
+
+**File:** `src/DependencyInjection/Configuration.php:37-45, 1320-1338, 1365-1378, 1499-1510`,
+`Config/Processor/PlaceholderProcessor.php:45-60`
+
+- The `placeholders` node's `beforeNormalization` stores the value in `$this->placeholders`. `marking_store.arguments`
+  and `places` read it later in their own `beforeNormalization`. `ArrayNode::normalizeValue()` processes children **in
+  input order**, so:
+  - `places:` written **before** `placeholders:` in YAML is never replaced;
+  - a workflow **without** a `placeholders` key does not reset the property, so it gets the **previous workflow's**
+    placeholders (`%%locale%%` of workflow A replaced inside workflow B);
+  - each config file is normalised separately with the same instance, so state also crosses files.
+- Only `marking_store.arguments` and `places` are processed. `transitions` (labels, guards, `notificationSettings`,
+  `mailPath`), `globalActions`, `support_strategy.arguments` and `initial_markings` keep the raw `%%…%%` text. The node
+  `info()` says "Placeholder values in this workflow configuration … will be replaced".
+- `PlaceholderProcessor` also replaces inside **keys**. Two keys that become equal after replacement silently overwrite
+  each other (`processArrayValue()`, line 56).
+
+**Verify:** two workflows, the first with `placeholders: {'%%x%%': 'A'}`, the second using `%%x%%` in a place label
+without `placeholders`. `debug:config pimcore workflows` shows `A` in the second one.
+
+**Fix direction:** stop mutating `$this` during normalisation. Apply placeholders once per workflow in a
+`->validate()->always()` (or `beforeNormalization`) closure on the **workflow prototype** node: read `$v['placeholders']`
+and run `mergePlaceholders()` over the whole workflow array except `placeholders`. Then drop the
+`$placeholders`/`$placeholderProcessor` properties. Detect key collisions and throw `InvalidConfigurationException`.
+
+---
+
+## [ ] B-57 – Workflow tree vs. `WorkflowPass`/runtime: optional `label` read as required, `numeric` field type missing for global actions, `~` values crash normalisation
+
+**Files:** `src/DependencyInjection/Compiler/WorkflowPass.php:66`, `src/DependencyInjection/Configuration.php:1348-1350,
+1499-1510, 1529-1548, 1601-1605, 1764-1767`, `lib/Workflow/WorkflowConfig.php:37-40`
+
+- `label` is a `scalarNode` without a default. The `info()` says it is optional. Symfony **omits** such keys from the
+  processed array (reproduced). `WorkflowPass` reads `$workflowConfig['label']` without `??`, which raises
+  "Undefined array key "label"". With the Symfony ErrorHandler registered (debug / `bin/console`), warnings are thrown,
+  so the **container build fails**. Without it, the warning is logged and `WorkflowConfig::getLabel()` falls back to
+  the name.
+- Transition `additionalFields.fieldType` allows `numeric` (1603). The copy for `globalActions` (1766) does not. The same
+  `numeric` field is rejected for global actions. The two `notes` subtrees are hand-copied and have drifted (the global
+  action copy also has no `info()` texts).
+- `places: ~` / `transitions: ~` with placeholders configured: the `always()` closures `foreach` over `null`
+  (warning). `transitions` returns early only for indexed arrays.
+
+**Verify:** a workflow without `label`, then `APP_DEBUG=1 bin/console cache:clear`.
+
+**Fix direction:** `->scalarNode('label')->defaultNull()` (or `$workflowConfig['label'] ?? $workflowName` in the pass).
+Build the `notes` subtree once in a private method used by both transitions and global actions (I-60). Guard the
+closures with `->ifArray()` instead of `->always()`.
+
+---
+
+## [ ] B-58 – Two lock backends: `services.yaml` overrides `LockFactory` with a DBAL store and ignores `framework.lock`; `AssetUpdateTasksHandler` releases in the other store
+
+**Files:** `config/services.yaml:120-128`, `config/message_handler.yaml:9-16`,
+`lib/Messenger/Handler/AssetUpdateTasksHandler.php:37,63`, `models/Asset.php:1829-1840`,
+`config/documents.yaml` (`StaticPageGenerator` → `@Symfony\Component\Lock\LockFactory`)
+
+- The extension defines a service with the ID `Symfony\Component\Lock\LockFactory` (DBAL store). This replaces
+  FrameworkBundle's autowiring alias `LockFactory → lock.factory`. Every autowired `LockFactory` and every
+  `Pimcore::getContainer()->get(LockFactory::class)` (thumbnails, video transcoding, LibreOffice, parallelised
+  commands, `Asset::triggerUpdateTask()`) **ignores `framework.lock`** (e.g. Redis), without any notice.
+- `AssetUpdateTasksHandler` gets `@lock.factory` (FrameworkBundle: `flock` by default) and calls
+  `createLock($asset->getUpdateQueueLockId())->release()`. The lock was acquired in the **DBAL** store in
+  `Asset::triggerUpdateTask()`, so this release is a no-op. It would also be a no-op in the same store, because a fresh
+  `Lock` has a different token. The code looks like it frees the queue lock, but it does not.
+- Two lock backends in one application make cross-process locking hard to reason about. `flock` does not work across
+  nodes.
+
+**Verify:** `bin/console debug:container 'Symfony\Component\Lock\LockFactory'` → Pimcore's definition;
+`debug:container lock.factory` → the framework one.
+
+**Fix direction:** delete the `PersistingStoreInterface` / `LockFactory` definitions. Ship
+`framework.lock: 'doctrine+dbal://default'` (or the DSN form that matches the installed symfony/lock) in
+`config/pimcore/default.yaml`, so everything uses `lock.factory`. Keep the acquired `Lock` (or its `Key`) in the message
+if the handler really must release it. Otherwise remove the `release()` call.
+
+---
+
+## [ ] B-59 – `symfony/web-link` is not required: `pimcore_head_link` / `pimcore_head_script` with `webLink` crash
+
+**Files:** `config/aliases.yaml:8` (`WebLinkExtension: '@twig.extension.weblink'`),
+`lib/Twig/Extension/Templating/Traits/WebLinksTrait.php:94`, `lib/Twig/Extension/Templating/HeadLink.php:111`,
+`HeadScript.php:136`, root `composer.json`
+
+- TwigBundle always defines `twig.extension.weblink` (it only *tags* it when web-link is enabled). The Pimcore alias
+  therefore resolves. But `WebLinkExtension::link()` / `preload()` instantiate `Symfony\Component\WebLink\Link`.
+- `symfony/web-link` is only a dev requirement of framework-bundle/twig-bridge/twig-bundle and is **not** in
+  `composer.json` (not present in a 7.4 install). An item with the `webLink` option therefore fails with
+  `Class "Symfony\Component\WebLink\Link" not found`. Even with the package installed, the `Link` header is only sent
+  when `framework.web_link` is enabled (`AddLinkHeaderListener`).
+
+**Verify:** `{{ pimcore_head_link().appendStylesheet('/a.css', 'screen', false, {webLink: true}) }}`, or call
+`WebLinksTrait::handleWebLink()` in a test.
+
+**Fix direction:** add `symfony/web-link: ^7.4` to `composer.json` (and enable `framework.web_link` in `default.yaml`),
+or drop the `webLink` feature and the alias.

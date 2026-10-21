@@ -7,14 +7,18 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 **(3)** `src/EventListener/**` (incl. `Traits/`) and related: `config/event_listeners.yaml`,
 `PimcoreCoreExtension.php:230-240` (TranslationDebugListener wiring), and the helpers the listeners depend on
 (`lib/Http/ResponseStack.php`, `lib/Document/Renderer/DocumentRenderer.php`, `lib/Tool/MaintenanceModeHelper.php`, `models/Site.php`)
+**(4)** `src/DependencyInjection/**` (`Configuration`, `ConfigurationHelper`, `Config/Processor/PlaceholderProcessor`,
+`PimcoreCoreExtension`, re-scan of `Compiler/*`) and related config: `config/pimcore/*.yaml` and every `config/*.yaml`
+loaded by the extension, plus the direct consumers of the helper (`lib/Kernel.php:87-131`,
+`lib/Config/LocationAwareConfigRepository.php:289-329`, `lib/Twig/Sandbox/SecurityPolicy.php`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
 
 These items cause **data loss or corruption, SQL injection, a command that cannot do its one job, or wrong exit codes
-that hide failures from cron/CI**, and in Scope 3 **content leaking between visitors, access-control/maintenance
-bypass and an open redirect**.
+that hide failures from cron/CI**, in Scope 3 **content leaking between visitors, access-control/maintenance
+bypass and an open redirect**, and in Scope 4 **lost configuration data and a Twig sandbox escape**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `7cb7841b76` (Scope 3:
-`43948f45d7`, same code).
+`43948f45d7`, Scope 4: `402145a525`, same code).
 
 > Notes
 > - No hard Symfony 7.4 / PHP 8.4 incompatibility was found in the commands. None of them override the deprecated
@@ -350,3 +354,105 @@ not. `curl -sI 'https://host/app.php/%5Cexample.com'`.
 **Fix direction:** remove `handleFrontControllerRedirect()`. If it must stay: build the target from
 `$request->getBaseUrl()` + a path that is normalised and checked to start with exactly one `/` and contain no `\`, tab
 or newline. Use 308/302.
+
+---
+
+# Scope 4 – `DependencyInjection` (+ `config/pimcore/*.yaml`, extension-loaded `config/*.yaml`)
+
+> Notes
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found. The tree uses no removed builder API, and
+>   `ConfigurableExtension`, `PrependExtensionInterface` and `registerAttributeForAutoconfiguration()` are all current
+>   in 7.4. All files declare `strict_types`. One PHP 8.4 function is already used (`array_any()`,
+>   `Configuration.php:1813`).
+> - The compiler passes were re-scanned. Their findings from Scope 2 (C-07, B-28 … B-33, I-31 … I-42) still hold and are
+>   not repeated. New pass findings are B-57 and I-61.
+> - Symfony behaviour was checked against a **symfony/config v7.4.17** / framework-bundle v7.4.21 vendor tree. B-54,
+>   B-55 and the omitted-key part of B-57 were reproduced with a small `Processor` script (no Pimcore kernel). Each item
+>   says what to run to confirm it in the app.
+> - Line numbers are from commit `402145a525`.
+
+---
+
+## [ ] C-11 – `ConfigurationHelper` prefixes the project root to an absolute config directory (admin-saved configuration written to the wrong place)
+
+**Files:** `src/DependencyInjection/ConfigurationHelper.php:44-49`, `src/DependencyInjection/Configuration.php:137-160`,
+`lib/Bootstrap.php:183-201,219`, `lib/Kernel.php:87-131`, `lib/Config/LocationAwareConfigRepository.php:238`
+(+ same helper in `CustomReportsBundle` and `StaticRoutesBundle` `Configuration.php`)
+
+```php
+//BC reasons: Remove this check in Pimcore 12
+if (!str_starts_with($folder, PIMCORE_PROJECT_ROOT)) {
+    $folder = PIMCORE_PROJECT_ROOT . $folder;
+}
+```
+
+- Every caller passes `PIMCORE_CONFIGURATION_DIRECTORY . '/<key>'`, which is **already absolute**
+  (`PIMCORE_PRIVATE_VAR . '/config'`). `Bootstrap` lets you override `PIMCORE_PRIVATE_VAR` /
+  `PIMCORE_CONFIGURATION_DIRECTORY` through `$_SERVER`/env or `config/pimcore/constants.php`. This is the usual way to
+  put `var/` on a persistent or shared volume (containers, multi-node).
+- When that directory is **outside** the project root, e.g. `/mnt/shared/var`, the default `write_target` directory
+  becomes `/var/www/html/mnt/shared/var/config/image_thumbnails`, which is inside the code directory:
+  - the admin UI writes image/video thumbnail definitions, document types, predefined properties/metadata,
+    perspectives, custom views, custom layouts, select options and **system settings** (plus custom reports and static
+    routes) into that ephemeral path (`LocationAwareConfigRepository.php:238`);
+  - `Kernel::registerContainerConfiguration()` reads them back from the same path, so everything **looks fine until
+    the next deploy, image rebuild or other node**. Then all of it is gone, and the files in the real persistent
+    directory are never read;
+  - on a read-only code mount, every save fails instead.
+- `str_starts_with` without a trailing separator also treats `/app-shared/...` as inside `/app`. That case is
+  harmless, but it shows the check is a string test, not a path test.
+
+**Verify:** `PIMCORE_PRIVATE_VAR=/tmp/pvar bin/console debug:config pimcore config_location.image_thumbnails`. Expected:
+`/tmp/pvar/config/image_thumbnails`. Actual (per code): `<project>/tmp/pvar/config/image_thumbnails`.
+
+**Fix direction:** only prefix **relative** paths (`Symfony\Component\Filesystem\Path::isAbsolute()` /
+`Path::makeAbsolute($folder, PIMCORE_PROJECT_ROOT)`). Drop the "BC" branch. Add an upgrade note: projects that already
+have data under the wrongly prefixed directory must move it. Cover the helper with a unit test (I-64).
+
+---
+
+## [ ] C-12 – Twig sandbox allows every method/property, and `default.yaml` exposes the service container to all templates (sandbox escape from an email subject)
+
+**Files:** `lib/Twig/Sandbox/SecurityPolicy.php:93-105`, `config/pimcore/default.yaml:125-131` (`twig.globals.container`),
+`config/templating_twig.yaml:75-83`, `src/DependencyInjection/Configuration.php:1973-2001`,
+`src/DependencyInjection/PimcoreCoreExtension.php:77-80`, `lib/Mail.php:593-624,642,671,694`,
+`models/DataObject/ClassDefinition/Layout/Text.php:126`
+
+```php
+public function checkMethodAllowed($obj, $method): void   { /* do not perform any checks */ }
+public function checkPropertyAllowed($obj, $property): void { /* do not perform any checks */ }
+```
+```yaml
+twig:
+    globals:
+        container: '@service_container'
+```
+
+- The sandbox (`getTwigEnvironment(true)`) is used for **email subjects and bodies** (`Mail::renderParams()`) and for
+  the data-object *Text* layout. Email subjects and email-document content can be edited by any user who may edit an
+  email document. They do not need admin rights.
+- The config tree (`templating_engine.twig.sandbox_security_policy`) only restricts **tags, filters and functions**.
+  `{{ … }}` with a method call needs none of them. The policy permits every method and property, and every Twig
+  global is visible in sandboxed templates.
+- With the global `container` (a compiled `Container`), an editor can write the subject
+  `{{ container.getParameter('kernel.secret') }}` and read the app secret. With
+  `{{ container.get('doctrine.dbal.default_connection').executeStatement('…') }}` they can run any SQL (e.g. make
+  themselves admin), and the same works for any other public service (filesystem storages, `kernel`, …). Even without
+  `container`, the `app` global (`app.request.server…`, `app.session`) is fully reachable.
+- In effect the sandbox is not a sandbox. It blocks `{% for %}`, but it does not block arbitrary method calls on any
+  object that reaches the template.
+
+**Verify:** create an email document with subject `{{ container.getParameter('kernel.secret') }}` and send a test mail
+(or call `Mail::getSubjectRendered()` in a test). The secret appears in the subject.
+
+**Fix direction:**
+- Remove `twig.globals.container` from `default.yaml` (its own comment says "only for compatibility/dev reasons").
+  Provide narrowly scoped Twig functions instead where templates still need services.
+- Implement `checkMethodAllowed()` / `checkPropertyAllowed()` as an allowlist (class → methods / properties, e.g. via
+  `Twig\Sandbox\SecurityPolicy`'s `$allowedMethods` / `$allowedProperties`). Extend the config tree with
+  `sandbox_security_policy.methods` / `.properties` (`useAttributeAsKey('class')`) and wire them through the extension.
+  Always allow `__toString`, as Twig's own policy does.
+- Do not expose the global `app` and other globals to sandboxed templates. Render them with an `Environment` that has
+  only the sandbox, or check `$obj instanceof AppVariable` / `ContainerInterface` and deny it.
+- Add a test that renders `{{ container.… }}`, `{{ app.request… }}` and a method call on a mail param in the sandbox and
+  expects `SecurityError`.

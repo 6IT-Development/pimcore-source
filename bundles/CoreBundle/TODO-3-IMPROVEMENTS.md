@@ -7,6 +7,10 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 **(3)** `src/EventListener/**` (incl. `Traits/`) and related: `config/event_listeners.yaml`,
 `PimcoreCoreExtension.php:230-240` (TranslationDebugListener wiring), and the helpers the listeners depend on
 (`lib/Http/ResponseStack.php`, `lib/Document/Renderer/DocumentRenderer.php`, `lib/Tool/MaintenanceModeHelper.php`, `models/Site.php`)
+**(4)** `src/DependencyInjection/**` (`Configuration`, `ConfigurationHelper`, `Config/Processor/PlaceholderProcessor`,
+`PimcoreCoreExtension`, re-scan of `Compiler/*`) and related config: `config/pimcore/*.yaml` and every `config/*.yaml`
+loaded by the extension, plus the direct consumers of the helper (`lib/Kernel.php:87-131`,
+`lib/Config/LocationAwareConfigRepository.php:289-329`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md)
 
@@ -792,3 +796,217 @@ There are no tests for `src/EventListener`. Minimum set:
 - `FullPageCacheListener::responseCanBeCached()` with `Set-Cookie` / `Vary` (B-36).
 - `ContentTemplateListener` with `vars`, `block`, `null` result and a duplicate argument/result key (B-40).
 - `ResponseExceptionListener` with a non-`Page` root and a failing fragment in the error page layout (B-37).
+
+---
+
+# Scope 4 – `DependencyInjection` (+ `config/pimcore/*.yaml`, extension-loaded `config/*.yaml`)
+
+IDs continue from I-54. Line numbers are from commit `402145a525`. Grouped: **N** Symfony 7.4 / configuration,
+**O** PHP 8.4 / code style, **P** logic / structure, **Q** tests. Items that only complement Scope 2 (I-35, I-38, I-41)
+say so.
+
+---
+
+## N – Symfony 7.4 / configuration
+
+### [ ] I-55 – Give config nodes real types and ranges (`scalarNode` used for numbers, booleans and enums)
+
+**File:** `src/DependencyInjection/Configuration.php`
+
+- Numbers as `scalarNode`, so `"abc"` passes and consumers cast with `(int)`:
+  - `applicationlog.archive_treshold` (342, also misspelt; consumer `LogArchiveTask.php:56`). Add `archive_threshold`
+    and deprecate the old key with `setDeprecated()` + a `beforeNormalization` copy.
+  - `applicationlog.delete_archive_threshold` (350, default is the **string** `'6'`);
+    `applicationlog.mail_notification.filter_priority` (333, `integerNode()->min(0)->max(7)`).
+  - `assets|objects|documents.versions.days/steps` (614-619, 743-744, 877-882): `integerNode()->min(0)->defaultNull()`.
+  - `full_page_cache.lifetime` (1250); `httpclient.proxy_port` (300).
+- Booleans as `scalarNode`: `dependency.enabled` (2025, `defaultValue(true)`), `email.usespecific` (1304, see I-57),
+  `custom_views.definitions.*.showroot` (1948).
+- Enums as `scalarNode`: `documents.allow_trailing_slash` (915, only `'no'` is checked in
+  `DocumentRouteHandler.php:282`), `httpclient.adapter` (293, `Socket`/`Proxy`).
+- Add ranges: `tree_paging_limit` ×3 (`min(1)`), `auto_save_interval` ×2 and the `maintenance.housekeeping.*` seconds
+  (`min(0)`), `assets.thumbnails.max_scaling_factor` (`min(1)`), `assets.image.max_pixels` (`min(1)`).
+- `security.password.algorithm` (1127-1137): `PASSWORD_DEFAULT` and `PASSWORD_BCRYPT` are both `'2y'`, and the
+  `defined()` checks are dead because the constants are imported with `use const`. Build the list once:
+  `array_values(array_unique([PASSWORD_BCRYPT, …defined argon]))`.
+
+### [ ] I-56 – Make the tree self-contained: `addDefaultsIfNotSet()` where the extension/consumers read unguarded
+
+- Without `addDefaultsIfNotSet()` the tree depends on `config/pimcore/default.yaml` to supply the structure. A project
+  that loads CoreBundle without that file gets "Undefined array key" from the extension:
+  - `assets.metadata.class_definitions(.data)` (697-711), read at `PimcoreCoreExtension.php:182`;
+  - `templating_engine.twig.sandbox_security_policy` (1983-1997), read at `PimcoreCoreExtension.php:78-80`.
+- Consumers work around missing defaults with `?? null` / `?? false`: `objects.versions` (741), `documents.versions`
+  (875), `documents.error_pages` (897), `applicationlog.mail_notification` (321). Compare `models/Asset.php:864-868`,
+  `VersionsCleanupTask.php:67-69`, `ResponseExceptionListener.php:160-161`, `LogMailMaintenanceTask.php:39-55`.
+  `assets.versions` already has defaults, so the three `versions` nodes are inconsistent.
+- After adding defaults, remove the `??` fallbacks and the duplicate defaults from `default.yaml`
+  (e.g. `gotenberg.base_url`, `dependency.enabled`, which repeat the tree defaults).
+
+### [ ] I-57 – Remove dead / deprecated config and stale texts
+
+- Dead keys (no consumer in core or `admin-ui-classic-bundle`):
+  - `flags` (71-74);
+  - `email.usespecific` (1304);
+  - `security.factory_type` and `security.encoder_factories` (1147-1168). The encoder API was removed in Symfony 6, and
+    only `password_hasher_factories` is wired (`PimcoreCoreExtension.php:245-249`). `config/pimcore/security.yaml`
+    still sets `factory_type: password_hasher`.
+- Deprecated since 11.2: `general.language` (217-220), `chromium` (2033-2050, consumer `lib/Image/HtmlToImage.php`).
+  Schedule the removal together with the Chromium adapter.
+- `config/pimcore/default.yaml:279,284`: legacy prefixes `\Object_Class_Data_` / `\Object_Class_Layout_` (Pimcore ≤ 4
+  class names).
+- `config/paginator.yaml` is **never loaded** (not in `PimcoreCoreExtension::loadInternal()`, not imported anywhere). Its
+  values equal the KnpPaginator defaults. Delete it.
+- Stale texts:
+  - `initial_markings` info "Symfony 4.3+ only" (1459);
+  - `marking_store` info "Take a look at @TODO" (1387);
+  - `debugging` link to 6.x docs (`config/pimcore/dev.yaml:41`);
+  - `services.yaml:10-15`: "Only use with Symfony ver 5.3 or higher", "UserAwareEncoderFactory";
+  - `PimcoreCoreExtension::prepend()` (see I-41).
+- `ConfigurationHelper::getSymfonyConfigFiles()` option `relativePath` has no caller.
+
+### [ ] I-58 – `ignoreExtraKeys()` hides typos in six sections
+
+**File:** `src/DependencyInjection/Configuration.php:723, 840, 1246, 1841, 1886, 1935`
+
+- `objects`, `documents`, `full_page_cache`, `properties`, `perspectives`, `custom_views` use `ignoreExtraKeys()`
+  (default `remove = true`). A typo such as `documents.allow_trailing_slahs` or `full_page_cache.exclude_cookies` is
+  **silently dropped** with no "Unrecognized option" error.
+- Find out which keys this protects. Probably keys written by the admin UI or legacy bundles. Declare them explicitly or
+  move them under a dedicated `variableNode`, then remove `ignoreExtraKeys()`.
+
+### [ ] I-59 – Service YAML clean-up (extension-loaded `config/*.yaml`)
+
+- `aliases.yaml`:
+  - `_defaults: public: true` makes every alias public;
+  - `TranslatorInterface → Pimcore\Translation\Translator` duplicates FrameworkBundle's `TranslatorInterface →
+    translator`, which is already decorated (`l10n.yaml`);
+  - `Doctrine\Persistence\ConnectionRegistry` is provided by DoctrineBundle;
+  - `SessionListener: '@session_listener'` has no autowiring user;
+  - the three 11.2-deprecated aliases are candidates for removal.
+- `templating_twig.yaml:59-65`: the **abstract** classes `Placeholder\AbstractExtension` and `CacheBusterAware`, and the
+  `ArrayObject` subclass `Placeholder\Container`, are registered as services. Autoconfiguration tags them
+  `twig.runtime`. They only work because nobody fetches them. Remove the definitions (or `exclude` them).
+  `class_resolvers.yaml`: the generic `Pimcore\Resolver\ClassResolver: ~` cannot be autowired (`array $map`) and is
+  unused.
+- Placeholder arguments `'@?'` (`services.yaml:21`, `serializer.yaml:19`) are optional references to an empty ID,
+  replaced later by the extension/pass. Use `!abstract 'set by PimcoreCoreExtension'` so a missing replacement fails
+  loudly. Use `'@.inner'` instead of `'@Pimcore\Mail\Mailer.inner'` / `'@Pimcore\Translation\Translator.inner'`.
+- `message_handler.yaml`: no `_defaults`, so every handler is wired by hand. Use `#[AsMessageHandler]` with
+  autowire/autoconfigure and drop the file.
+- `services_workflow.yaml:43-49`: a second `AuthorizationChecker` instance. Inject `@security.authorization_checker`.
+- `routing.yaml:28` imports FOSJsRouting's `routing-sf4.xml`. XML route loading is deprecated in Symfony 7.4 (see
+  I-31). The bundle ships `routing.php`; use it. Also see I-46 (FOSJsRouting coupling).
+- Leading backslashes in class names: `services.yaml` (`class: \GuzzleHttp\Client`), `maintenance.yaml`
+  (`messengerMessageClass: '\Pimcore\Messenger\ScheduledTaskMessage'`), every class map in `default.yaml`.
+- `maintenance.yaml`: task `type` names mix styles (`scheduledtasks`, `cleanupBrickTables`,
+  `VersionsCleanupStackTraceDb`, `low_quality_image_preview`). Settle on snake_case with BC aliases, or add the
+  `#[AsMaintenanceTask]` attribute (I-34).
+- `config/pimcore/default.yaml`:
+  - `twig.globals.container` (remove, C-12);
+  - `doctrine.dbal…logging/profiling` keys: check them against the installed DoctrineBundle (`profiling` is
+    the 2.x option, `logging` is middleware-based with DBAL 4);
+  - the `redirect` Monolog handler listens on a channel that is not in `monolog.channels`. It is created only by a
+    `monolog.logger` tag elsewhere, so declare it.
+
+---
+
+## O – PHP 8.4 / code style
+
+### [ ] I-60 – `Configuration.php` readability (2 051 lines, one flat fluent chain per section)
+
+- Every chain is written with zero nesting indentation (`->children()` … `->end()` all at the same level). Mistakes are
+  only visible by counting `end()`s. Line 1829 calls `->addDefaultsIfNotSet()` on the root node a second time. Line
+  1897-1902 opens `children()` twice in `perspectives.dashboards`. Re-indent per nesting level (php-cs-fixer
+  `method_chaining_indentation` cannot do it. Use manual blocks or one private method per subtree).
+- Split per section: `addWorkflowNode()` alone is 520 lines. Extract `addWorkflowPlacesNode()`,
+  `addWorkflowTransitionsNode()`, a shared `addNotesNode(bool $globalAction)` (fixes the drift in B-57) and a shared
+  `addThumbnailDefinitionsNode()` (image and video `definitions/items/medias` are near-identical, 433-477 / 534-571).
+- `prototype('scalar'|'array'|'variable')` → `scalarPrototype()` / `arrayPrototype()` / `variablePrototype()`. Also
+  fix `arrayProtoType()` / `protoType()` casing (465, 560, 1957).
+- Closures: `function ($v) { return (bool)$v; }` ×16 → removed (B-54); remaining closures → `static fn`.
+- No-op closures: `fallback_languages` (239-245) and `documents.error_pages.localized` (903-909) have
+  `beforeNormalization()->ifArray()->then(fn ($v) => $v)`. Delete them.
+- `routing.static.locale_params` (1093-1095): `defaultValue([])` on the **prototype**. Put it on the array node or drop
+  it (prototyped arrays already default to `[]`). Typo "explicitely".
+- `Config/Processor/PlaceholderProcessor`: mark it `final` and stateless. After B-56 it is only needed by the workflow
+  node. Fix the "an an" docblock typo. The unit test lives in `tests/Unit/Tool/` and should move next to the
+  DependencyInjection tests.
+
+### [ ] I-61 – `ConfigurationHelper`, `PimcoreCoreExtension` and compiler passes: smaller items (complements I-38, I-41)
+
+- `ConfigurationHelper` (used by CustomReports/StaticRoutes bundles, so it is public API):
+  - document it as `@api` or move it to `lib/Config`;
+  - `ConfigurationHelper::` self-calls → `self::`;
+  - `addConfigLocationTargetNode()` duplicates the whole `write_target` block in both branches (44-101). Build it once
+    and append `read_target` when requested;
+  - `in_array(…, true)`;
+  - `defaultValue('symfony-config')` → `LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG`;
+  - `getSymfonyConfigFiles()`: the `$dirs` array and `empty($dirs)` are pointless; `->name(['*.yml', '*.yaml'])`.
+- `PimcoreCoreExtension`:
+  - `setPublic(false)` on new `Definition`s is the default (155, 194, 204);
+  - `$config['general']['domain'] ?? ''`: the key always exists (89);
+  - re-reads `$config['general']['domain']` (98);
+  - `flattenConfigurationForClassResolver()` → `array_filter(array_map(fn (array $c) => $c['class'] ?? null, $configuration['map'] ?? []))`;
+  - the one-line `configureRouting()` / `configureClassResolvers()` wrappers can be inlined;
+  - `array_map(fn …)` → `static fn` (248).
+  - Document that `ImplementationLoader` resolves loaders **last-added first** (`array_reverse`), which is why the class
+    map loader is added after the prefix loader (189-211) and the model class-map loader after `FallbackBuilder`.
+- `pimcore.config` (85) also puts **secrets** into the compiled container's parameters (`encryption.secret`,
+  `httpclient.proxy_pass`, `email.*`). They are visible through `debug:container --parameters` and in the
+  `SystemEvents::SAVE_ACTION_SYSTEM_SETTINGS` event (`lib/Config.php:141`). Same point as the I-41 "expose only needed
+  sub-keys" item, with a security angle. `pimcore.encryption.secret` (64-66) silently prefers an existing parameter over
+  the config value. Document this or log when both are set.
+- `MonologPsrLogMessageProcessorPass` exists only for `ApplicationLoggerBundle/config/services.yaml:44`. MonologBundle
+  defines `monolog.processor.psr_log_message` only when a handler uses `process_psr_3_messages`. Move the pass (or a
+  private `PsrLogMessageProcessor` definition) into ApplicationLoggerBundle.
+
+---
+
+## P – Logic / structure
+
+### [ ] I-62 – Workflow config: missing Symfony options and validation
+
+**Files:** `src/DependencyInjection/Configuration.php:1312-1831`, `src/DependencyInjection/Compiler/WorkflowPass.php:187`
+
+- `WorkflowPass` passes `$workflowConfig['events_to_dispatch'] ?? null` to the workflow, but the tree has no
+  `events_to_dispatch` node. Setting it fails with "Unrecognized option", so the code path is dead. Add the node (list of
+  `WorkflowEvents::*` names, `null` = all), as FrameworkBundle does.
+- Validate references at config time:
+  - `transitions.*.from/to`, `globalActions.*.to` and `initial_markings` must name an existing place;
+  - `marking_store.type` `single_state`/`multiple_state` must not be combined with `data_object_*` arguments.
+  Today these errors surface at runtime (or via `WorkflowValidatorPass` once I-32 is done).
+- `supports` + `support_strategy` validation: `$v['supports'] && isset(...)` relies on `supports` defaulting to `[]`.
+  Make it explicit (`!empty()`).
+- `places` permissions: `modify` is documented as a shorthand for five flags but is expanded at runtime (`lib/Workflow/Place/PlaceConfig.php:125`). Consider
+  normalising it in the tree.
+
+### [ ] I-63 – One loader for `config_location` YAML imports
+
+**Files:** `lib/Kernel.php:87-131`, `lib/Config/LocationAwareConfigRepository.php:289-329`,
+`src/DependencyInjection/Configuration.php:137-160`
+
+- The Kernel closure and `LocationAwareConfigRepository::loadSymfonyConfigFiles()` implement the same read/write-target
+  decision twice, and they already differ:
+  - the Kernel checks `options.directory !== null` and `rtrim`s; the repository does neither;
+  - the Kernel uses `$loader->import($dir)` (sorted, recursive); the repository uses an unsorted Finder (B-55).
+- The Kernel hard-codes the 10 config keys that `Configuration::getConfigTreeBuilder()` also lists. Expose them as a
+  constant on `Configuration` (or `LocationAwareConfigRepository`) and loop over it in both places.
+- Move the decision into one static helper (`LocationAwareConfigRepository::resolveSymfonyConfigDirectory(array
+  $containerConfig, string $key): ?string`) used by the Kernel and by the bundles.
+
+---
+
+## Q – Tests
+
+### [ ] I-64 – Tests for the configuration tree and the helper
+
+- There are no tests for `Configuration`, `ConfigurationHelper` or `PimcoreCoreExtension` (only
+  `tests/Unit/Tool/PlaceholderProcessorTest.php`). Minimum set (plain `Processor` / `ContainerBuilder`, no kernel):
+  - boolean nodes with `%env(bool:X)%` placeholders and `"false"` strings (B-54);
+  - `getConfigNodeFromSymfonyTree()` with `config_location` split across two configs (B-55);
+  - two workflows with and without `placeholders`, `places` before `placeholders` (B-56);
+  - a workflow without `label`, a global action with `fieldType: numeric` (B-57);
+  - `addConfigLocationTargetNode()` with an absolute folder outside `PIMCORE_PROJECT_ROOT` (C-11);
+  - `SecurityPolicy` denies method/property access on non-allowlisted objects (C-12);
+  - `PimcoreCoreExtension::load()` with an empty config: compiles without notices (I-56).
