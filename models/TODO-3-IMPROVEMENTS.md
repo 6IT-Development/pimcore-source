@@ -2,14 +2,17 @@
 
 Scope: **(1)** `models/Asset.php` and `models/Asset/**` (Dao, Listing, Service, Folder, Image, Image/Thumbnail/**, Thumbnail/**,
 Video, Video/**, Document, Document/**, MetaData/**, WebDAV/**, Enum, Archive/Audio/Text/Unknown)
+**(2)** `models/WebsiteSetting.php` and `models/WebsiteSetting/**` (Dao, Listing, Listing/Dao), plus the direct consumer
+`lib/Config.php::getWebsiteConfig()` (`:173-262`) and `tests/Model/WebsiteSetting/WebsiteSettingTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
 
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
-IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927`.
+IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
+`7f0331cab9`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
-**D** per-file logic & readability, **E** tests.
+**D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40).
 
 ---
 
@@ -284,3 +287,104 @@ Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime,
 - Video processor with missing bitrates, missing job, deleted asset (C-10, C-11); malformed spherical XMP (C-12).
 - PDF scan with boundary-straddling `/JS` and `/J#53` (C-14).
 - Metadata `getMetadataByName()` localisation and `~` names (B-05, B-06).
+
+---
+
+## F – WebsiteSetting (Scope 2)
+
+### [ ] I-32 – Strictness and native types
+
+- Add `declare(strict_types=1)` to `models/WebsiteSetting/Dao.php` and `WebsiteSetting/Listing/Dao.php`.
+- `Dao::getById(?int $id = null)` / `getByName(?string $name = null, …)` (`Dao.php:32-34`, `:50-54`): the optional
+  parameters plus loose `!= null` checks make `0` / `''` behave like "use the model value". Callers always pass the
+  value, so make them required and drop the checks.
+- `setData(mixed $data)` (`WebsiteSetting.php:176`) → `string|int|float|bool|ElementInterface|null`. Arrays and objects
+  currently reach DBAL and fail there, or are converted to `"Array"`.
+- `setId(int)` / `setCreationDate(int)` / `setModificationDate(int)` against `?int` properties: mark the setters
+  `@internal`, or use PHP 8.4 asymmetric visibility (`public private(set) ?int $id`) for DB-managed fields once the DAO
+  hydrates through a dedicated method.
+
+### [ ] I-33 – `WebsiteSettingType` backed enum and one typed value accessor
+
+- The type set is documented three times (`WebsiteSetting.php:229`, `:242`, `install.sql:606`) and switched on in
+  `lib/Config.php:229-234` and `WebsiteSetting::getData()` (`:191`).
+- Introduce `enum WebsiteSettingType: string { case Text = 'text'; case Document = 'document'; case Asset = 'asset';
+  case Object = 'object'; case Bool = 'bool'; }` with an `isElement()` helper. Accept `WebsiteSettingType|string` in
+  `setType()` for BC.
+- Add `getValue(): mixed`, which performs the same casting as `getWebsiteConfig()` (bool → `bool`, text → `string`,
+  element → `?ElementInterface`). Today `getByName('flag')->getData()` returns the raw DB string `'1'`/`''` while
+  `pimcore_website_config('flag')` returns `bool`. Use `getValue()` in `lib/Config.php` so the cast logic lives in one place.
+- `setData()` with an unsaved element stores a `null` id while changing the type; reject it with an exception.
+
+### [ ] I-34 – Class-level clean-up in `WebsiteSetting.php`
+
+- `final class` with `protected` properties and `protected static` methods → `private`.
+- Fluent setters return `WebsiteSetting` with `@return $this` docblocks → `: static` and drop the docblocks.
+- Mixed `WebsiteSetting::getCacheKey()` (`:97`) and `self::getCacheKey()` (`:275`) → `self::`.
+- Mixed `Service::getElementType()` (`:179`, imported alias) and `Element\Service::getElementById()` (`:192`) → one style.
+- `getByName()` `@throws Exception` (`:93`) is never thrown; the comment "which setting is which is" (`:55`) has a
+  doubled phrase; the empty docblock lines at `:228-244` can go.
+- `getByName()` `if ($setting->getId() > 0) … return $setting;` (`:118-125`): the `return $setting` branch is
+  unreachable (rows always have an auto-increment id).
+- `getById()` returns the **shared** RuntimeCache instance. Unsaved in-memory changes by one caller leak into
+  `getByName()` / `getWebsiteConfig()` for the rest of the request; document this or return clones for read paths.
+- `delete()` on an unsaved setting dispatches events and clears the cache tag for nothing; return early when `id === null`.
+- `#[\Override]` wherever a parent method is overridden (none today; add it if `save()` / `delete()` move into an
+  interface).
+
+### [ ] I-35 – Query and caching efficiency
+
+- `getByName()` does not cache negative results or fallback-language results (the mapping key for the requested
+  language is stored only on a direct hit, `:118-122`). The common Twig/PHP pattern
+  `WebsiteSetting::getByName('optional')?->getData()` runs a DB query on every call. Cache misses too, and invalidate
+  them together with C-15.
+- `getWebsiteConfig()` loads **all** settings of all sites and languages through `Listing::load()`, which runs one
+  `getById()` query per row (`Listing/Dao.php:38-40`, N+1). Hydrate from a single
+  `SELECT * … WHERE (siteId IS NULL OR siteId IN (0, :site)) AND language IN ('', :lang)`.
+- `Config::getWebsiteConfig()` treats an empty config `[]` as a cache miss (`if (!$config)`, `lib/Config.php:203`), so
+  installations without website settings rebuild it on every request. Compare against `false`.
+
+### [ ] I-36 – DAO simplification
+
+- `Dao::create()` + `update()` (`Dao.php:95-115`): one `INSERT` with all valid columns (also fixes B-89). Compute the
+  column whitelist once with `array_intersect_key($vars, array_flip($this->getValidTableColumns(...)))` instead of calling
+  `getValidTableColumns()` inside the `array_filter` callback for every key (`:99`).
+- Rewrite the `getByName()` ranking as an explicit priority expression with an `id` tie-breaker (see B-84). This also
+  lets MySQL use a composite `(name, siteId, language)` index (I-37).
+- `Listing/Dao.php:49`: `'SELECT COUNT(*) as amount FROM website_settings ' . getCondition()` – stray space and unused
+  alias; align with `load()`.
+
+### [ ] I-37 – Schema
+
+- Add a composite (unique, see B-86) index on `(name, siteId, language)`. Today the query uses `INDEX name` only and
+  filters/sorts the rest.
+- `creationDate` / `modificationDate` are nullable with default `0`, and `siteId` mixes `NULL` and `0` (B-84). Normalise
+  in a migration.
+
+### [ ] I-38 – `Listing`
+
+- `getSettings()` (`Listing.php:48-55`) relies on `load()` having set `$settings`; add `@return list<WebsiteSetting>` and
+  a non-null guarantee (`?? []`).
+- `setSettings()` → fluent `: static` for consistency with other listings.
+- Default order by `id` (makes `getWebsiteConfig()` deterministic until B-83 is fixed).
+
+### [ ] I-39 – Site detection parity and events
+
+- `getByName()` requires the caller to pass `$siteId`, while `getWebsiteConfig()` detects the current site (including
+  admin preview via the main request document, `lib/Config.php:181-196`). Offer the same detection (for example
+  `getByNameForCurrentSite()`), or document the difference. Templates using `getByName()` silently ignore site overrides.
+- `save()` / `delete()` have no transaction and no failure events. `PRE_*` listeners cannot veto cleanly, and a failing
+  DAO call leaves listeners without a `POST_*` or `*_FAILURE` signal. Align with the element models
+  (`POST_ADD_FAILURE` etc.) if listeners need it.
+
+### [ ] I-40 – Tests
+
+Extend `tests/Model/WebsiteSetting/WebsiteSettingTest.php`. Today it covers only `getByName()` precedence. Add cases for:
+- delete then `getByName()` / `getById()` in the same request, and an override created after a lookup (C-15);
+- `getWebsiteConfig()` parity with `getByName()` for every case already in the test, including reversed insert order
+  (B-83);
+- `siteId = 0` vs `NULL` (B-84);
+- fallback language with and without a neutral row (B-85);
+- duplicate rows, empty name, invalid type (B-86, B-87);
+- `save()` with a non-existent id (B-88);
+- listing with a concurrently deleted row (B-90).

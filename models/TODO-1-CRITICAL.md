@@ -4,15 +4,20 @@ Scope: **(1)** `models/Asset.php` and `models/Asset/**` (Dao, Listing, Service, 
 Video, Video/**, Document, Document/**, MetaData/**, WebDAV/**, Enum, Archive/Audio/Text/Unknown), plus the helpers they
 directly call where a defect originates there (`lib/Video/Adapter/Ffmpeg.php`, `lib/Config/LocationAwareConfigRepository.php`,
 `lib/Messenger/Handler/AssetUpdateTasksHandler.php`)
+**(2)** `models/WebsiteSetting.php` and `models/WebsiteSetting/**` (Dao, Listing, Listing/Dao), plus the direct consumer
+`lib/Config.php::getWebsiteConfig()` (`:173-262`), `lib/Twig/Extension/WebsiteConfigExtension.php`, the
+`website_settings` schema (`bundles/InstallBundle/dump/install.sql:603-615`) and `tests/Model/WebsiteSetting/WebsiteSettingTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
-the public thumbnail route; they are not repeated here)
+the public thumbnail route; they are not repeated here; C-08 covers request state on shared services in worker runtimes)
 
 These items cause **data loss or corruption** (tree paths, binaries, versions), **source files deleted outside Pimcore**,
 **open DB transactions in workers**, **crashes in core asset flows** (create, folder move, video/PDF processing, frontend
-thumbnail rendering) and **path traversal / false security status**.
-IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927`.
+thumbnail rendering) and **path traversal / false security status**, and in Scope 2 **deleted or outdated website
+settings served indefinitely**.
+IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
+`7f0331cab9`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -291,3 +296,52 @@ release the lock in `finally`.
 
 **Fix direction:** keep an overlap buffer between chunks (as `EmbeddedMetaDataTrait::getXMPData` does) and treat the
 result as `UNKNOWN`/unsafe unless the PDF is actually parsed; return the `PdfScanStatus` enum (or rename the method).
+
+---
+
+# Scope 2 – WebsiteSetting
+
+> Notes
+> - `WebsiteSetting.php` and `WebsiteSetting/Listing.php` are `strict_types`; `WebsiteSetting/Dao.php` and
+>   `WebsiteSetting/Listing/Dao.php` are not. No hard Symfony 7.4 / PHP 8.4 incompatibility was found (no implicit
+>   nullable parameters, no removed APIs). Modernisation is listed in TODO-3 (I-32–I-40).
+> - DB hydration uses `setValues($data, true)` (`lib/Model/Dao/DaoTrait.php:42`), so `NULL` columns are skipped and
+>   non-nullable setters (`setCreationDate(int)`) do not crash on legacy rows.
+
+---
+
+## [ ] C-15 – Website settings are cached by id/name and never invalidated: deleted or overridden settings keep being served (same request, messenger workers, and every later request in worker runtimes)
+
+**Files:** `models/WebsiteSetting.php:59`, `:66-85`, `:95-126`, `:273-289`; `lib/Config.php:157-165`, `:173-262`, `:270-273`
+(related: CoreBundle **C-08** – request state on shared services in worker runtimes)
+
+- `getByName()` stores `name~~~siteId~~~language` (the **requested** site/language) → id in the static
+  `$nameIdMappingCache`. `delete()` (`:275-280`) removes only the key built from the setting's **own**
+  name/site/language. Example: `getByName('foo', 5, 'de')` resolves to the global neutral row 7 and caches
+  `foo~~~5~~~de → 7`; deleting row 7 removes `foo~~~~~~` only.
+- `delete()` never unregisters `RuntimeCache` key `website_setting_<id>` (`:68`, `:82`), so `getById(7)` and the stale
+  name mapping keep returning the **deleted object** for the rest of the request.
+- Creating a more specific override (site/language row) is invisible to any name already resolved: the mapping keeps
+  pointing to the old id.
+- `$nameIdMappingCache` is a plain static array that nothing ever clears – not `MessengerClearRuntimeCacheListener`, not
+  `LongRunningHelper` (`RuntimeCache::clear()` only). In messenger consumers: once `RuntimeCache` is cleared, the stale id
+  is reloaded from DB; if that row was deleted, `getById()` returns `null` and `getByName()` returns `null` even though
+  another matching row (e.g. the neutral fallback) exists.
+- `lib/Config.php`: `getWebsiteConfig()` stores the resolved config in `RuntimeCache` under a key built from
+  **language only** (`getWebsiteConfigRuntimeCacheKey()`, `:157-165`), not the site, and `clearDependentCache()`
+  (`WebsiteSetting.php:268-271`) clears only the persistent cache tag, not this runtime entry.
+- `RuntimeCache` is a container service without `kernel.reset` / `ResetInterface`, so in FrankenPHP / RoadRunner /
+  Swoole worker mode it survives across HTTP requests (no reset found in the code; not verified at runtime). Then:
+  - the first site rendered by a worker fixes `pimcore_website_config()` for every later request in that worker,
+    **including requests for other sites** (site A's settings served on site B);
+  - admin edits and deletes never become visible in that worker until restart.
+- Website settings are commonly used for feature switches, contact addresses, tracking IDs and legal texts, so stale or
+  cross-site values are a correctness and compliance problem, not just cosmetic.
+
+**Fix direction:**
+- Replace the static mapping with a request-scoped service that implements `ResetInterface` (tag `kernel.reset`), or drop
+  it and rely on the persistent cache.
+- In `save()` / `delete()`: clear `website_setting_<id>`, flush the whole name mapping (mapping keys are by requested
+  site/language, so per-key removal cannot be correct), and clear the `getWebsiteConfig` runtime entries.
+- Include the site id in `getWebsiteConfigRuntimeCacheKey()`.
+- Reset `RuntimeCache` per main request in worker runtimes (together with CoreBundle C-08).

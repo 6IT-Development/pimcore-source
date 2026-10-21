@@ -3,14 +3,19 @@
 Scope: **(1)** `models/Asset.php` and `models/Asset/**` (Dao, Listing, Service, Folder, Image, Image/Thumbnail/**, Thumbnail/**,
 Video, Video/**, Document, Document/**, MetaData/**, WebDAV/**, Enum, Archive/Audio/Text/Unknown), plus the helpers they
 directly call where a defect originates there (`lib/Video/Adapter/Ffmpeg.php`, `lib/Messenger/Handler/AssetUpdateTasksHandler.php`)
+**(2)** `models/WebsiteSetting.php` and `models/WebsiteSetting/**` (Dao, Listing, Listing/Dao), plus the direct consumer
+`lib/Config.php::getWebsiteConfig()` (`:173-262`), the `website_settings` schema (`bundles/InstallBundle/dump/install.sql:603-615`)
+and `tests/Model/WebsiteSetting/WebsiteSettingTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
-IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927`.
+IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
+`7f0331cab9`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
-Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82.
+Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
+**WebsiteSetting** B-83–B-91.
 
 ---
 
@@ -793,3 +798,128 @@ pairing.
 - `self::$argumentMapping[$method]` → `null` → `array_search` / `count` `TypeError`.
 
 **Fix direction:** validate the method and skip with a log entry (same as B-47 for images).
+
+---
+
+## WebsiteSetting (Scope 2)
+
+## [ ] B-83 – `pimcore_website_config()` and `WebsiteSetting::getByName()` resolve overrides differently; result depends on row id order
+
+**Files:** `lib/Config.php:207-237` vs `models/WebsiteSetting/Dao.php:50-78`; `models/WebsiteSetting/Listing/Dao.php:32`
+
+- `getWebsiteConfig()` walks **all** rows in unspecified order (the listing has no `ORDER BY`, so it is effectively
+  primary-key order) and:
+  - skips a row without language if the key is already set (`:225`);
+  - lets any language row overwrite.
+- Consequences (`a` = global neutral, `b` = site 1 neutral, `c` = global `en`; site 1, language `en`):
+  - `getByName('x', 1, 'en')` → `b` (site beats language, `ORDER BY CONCAT(siteId, language) DESC`).
+  - `pimcore_website_config('x')` → `a` is set, `b` is **skipped** because `a` already set the key, then `c` overwrites
+    → `c`.
+  - If `b` had a lower id than `a`, the result would be `b`. The value shown on the frontend depends on creation order.
+- A site-specific neutral override is ignored by `pimcore_website_config()` whenever a global neutral row with a lower id
+  exists – the most common use case of site overrides.
+
+**Fix direction:** implement one precedence rule (site+language > site > language > global, matching
+`WebsiteSettingTest`) in a shared resolver used by both APIs; order the listing explicitly. Extend the test for
+`getWebsiteConfig()` parity (I-40).
+
+## [ ] B-84 – `siteId = 0` and `siteId IS NULL` are ranked differently in `getByName()`
+
+**File:** `models/WebsiteSetting/Dao.php:59-69` (`ORDER BY CONCAT(siteId, language) DESC, siteId DESC, language DESC`)
+
+- Both values mean "all sites" (the `WHERE` accepts both, `lib/Config.php:213` treats `0` as global), but
+  `CONCAT(NULL, …)` is `NULL` and sorts last, while `CONCAT(0, '')` is `'0'`.
+- With a legacy row (`siteId = 0`, neutral; migrated by `Version20210323082921`) and a newer global language row
+  (`siteId NULL`, `en`): `getByName('x', null, 'en')` returns the **neutral** row, although the language-specific one
+  should win (it wins when both have `siteId NULL`).
+- Ranking is also done by **string** comparison of `CONCAT(siteId, language)`. It happens to work because only one real
+  site id can match, but the intent is opaque.
+
+**Fix direction:** explicit ranking, e.g.
+`ORDER BY (siteId = :site) DESC, (language = :lang) DESC, id ASC`, and normalise `0` → `NULL` on save (plus a data
+migration).
+
+## [ ] B-85 – `$fallbackLanguage` is never used when a language-neutral row exists
+
+**File:** `models/WebsiteSetting.php:95-115`; `models/WebsiteSetting/Dao.php:64-68`
+
+- The query for `$language` already matches neutral rows (`language = ''`), so `NotFoundException` – the only path to
+  the fallback – is thrown only when **no** neutral row exists either.
+- Rows `neutral = 'x'`, `en = 'y'`: `getByName('n', null, 'de', 'en')` → `'x'`, not `'y'`. The docblock ("if property
+  cannot be found the value of property without language is returned") documents neither order clearly; callers who pass
+  a fallback language expect `de → en → neutral`.
+
+**Fix direction:** decide and document the order. If it is `language → fallback → neutral`, query with
+`language IN (:lang, :fallback, '')` and rank in that order.
+
+## [ ] B-86 – No uniqueness for `(name, siteId, language)`; empty names accepted
+
+**Files:** `bundles/InstallBundle/dump/install.sql:603-615` (only non-unique `INDEX name`, `INDEX siteId`);
+`models/WebsiteSetting.php:291-301`
+
+- Duplicate rows for the same name/site/language are allowed (API, imports, double-click in admin). `getByName()` then
+  returns an arbitrary one (no id tie-breaker in `ORDER BY`); `getWebsiteConfig()` returns the last or first by id
+  (B-83). Editing one of them in the admin may have no visible effect.
+- `save()` does not validate that `name` is non-empty (default `''`).
+
+**Fix direction:** validate in `save()` (non-empty name, no duplicate for the same site/language) and add a unique key.
+`siteId NULL` defeats a plain unique index, so normalise to `0` first or use a generated column.
+
+## [ ] B-87 – `type` is not validated; an unknown type silently makes the setting disappear
+
+**Files:** `models/WebsiteSetting.php:228-248`; `install.sql:606` (`ENUM('text','document','asset','object','bool')`);
+`lib/Config.php:229-234`
+
+- `setType('number')` (or a typo) is stored as `''` without error under Pimcore's `sql_mode = ''` (see CoreBundle
+  TODO-1 notes). `getWebsiteConfig()` then maps it to `default => null`, and `isset($data)` drops the key, so the setting
+  silently vanishes from `pimcore_website_config()`. `getData()` returns the raw value instead of lazy-loading an element.
+- `setData(ElementInterface)` sets the type automatically, but `setData()` with a scalar never resets a previous element
+  type, so `setType('document')->setData('hello')` stores text under an element type (`getData()` returns `'hello'`
+  because it is not numeric, while `getWebsiteConfig()` returns it as an "element").
+
+**Fix direction:** backed enum for the type (I-33); reject unknown values in `setType()`; validate data against the
+type in `save()`.
+
+## [ ] B-88 – `save()` with a manually set id that does not exist silently does nothing; add/update detection differs from the DAO
+
+**Files:** `models/WebsiteSetting.php:136-141`, `:291-301`; `models/WebsiteSetting/Dao.php:80-87`, `:95-102`
+
+- `(new WebsiteSetting())->setId(999)->setName('x')->save()`: the DAO sees a truthy id → `update()` → 0 rows affected,
+  no error. `PRE_UPDATE`/`POST_UPDATE` are dispatched for a write that never happened.
+- `save()` decides "add" by `$this->id === null`, the DAO by `if ($this->model->getId())`. With id `0` the model fires
+  `PRE_UPDATE`/`POST_UPDATE` while the DAO inserts.
+
+**Fix direction:** use one `isNew()` check in both places; make `update()` throw `NotFoundException` when no row is
+affected (or make `setId()` `@internal`).
+
+## [ ] B-89 – `Dao::create()` is a non-atomic INSERT + UPDATE
+
+**File:** `models/WebsiteSetting/Dao.php:104-115`
+
+- The INSERT writes only `name` and `siteId`. If the following `update()` fails (DB error, invalid data), a half row
+  remains with `type NULL`, `data NULL`, `language ''`, `creationDate 0`. That row is a valid match for `getByName()` (and
+  shadows lower-ranked rows), and its value is `null`.
+- No transaction; `POST_ADD` is not dispatched and the caller gets an exception, so nobody cleans up.
+
+**Fix direction:** single `INSERT` with all valid columns (see I-36), or wrap both statements in a transaction.
+
+## [ ] B-90 – Website setting listing can contain `null` entries (concurrent delete)
+
+**Files:** `models/WebsiteSetting/Listing/Dao.php:32-43`; consumer `lib/Config.php:210-212`
+
+- `load()` selects ids and then calls `WebsiteSetting::getById()` per id. A row deleted between both steps yields
+  `null` in the `WebsiteSetting[]` array. `getWebsiteConfig()` then calls `$item->getSiteId()` on `null` → `Error`. This
+  breaks every page that uses `pimcore_website_config()` until the cache is rebuilt.
+
+**Fix direction:** skip `null`s (or hydrate from a single `SELECT *`, see I-35).
+
+## [ ] B-91 – `clearDependentCache()` does not invalidate the full-page output cache
+
+**File:** `models/WebsiteSetting.php:268-271`; `lib/Config.php:205`
+
+- Only the tag `website_config` is cleared. Full-page cache entries (`FullPageCacheListener`, tag `output`) that rendered
+  the old value stay cached until their lifetime ends, so changes to texts, tracking IDs or feature switches stored as
+  website settings do not reach cached pages. (The reverse works: clearing `output` drops the config cache, because the
+  config is tagged `output`.) Needs a decision on whether this is intended; document it if so.
+
+**Fix direction:** clear `output` as well (as document saves do), or document the expected delay in the admin UI.
