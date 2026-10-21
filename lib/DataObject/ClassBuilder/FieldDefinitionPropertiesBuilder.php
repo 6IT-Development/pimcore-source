@@ -24,8 +24,8 @@ class FieldDefinitionPropertiesBuilder implements FieldDefinitionPropertiesBuild
     public function buildProperties(ClassDefinition $classDefinition): string
     {
 
-        $cd = 'protected $classId = "' . $classDefinition->getId() . "\";\n";
-        $cd .= 'protected $className = "' . $classDefinition->getName() . '"' . ";\n";
+        $cd = 'protected ?string $classId = "' . $classDefinition->getId() . "\";\n";
+        $cd .= 'protected ?string $className = "' . $classDefinition->getName() . '"' . ";\n";
 
         foreach ($classDefinition->getFieldDefinitions() as $key => $def) {
             if (!$def instanceof ClassDefinition\Data\ReverseObjectRelation && !$def instanceof ClassDefinition\Data\CalculatedValue
