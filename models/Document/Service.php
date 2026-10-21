@@ -40,7 +40,7 @@ use Symfony\Component\HttpFoundation\Request;
 /**
  * @method \Pimcore\Model\Document\Service\Dao getDao()
  * @method int[] getTranslations(Document $document, string $task = 'open')
- * @method void addTranslation(Document $document, Document $translation, string $language = null)
+ * @method void addTranslation(Document $document, Document $translation, ?string $language = null)
  * @method void removeTranslation(Document $document)
  * @method int getTranslationSourceId(Document $document)
  * @method void removeTranslationLink(Document $document, Document $targetDocument)

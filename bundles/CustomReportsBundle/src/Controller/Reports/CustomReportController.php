@@ -389,12 +389,12 @@ class CustomReportController extends UserAwareController
         $fp = fopen($exportFile, 'a');
 
         if ($includeHeaders) {
-            fputcsv($fp, $fields, ';');
+            fputcsv($fp, $fields, ';', escape: '\\');
         }
 
         foreach ($result['data'] as $row) {
             $row = Service::escapeCsvRecord($row);
-            fputcsv($fp, array_values($row), ';');
+            fputcsv($fp, array_values($row), ';', escape: '\\');
         }
 
         fclose($fp);
