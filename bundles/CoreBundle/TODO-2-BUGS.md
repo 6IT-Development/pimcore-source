@@ -4,6 +4,9 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 **(2)** `src/DataCollector/**`, `src/PimcoreCoreBundle.php` and related: the compiler passes it registers
 (`src/DependencyInjection/Compiler/*`), `src/DependencyInjection/PimcoreCoreExtension.php`, `config/profiler.yaml`,
 `config/routing_dev.yaml`, `config/services_symfony_workflow.yaml`, `config/cache.yaml`, `templates/Profiler/*`
+**(3)** `src/EventListener/**` (incl. `Traits/`) and related: `config/event_listeners.yaml`,
+`PimcoreCoreExtension.php:230-240` (TranslationDebugListener wiring), and the helpers the listeners depend on
+(`lib/Http/ResponseStack.php`, `lib/Document/Renderer/DocumentRenderer.php`, `lib/Tool/MaintenanceModeHelper.php`, `models/Site.php`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
 
@@ -577,3 +580,353 @@ throw if the target is shared.
 
 **Fix direction:** make the `Version` getters nullable or give them fallbacks and catch `OutOfBoundsException`. Use
 `$this->data[...] ?? null` with nullable return types in the collector. Add `?: '~'` in the template.
+
+---
+
+# Scope 3 – `EventListener` (+ `config/event_listeners.yaml`)
+
+Same rules: IDs continue from B-34 and are stable. Line numbers are from commit `43948f45d7` (code identical to
+`7cb7841b76`). Items are ordered by impact. For the long-running-runtime state leaks see C-08. For the REQUEST
+priority table see the note at the top of Scope 3 in TODO-1.
+
+---
+
+## [ ] B-35 – `ElementListener`: `?v=` / `pimcore_version` load any version without an ownership check; preview has no permission check
+
+**File:** `src/EventListener/Frontend/ElementListener.php:110-132, 134-186, 218-233`
+
+- `handleVersion()` (any visitor): `Version::getById($request->query->getInt('v'))` is used if it is `public`. Nothing
+  checks `getCtype() === 'document'` and `getCid() === $document->getId()`.
+  - A public version of document X is rendered at the URL of document Y (content spoofing).
+  - A public version of an **object or asset**: `getData()` returns a `DataObject` / `Asset`. That violates the
+    `: Document` return type, so **any anonymous visitor can trigger a 500** with `?v=<id>`.
+- `pimcore_version` (backend users) has the same missing cid/ctype check, plus a `TypeError` for non-document versions
+  (`?Document` return type).
+- Any logged-in backend user, **regardless of document permissions**, can see unpublished documents (line 87), version
+  previews, session-stored preview documents and object previews (`pimcore_object_preview`). There is no
+  `$document->isAllowed('view')` / `isAllowed('versions')` and no `$object->isAllowed('view')`.
+
+**Fix direction:** require `$version->getCtype() === 'document' && $version->getCid() === $document->getId()` and
+`getData() instanceof Document`. Otherwise 404. Check `isAllowed('view')` / `isAllowed('versions')` for the user.
+Check the object permission in `handleObjectParams()`.
+
+---
+
+## [ ] B-36 – `FullPageCacheListener` caches and replays `Set-Cookie` headers, ignores `Vary`
+
+**File:** `src/EventListener/Frontend/FullPageCacheListener.php:311-354, 367-390`
+
+- `responseCanBeCached()` only rejects `no-store`, `BinaryFileResponse` and `StreamedResponse`. The whole `Response`
+  object is serialised into the cache, **including any `Set-Cookie` header** the controller set (A/B bucket, CSRF
+  double-submit cookie, consent/tracking IDs). Every later cache hit sends **the first visitor's cookies to everyone**.
+- A `Vary` header (`Accept-Language`, `Accept`, custom) is ignored. The key is host + URI + method + device only
+  (line 258). Content negotiated for one client is served to all.
+- `Cache-Control: private` cannot be used as an opt-out, because Symfony's default for a response without cache
+  headers is `no-cache, private`. This makes `no-store` the only opt-out, and that is not documented.
+
+**Fix direction:** reject responses with `$response->headers->getCookies()` (or strip them before saving). Reject or
+key by `Vary`. Document `no-store` (or a dedicated `X-Pimcore-Output-Cache: off` header) as the opt-out. Do it together
+with the shared "is publicly cacheable" helper from C-09.
+
+---
+
+## [ ] B-37 – `ResponseExceptionListener`: `TypeError` instead of the error page, and handling of sub-request exceptions
+
+**File:** `src/EventListener/ResponseExceptionListener.php:64-131`, related `lib/Document/Renderer/DocumentRenderer.php:77`
+
+- `Document\Page::getById(1)` (line 115) returns `null` when the root is not a `Page`, or for an error-page path that
+  points to a snippet/link. `DocumentRenderer::render(Document\PageSnippet $document)` then throws a **`TypeError`**.
+  `catch (Exception $e)` (line 123) does not catch `Error`, so the original exception is replaced by a `TypeError` and
+  the visitor gets Symfony's generic 500.
+- The fallback text is `'Page not found. 🦄'`, even for status 500 / 403 / 503.
+- **Sub-request exceptions:** Twig `render()` / `render_esi()` go through `FragmentHandler`, which sets
+  `ignore_errors = !kernel.debug`. `InlineFragmentRenderer::render()` (http-kernel 7.4) then dispatches
+  `KernelEvents::EXCEPTION` with the **parent** request and `SUB_REQUEST` type, and **throws the response away**. This
+  listener does not check `isMainRequest()`. In prod, every failing fragment therefore renders a **complete error page
+  document** for nothing and logs the exception (line 100).
+  - If the error page's layout contains the same failing fragment (e.g. a broken footer snippet rendered via
+    `render()`), each nested error-page render triggers another one: **unbounded recursion** until memory or stack is
+    exhausted.
+  - **Verify** with a layout that renders a throwing controller via `{{ render(controller(...)) }}`, in prod mode.
+
+**Fix direction:** `catch (Throwable)`. Check `$document instanceof Document\PageSnippet` before rendering, otherwise
+leave the event alone. Return early for `!$event->isMainRequest()`. Guard against re-entry: return if the request
+already carries the `exception` attribute, or keep a re-entrancy flag. Use a neutral fallback text with the real
+status.
+
+---
+
+## [ ] B-38 – `StaticPageGeneratorListener`: stale static files after move/rename; children of a moved parent are never cleaned up
+
+**File:** `src/EventListener/Frontend/StaticPageGeneratorListener.php:155-175`
+
+- On `POST_UPDATE`, `remove($document)` computes the file path from the document's **new** path. After a rename or
+  move, the old `<old-path>.html` stays in storage, and `onKernelRequest()` (priority 510, before routing) **keeps
+  serving the old content at the old URL** (and the old URL never 404s or redirects).
+- Moving or renaming a parent changes the paths of all descendants, but no event fires for them. All their static
+  files are orphaned and still served.
+- The same applies to site root changes and `Site` main-domain changes.
+
+**Fix direction:** `Document::save()` already puts `oldPath` on the `POST_UPDATE` event when the path changed
+(`models/Document.php:391`). Remove `<oldPath>.html` and the whole `<oldPath>/` prefix in storage, or regenerate.
+
+---
+
+## [ ] B-39 – `MaintenancePageListener`: proxy/IPv6 bypass, crash without sessions, blank page
+
+**File:** `src/EventListener/MaintenancePageListener.php:63-115`, related `lib/Tool/MaintenanceModeHelper.php:59-76`
+
+- Only `127.0.0.1` is exempt (line 109).
+  - `::1` (IPv6 localhost, the default for `localhost` on many systems) gets the 503.
+  - **Behind a reverse proxy without `framework.trusted_proxies`**, `getClientIp()` is the proxy IP. If the proxy runs
+    on the same host (Varnish/nginx → Apache), every client looks like `127.0.0.1` and **maintenance mode never
+    shows**.
+  - Make the list configurable and use `IpUtils::checkIp()`.
+- `$request->getSession()` (line 88) throws `SessionNotFoundException` when `framework.session` is disabled (headless
+  or API-only setups), which makes **every request a 500**. Use `$request->hasSession()`.
+- `getTemplateCode()` is `null` when the resource cannot be located or read, so the page is an empty 503.
+  `locateResource()` throws instead of returning a missing path, which crashes container warm-up/first use. Ship a
+  hard-coded fallback text.
+- No `Retry-After` header. The legacy `maintenance.php` file branch (`include` on every request, `@unlink`) still
+  exists next to the `TmpStore` mechanism.
+- Static pages bypass maintenance mode (C-09). If the admin who enabled maintenance mode loses their session
+  (logout / session id migration on login), only the CLI can turn it off, and that is broken (C-03).
+
+---
+
+## [ ] B-40 – `ContentTemplateListener` diverges from Symfony 7.4 `TemplateAttributeListener`
+
+**File:** `src/EventListener/Frontend/ContentTemplateListener.php:59-108`
+(reference: `symfony/twig-bridge` 7.4 `EventListener/TemplateAttributeListener.php`)
+
+- `#[Template(vars: ['post'])]`: Symfony treats `vars` as a **list of controller argument names** to pass. Here
+  `array_keys($vars)` / `array_merge(..., $vars)` adds the **values** under numeric keys (`0 => 'post'`). The argument
+  is never passed, and integer-keyed junk lands in the template context.
+- `vars: []` ("pass nothing") is not honoured.
+- Symfony uses the controller result **or** (when it is `null`) the resolved arguments. This listener always merges
+  all named controller arguments into the template context, including `Request`, services and the `Document`, **and
+  throws a generic `Exception` on any duplicate key**. The very common
+  `public function x(Request $request, string $slug) { return ['slug' => $slug]; }` therefore ends in a **500**
+  ("Duplicate keys found: slug").
+- `#[Template(block: …)]` (Symfony ≥ 7.2) is ignored, so the whole template is rendered.
+- A `Template` instance in the `_template` request attribute (supported by Symfony) is ignored.
+
+**Fix direction:** reuse Symfony's semantics: `$parameters = $event->getControllerResult() ?? resolveParameters($args,
+$attribute?->vars)`, with `array_intersect_key(..., array_flip($vars))`. Support `block` via
+`$twig->load()->renderBlock()` / `displayBlock()`. Drop the duplicate-key exception.
+
+---
+
+## [ ] B-41 – `RoutingListener` main-domain redirect: redirect loops and lost POST bodies
+
+**File:** `src/EventListener/Frontend/RoutingListener.php:149-195`
+
+- `$gc['domain'] !== $request->getHost()` (line 190) and `$site->getMainDomain() != $request->getHost()` (line 160)
+  compare case-sensitively and without the port. `getHost()` is lower-case and port-less. A configured domain
+  `Example.com`, or `example.com:8080`, never matches, which gives an **endless 301 loop** (cached by browsers).
+- It always answers `301`, also for `POST` / `PUT` (admin context too, line 73). Clients turn those into `GET` and the
+  **request body is lost**. Use `308`, or only redirect safe methods.
+- PSR-3 misuse at line 178: the message is the anonymised IP and the "context" is a list with the actual text, so
+  log lines read like `127.0.0.xxx`. Swap them: `'Host redirect {from} -> {to}', ['ip' => …]`.
+
+---
+
+## [ ] B-42 – `WorkflowManagementListener`: `disable()` has no effect
+
+**Files:** `src/EventListener/WorkflowManagementListener.php:41, 65-102, 136-149`, `config/event_listeners.yaml:75-76`
+
+- The service is made `public: true  # can be disabled`, and it has `enable()` / `disable()` / `isEnabled()`. Neither
+  handler reads `$this->enabled`. Code that disables the listener (e.g. for bulk imports, to skip initial-place
+  marking) still runs workflow marking and still deletes workflow states.
+
+**Fix direction:** `if (!$this->enabled) { return; }` in both handlers. Or remove the flag and the public flag, and
+document the event-dispatcher way of disabling it.
+
+---
+
+## [ ] B-43 – Push/pop listeners lose balance when a sub-request throws (block state, Twig globals, placeholder index)
+
+**Files:** `src/EventListener/Frontend/BlockStateListener.php:52-90`,
+`src/EventListener/Frontend/GlobalTemplateVariablesListener.php:59-92`,
+`src/EventListener/Frontend/DocumentRendererListener.php:43-52` + `lib/Document/Renderer/DocumentRenderer.php:82-137`
+
+- They push on `kernel.request` / `kernel.controller` / `RENDERER_PRE_RENDER` and pop on `kernel.response` /
+  `RENDERER_POST_RENDER`.
+  - `InlineFragmentRenderer` handles sub-requests with `catch = false`. A throwing sub-request therefore gets **no**
+    `kernel.response`.
+  - `DocumentRenderer::render()` dispatches `POST_RENDER` outside any `try/finally`.
+- With `ignore_errors` (prod, B-37) the parent page keeps rendering with:
+  - the **sub-request's block state** still on top of `BlockStateStack`, so block/areablock indices and editable names
+    are wrong;
+  - the sub-request's `document` / `editmode` Twig globals;
+  - the placeholder container index of the failed document, so `headTitle` / `headScript` content goes missing or
+    lands in the wrong place.
+- The static page generator renders many documents in one CLI process, so one failing document corrupts all later
+  ones.
+- `GlobalTemplateVariablesListener` can also pop the **parent's** entry when a sub-request gets a response from a
+  request listener (no controller event, but a response event).
+- `DocumentRenderer::render()` also does not restore `$this->localeService->setLocale($tempLocale)` on exception.
+
+**Fix direction:** pop in `kernel.finish_request`, which Symfony always dispatches, even on exceptions. Or store the
+pushed depth in a request attribute and pop only when it is set. Wrap the render in `DocumentRenderer` in
+`try/finally` for `POST_RENDER` and the locale restore.
+
+---
+
+## [ ] B-44 – `FullPageCacheListener` request side: superglobals, comma-split regexes, unchecked cache item
+
+**File:** `src/EventListener/Frontend/FullPageCacheListener.php:155-169, 189-237, 243-280`
+
+- `$_SERVER['HTTP_CACHE_CONTROL']`, `$_SERVER['HTTP_PRAGMA']`, `$_COOKIE` and `$_REQUEST` are read instead of the
+  `Request`. Sub-requests, `Request::create()` in tests and worker runtimes see the wrong values.
+  - `no-cache` is only honoured on **non-HTTPS** requests ("unfortunately only Chrome + Firefox if not using SSL",
+    line 156, an outdated assumption). A `Cache-Control: no-cache, max-age=0` (the real browser value) never matches
+    `=== 'no-cache'`.
+- `exclude_patterns` is split on `,` (line 190). A regex with a quantifier like `{1,3}` is cut in two.
+  `@preg_match()` (line 232) hides the warning, so an invalid pattern silently **excludes nothing**.
+- Cache hit (lines 271-279): `/** @var Response */` without `instanceof`. A non-`Response` value under that key gives a
+  `TypeError` in `setResponse()`. `strtotime($response->headers->get('X-Pimcore-Cache-Date'))` with a missing header
+  passes `null` (deprecated in PHP 8.1+) and computes `Age` from `false`. A listener on `PREPARE_RESPONSE` can remove
+  that header.
+- Cache key (line 258): host + raw `getRequestUri()`.
+  - The scheme is not part of it, so http and https share entries (mixed-content / wrong absolute URLs).
+  - The query string is not normalised: `?a=1&b=2` and `?b=2&a=1` are different keys.
+  - Any random `?x=<n>` creates a new entry, so anonymous clients can **flood the cache backend**.
+  - Consider an allowlist/ignore list of query parameters (`utm_*`, `gclid`, `fbclid`).
+
+---
+
+## [ ] B-45 – `EditmodeListener`: duplicate script, malformed CSS URL, wrong meta attribute, possible `null` user
+
+**File:** `src/EventListener/Frontend/EditmodeListener.php:139-315`
+
+- `helper.js` is listed twice in `getEditmodeScripts()` (lines 270 and 298). It is loaded/concatenated twice, and all
+  of its global functions and listeners are defined twice.
+- `editmode.css?_dc=` . `time()` (line 311), and then `buildHeadHtml()` appends `?_dc=<revision>` (line 203). The
+  result is `editmode.css?_dc=1700000000?_dc=abc` (malformed), and the stylesheet is never cached.
+- `<meta name="google" value="notranslate">` (line 198) has the wrong attribute (`content=`), so Google Translate is
+  not disabled in editmode.
+- `$user->getLanguage()` (line 166): `$user` comes from `UserLoader::getUser()` and is `null` when editmode is forced
+  (`EditmodeResolver::$forceEditmode`) without a session user. That is an `Error` on `null`.
+- `file_get_contents(PIMCORE_WEB_ROOT . $scriptUrl)` (line 224): bundle editmode JS paths
+  (`getEditmodeJsPaths()`) can be absolute URLs or routes. That gives a warning, `false` concatenated, and a broken
+  minified bundle. It runs on every editmode request.
+- `insertBefore()` hard-codes length `7` (line 185). That only works because both callers pass a 7-character search
+  string. Use `strlen($search)`.
+
+---
+
+## [ ] B-46 – `ResponseStackListener` replaces the response after `#[ResponseHeader]` headers were applied
+
+**Files:** `src/EventListener/ResponseStackListener.php:37, 47-49`, `src/EventListener/ResponseHeaderListener.php:40, 44-58`
+
+- `ResponseHeaderListener` (RESPONSE 32) applies the controller's `#[ResponseHeader]` attributes. Then
+  `ResponseStackListener` (RESPONSE 24) swaps in the areabrick response. **The configured headers are lost**
+  (CSP, cache headers, …).
+- The stack is never popped (C-08).
+
+**Fix direction:** give `ResponseStackListener` a higher priority than `ResponseHeaderListener` (e.g. 40), and pop
+the response.
+
+---
+
+## [ ] B-47 – `ElementTagsListener`: tag cleanup only for assets (orphans for documents/objects; asset tags lost on restore)
+
+**File:** `src/EventListener/ElementTagsListener.php:35-63`, related `bundles/InstallBundle/dump/install.sql:399-406`
+
+- `tags_assignment` has no foreign keys. Only `AssetEvents::POST_DELETE` clears assignments. Deleted **documents and
+  objects leave orphan rows** forever, and nothing else removes them (grep: no other `setTagsForElement` callers).
+- For assets the cleanup happens on delete, so **restoring an asset from the recycle bin loses its tags**. Documents
+  and objects keep them. The behaviour is inconsistent.
+- `onPostCopy()` calls `$e->getArgument('base_element')` without `hasArgument()`. A third-party dispatch of
+  `POST_COPY` without it throws `InvalidArgumentException` inside the copy.
+
+**Fix direction:** decide on one policy. Either clear on delete for all three types and restore tags from the recycle
+bin item, or never clear and add a maintenance task that removes orphans. Use the event's typed getter or
+`hasArgument()`.
+
+---
+
+## [ ] B-48 – `LocaleListener`: `Content-Language` from the last sub-request, set on every response
+
+**File:** `src/EventListener/Frontend/LocaleListener.php:44-82`
+
+- `onKernelRequest()` runs for **all** requests and contexts, including sub-requests and admin. `$lastLocale` is
+  overwritten by each sub-request (a snippet in another language, an `action()` call). The **main** response then
+  gets the sub-request's `Content-Language`.
+- `setlocale(LC_ALL, …)` is process-wide and is not restored after a sub-request finishes, so the rest of the parent
+  page renders with the sub-request's locale.
+- `Content-Language` is added to admin JSON, binary and redirect responses too.
+
+**Fix direction:** read the locale from the main request in `onKernelResponse()`. Restore the parent's locale on
+`kernel.finish_request` for sub-requests. Limit it to the default context and HTML responses.
+
+---
+
+## [ ] B-49 – `EventedControllerListener` ignores invokable and closure controllers
+
+**File:** `src/EventListener/EventedControllerListener.php:40-55`
+
+- `if (!is_array($callable)) return;`: a service controller with `__invoke()` (the Symfony-recommended single-action
+  style) is an **object**, not an array. Its `KernelControllerEventInterface` / `KernelResponseEventInterface` hooks
+  are never called.
+- `_event_controller` stores the whole controller object in the request attributes. The profiler's request collector
+  then clones and dumps it (large dumps, and it pulls in services).
+
+**Fix direction:** `$controller = is_array($callable) ? $callable[0] : (is_object($callable) && !$callable instanceof
+Closure ? $callable : null)`. Keep the object in a private `WeakMap<Request, object>` instead of a request attribute.
+
+---
+
+## [ ] B-50 – `WebDebugToolbarListener`: an empty `excluded_routes` entry disables the toolbar everywhere
+
+**Files:** `src/EventListener/WebDebugToolbarListener.php:69-75`, `lib/Http/RequestMatcherFactory.php:49-70`,
+`src/DependencyInjection/Configuration.php:1200-1211`
+
+- An entry without `path` / `host` / `methods` / `route` builds an **empty** matcher list. `new
+  ChainRequestMatcher([])` matches **every** request, so the toolbar is removed on all pages.
+- The default config ships an `excluded_routes` example `['path' => '^/test/path']` as a **real default**.
+- The loop keeps going after a match and builds a `ChainRequestMatcher` per entry on every request.
+
+**Fix direction:** validate in `Configuration` that an entry has at least one criterion. Drop the sample default.
+Build the chain matchers once and `break` after the first match.
+
+---
+
+## [ ] B-51 – `ResponseInjectionTrait` and HTML filters: `getContent()` can be `false`
+
+**Files:** `src/EventListener/Traits/ResponseInjectionTrait.php:42-55`,
+`src/EventListener/Frontend/InternalWysiwygHtmlAttributeFilterListener.php:67-70`,
+`src/EventListener/Frontend/StaticPageGeneratorListener.php:150-151`
+
+- `Response::getContent()` returns `string|false`. Under `strict_types`:
+  - `injectBeforeHeadEnd()` passes it to `strripos()`, which gives a `TypeError` for a `StreamedResponse`;
+  - `InternalWysiwygHtmlAttributeFilterListener` passes it to `preg_replace()`. It is only protected by
+    `isHtmlResponse()` excluding streamed responses;
+  - `StaticPageGeneratorListener` passes `false` on as page content.
+- Today these are only reachable from custom response classes. Add an explicit `if (!is_string($content)) return;`.
+
+---
+
+## [ ] B-52 – `HardlinkCanonicalListener`: `TypeError` when the hardlink source cannot be loaded
+
+**File:** `src/EventListener/Frontend/HardlinkCanonicalListener.php:85-97`
+
+- `Document::getById($document->getId())` can return `null` (source deleted while the wrapper is still cached, or
+  unpublished with `hideUnpublished`). `Frontend::isDocumentInCurrentSite(Document $document)` then throws a
+  **`TypeError` on every response** for that hardlink.
+
+**Fix direction:** `if (!$source) return;`. Consider `$document->getHardLinkSource()` instead of a second load.
+
+---
+
+## [ ] B-53 – `PimcoreContextListener::initializeContext(string)` receives `?string`
+
+**File:** `src/EventListener/PimcoreContextListener.php:62-75, 83`
+
+- `PimcoreContextResolver::getPimcoreContext()` is declared `?string`. The `else` branch at line 69 is written for
+  `null` and then still calls `initializeContext($context, …)` with a non-nullable `string`.
+- Today the guesser always returns a default, so this is latent: it breaks as soon as a custom resolver returns
+  `null`. PHPStan level ≥ 7 flags it.
+
+**Fix direction:** make the parameter `?string` and treat `null` like the default context, or return early.

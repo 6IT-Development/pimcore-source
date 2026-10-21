@@ -4,6 +4,9 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 **(2)** `src/DataCollector/**`, `src/PimcoreCoreBundle.php` and related: the compiler passes it registers
 (`src/DependencyInjection/Compiler/*`), `src/DependencyInjection/PimcoreCoreExtension.php`, `config/profiler.yaml`,
 `config/routing_dev.yaml`, `config/services_symfony_workflow.yaml`, `config/cache.yaml`, `templates/Profiler/*`
+**(3)** `src/EventListener/**` (incl. `Traits/`) and related: `config/event_listeners.yaml`,
+`PimcoreCoreExtension.php:230-240` (TranslationDebugListener wiring), and the helpers the listeners depend on
+(`lib/Http/ResponseStack.php`, `lib/Document/Renderer/DocumentRenderer.php`, `lib/Tool/MaintenanceModeHelper.php`, `models/Site.php`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md)
 
@@ -569,3 +572,223 @@ leaves out:
   - `WorkflowPass` with two transitions with and without `customHtml` (B-28) and audit trail channel (B-29);
   - `AreabrickPass` with tag + attribute on the same service (B-30);
   - `PimcoreDataCollector` with null version data / after `reset()` (B-34).
+
+---
+
+# Scope 3 – `EventListener` (+ `config/event_listeners.yaml`)
+
+IDs continue from I-42. Line numbers are from commit `43948f45d7` (code identical to `7cb7841b76`). Grouped:
+**J** Symfony 7.4 / configuration, **K** PHP 8.4 / code style, **L** logic / performance, **M** tests.
+
+---
+
+## J – Symfony 7.4 / configuration
+
+### [ ] I-43 – Move listener wiring from YAML to attributes
+
+**File:** `config/event_listeners.yaml`
+
+- `FullPageCacheListener` (lines 114-119): three hand-written `kernel.event_listener` tags. Use
+  `#[AsEventListener(KernelEvents::REQUEST, priority: 120)]` etc. on the methods, or make it a subscriber like the
+  others.
+- `setLogger` calls + `monolog.logger` channel tags (`RoutingListener` → `redirect`, `ElementListener` → `init`,
+  `PimcoreContextListener`, `BlockStateListener`, `ResponseExceptionListener`, `EditmodeListener`): inject
+  `LoggerInterface` in the constructor with `#[WithMonologChannel('redirect')]` (monolog ≥ 3.5, MonologBundle ≥ 3.10)
+  or `#[Autowire(service: 'monolog.logger.redirect')]`, and drop `LoggerAwareTrait`.
+  - `BlockStateListener` implements `LoggerAwareInterface`, so autoconfiguration **already** adds `setLogger`. The YAML
+    call is a duplicate.
+  - `BlockStateListener` and `GlobalTemplateVariablesListener` never use the logger. Remove it.
+- `HardlinkCanonicalListener` (46-48): the explicit `kernel.event_subscriber` tag duplicates autoconfiguration.
+- `ResponseStackListener` (99-101): `$responseStack: '@Pimcore\Http\ResponseStack'` is what autowiring resolves
+  anyway.
+- `MaintenancePageListener` (121-123): the `loadTemplateFromResource` call → constructor argument
+  `#[Autowire('%kernel.project_dir%/…')]`, or a `maintenance_page.template` config option.
+- `WebDebugToolbarListener` (127-130): `#[Autowire(param: 'pimcore.web_profiler.toolbar.excluded_routes')]` and
+  `#[Autowire(service: 'web_profiler.debug_toolbar', onInvalid: …)]`.
+- `Pimcore\Cache\FullPage\SessionStatus` (110-112) is not a listener. Move it to `cache.yaml`.
+- `TranslationDebugListener`: `PimcoreCoreExtension::configureTranslations()` removes the definition when the
+  parameter is empty, so the `empty($this->parameterName)` check in the listener (line 52) is dead.
+
+### [ ] I-44 – Stop pulling listeners out of the container as public services
+
+**Files:** `config/event_listeners.yaml:75-76, 114-115`, `lib/Tool/Frontend.php:103`,
+`models/Document/Editable/Video.php:448`, `models/Document/Editable/Scheduledblock.php:112`
+
+- `FullPageCacheListener` is `public: true` only so that models can call
+  `Pimcore::getContainer()->get(FullPageCacheListener::class)->disable()` / `setLifetime()`.
+- Extract a small `FullPageCacheState` (request-attribute based, see C-08) or a `FullPageCacheControl` service.
+  Inject it where possible, and let the listener read it. The listener can then be private and `final`.
+- `WorkflowManagementListener` `public: true` (see B-42).
+
+### [ ] I-45 – Document and centralise listener priorities; fix stale comments
+
+- Put the priority table (TODO-1 Scope 3 notes) into a `ListenerPriority` constants class, or at least into the
+  class docblocks, with the Symfony listener each one must run before or after.
+- Stale or wrong comments:
+  - `LocaleListener.php:39-40`: "need to be after ElementListener". `ElementListener` listens on `kernel.controller`,
+    not `kernel.request`.
+  - `MaintenancePageListener.php:48`: "run after AdminSessionBagListener" (AdminBundle class, not referenced here).
+    The relevant neighbour is `SessionListener` (128).
+  - `PimcoreContextListener.php:51-52`: "TODO check if this is early enough". Listeners at 512 / 510 / 126 / 120
+    already call the resolver before it, so they rely on guessing.
+  - `DocumentRendererListener.php:25`: the docblock is copied from `BlockStateListener` ("Handles block state…").
+  - `ElementListener.php:149-151, 165, 228`: old TODOs from the Pimcore 4→5 port.
+  - `FullPageCacheListener.php:361-363`: the comment says the `"output"` tag, the code adds `output_inline`.
+  - `RoutingListener.php:87`: "puroposes".
+- `WebDebugToolbarListener::onKernelResponse()` is subscribed to **`kernel.request`** (line 51). Rename it to
+  `onKernelRequest()`.
+
+### [ ] I-46 – Decouple CoreBundle listeners from AdminBundle, StaticRoutesBundle and FOSJsRouting
+
+- `EditmodeListener` hard-codes ~40 `/bundles/pimcoreadmin/...` asset paths and generates
+  `pimcore_admin_misc_scriptproxy`, `pimcore_admin_misc_jsontranslationssystem` and `fos_js_routing_js`. Without
+  AdminBundle / FOSJsRoutingBundle, `RouteNotFoundException` makes every editmode request a 500. Move the asset list
+  and route generation into AdminBundle, behind an interface such as `EditmodeAssetProviderInterface`, and keep only
+  the injection mechanism here.
+- `ElementListener.php:73`: special case for the `fos_js_routing_js` route.
+- `HardlinkCanonicalListener.php:66`: `class_exists(Staticroute::class)` + static `Staticroute::getCurrentRoute()`.
+  Check a request attribute (`_route` / `pimcore_request_source`) instead.
+
+---
+
+## K – PHP 8.4 / code style
+
+### [ ] I-47 – Modernise the listener classes
+
+- `Frontend/ElementListener.php` is the only file without `declare(strict_types=1);`.
+- All listeners are `@internal` but none is `final`. Make them `final` (except where tests or subclasses really need
+  them) and use `private readonly` promoted properties instead of `protected` (`PimcoreContextListener`,
+  `ResponseExceptionListener`, `WebDebugToolbarListener`, `EditmodeListener`, `ElementListener`,
+  `RoutingListener`, …).
+- Add `#[\Override]` to `getSubscribedEvents()`.
+- PHP 8.4 property hooks / asymmetric visibility for flag-style state:
+  - `FullPageCacheListener`: `public private(set) bool $enabled`, `?int $lifetime`; `disable()` / `enable()` always
+    return `true` (useless `bool` return);
+  - `MaintenancePageListener`: `public private(set) ?string $templateCode` (replaces `setTemplateCode` /
+    `getTemplateCode`).
+- `urldecode($request->getPathInfo())` (`RoutingListener:82`, `DocumentFallbackListener:106`,
+  `ResponseExceptionListener:143`, `StaticPageGeneratorListener:96`) decodes `+` to a space. Path segments need
+  `rawurldecode()`.
+- Global constants: `PIMCORE_PROJECT_ROOT` (`MaintenancePageListener:65`), `PIMCORE_PATH` (`LocaleListener:63`) and
+  `PIMCORE_WEB_ROOT` (`EditmodeListener:224`). Inject `%kernel.project_dir%` / a public-dir parameter.
+- `ContentTemplateListener:77`: `interface_exists('Symfony\\Component\\Form\\FormInterface')`. Use
+  `FormInterface::class` (already imported).
+- `ResponseHeaderListener:69`: `$this->responseHeaderResolver::ATTRIBUTE_RESPONSE_HEADER`. Use
+  `ResponseHeaderResolver::ATTRIBUTE_RESPONSE_HEADER`.
+- `StaticPageGeneratorListener`: `$reponse` (line 111). `catch (Exception $e)` at line 169 shadows the
+  `DocumentEvent $e` parameter.
+- `PreviewRequestTrait`: read `$request->headers->get('X-Purpose')` / `Purpose` instead of
+  `$request->server->get('HTTP_…')`.
+- Loose comparisons: `$context == PimcoreContextResolver::CONTEXT_ADMIN` (`PimcoreContextListener:85`),
+  `getStatusCode() == 200` (`FullPageCacheListener:323`), `!=` host compare (`RoutingListener:160`), `in_array()`
+  without `strict` (`MaintenancePageListener:111`, `StaticPageGeneratorListener:182`).
+- `ResponseExceptionListener::determineErrorPath()` has `@throws Exception` and an undefined-then-maybe-set `$locale`
+  variable. Initialise it to `null`.
+
+### [ ] I-48 – Remove dead code
+
+- `Traits/PreviewRequestTrait.php`: no user in the repo.
+- `Traits/ResponseInjectionTrait::injectBeforeHeadEnd()`: no caller. `MaintenancePageListener` uses the trait but none
+  of its methods. Remove the `use`.
+- `WorkflowManagementListener::enrichNotes()` and `::extractElementFromEvent()` (lines 104-134): private and never
+  called (left over from the AdminBundle split). Also the unused imports `Exception`, `GenericEvent`, `DataObject`.
+- `PimcoreContextListener`: the constructor argument `$requestStack` is unused. The `else` log branch (69-73) is dead
+  because the guesser always returns a default.
+- `Traits/StaticPageContextAwareTrait`: inconsistent with `PimcoreContextAwareTrait`. It has a nullable property but
+  no null guard, so it fails with `Error` instead of a clear message when not wired. Pick one style; a
+  `#[Required]` setter with a non-nullable property is enough. Also remove the empty docblock lines 38-41.
+- `EditmodeListener::onKernelRequest()` (72-87): "TODO is this needed?". It warms the resolver cache and can go if
+  nothing relies on the side effect.
+
+---
+
+## L – Logic / performance
+
+### [ ] I-49 – Work done on every request
+
+- `MaintenancePageListener` (REQUEST 126, **before** the full page cache):
+  - `MaintenanceModeHelper::isActive()` connects to the DB and queries `TmpStore`;
+  - it also `stat`s / `include`s the legacy `maintenance.php`;
+  - so even a full-page-cache hit costs a DB round-trip.
+  - Fix: cache the flag in `cache.app` / an APCu key with a short TTL, invalidated by `activate()` / `deactivate()`,
+    or switch to a file flag that is checked first.
+- `StaticPageGeneratorListener::onKernelRequest()`:
+  - one `fileExists()` on the `document_static` Flysystem storage (possibly S3) for **every** GET HTML request when
+    the router is enabled;
+  - there is no Pimcore-context check, so admin paths are probed too;
+  - `@preg_match` hides invalid `route_pattern`s.
+- `InternalWysiwygHtmlAttributeFilterListener`:
+  - runs a `preg_replace()` over the **complete HTML** of every frontend response to strip
+    `pimcore_id/type/disable_thumbnail`;
+  - the WYSIWYG editable could strip them at render time instead;
+  - `isHtmlResponse()` itself does a `str_contains($content, '<html')` scan.
+- `EditmodeListener` reads and concatenates ~35 JS files from disk on **every** editmode request (line 224) just to
+  compute the minimised-script path. Compute it once per revision (cache key `Version::getRevision()`).
+- `LocaleListener` `include`s the CLDR territory mapping file on every locale change (line 63). Load it once (static
+  property or compiled PHP constant).
+
+### [ ] I-50 – `FullPageCacheListener` structure
+
+- `onKernelRequest()` is a 160-line method of `disable(); return;` blocks. Split it into `getDisableReason(Request):
+  ?string` (pure) plus key building plus lookup. That makes the rules testable and keeps the reason in one place.
+- Expire headers: `$response->setPublic(); $response->setMaxAge($lifetime); $response->setExpires(new
+  DateTimeImmutable("+{$lifetime} seconds"));` instead of building headers by hand (lines 325-333).
+- Parse `exclude_patterns` / `exclude_cookie` once. Better: make them proper `array` config nodes validated at compile
+  time (B-44).
+- `Logger::error()` static calls → injected logger.
+- Return early instead of `if ($conf = $this->config['full_page_cache']) { … } else { disable }` (lines 172-222).
+
+### [ ] I-51 – `ResponseExceptionListener` logic
+
+- It mixes `$this->siteResolver->isSiteRequest($request)` (line 140) with static `Site::isSiteRequest()` /
+  `Site::getCurrentSite()` (163-167). Use the resolver throughout. This also removes a C-08 dependency.
+- Locale fallback: `$request->getLanguages()` yields `de_AT`, `en_US`. A config keyed by `de` / `en` never matches,
+  so add a primary-language fallback (`Locale::getPrimaryLanguage()`).
+- Logging: non-HTTP exceptions are logged with `(string)$exception` as the message (no context, no channel). Use
+  `$this->logger->error($e->getMessage(), ['exception' => $e])`. Symfony's `ErrorListener::logKernelException`
+  (also priority 0) logs the same exception, so check for duplicates.
+- Consider rendering error pages in debug mode too when `?pimcore_show_error_page=1` is set, to make them testable.
+
+### [ ] I-52 – Messenger / console workers: reset all static frontend state, flush translation entries
+
+**Files:** `src/EventListener/MessengerClearRuntimeCacheListener.php`, `src/EventListener/DumpTranslationEntriesListener.php`
+
+- On `WorkerMessageReceivedEvent`, only `RuntimeCache::clear()` runs. Static flags set by one handler stay set for
+  the next message:
+  - `Pimcore::setAdminMode()`;
+  - `Document::setHideUnpublished()` / `DataObject::setHideUnpublished()`;
+  - `DataObject::setGetInheritedValues()`, `Localizedfield::setGetFallbackValues()`;
+  - `Site::$currentSite`.
+  Reset them to the CLI defaults, or use `kernel.reset` (C-08), which Messenger already triggers between messages via
+  `ResetServicesListener`.
+- `DumpTranslationEntriesListener` only dumps on `kernel.terminate` / `console.terminate`. A Messenger worker that
+  runs for hours keeps collecting missing-translation entries in memory and writes them only on exit (or never, if it
+  is killed). Also dump on `WorkerMessageHandledEvent`, or every N messages.
+
+### [ ] I-53 – Response headers
+
+- `PimcoreHeaderListener`: `X-Powered-By: pimcore` on every main response reveals the platform. Make it configurable
+  (default off) or remove it.
+- `EditmodeListener:122`: `X-Frame-Options: SAMEORIGIN` is legacy. Also set `Content-Security-Policy:
+  frame-ancestors 'self'` (merge with an existing CSP).
+- `MaintenancePageListener`: add `Retry-After` and `Cache-Control: no-store` to the 503.
+- `StaticPageGeneratorListener`: serve with `Last-Modified` (it already has the timestamp) and an `ETag`, and answer
+  `304` via `$response->isNotModified($request)`. Today it uses the custom `X-Pimcore-Static-Page-Last-Modified`.
+
+---
+
+## M – Tests
+
+### [ ] I-54 – Tests for listeners
+
+There are no tests for `src/EventListener`. Minimum set:
+- **Two-requests-one-kernel** functional test (C-08): FPC hit followed by a POST and a miss; an areabrick response
+  followed by a normal page; a site host followed by the main host.
+- `StaticPageGeneratorListener`: 500 / session / `Set-Cookie` responses must not be written (C-09); rename must remove
+  the old file (B-38).
+- `RoutingListener`: `/app.php/%5Cexample.com` must not redirect off-site (C-10); mixed-case domain must not loop
+  (B-41).
+- `ElementListener`: `?v=` with a foreign / object version gives 404 (B-35).
+- `FullPageCacheListener::responseCanBeCached()` with `Set-Cookie` / `Vary` (B-36).
+- `ContentTemplateListener` with `vars`, `block`, `null` result and a duplicate argument/result key (B-40).
+- `ResponseExceptionListener` with a non-`Page` root and a failing fragment in the error page layout (B-37).

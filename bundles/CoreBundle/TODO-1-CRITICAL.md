@@ -4,12 +4,17 @@ Scope: **(1)** `bundles/CoreBundle/src/Command/**`, `bundles/CoreBundle/config/c
 **(2)** `src/DataCollector/**`, `src/PimcoreCoreBundle.php` and related: the compiler passes it registers
 (`src/DependencyInjection/Compiler/*`), `src/DependencyInjection/PimcoreCoreExtension.php`, `config/profiler.yaml`,
 `config/routing_dev.yaml`, `config/services_symfony_workflow.yaml`, `config/cache.yaml`, `templates/Profiler/*`
+**(3)** `src/EventListener/**` (incl. `Traits/`) and related: `config/event_listeners.yaml`,
+`PimcoreCoreExtension.php:230-240` (TranslationDebugListener wiring), and the helpers the listeners depend on
+(`lib/Http/ResponseStack.php`, `lib/Document/Renderer/DocumentRenderer.php`, `lib/Tool/MaintenanceModeHelper.php`, `models/Site.php`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
 
 These items cause **data loss or corruption, SQL injection, a command that cannot do its one job, or wrong exit codes
-that hide failures from cron/CI**.
-IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `7cb7841b76`.
+that hide failures from cron/CI**, and in Scope 3 **content leaking between visitors, access-control/maintenance
+bypass and an open redirect**.
+IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `7cb7841b76` (Scope 3:
+`43948f45d7`, same code).
 
 > Notes
 > - No hard Symfony 7.4 / PHP 8.4 incompatibility was found in the commands. None of them override the deprecated
@@ -201,3 +206,147 @@ foreach ($container->findTaggedServiceIds('cache.pool') as $id => $arguments) {
 - Alternatively, rebuild each child as `ProxyAdapter(pimcore.cache.pool, <pool namespace>, <default_lifetime>)`.
 - Add a ContainerBuilder unit test for both pools (I-42).
 - Also fix B-32 (alias check) in the same pass.
+
+---
+
+# Scope 3 – `EventListener` (+ `config/event_listeners.yaml`)
+
+> Notes
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found. Every listener uses the 7.x event classes
+>   (`RequestEvent`, `ResponseEvent`, `ControllerEvent`, `ViewEvent::$controllerArgumentsEvent`, …), `isMainRequest()`
+>   and typed class constants. There is no `implicit nullable` parameter (deprecated in 8.4). The only file without
+>   `declare(strict_types=1)` is `Frontend/ElementListener.php` (I-47).
+> - Line numbers are from commit `43948f45d7`. The scanned code is identical to `7cb7841b76`.
+> - Symfony behaviour was checked against a `symfony/http-kernel` / `twig-bridge` **v7.4.21** vendor tree. It was not
+>   run against a live app. Each item says what to check.
+> - **Long-running runtimes:** `composer.json` requires `symfony/runtime ^7.4`, so the app can run under
+>   FrankenPHP worker mode, RoadRunner or Swoole. There, one kernel and its services handle many requests. **No service
+>   in this scope implements `ResetInterface` or carries a `kernel.reset` tag** (grep: no `kernel.reset` in the repo).
+>   C-08 lists what breaks. Under classic PHP-FPM / mod_php these items are harmless.
+> - Request listener order (REQUEST priority, high → low; Symfony core in *italics*): `RoutingListener` 512,
+>   `StaticPageGeneratorListener` 510, *SessionListener 128*, `MaintenancePageListener` 126, `FullPageCacheListener` 120,
+>   *RouterListener 32*, `PimcoreContextListener` 24, `DocumentFallbackListener` 20, *LocaleListener 16*,
+>   *Firewall 8*, `LocaleListener` 1, `EditmodeListener` / `BlockStateListener` / `TranslationDebugListener` /
+>   `OutputTimestampListener` 0, `WebDebugToolbarListener` -118. Several items come from this order (C-09, B-39; RESPONSE order: B-46).
+
+---
+
+## [ ] C-08 – Request state lives on shared services and is never reset (worker runtimes: stale responses, broken sessions, disabled cache)
+
+**Files:**
+- `src/EventListener/Frontend/FullPageCacheListener.php:50-60, 70-91, 279, 283-288`
+- `src/EventListener/ResponseStackListener.php:41-50` + `lib/Http/ResponseStack.php:58-74`
+- `src/EventListener/WebDebugToolbarListener.php:87-92`
+- `src/EventListener/TranslationDebugListener.php:56-60`
+- `src/EventListener/Frontend/RoutingListener.php:121` + `models/Site.php:166-193` (no way to unset `$currentSite`)
+- `src/EventListener/Frontend/DocumentFallbackListener.php:48, 111, 145-153`
+- `src/EventListener/Frontend/GlobalTemplateVariablesListener.php:41, 71-73`
+- `src/EventListener/Frontend/LocaleListener.php:34, 50-51, 78-80`
+
+What breaks when one worker process serves many requests:
+- **`ResponseStack` is never emptied.** `getLastResponse()` reads with `end()` and does not pop. After an areabrick
+  `action()` pushes one response (e.g. a redirect after a form post), `ResponseStackListener` **replaces the response of
+  every later main request** in that worker with it. Every visitor then gets the same redirect or another user's
+  page.
+- **`FullPageCacheListener`:**
+  - `$stopResponsePropagation` is set to `true` on the first cache hit and never cleared. From then on,
+    `stopPropagationCheck()` (RESPONSE priority 100) stops **every** later response before priority 100. Symfony's
+    `SessionListener` (-1000) and the security `ContextListener` then never run. The session is not saved and no session
+    cookie is sent, so **frontend logins and flash messages silently stop working**. Editmode injection, the
+    `ResponseHeader` attribute, `Content-Language` and the cache save itself are skipped as well.
+  - `$enabled` is cleared by `disable()` (any POST, `Authorization` header, cookie, session …). `onKernelRequest()`
+    returns at once when `!$this->isEnabled()` (line 120), so after one POST **the full page cache is off for the rest
+    of the worker's life**.
+  - `$defaultCacheKey`, `$lifetime`, `$disableReason` and `$addExpireHeader` leak too. A request that returns before
+    line 258 (e.g. `pimcore_outputfilters_disabled` in debug mode) is saved under the **previous request's key**:
+    cache poisoning.
+- **`WebDebugToolbarListener`** calls `$eventDispatcher->removeSubscriber()` and never adds it back, so the toolbar is
+  gone for all later requests (dev only).
+- **`TranslationDebugListener`** calls `Translator::setDisableTranslations(true)` on the shared translator. One
+  `?pimcore_debug_translations=1` request in debug mode, or from a logged-in admin, **disables translations for every
+  later visitor** in that worker.
+- **`Site::$currentSite`** is static and is only ever set. A request to the main domain after a request to a site host
+  still sees `Site::isSiteRequest() === true`, which gives a wrong site root, wrong main-domain redirect
+  (`RoutingListener::handleMainDomainRedirect()`), wrong error page and wrong static-page path.
+- `DocumentFallbackListener::$fallbackDocument` is only cleared when the controller event is reached. A main request
+  that ends earlier (exception, response from a request listener, `PublicServicesController` early return at line 147)
+  leaves it set for the next request. `GlobalTemplateVariablesListener` leaves the Twig `document` / `editmode` globals
+  of the last request in place. `LocaleListener::$lastLocale` skips `setlocale()` and is used for `Content-Language`.
+
+**Verify:** run two requests through one kernel (`$kernel->handle()` twice, or FrankenPHP worker): first an areabrick
+form post or a full page cache hit, then a plain page. Expected: independent responses. Actual (per code): the second
+gets the stale response / no session cookie.
+
+**Fix direction:**
+- Prefer **request attributes** over service properties for per-request state: the fallback document, FPC
+  enabled/key/reason/stop flag, last locale.
+- Where state must stay on the service, implement `Symfony\Contracts\Service\ResetInterface` and let autoconfiguration
+  add `kernel.reset` (`FullPageCacheListener`, `ResponseStack`, `GlobalTemplateVariablesListener`, `LocaleListener`,
+  `DocumentFallbackListener`).
+- `ResponseStackListener`: `pop()` the response it sends.
+- `WebDebugToolbarListener`: do not remove the subscriber. Use the public
+  `SymfonyWebDebugToolbarListener::setMode(DISABLED)` and restore the previous mode on `kernel.finish_request` /
+  `reset()`.
+- Add `Site::resetCurrentSite()` and call it at the start of `RoutingListener::onKernelRequest()`.
+- `TranslationDebugListener`: reset the flag on `kernel.finish_request` / reset.
+- Add a functional test that sends two requests through one kernel (I-54).
+
+---
+
+## [ ] C-09 – `StaticPageGeneratorListener` persists any response as a public static file and serves it ahead of maintenance mode and the firewall
+
+**Files:** `src/EventListener/Frontend/StaticPageGeneratorListener.php:66-67, 71-123, 125-153, 177-187`
+
+Writing (`onKernelResponse`, RESPONSE -120): the first dynamic render of a page with "static generator enabled" is
+written to `document_static` storage. There is **no check of the response itself**:
+- **No status check.** If the controller throws, `ResponseExceptionListener` renders the error page into the response
+  (status 404/500), and the document attribute still points to the requested page. **The error page is saved as that
+  page's static file** and then served with status **200** to everybody until the document is saved again.
+- **No session / user / cookie / `no-store` check** (compare `FullPageCacheListener::responseCanBeCached()` +
+  `SessionStatus`). Content for the current visitor is written into the shared file: logged-in frontend user name,
+  CSRF tokens, flash messages, `Set-Cookie`. A logged-in admin's
+  `?pimcore_override_output_timestamp=<future>` (`OutputTimestampListener`) is not caught by `checkValidRequest()`
+  either, so **future/unpublished scheduled content is frozen into the public file**.
+- `getContent()` of a `StreamedResponse` is `false` and is passed on as the page content.
+
+Serving (`onKernelRequest`, REQUEST **510**):
+- It runs **before** `SessionListener` (128), `MaintenancePageListener` (126) and the security firewall (8).
+  - Static pages are served **while maintenance mode is on**.
+  - **`access_control` rules on those paths are bypassed.** A page that was generated while a user was logged in
+    (see above) is served to anonymous visitors.
+- It does not check the Pimcore context (only `checkValidRequest()`).
+
+**Fix direction:**
+- When writing, only accept `200`, no `Set-Cookie`, no `no-store`/`private` set by the app, no started session with
+  data (reuse `SessionStatus::isDisabledBySession()`), no authenticated user, and no output timestamp override. Put
+  these checks in a shared "is publicly cacheable" helper used by FPC and the static generator.
+- When serving, run after the firewall and maintenance listener (priority < 8), or at least after
+  `MaintenancePageListener`. Document that static pages must not sit behind `access_control`.
+- Add tests (I-54).
+
+---
+
+## [ ] C-10 – `RoutingListener` legacy `/app.php` redirect is an open redirect
+
+**File:** `src/EventListener/Frontend/RoutingListener.php:82, 130-143`
+
+```php
+if (preg_match('@^/app\.php(.*)@', $path, $matches) && $request->getMethod() === 'GET') {
+    $redirectUrl = '/' . ltrim($matches[1], '/');
+    $event->setResponse(new RedirectResponse($redirectUrl, 301));
+```
+
+- `$path` is `urldecode($request->getPathInfo())`. `GET /app.php/%5Cevil.example` becomes `/app.php/\evil.example`,
+  which redirects to `Location: /\evil.example`. Browsers (WHATWG URL parser) treat `\` as `/` for http(s), so this is
+  `//evil.example`, an **off-site redirect from your domain** (phishing, OAuth `redirect_uri` chains). Tab/newline
+  variants (`%09`) work the same way, because `ltrim` only strips `/`.
+- The redirect is `301`, so browsers and proxies cache it.
+- `app.php` is the Symfony ≤3 front controller and has no meaning in a Symfony 7.4 app.
+
+**Verify:** whether the web server forwards `/app.php/...` to `index.php`. Apache with the usual
+`RewriteCond %{REQUEST_FILENAME} !-f` does. The recommended nginx config (`location ~ \.php$ { return 404; }`) does
+not. `curl -sI 'https://host/app.php/%5Cexample.com'`.
+
+**Fix direction:** remove `handleFrontControllerRedirect()`. If it must stay: build the target from
+`$request->getBaseUrl()` + a path that is normalised and checked to start with exactly one `/` and contain no `\`, tab
+or newline. Use 308/302.
