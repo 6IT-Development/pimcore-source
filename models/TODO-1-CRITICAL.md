@@ -140,6 +140,13 @@ direct consumers where a defect originates in the model interplay (`lib/Document
 `bundles/CoreBundle/src/EventListener/Frontend/StaticPageGeneratorListener.php`,
 `lib/Routing/Dynamic/DocumentRouteHandler.php::buildRouteForDocument()` (`:158-188`),
 `lib/Navigation/Builder.php::buildNextLevel()` (`:346-420`), `lib/Twig/Extension/PimcoreObjectExtension.php:48`)
+**(23)** the not yet processed files of `models/DataObject/Traits/**` (`ClassSavedTrait`, `CompositeIndexTrait`,
+`ContextPersistenceTrait`, `DataHeightTrait`, `ElementWithMetadataComparisonTrait`, `FieldDefinitionEnrichmentDataTrait`,
+`FieldDefinitionEnrichmentModelTrait`; the other nine traits are already named by earlier items and are skipped), plus
+the direct consumers where a defect originates in the model interplay (`ClassDefinition.php::save()` /
+`setCompositeIndices()`, `ClassDefinition/Dao.php::update()`, `Localizedfield/Dao.php::createUpdateTable()`,
+`ClassDefinition/Data/Relations/AbstractRelations.php`, `ClassDefinition/Data/{Block,Localizedfields}.php`,
+`DynamicOptionsProvider/SelectionProviderTrait.php`, `Concrete/Dao.php::getData()`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -176,14 +183,15 @@ missing)**, and in Scope 19 **object-brick rows addressed by object id only (two
 object-brick columns for shadowed definitions** and **PHP code injection / broken enums through select-option
 values**, and in Scope 22 **hardlinked pages written into the static-page storage: the hardlink URL is frozen
 (served after source changes, unpublish or delete) and the source's pretty URL is overwritten with the hardlink's
-rendering**.
+rendering**, and in Scope 23 **SQL injection through composite-index definitions** and **localized relations of
+one brick type deleted or taken over when another brick type with the same field name is saved**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -2282,3 +2290,109 @@ either. If hardlink static pages are wanted, make it an explicit hardlink option
 hardlink path, never the source pretty URL) and invalidate those files on source save, hardlink save and delete. Add a
 one-off cleanup (or documentation) for existing `<hardlink path>.html` files and pretty-URL files written by wrappers.
 Tests in I-191.
+
+---
+
+# Scope 23 – DataObject `Traits/**` files not yet named by an item (`ClassSaved`, `CompositeIndex`, `ContextPersistence`, `DataHeight`, `ElementWithMetadataComparison`, `FieldDefinitionEnrichmentData`, `FieldDefinitionEnrichmentModel`)
+
+> Notes
+> - Scanned (read in full): `DataObject/Traits/ClassSavedTrait.php`, `CompositeIndexTrait.php`,
+>   `ContextPersistenceTrait.php`, `DataHeightTrait.php`, `ElementWithMetadataComparisonTrait.php`,
+>   `FieldDefinitionEnrichmentDataTrait.php`, `FieldDefinitionEnrichmentModelTrait.php` (624 lines).
+> - Skipped because earlier items already name them (a class already in the TODOs is not processed again):
+>   `DataWidthTrait` (I-156), `DefaultValueTrait` (B-297), `FieldcollectionObjectbrickDefinitionTrait` (Scope 19 notes,
+>   B-278, I-136), `LazyLoadedRelationTrait` (C-44), `LocateFileTrait` (C-45, B-255), `ObjectVarTrait` (B-311, I-163,
+>   I-169), `OwnerAwareFieldTrait` (B-301, I-169), `SimpleComparisonTrait` (B-266), `SimpleNormalizerTrait` (C-43).
+>   `DataWidthTrait` is only mentioned as the twin of `DataHeightTrait` in I-196.
+> - Not repeated: `DataContainerAwareInterface::preSave/postSave(mixed)` narrowing and the
+>   `FieldDefinitionEnrichmentModelInterface` / `suppressEnrichment()` interface gaps (I-160); DDL through
+>   `executeQuery()` → `executeStatement()` (I-76); identifier validation of class ids / field names (C-32); brick index
+>   drop / re-create (B-326); unescaped `ownername LIKE` in `Localizedfield\Dao` (B-179); brick metadata deletes without
+>   `ownername` (B-324) and the brick-row addressing (C-54).
+> - Collaborators read where a defect originates in the interplay: `ClassDefinition.php::save()` (`:330-410`),
+>   `setCompositeIndices()` (`:1111-1125`), `doEnrichFieldDefinition()` (`:690-698`), `cleanupForExport()`,
+>   `generateClassFiles()`; `ClassDefinition/Dao.php:196-216`; `ClassDefinition/Service.php:98-150`
+>   (JSON import); `Localizedfield/Dao.php:160-190`, `:640-665`, `:925-952`; `Localizedfield.php:535-546`;
+>   `Concrete.php::retrieveRelationData()` (`:770-803`); `Concrete/Dao.php:133-150`;
+>   `ClassDefinition/Data/Relations/AbstractRelations.php:110-330`; `ClassDefinition/Data/{Block,Localizedfields,
+>   Fieldcollections,Objectbricks,Select,Multiselect,AdvancedManyToMany(Object)Relation}.php`;
+>   `DynamicOptionsProvider/SelectionProviderTrait.php`; `Data/ElementMetadata.php`, `Data/ObjectMetadata.php`;
+>   `Objectbrick/Data/Dao.php:70-100`; `Fieldcollection/Definition/Dao.php`, `Objectbrick/Definition/Dao.php`;
+>   `doc/05_Objects/01_Object_Classes/05_Class_Settings/05_Composite_Indices.md`,
+>   `doc/05_Objects/01_Object_Classes/01_Data_Types/30_Dynamic_Select_Types.md`.
+> - No Symfony 7.4 / PHP 8.4 incompatibility: all seven files have `declare(strict_types=1)`, no implicit nullable
+>   parameter, no removed API; `composer.json` pins `doctrine/dbal ^3.8`, so `quoteIdentifier()` /
+>   `fetchAllAssociative()` are fine. PHP 8.4 options (property hooks, `#[\Override]`) are in TODO-3.
+> - The admin UI (`pimcore/admin-ui-classic-bundle`), which builds the composite-index and class-definition JSON and
+>   calls the enrichment in the editor, is not in this repo; what it validates or sends was **not verified**.
+>   Nothing was executed.
+> - Critical items: C-58, C-59. Bugs: B-343–B-347. Improvements: I-192–I-198.
+
+## [ ] C-58 – Composite-index definitions go unescaped into `ALTER TABLE`: SQL injection through the class definition (C-32 for composite indices)
+
+**Files:** `models/DataObject/Traits/CompositeIndexTrait.php:34-90` (`:63`, `:81`, `:87`);
+`models/DataObject/ClassDefinition.php:1111-1125` (`setCompositeIndices()`, no validation);
+`models/DataObject/ClassDefinition/Dao.php:215-216`; `models/DataObject/Localizedfield/Dao.php:944`, `:950`;
+`models/DataObject/ClassDefinition/Service.php:120-147` (`compositeIndices` in the JSON import)
+
+```php
+$newIndicesMap['c_' . $key] = implode(',', $columns);                    // index_key / index_columns: raw config
+$this->db->executeQuery('ALTER TABLE `' . $table . '` DROP INDEX `' . $key . '`;');
+$this->db->executeQuery('ALTER TABLE `' . $table . '` ADD INDEX `' . $key . '` (' . $columnName . ');');
+```
+
+- `index_columns` are joined with `,` and placed **unquoted** inside the parentheses; `index_key` is placed inside
+  hand-written backticks without escaping. Neither is validated anywhere in the model (`setCompositeIndices()` only
+  maps many-to-one fields to `__id` / `__type`).
+- A column entry such as `oo_id), DROP COLUMN \`name\`, ADD INDEX c_y (oo_id` stays inside one `ALTER TABLE` statement,
+  so it works even without stacked statements: columns of the store / query / localized tables are dropped (data
+  loss) or changed on the next class save. With `pdo_mysql`'s default multi-statement support, `; …` after the list
+  runs arbitrary SQL (users, password hashes, other tables). Not executed.
+- Who can do it: everyone with the `classes` permission and every class-definition import
+  (`pimcore:definition:import:class`, admin JSON import via `Service::importClassDefinitionFromJson()`). An imported
+  third-party / shared class export is enough. C-32 lists class names, ids and field names, not composite indices.
+- The same SQL runs on every `classes-rebuild` from the definition file, so a once-saved payload is re-applied on
+  every deployment.
+
+**Fix direction:** validate in `setCompositeIndices()` and again in `save()`: `index_key` `^[A-Za-z0-9_]{1,62}$`,
+`index_type` in `store|query|localized_store|localized_query`, `index_columns` a non-empty list of names that are real
+columns of the target table (field names of the class plus `oo_id` / `ooo_id` / `language` …, after the
+`__id` / `__type` mapping). In the trait quote every identifier with `quoteIdentifier()` and build one statement per
+table (I-192). Robustness gaps without malice are B-347. Tests in I-198.
+
+## [ ] C-59 – Localized relation fields inside object bricks: the current-relations and load filters ignore the brick type, so saving one brick type deletes or takes over the relations of another
+
+**Files:** `models/DataObject/Traits/ContextPersistenceTrait.php:46-73` (`:55`), `:112-121` (`:119-120`);
+`models/DataObject/ClassDefinition/Data/Relations/AbstractRelations.php:132`, `:195-226`, `:285-287`,
+`:303-312` (`:310`); `models/DataObject/Concrete.php:770-803`; context set in
+`models/DataObject/Objectbrick/Data/Dao.php:76-97` and `Localizedfield/Dao.php:166-186`
+
+```php
+// write side (enrichDataRow): one ownername per brick type
+$row['ownername'] = '/objectbrick~' . $fieldname . '/' . $containerKey . '/localizedfield~localizedfield';
+// read side (prepareMyCurrentRelations) and AbstractRelations::load(): no brick type
+$filter = '/' . $context['containerType'] . '~' . $fieldname . '/%';   // prefix "/objectbrick~bricks/"
+```
+
+Setup: an `Objectbricks` field `bricks` allows brick types `A` and `B`; both have a `localizedfields` block with a
+relation field of the same name (`parts`; a common pattern for shared names like `relatedDocuments`). An object has
+`A.parts[en] = [X]` and `B.parts[en] = [Y]`.
+
+- `retrieveRelationData()` treats a trailing `%` as a prefix match (`str_starts_with`). The prefix
+  `/objectbrick~bricks/` matches the rows of **every** brick type in that field (`.../A/localizedfield~…` and
+  `.../B/localizedfield~…`).
+- **Load:** `AbstractRelations::load()` uses the same filter → `A.parts[en]` and `B.parts[en]` both load as `[X, Y]`.
+  The editor and the API show the other brick's relations.
+- **Save of `A` (language dirty):** current = `{X(A), Y(B)}` (`prepareMyCurrentRelations()`), new = `{X(A), Y(A)}`
+  (the loaded union, re-written with `A`'s ownername by `enrichDataRow()`). `Y(A)` is inserted as new, `Y(B)` does not
+  match any new row (ownername differs) → it is in `removedRelations` and **deleted by id** (`:285-287`). `B` has lost
+  its relation; after the next save of `B` the two lists are permanently merged into whichever brick saved last.
+- Even a save that changes nothing in `A` deletes `B`'s rows as soon as the language is dirty. Field collections are
+  not affected (their filter contains the item index, and they are re-inserted in full).
+
+**Fix direction:** build the brick filter from the same parts as the write side:
+`'/objectbrick~' . $fieldname . '/' . $context['containerKey'] . '/localizedfield~'` (prefix), in the trait **and** in
+`AbstractRelations::load()`, through one shared ownername builder (I-193) so read, load and write can never drift
+again. Data repair: for each object with two brick types sharing a localized relation name, compare
+`object_relations_<classId>` rows per ownername with the version history; document it in the upgrade notes. Tests in
+I-198.

@@ -139,6 +139,13 @@ direct consumers where a defect originates in the model interplay (`lib/Document
 `bundles/CoreBundle/src/EventListener/Frontend/StaticPageGeneratorListener.php`,
 `lib/Routing/Dynamic/DocumentRouteHandler.php::buildRouteForDocument()` (`:158-188`),
 `lib/Navigation/Builder.php::buildNextLevel()` (`:346-420`), `lib/Twig/Extension/PimcoreObjectExtension.php:48`)
+**(23)** the not yet processed files of `models/DataObject/Traits/**` (`ClassSavedTrait`, `CompositeIndexTrait`,
+`ContextPersistenceTrait`, `DataHeightTrait`, `ElementWithMetadataComparisonTrait`, `FieldDefinitionEnrichmentDataTrait`,
+`FieldDefinitionEnrichmentModelTrait`; the other nine traits are already named by earlier items and are skipped), plus
+the direct consumers where a defect originates in the model interplay (`ClassDefinition.php::save()` /
+`setCompositeIndices()`, `ClassDefinition/Dao.php::update()`, `Localizedfield/Dao.php::createUpdateTable()`,
+`ClassDefinition/Data/Relations/AbstractRelations.php`, `ClassDefinition/Data/{Block,Localizedfields}.php`,
+`DynamicOptionsProvider/SelectionProviderTrait.php`, `Concrete/Dao.php::getData()`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -151,7 +158,7 @@ Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -166,7 +173,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **Object bricks** B-324–B-330, **Select options** B-331–B-333,
 **Document `Email` / `Snippet` / `Folder`** B-334–B-337,
 **Document translation links** B-338–B-340,
-**Document hardlink wrappers** B-341–B-342.
+**Document hardlink wrappers** B-341–B-342,
+**DataObject traits** B-343–B-347.
 
 ---
 
@@ -5691,3 +5699,194 @@ set it inside `wrap()` instead of in every caller. Alternatively make the proper
 interface `getHardLinkSource(): ?Document\Hardlink`, and let the trait methods fall back to the plain document
 behaviour. Point the Twig function at a small wrapper that only accepts `Document\Hardlink` (or returns the
 argument unchanged for other documents) and document that.
+
+---
+
+# Scope 23 – DataObject `Traits/**` files not yet named by an item (`ClassSaved`, `CompositeIndex`, `ContextPersistence`, `DataHeight`, `ElementWithMetadataComparison`, `FieldDefinitionEnrichmentData`, `FieldDefinitionEnrichmentModel`)
+
+> Notes
+> - Scanned and skipped files, and the earlier items that are not repeated (I-76, I-160, C-32, C-54, B-179, B-324,
+>   B-326), are listed in the Scope 23 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-58, C-59).
+> - `DataHeightTrait` has no bug of its own (only I-196). `ContextPersistenceTrait`'s data-loss defect is C-59; its
+>   remaining points are in I-193.
+
+## DataObject traits (Scope 23)
+
+## [ ] B-343 – `Block::classSaved()` (turn off lazy loading of block children) runs only through `ClassSavedTrait`: after the definition file is written, and never for blocks in localized fields, field collections or bricks
+
+**Files:** `models/DataObject/Traits/ClassSavedTrait.php:27-37`; `models/DataObject/ClassDefinition/Data/Block.php:37`,
+`:926-937`; `models/DataObject/ClassDefinition.php:384-404`; `models/DataObject/Fieldcollection/Definition.php:220-223`,
+`models/DataObject/Objectbrick/Definition.php:205`; `ClassDefinition/Data/Localizedfields.php:447-460`,
+`Fieldcollections.php:618-636`, `Objectbricks.php:762-779`
+
+```php
+public function postSave(mixed $containerDefinition, array $params = []): void
+{
+    if ($containerDefinition instanceof ClassDefinition) {
+        $this->classSaved($containerDefinition, $params);   // Block, Localizedfields, Fieldcollections, Objectbricks
+    }
+}
+```
+
+- The four container types have a `classSaved()` method but do **not** implement `ClassSavedInterface`, so the
+  `ClassSavedInterface` loop in `ClassDefinition::save()` (`:388-392`) skips them. They are reached only through the
+  trait's `postSave()`, which runs after `getDao()->save()` (`:384`), `generateClassFiles()` (`:386`, writes
+  `definition_<name>.php`) and the cache clear (`:396`).
+- `Block::classSaved()` "turns off lazy loading inside blocks, because it isn't supported" with
+  `$field->setLazyLoading(false)`. At that point the definition file is already written, so the change exists only
+  in memory: the stored definition keeps `lazyLoading: true` for the block children, and the next request (or
+  `classes-rebuild`) loads it again. The guard never takes effect for anything that reads the definition later.
+- Blocks inside `localizedfields`, field collections or bricks never get the call at all: the container definitions
+  call `postSave($fieldcollectionDefinition / $brickDefinition)` (trait ignores non-`ClassDefinition`), and the
+  `classSaved()` loops of `Localizedfields` / `Fieldcollections` / `Objectbricks` only forward to
+  `ClassSavedInterface` fields (`Block` is not one).
+- Side effect for the other three containers: their table DDL (`Localizedfield\Dao::createUpdateTable()`, collection
+  and brick tables) runs **after** `Cache::clearTag('class_<id>')`. A request between the clear and the DDL caches
+  objects loaded with the old table layout; nothing clears that cache entry again.
+- Which runtime code still reads `lazyLoading` of a block child (admin editor, normalizer) was not verified; the
+  admin UI bundle is not in this repo.
+
+**Fix direction:** apply the block rule where it is persisted: in `Block::preSave()` (runs before the file is written,
+for every container type) or in `Block::setChildren()` / `__set_state()`. Make the four containers implement
+`ClassSavedInterface`, drop the forwarding in `ClassSavedTrait::postSave()` (otherwise `classSaved()` runs twice), and
+move the cache clear after all `classSaved()` calls (I-195). Tests in I-198.
+
+## [ ] B-344 – Field-definition enrichment of localized and block children loses the caller's context: options providers get no object, a `Localizedfields` instance as `class`, and run although `suppressEnrichment` was requested
+
+**Files:** `models/DataObject/Traits/FieldDefinitionEnrichmentDataTrait.php:73-91` (`:90`);
+`models/DataObject/Traits/FieldDefinitionEnrichmentModelTrait.php:89-117` (`:92`, `:100-104`, `:108-112`);
+`models/DataObject/ClassDefinition/Data/Localizedfields.php:538-546` (`:541`); `ClassDefinition/Data/Block.php:544-553`;
+callers `models/DataObject/Localizedfield.php:546`, `models/DataObject/ClassDefinition.php:690-698`;
+`DynamicOptionsProvider/SelectionProviderTrait.php:28-62`
+
+```php
+// FieldDefinitionEnrichmentDataTrait::getFieldDefinitions(array $context = [])
+return $this->getEnrichedFieldDefinitions();                 // $context dropped (ModelTrait passes it: :76)
+// FieldDefinitionEnrichmentModelTrait::getFieldDefinition($key, $context)
+$fieldDefinition = $localizedFields->getFieldDefinition($key);   // no $context: enriched in admin, then enriched again
+```
+
+- `Localizedfields` and `Block` use the Data trait. Every `getFieldDefinitions(['object' => $o, …])` call on them in
+  admin runs every child's options provider **without** `object` / `fieldname` context. Providers that compute options
+  per object (the documented use case of dynamic selects) return their "no object" result for localized and block
+  fields.
+- `getFieldDefinition($key, $context)` with an empty cache first calls `getFieldDefinitions($context)` (`:92`): in the
+  Data trait this fills the cache **and** enriches all children (all providers called, context lost) only to throw the
+  result away, then enriches the requested field again (`:112`). `Localizedfield::setLocalizedValue()` (`:546`) does
+  this on the first set per request.
+- `ClassDefinition::getFieldDefinition('<localized field>', ['suppressEnrichment' => true])` (or with an object) falls
+  back to `$localizedFields->getFieldDefinition($key)` without context: in admin the field is enriched anyway (the
+  suppression is ignored), and without the suppression flag it is enriched twice, the second time by the class.
+- `Localizedfields::doEnrichFieldDefinition()` puts `$context['class'] = $this`, i.e. the `Localizedfields` **data
+  type**, not the `ClassDefinition` the providers get for class-level fields (`ClassDefinition.php:693`). A provider
+  that calls `$context['class']->getId()` / `getName()` fails with `Error: Call to undefined method` or reads
+  `localizedfields` as class name only when the field sits in a localized block. Block children get no `class` at all.
+
+**Fix direction:** pass `$context` through in the Data trait (`getEnrichedFieldDefinitions($context)`), forward
+`$context` in the localized fallback of `getFieldDefinition()` and do not enrich a second time; fill the cache without
+enrichment (`doGetFieldDefinitions()` only) when `getFieldDefinition()` needs it. Give children the real container in
+the context (`class` = the owning `ClassDefinition` / brick / collection definition, plus `containerType` /
+`containerKey` like `Block` does). Tests in I-198.
+
+## [ ] B-345 – Enrichment mutates the shared, cached field definitions: per-object options leak to other objects, every admin object load runs every options provider, and admin class saves export provider defaults
+
+**Files:** `models/DataObject/Traits/FieldDefinitionEnrichmentModelTrait.php:54-65`, `:70-77`, `:107-113`;
+`models/DataObject/Traits/FieldDefinitionEnrichmentDataTrait.php:86-90`;
+`ClassDefinition/DynamicOptionsProvider/SelectionProviderTrait.php:37-61` (`setOptions()`, `setDefaultValue()`,
+`$this->dynamicOptions`); `ClassDefinition/Data/Select.php:260-266`, `:373-382`; `Multiselect.php:441-450`;
+callers `models/DataObject/Concrete/Dao.php:139`, `models/DataObject/ClassDefinition.php:336`,
+`Fieldcollection/Definition.php:149`, `:220`, `Objectbrick/Definition.php:170`
+
+```php
+foreach ($this->fieldDefinitionsCache as $key => $fieldDefinition) {
+    $fieldDefinition = $this->doEnrichFieldDefinition($fieldDefinition, $context);   // enrichFieldDefinition() returns $this
+    $enrichedFieldDefinitions[$key] = $fieldDefinition;                              // same instance as in the cache
+}
+```
+
+- `getEnrichedFieldDefinitions()` and `getFieldDefinition()` hand the **cached** `Data` instances to
+  `enrichFieldDefinition()`, which changes them in place (`setOptions()`, `setDefaultValue()`, `dynamicOptions`). The
+  definitions are shared through the class / brick / collection runtime cache, so:
+  - **Leak between objects:** `Concrete\Dao::getData()` loads every object in admin with
+    `getFieldDefinitions(['object' => $this->model])`. After loading object 1 and object 2 in one request (grid,
+    tree, relation editor, workflow), the select fields of the class carry object 2's options and default; code
+    that reads `getOptions()` / `getDefaultValue()` for object 1 later in the request (validation, export, default
+    value for a new object, `suppressEnrichment` callers – they receive the same instances) sees object 2's data.
+    Messenger workers / long-running processes with `inAdmin()` keep the last state.
+  - **Cost:** the same call runs **every** options provider of the class on **every** admin object load (N objects ×
+    M dynamic fields provider calls; providers often query the DB or an API).
+  - **Definition files:** `ClassDefinition::save()` (`:336`) and the brick / collection `save()` call
+    `getFieldDefinitions()` without `suppressEnrichment`. In an admin request (the class editor save) every provider
+    runs, and its `getDefaultValue()` result replaces the configured default before `generateClassFiles()` exports
+    the layout. `options` are blocked from export (`resolveBlockedVars()`), `defaultValue` is not: a provider that
+    returns a computed default (date, user, `null` when it ignores the field default) freezes that value into
+    `definition_<name>.php` and wipes the configured default value. Built-in providers return the field's own default
+    (`SelectOptionsOptionsProvider.php:54-58`), so it shows with custom providers. Not executed.
+
+**Fix direction:** enrich copies: `clone $fieldDefinition` (deep enough for `options`) in `getEnrichedFieldDefinitions()`
+and `getFieldDefinition()`, so the cache stays the persisted definition. Use `['suppressEnrichment' => true]` in all
+persistence paths (`ClassDefinition::save()`, brick / collection `save()`, `Concrete\Dao::getData()`); enrichment is
+for the editor layout only. Tests in I-198.
+
+## [ ] B-346 – Advanced-relation `isEqual()`: `array_filter()` leaves key gaps, the first `null` pair ends the comparison with `true`, and metadata is compared loosely – changes are not detected and not saved
+
+**Files:** `models/DataObject/Traits/ElementWithMetadataComparisonTrait.php:28-67` (`:37-38`, `:42-48`, `:55`, `:61`);
+used by `ClassDefinition/Data/AdvancedManyToManyRelation.php:34`, `AdvancedManyToManyObjectRelation.php:35`;
+`models/DataObject/Data/ElementMetadata.php:146-158`, `models/DataObject/Data/ObjectMetadata.php:160-163`
+
+```php
+$values1 = array_filter(array_values($oldValue));     // removes nulls, keeps keys → [1 => $m]
+for ($i = 0; $i < $count1; $i++) {
+    $container1 = $values1[$i];                        // undefined key → warning, null
+    if (!$container1 || !$container2) {
+        return !$container1 && !$container2;           // returns at the first null pair, rest not compared
+    }
+```
+
+- `$count1` is counted **before** filtering, the loop indexes the filtered array by position. With a `null` entry
+  (project code passing `[$meta1, null]`, a metadata item whose element could not be built) the loop reads missing
+  keys (`Undefined array key` warnings, an exception under a strict error handler) and, as soon as both sides are
+  missing at the same position, returns `true` without looking at the remaining items. Example: old
+  `[null, M(X)]`, new `[null, M(Y)]` → "equal" → the field is not marked dirty and the change to `Y` is not saved
+  (dirty detection, `EqualComparisonInterface`).
+- `$data1 != $data2` compares the metadata arrays loosely: `'01'` → `'1'`, `'1e2'` → `'100'`, `null` → `''`,
+  `false` → `0` / `''` count as unchanged, so a text / select column edit of that kind is not saved.
+- The element check compares `getType()` of the loaded elements. For objects / documents / assets that is the
+  **sub-type** (`object`, `variant`, `page`, `image`, `folder` …), not the element type, so an asset folder `#5` and an
+  object folder `#5` compare equal in `AdvancedManyToManyRelation`. It also loads every related element
+  (`ElementMetadata::getElement()` → `Service::getElementById()`) on each comparison; both deleted targets (`null`)
+  compare equal regardless of id.
+- The `@var ElementMetadata|null` annotations are wrong for `AdvancedManyToManyObjectRelation`: `ObjectMetadata` does
+  not extend `ElementMetadata`.
+
+**Fix direction:** compare with `array_values()` only (no filter), `continue` (not `return`) when both entries are
+`null`, return `false` when exactly one is; compare element identity by `getElementType()` / `getElementId()`
+(`ObjectMetadata`: `'object'` / `getObjectId()`) without loading; compare metadata with `===` after normalising both
+sides through the column types (I-194). Tests in I-198.
+
+## [ ] B-347 – Composite indices: a removed or renamed field, an empty column list or a long key makes every class save fail half-way (columns already dropped, definition file not written)
+
+**Files:** `models/DataObject/Traits/CompositeIndexTrait.php:34-90`; `models/DataObject/ClassDefinition/Dao.php:196-197`,
+`:215-216`; `models/DataObject/ClassDefinition.php:384-386`, `:1111-1125`; `models/DataObject/Localizedfield/Dao.php:944`,
+`:950`
+
+- `ClassDefinition\Dao::update()` drops unused columns first (`:196-197`), then updates composite indices
+  (`:215-216`). When a field that is part of a composite index is deleted or renamed, MySQL silently removes the column
+  from the existing `c_*` index; the trait sees a column-list mismatch, drops the index and re-adds it with the
+  missing column → `Key column '<field>' doesn't exist` → exception. `getDao()->save()` runs before
+  `generateClassFiles()` (`ClassDefinition.php:384-386`), so the DB is migrated, the definition file is not, and
+  every retry (admin save, `classes-rebuild`) fails the same way until someone edits the index configuration by hand.
+- Other inputs that fail the same way, none of them validated: empty `index_columns` (`ADD INDEX c_x ()` syntax
+  error), `index_key` longer than 62 characters (identifier > 64), duplicate keys (the second silently replaces the
+  first), a `store` index on a many-to-one field (mapped to `__id` / `__type`, which exist only in the query table),
+  key length > 3072 bytes for several `varchar(190)` columns. Missing `index_type` / `index_key` give "Undefined array
+  key" warnings and an index named `c_`.
+- Changing an index runs `DROP INDEX` and `ADD INDEX` as separate statements: if the `ADD` fails, the old index is
+  gone too; on large tables it is two full index builds with metadata locks.
+- Column names are compared case-sensitively with `!=` against `SHOW INDEXES` output; a configuration that differs
+  only in case (`Name` vs `name`) is dropped and re-created on every class save.
+
+**Fix direction:** validate the configuration against the target table's columns **after** the column changes and
+before any DDL (C-58 validation), skip or warn about indices whose columns no longer exist instead of failing; remove
+index entries of deleted fields in `setLayoutDefinitions()` / the field-delete path; compare lower-cased column lists;
+do drop and add in one `ALTER TABLE` per table (I-192). Tests in I-198.

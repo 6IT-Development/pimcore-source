@@ -137,6 +137,13 @@ direct consumers where a defect originates in the model interplay (`lib/Document
 `bundles/CoreBundle/src/EventListener/Frontend/StaticPageGeneratorListener.php`,
 `lib/Routing/Dynamic/DocumentRouteHandler.php::buildRouteForDocument()` (`:158-188`),
 `lib/Navigation/Builder.php::buildNextLevel()` (`:346-420`), `lib/Twig/Extension/PimcoreObjectExtension.php:48`)
+**(23)** the not yet processed files of `models/DataObject/Traits/**` (`ClassSavedTrait`, `CompositeIndexTrait`,
+`ContextPersistenceTrait`, `DataHeightTrait`, `ElementWithMetadataComparisonTrait`, `FieldDefinitionEnrichmentDataTrait`,
+`FieldDefinitionEnrichmentModelTrait`; the other nine traits are already named by earlier items and are skipped), plus
+the direct consumers where a defect originates in the model interplay (`ClassDefinition.php::save()` /
+`setCompositeIndices()`, `ClassDefinition/Dao.php::update()`, `Localizedfield/Dao.php::createUpdateTable()`,
+`ClassDefinition/Data/Relations/AbstractRelations.php`, `ClassDefinition/Data/{Block,Localizedfields}.php`,
+`DynamicOptionsProvider/SelectionProviderTrait.php`, `Concrete/Dao.php::getData()`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -148,7 +155,7 @@ Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -162,7 +169,8 @@ Scope 18 in **V** DataObject `QuantityValue/**` units and conversion (I-170–I-
 Scope 19 in **W** DataObject `Objectbrick/**` and `SelectOptions/**` (I-175–I-182),
 Scope 20 in **X** Document `Email` / `Folder` / `Snippet` (I-183–I-185),
 Scope 21 in **Y** Document sub-directory DAOs (I-186–I-189),
-Scope 22 in **Z** Document hardlink wrappers (I-190–I-191).
+Scope 22 in **Z** Document hardlink wrappers (I-190–I-191),
+Scope 23 in **AA** DataObject `Traits/**` (I-192–I-198).
 
 ---
 
@@ -3059,3 +3067,146 @@ the six `Listing/Dao.php`
   `Error` (B-342).
 - Regression cases from Scope 6: a hardlink to itself / an ancestor / a deleted source (B-147), the type row missing
   (B-148), scheduled tasks removed on hardlink delete (B-212).
+
+---
+
+## AA – DataObject `Traits/**` (Scope 23)
+
+> Notes
+> - Scanned and skipped files are listed in the Scope 23 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md)
+>   (C-58, C-59, B-343–B-347).
+> - Not repeated: `DataContainerAwareInterface` `mixed` narrowing and the enrichment interface gaps (I-160), DDL through
+>   `executeQuery()` (I-76), `LIKE` escaping in `Localizedfield\Dao` (B-179).
+
+### [ ] I-192 – `CompositeIndexTrait`: one quoted `ALTER TABLE` per table, a typed index config, no `@property` contract
+
+**Files:** `models/DataObject/Traits/CompositeIndexTrait.php:22-90`; users `ClassDefinition/Dao.php:215-216`,
+`Localizedfield/Dao.php:944`, `:950`; `ClassDefinition.php:1103-1125`
+
+- The trait relies on `@property Connection $db` of the using DAO. Declare the contract instead
+  (`abstract protected function getDb(): Connection;` or `@phpstan-require-extends Model\Dao\AbstractDao`).
+- Quote every identifier (`quoteIdentifier()` for table, key and each column; today the table is quoted in the `SHOW`
+  query only and hand-backticked in the DDL) and collect all drops and adds into one
+  `ALTER TABLE … DROP INDEX …, ADD INDEX …` per table (atomic per table, one rebuild, fixes the "old index gone when
+  `ADD` fails" part of B-347). Run it with `executeStatement()` (I-76).
+- Replace the `array{index_key, index_type, index_columns}` arrays with a small readonly value object
+  (`CompositeIndex(string $key, CompositeIndexType $type, list<string> $columns)`) and a backed enum for the four
+  types (`store`, `query`, `localized_store`, `localized_query`); `setCompositeIndices()` builds and validates them
+  (C-58), and the many-to-one `__id` / `__type` mapping moves into one method instead of being re-applied on every
+  setter call.
+- Readability: `$existingMap[$key][] = $column` replaces the `array_key_exists()` initialisation; `static fn` for the
+  filter; `!==` / lower-cased comparison instead of `!=`; remove the empty `@internal * *` docblock; name the two
+  maps `$existingColumnsByIndex` / `$wantedColumnsByIndex`.
+- Consider moving the logic into `ClassDefinition\Helper\Dao` next to `addIndexToField()` / `removeIndices()` so all
+  index DDL of a class save lives in one place (B-326 touches the same helper).
+
+### [ ] I-193 – `ContextPersistenceTrait`: one ownername / descriptor builder for read, load and write; return values instead of by-reference out-params
+
+**Files:** `models/DataObject/Traits/ContextPersistenceTrait.php:30-134`;
+`ClassDefinition/Data/Relations/AbstractRelations.php:132-145`, `:296-318`; `ClassDefinition/Data/UrlSlug.php:187-197`;
+`AdvancedManyToManyRelation.php:537`, `AdvancedManyToManyObjectRelation.php:448`
+
+- The ownername / position rules exist three times: write (`enrichDataRow()`), current relations
+  (`prepareMyCurrentRelations()`) and `AbstractRelations::load()` (a copy of the latter). C-59 is the drift between
+  them. Introduce one method, e.g. `buildRelationDescriptor(object $owner, array $params): array{ownertype, ownername,
+  position, classId, srcId}`, used for both the filter (`ownername` as prefix where needed) and the row.
+- `enrichDataRow(…, ?string &$classId, array &$row = [], …)`: two by-reference parameters, a default value on a
+  reference, and the dead `if (!$row) { $row = []; }` → return the enriched row (or the descriptor) and let callers read
+  `classId` from it. `AbstractRelations::calculateDelta()` passes an unused `$ignoreClassId` only to satisfy the reference.
+- Use `match (true)` like `AbstractRelations::calculateDelta()` does; import `Objectbrick\Data\AbstractData` with an
+  alias instead of the inline FQCN in two signatures (and the oddly aligned parameter list at `:31-33`); the final
+  `throw new Exception('Invalid object type')` is unreachable with the union type → remove it (or `\LogicException`).
+- Inconsistencies to settle while merging: write uses `$object->getContext()`, read uses `$params['context']`; write
+  reads `$context['fieldname']` without `?? null` (warning) and falls back from `index` to `containerKey` for field
+  collections, read does not; `$params['language']` is required but never checked. Document the
+  `ownername` format (`/<containerType>~<field>/<index|brickType>/localizedfield~localizedfield`) in one docblock.
+
+### [ ] I-194 – `ElementWithMetadataComparisonTrait`: compare by identity without loading, strict data comparison, correct types
+
+**Files:** `models/DataObject/Traits/ElementWithMetadataComparisonTrait.php:28-67`; `Data/ElementMetadata.php`,
+`Data/ObjectMetadata.php`
+
+- Rewrite along B-346: `array_values()` without `array_filter()`, early `count()` check, `foreach` with
+  `array_map(null, $old, $new)` or index-aligned iteration, `continue` on two `null`s.
+- Identity: `getElementType()` + `getElementId()` (`ElementMetadata`) and `getObjectId()` (`ObjectMetadata`) – no
+  element load per item. A small shared interface (`ElementMetadataInterface` with `getElementType()`,
+  `getElementId()`, `getData()`) lets the trait type its items instead of the wrong `@var ElementMetadata|null`.
+- Data: `===` after normalising each column through its type (bool / number / text), not `!=`.
+- `public function isEqual(mixed $oldValue, mixed $newValue): bool` → add `#[\Override]` in the using classes once
+  the trait method implements `EqualComparisonInterface` (PHP 8.3+, available on the PHP 8.4 target); declare
+  `@phpstan-require-implements EqualComparisonInterface` on the trait.
+
+### [ ] I-195 – `ClassSavedTrait`: make the `classSaved()` contract explicit and order it before the cache clear
+
+**Files:** `models/DataObject/Traits/ClassSavedTrait.php:25-37`; `ClassDefinition/Data/{Block,Localizedfields,
+Fieldcollections,Objectbricks}.php`; `ClassDefinition.php:384-404`; `ClassDefinition/Data/ClassSavedInterface.php`
+
+- The trait calls `$this->classSaved()` without declaring it; nothing forces a user to have it. Today the four users
+  all have it, but not via `ClassSavedInterface`. → Let the four classes implement `ClassSavedInterface` and reduce
+  the trait to the empty `preSave()` / `postSave()` pair (or delete it and add the two empty methods where needed);
+  until then add `abstract public function classSaved(ClassDefinition $class, array $params = []): void;` to the trait.
+- `ClassDefinition::save()`: call all `classSaved()` hooks (interface loop, now including the containers) **before**
+  `Cache::clearTag()`; together with B-343 this removes the stale-cache window.
+- The `// nothing to do` `preSave()` duplicates `Multiselect::postSave()` and other no-op pairs → an
+  `EmptyDataContainerAwareTrait` / default methods in one place.
+
+### [ ] I-196 – `DataHeightTrait` / `DataWidthTrait`: one dimension trait, PHP 8.4 property hooks, defined normalisation
+
+**Files:** `models/DataObject/Traits/DataHeightTrait.php:23-44`; twin `models/DataObject/Traits/DataWidthTrait.php`; users
+`ClassDefinition/Data/{ImageGallery,Wysiwyg,Classificationstore,Table,Localizedfields,ManyToManyRelation,
+ManyToManyObjectRelation,StructuredTable,Multiselect,ImageTrait,Slider,Video,Textarea}.php`, `Geo/AbstractGeo.php`
+
+- The two traits are identical except for the property name → one `DataDimensionsTrait` (or keep two thin traits on
+  top of one normaliser), so both get the same fixes.
+- Normalisation is accidental: `is_numeric()` + `(int)` turns `'1.5'` into `1`, `' 5'` into `5`, `'1e3'` into `1000`,
+  while `''` stays an empty string and `'100px'` / `'50%'` stay strings. Decide the allowed forms (int pixels, or a
+  CSS length string) and normalise `''` to `null`; document it on the getter (`int|string|null` is returned in a
+  different order than the setter accepts – align the union).
+- PHP 8.4: the `@internal` public property plus getter / setter can become a hooked property
+  (`public int|string|null $height = null { set => self::normaliseDimension($value); }`), keeping `getHeight()` /
+  `setHeight()` as thin BC wrappers. Check `Data::__set_state()` / `setValues()` and DeepCopy hydration first (they write
+  properties directly or via setters); asymmetric visibility (`public private(set)`) is not possible while the admin
+  JSON and definition files set the property from outside.
+
+### [ ] I-197 – Field-definition enrichment traits: one `getFieldDefinitions()`, linear collection, explicit admin dependency
+
+**Files:** `models/DataObject/Traits/FieldDefinitionEnrichmentModelTrait.php:27-120`;
+`models/DataObject/Traits/FieldDefinitionEnrichmentDataTrait.php:26-92`; users `ClassDefinition.php`,
+`Traits/FieldcollectionObjectbrickDefinitionTrait.php`, `ClassDefinition/Data/{Localizedfields,Block}.php`
+
+- Two `getFieldDefinitions()` implementations (Model trait: cache as is; Data trait: lazy build + referenced fields)
+  with different enrichment calls (B-344). → One implementation in the Model trait with an overridable
+  `buildFieldDefinitions(): array` hook that the Data trait provides.
+- `doGetFieldDefinitions()` passes `$fields` down **and** `array_merge()`s the result back (the result already contains
+  `$fields`) – quadratic copying on large classes → pass `array &$fields` once or return only the new entries.
+- `method_exists($existing, 'addReferencedField')` → `$existing instanceof ClassDefinition\Data\Localizedfields`
+  (the only intended case per the comment); a duplicate non-localized name silently overwrites the earlier field →
+  log or throw.
+- `suppressEnrichment()`: `isset($context['suppressEnrichment']) && $context['suppressEnrichment']` →
+  `($context['suppressEnrichment'] ?? false) === true`; the static `Pimcore::inAdmin()` call makes the result depend on
+  global state (tests, messenger workers) → pass the decision in the context or inject a request-context service.
+- `getFieldDefinition()` checks `isset($this->fieldDefinitionsCache)` twice and re-implements the localized fallback
+  that `Localizedfields::getFieldDefinition()` already has; `@return $this` docblocks duplicate the native `static`;
+  `setFieldDefinitions(?array)` is public but only meant to reset / seed the cache → name it accordingly
+  (`resetFieldDefinitionsCache()`), keep `setFieldDefinitions()` as deprecated alias.
+- `abstract protected function doEnrichFieldDefinition()` while all implementers are `public` (I-160 covers the
+  interface side) – make the trait declaration match (`public`) and add `#[\Override]` in the implementers.
+
+### [ ] I-198 – Tests for Scope 23
+
+- Composite indices: a definition with `index_columns` containing `)`, `,`, a backtick or `;` and an `index_key` with a
+  backtick is rejected before any DDL (C-58); deleting a field that is part of a composite index saves the class and
+  drops / warns about the index; empty column list and a 70-character key are rejected; a case-only difference
+  causes no DDL (B-347).
+- Bricks `A` and `B` in one `Objectbricks` field, both with a localized relation `parts`: save `A`, reload, `B.parts`
+  unchanged; `A.parts` loads only `A`'s rows (C-59). Same for field collections with two items (regression).
+- `Block` with a lazy-loading relation child, also inside `localizedfields` / a field collection / a brick: the
+  written definition file has `lazyLoading: false` (B-343).
+- Admin context (`Pimcore::setAdminMode()`): `Localizedfields::getFieldDefinitions(['object' => $o])` passes the
+  object to a test provider; `getFieldDefinition('<localized>', ['suppressEnrichment' => true])` does not call it;
+  provider context `class` is a `ClassDefinition` (B-344). Loading two objects with an object-dependent provider
+  leaves the cached class definition's options unchanged; an admin class save does not change the exported
+  `defaultValue` (B-345).
+- `isEqual()` of both advanced relation types: `[null, M(X)]` vs `[null, M(Y)]` is not equal; `'01'` vs `'1'` metadata
+  is not equal; no element is loaded during the comparison (B-346).
+- `setHeight()` / `setWidth()` with `'1.5'`, `''`, `'50%'`, `300` (I-196).
