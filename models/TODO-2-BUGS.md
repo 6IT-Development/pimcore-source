@@ -112,6 +112,13 @@ consumers where a defect originates in the model interplay (`Data/AbstractQuanti
 `ClassDefinition/Data/AbstractQuantityValue.php::getFilterCondition()`, `ClassDefinition/Helper/UnitConverterResolver.php`,
 `bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`), the `quantityvalue_units` schema
 (`bundles/InstallBundle/dump/install.sql:695-709`) and `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:86-147`
+**(19)** `models/DataObject/Objectbrick/**` (Definition, Dao, Definition/Dao, Definition/Listing, Data/AbstractData,
+Data/Dao) and `models/DataObject/SelectOptions/**` (Config, Config/Dao, Config/Listing, Config/Listing/Dao,
+Data/SelectOption, Traits/EnumGetValuesTrait, Traits/EnumTryFromNullableTrait; both listed under Scope 6 but not processed
+there), plus the direct consumers where a defect originates in the model interplay (`models/DataObject/Objectbrick.php`,
+`ClassDefinition/Data/Objectbricks.php`, the advanced relations' `delete()`, `Concrete/Dao/InheritanceHelper.php`,
+`lib/DataObject/ClassBuilder/ObjectBrick*` / `SelectOptionsEnumBuilder.php`,
+`bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -123,7 +130,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -134,7 +141,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **Field collection / listing** B-252–B-256,
 **Classification store configuration** B-257–B-265, **ClassDefinition data types** B-266–B-299,
 **DataObject `Data/**` value objects** B-300–B-315,
-**QuantityValue units / conversion** B-316–B-323.
+**QuantityValue units / conversion** B-316–B-323,
+**Object bricks** B-324–B-330, **Select options** B-331–B-333.
 
 ---
 
@@ -5153,3 +5161,244 @@ cache key) or give the entry a tag plus a finite lifetime.
 **Fix direction:** resolve both lookups from the cached table (index by abbreviation / reference), throw or log when
 an abbreviation is ambiguous (or add unique indexes after a data check); drop `ucfirst()` and fall back to the id when
 the abbreviation is empty (as in B-306).
+
+---
+
+# Scope 19 – DataObject `Objectbrick/**` and `SelectOptions/**`
+
+> Notes
+> - Scanned and skipped files: see the Scope 19 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-54–C-56).
+> - The field-collection counterparts B-252–B-256 describe the shared lifecycle; the items below list only what is
+>   different or additionally broken for bricks.
+
+## Object bricks (Scope 19)
+
+## [ ] B-324 – Removing a brick deletes the advanced-relation metadata of every relation field with the same name in the object
+
+**Files:** `models/DataObject/Objectbrick/Data/Dao.php:296-315` (`:312`);
+`models/DataObject/ClassDefinition/Data/AdvancedManyToManyRelation.php:627-672` (`:652-671`);
+`AdvancedManyToManyObjectRelation.php:533-569` (`:550-568`)
+
+```php
+if ($fd instanceof CustomResourcePersistingInterface) {
+    $fd->delete($object);             // the Concrete, no $params, no context
+}
+```
+
+- `Data\Dao::delete()` calls the field's `delete()` with the **object** and without `context`. Both advanced relation
+  types then build `DELETE FROM object_metadata_<classId> WHERE id = ? AND fieldname = ?`: no `ownertype`, no
+  `ownername`.
+- Every metadata row of a relation field with that name is deleted: the class-level field, fields with the same name
+  in field collections, in other bricks and in other `Objectbricks` fields. Example: a brick `Accessories` with an
+  advanced relation `parts` (column `quantity`) and a class-level `parts` field. Removing the brick from one object
+  deletes the `quantity` values of the object's own `parts` relations. The relations themselves stay, so nothing looks
+  wrong until someone reads the metadata.
+- The opposite gap: custom-persisting fields are deleted only when they are also `QueryResourcePersistenceAwareInterface`
+  (the call is nested inside that `if`), so a custom-persisting brick field without query columns is never cleaned
+  up.
+
+**Fix direction:** call `$fd->delete($this->model, ['context' => ['containerType' => 'objectbrick', 'containerKey' => $type,
+'fieldname' => $fieldname], 'owner' => $this->model, 'fieldname' => $key])` like `save()` does, and move the call out
+of the query-aware branch. Add a test with a class field and a brick field of the same name.
+
+## [ ] B-325 – Lazy-loaded brick relations in edit mode show the relations of other `Objectbricks` fields and of every brick with an empty position
+
+**Files:** `models/DataObject/Objectbrick/Data/Dao.php:323-368` (`:343-347`, `:352-356`, `:361-365`);
+`models/DataObject/ClassDefinition/Data/Objectbricks.php:186-199`; compare `Relations/AbstractRelations.php:318`
+
+- `getRelationData()` (used by `Objectbricks::getDataForField()` for lazy relations in the editor) filters by
+  `fieldname`, `ownertype = 'objectbrick'`, `src_id` and `position = '<type>' OR position IS NULL OR position = ''`,
+  but not by `ownername` (the `Objectbricks` field). The runtime loader filters by `ownername` and `position`
+  (`AbstractRelations.php:318`).
+- With two `Objectbricks` fields that allow the same brick (see C-54), the editor shows the union of both fields'
+  relations. Rows with an empty `position` (older data) appear in every brick type that has a relation field with that
+  name. When the editor saves the field, the wrong list is persisted into this brick.
+- The SQL also concatenates the type (validated key, so not injectable) and repeats the three `UNION` blocks.
+
+**Fix direction:** add `r.ownername = ?` (the brick's field name); decide whether the empty-position fallback is still
+needed (migration) and limit it to the brick type it belongs to; build the query with bound parameters (I-177).
+
+## [ ] B-326 – Every brick table update drops and re-creates all indexes: unique constraints disappear for the duration, and re-adding them can fail
+
+**Files:** `models/DataObject/Objectbrick/Definition/Dao.php:84-95`, `:115-131`, `:159-170`;
+`models/DataObject/ClassDefinition/Helper/Dao.php:25-110` (`:53`), `:173-185`; callers
+`models/DataObject/ClassDefinition/Data/Objectbricks.php:761-779` (every class save), `Objectbrick/Definition.php:351-364`
+
+- `createUpdateTable()` passes **all** existing columns to `removeIndices()` while only `id` / `fieldname` are
+  protected. The brick override drops `u_index_<col>` on the store table and `p_index_<col>` on the query table for
+  every column (errors ignored, `Helper::queryIgnoreError()`), then `addIndexToField()` adds them again because
+  they no longer exist.
+- This runs on every brick save, in `classes-rebuild`, and on **every save of every class** that allows the brick
+  (`Objectbricks::classSaved()`). Each index is a separate `ALTER TABLE`: on large brick tables a class save becomes
+  minutes of DDL with metadata locks that block object saves.
+- Between the drop and the re-add there is no unique constraint. A concurrent object save can insert a duplicate;
+  adding the `UNIQUE` index then fails with "Duplicate entry", and the class save fails half-way (B-185 for the
+  class side).
+- The shared helper and `Fieldcollection\Definition\Dao` / `Localizedfield\Dao` do the same for `u_index_` (all
+  existing columns are passed), which was not listed in Scope 14.
+
+**Fix direction:** compute the target index set from the field definitions and drop only indexes whose field was
+removed or whose `index` / `unique` flag was switched off; never drop an index that is about to be re-created. Use
+one `ALTER TABLE` per table.
+
+## [ ] B-327 – `Objectbrick\Definition::delete()`: localized tables survive, the runtime cache keeps the definition, files go first
+
+**Files:** `models/DataObject/Objectbrick/Definition.php:480-531` (`:486-487`, `:517-528`);
+`Objectbrick/Definition/Dao.php:52-59`; `models/DataObject/Localizedfield/Dao.php:55-76`;
+`lib/Maintenance/Tasks/DataObject/CleanupBrickTablesTaskHelper.php:48-72`
+
+- `Definition\Dao::delete()` drops only `object_brick_store_<key>_<classId>` and `object_brick_query_<key>_<classId>`.
+  `object_brick_localized_<key>_<classId>` and the per-language `object_brick_localized_query_<key>_<classId>_<lang>`
+  tables stay. When a brick with the same key is created again, the old localized rows (`ooo_id`, `fieldname`,
+  `language`) are loaded again as soon as an object gets the brick back (the B-253 "ghost data" effect for bricks).
+  The maintenance cleanup only logs "Brick … not found" for them.
+- Tables are dropped only for classes in `classDefinitions`. A class that still allows the key without being listed
+  there (an assignment removed with `save(false)`, a hand-edited class, C-55) keeps the key in `allowedTypes` and keeps
+  its tables.
+- The definition and PHP class files are unlinked first (`@unlink`), the drops and class saves follow. A failing class
+  save leaves a deleted brick still allowed by classes, and no `POST_DELETE` is sent.
+- `RuntimeCache` keeps `objectbrick_<key>`: in the same process `getByKey()` still returns the deleted definition, and a
+  class save afterwards (`Objectbricks::classSaved()`) re-creates the dropped tables.
+- The "update classes" loop at the end (`:517-528`) loads every class definition and does nothing (it only `break`s).
+
+**Fix direction:** drop the localized store / query tables (names from one builder shared with `Localizedfield\Dao`,
+I-179), iterate all classes whose `Objectbricks` fields allow the key, drop tables and update classes **before**
+removing the files, clear the runtime cache entry, and remove the dead loop.
+
+## [ ] B-328 – `Objectbrick\Definition::save()` changes classes and files before the remaining steps can fail
+
+**Files:** `models/DataObject/Objectbrick/Definition.php:144-214`, `:244-277`, `:292-346`, `:413-449`, `:97-139`
+
+- Order: validation → `PRE_*` event → `preSave()` per field (interleaved with the forbidden-name check, as in B-254) →
+  `generateClassFiles()` → `createContainerClasses()` → `updateDatabase()`. Inside `generateClassFiles()`,
+  `cleanupOldFiles()` already **saves classes**: for every changed `classname-fieldname` pair (removed **and** newly
+  added) it removes the key from the `allowedTypes` of **all** `Objectbricks` fields of that class, deletes the
+  container class file and saves the class. Then the definition file and brick class are written.
+- `createContainerClasses()` throws "Could not load class" / "Could not resolve field definition" for an assignment
+  whose class or field does not exist (a typo in an import, a class deleted meanwhile). At that point classes have
+  been saved without the key and the new definition is on disk: objects of those classes stop showing the brick until
+  the brick is saved successfully again. `checkTablenames()` only logs a missing class, so this is not caught earlier.
+- Each affected class is saved twice (key removed, then re-added): class `PRE/POST_UPDATE` listeners and the generated
+  class code see an intermediate state in which the field does not allow the brick.
+- `checkTablenames()` checks the current valid languages only. Adding a language later is not checked, and the class
+  save that then creates `object_brick_localized_query_<key>_<classId>_<lang>` fails on the 64-character limit.
+
+**Fix direction:** validate everything first (assignments resolvable, names, table-name length for all configured
+languages), compute the old / new assignment diff once, update each affected class once (remove the key only from the
+fields that lost it), run the DDL, then write files. Re-check the table length when languages change.
+
+## [ ] B-329 – `Objectbrick\Dao::load()` turns any read error into "no bricks"; with inheritance the next save then empties existing bricks
+
+**Files:** `models/DataObject/Objectbrick/Dao.php:33-123` (`:49-53`, `:95`, `:104`); `models/DataObject/Objectbrick.php:138-183`
+(`:145-167`, `:179-181`); `models/DataObject/Objectbrick/Data/Dao.php:58-69`, `:116-117`
+
+- `load()` catches **every** exception of the `SELECT` (deadlock, lost connection, lock timeout, a missing column after
+  a half-applied deployment) and continues with `$results = []`. The object is built without the brick and written to
+  the object cache.
+- `Objectbrick::save()` treats a `null` brick as "not set" and calls `$createParentBrick()`. In a class with
+  inheritance whose parent has the brick, a new **empty** brick is created and saved. `Data\Dao::save()` finds the
+  existing row and runs `UPDATE … WHERE id = ?` with all values `NULL`: the brick's data is wiped (and with C-54 the row
+  may belong to another field).
+- Without inheritance the data survive, but the cached object has no bricks until the next save or cache clear.
+- `$result[$key]` / `$result[$key . '__' . $fkey]` are read without `??`: a column that is not there yet raises a
+  warning and loads `null`.
+
+**Fix direction:** catch only `TableNotFoundException` (table not created yet), rethrow everything else; read columns
+with `array_key_exists()` and log missing ones. In `Objectbrick::save()`, only create an empty inherited brick when the
+store row does not exist.
+
+## [ ] B-330 – Object-brick small defects
+
+**Files:** `models/DataObject/Objectbrick/Data/AbstractData.php:76-79`, `:110-121`, `:128-146`, `:165-181`;
+`models/DataObject/Objectbrick/Definition/Listing.php:27-37`, `:57-77`; `Objectbrick/Definition/Dao.php:34-50`;
+`models/DataObject/Objectbrick/Definition.php:547-550`
+
+- `AbstractData::getDefinition()` is declared `: Definition`, but `getByKey()` returns `?Definition` → `TypeError`
+  when the definition file is missing (deleted brick whose class still exists, missing custom-config file on one
+  node, cached object). It is called in `__sleep()` (cache write), in `Data\Dao::save()` (inside the object save
+  transaction) and in `getValueForFieldName()`. Same as B-256 for collections.
+- `flushContainer()` and `getValueFromParent()` call `ucfirst($this->fieldname)` while `fieldname` is `?string` and the
+  file is strict: a brick created with `new Brick($object)` and attached with the generated container setter has no
+  field name (the setter does not set it), so `setDoDelete(true)` or any inherited getter on such a brick throws
+  `TypeError: ucfirst(): Argument #1 ($string) must be of type string, null given` (checked).
+- `getValueForFieldName()` uses `if ($this->$key)`: values `0`, `0.0`, `'0'`, `false`, `''` are treated as missing and
+  `null` is returned; an unknown key raises "Undefined property". `Concrete::getValueForFieldName()` uses `isset()`.
+- `Definition\Listing::load()` returns whatever each file returns (`int`, `false`, an array) inside a `Definition[]`;
+  `glob()` can return `false` (B-256 for collections).
+- `Definition\Dao::getTableName()` / `getLocalizedTableName()` accept a definition without key and return
+  `object_brick_store__<classId>`.
+- `isWritable()` casts `$_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE']` with `(bool)`: the string `'false'` is `true`
+  (checked), so `PIMCORE_CLASS_DEFINITION_WRITABLE=false` makes definitions writable. Classes and collections use the
+  same expression (`ClassDefinition.php:570`, `Fieldcollection/Definition.php:265`).
+
+**Fix direction:** `getDefinition()` throws a dedicated "brick definition not found" exception (or returns `?Definition`
+and callers handle it); set the field name in the container setter and guard `null`; `array_key_exists()` /
+`isset()` in `getValueForFieldName()`; type-check listing results and guard `glob()`; assert a key in the DAO; parse
+the env value with `filter_var(…, FILTER_VALIDATE_BOOL)`.
+
+## Select options (Scope 19)
+
+## [ ] B-331 – `SelectOptions\Config` lifecycle: stale runtime cache, `exists()` ignores its argument, `null` entries in the listing
+
+**Files:** `models/DataObject/SelectOptions/Config.php:57`, `:190-217`, `:240-257`; `SelectOptions/Config/Dao.php:47-86`,
+`:110-142`; `SelectOptions/Config/Listing/Dao.php:30-45`; `SelectOptions/Config/Listing.php:79-93`;
+`bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:169-176`, `ClassesDefinitionsBuildCommand.php:95-98`
+
+- `getById()` caches the instance in `RuntimeCache` (`selectoptions_<id>`); `save()` and `delete()` never update or
+  remove that entry (they only clear the DAO's static cache). In the same process, `getById()` returns the deleted
+  config, and the old options after a save made through another instance (e.g. one built with `createFromData()`).
+  Workers and imports keep the stale copy for their whole lifetime.
+- `Dao::exists(string $name)` ignores `$name` and checks the model's own id.
+- `protected string $id` has no default: `validateId()` (its `empty($id)` check), `jsonSerialize()`, `getEnumName()`
+  and `getPhpClassFile()` throw "must not be accessed before initialization" on a new config instead of the intended
+  `InvalidArgumentException`.
+- `Dao::getById($id)` calls `setId()`, which throws `InvalidArgumentException` for a reserved word, so
+  `Config::getById('List')` throws instead of returning `null`.
+- `Listing\Dao::loadList()` appends `Config::getById($id)` without a `null` check (an id from the read targets whose
+  data cannot be loaded). `hasConfig()` then calls `->getId()` on `null`, and both class commands call
+  `generateEnumFiles()` / `dumpPHPEnum()` on it → `Error` during deployment.
+
+**Fix direction:** set / clear the runtime cache entry in `save()` / `delete()`; use `$name` in `exists()`; initialise
+`$id` to `''` (or make it a constructor argument); catch `InvalidArgumentException` in `getById()`; skip and log
+`null`s in the listing.
+
+## [ ] B-332 – `getFieldsUsedIn()` misses usages, and the options provider resolves references differently
+
+**Files:** `models/DataObject/SelectOptions/Config.php:262-360` (`:331-340`, `:346-360`); `SelectOptions/Config/Dao.php:137-160`;
+`bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php:28-46`;
+`models/DataObject/ClassDefinition/Data/Block.php:306`
+
+- The usage check (run before every delete) only looks at top-level fields and the top-level `localizedfields`.
+  Select fields inside a `Block` (and localized fields nested there) are not found, so a config that is still used in
+  a block can be deleted. After that, `SelectOptionsOptionsProvider` throws "Missing select options configuration"
+  whenever an object of that type is opened or its options are read.
+- `isConfiguredAsOptionsProvider()` accepts the short name **and** the fully qualified enum name, trimmed of `\` and
+  spaces. The provider calls `Config::getById($fieldDefinition->getOptionsProviderData())` with the raw value: a field
+  configured with `Pimcore\Model\DataObject\SelectOptions\Colors` or `Colors ` counts as "used" but cannot load its
+  options.
+- The provider uses the raw label (`'key' => $selectOption->getLabel()`); the generated enum's `getLabel()` falls back
+  to the value. Options without a label show as empty entries in the editor while code shows the value.
+- The definitions come from the listings with the shadowing problem of C-45 / C-55, so the same class can be
+  reported twice.
+
+**Fix direction:** walk the field tree recursively (layouts, blocks, localized fields at any level); add one
+`Config::resolveReference(string): ?string` normaliser used by both the check and the provider; use the value as label
+fallback in the provider.
+
+## [ ] B-333 – Select-options data from config is not normalised: one hand-edited YAML value breaks every select-options lookup
+
+**Files:** `models/DataObject/SelectOptions/Config.php:113-141`, `:175-183`, `:219-238`;
+`SelectOptions/Config/Dao.php:47-73`; `SelectOptions/Data/SelectOption.php:30-36`, `:118-125`
+
+- Config arrives from YAML, the settings store or the Symfony config tree (`pimcore.objects.select_options.definitions`).
+  All setters and the `SelectOption` constructor are strictly typed `string`, and nothing casts:
+  `value: 1`, `label: 2024`, `useTraits: ~` or `group: 5` in a hand-written YAML file raise `TypeError` inside
+  `getById()` (only `NotFoundException` is caught).
+- The listing calls `getById()` for every id, so one such entry breaks the whole listing: the admin list, both class
+  commands and the usage check of **every** delete.
+- The Symfony config node accepts any scalar (`scalarNode`, `bundles/CoreBundle/src/DependencyInjection/Configuration.php:783-800`),
+  so it does not catch this. Pimcore's own writer quotes these values; the problem appears with configuration
+  written by hand or by other tools (e.g. definitions committed under `config/`).
+
+**Fix direction:** normalise in `createFromData()` / `Dao::getById()` (`(string)` for scalars, `''` for `null`), reject
+non-scalars with a message that names the config id and the key, and log instead of failing the whole listing.

@@ -110,6 +110,13 @@ consumers where a defect originates in the model interplay (`Data/AbstractQuanti
 `ClassDefinition/Data/AbstractQuantityValue.php::getFilterCondition()`, `ClassDefinition/Helper/UnitConverterResolver.php`,
 `bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`), the `quantityvalue_units` schema
 (`bundles/InstallBundle/dump/install.sql:695-709`) and `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:86-147`
+**(19)** `models/DataObject/Objectbrick/**` (Definition, Dao, Definition/Dao, Definition/Listing, Data/AbstractData,
+Data/Dao) and `models/DataObject/SelectOptions/**` (Config, Config/Dao, Config/Listing, Config/Listing/Dao,
+Data/SelectOption, Traits/EnumGetValuesTrait, Traits/EnumTryFromNullableTrait; both listed under Scope 6 but not processed
+there), plus the direct consumers where a defect originates in the model interplay (`models/DataObject/Objectbrick.php`,
+`ClassDefinition/Data/Objectbricks.php`, the advanced relations' `delete()`, `Concrete/Dao/InheritanceHelper.php`,
+`lib/DataObject/ClassBuilder/ObjectBrick*` / `SelectOptionsEnumBuilder.php`,
+`bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -120,7 +127,7 @@ IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -130,7 +137,8 @@ Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files 
 `Folder/Dao` (I-135), Scope 14 in **R** DataObject `Listing` / `Fieldcollection` / `Localizedfield` (I-136–I-141),
 Scope 15 in **S** DataObject `Classificationstore/**` configuration models (I-142–I-148), Scope 16 in **T**
 DataObject `ClassDefinition/**` (I-149–I-160), Scope 17 in **U** DataObject `Data/**` value objects (I-161–I-169),
-Scope 18 in **V** DataObject `QuantityValue/**` units and conversion (I-170–I-174).
+Scope 18 in **V** DataObject `QuantityValue/**` units and conversion (I-170–I-174),
+Scope 19 in **W** DataObject `Objectbrick/**` and `SelectOptions/**` (I-175–I-182).
 
 ---
 
@@ -2636,3 +2644,185 @@ the six `Listing/Dao.php`
   file, a failing import leaves the table unchanged (C-53, B-320). Export → import round trip is lossless (B-321).
 - `getByAbbreviation()` with a duplicate abbreviation, `Unit::__toString()` with `mW` and with `null` abbreviation
   (B-323); unit-table cache returns fresh data after a save (B-322).
+
+---
+
+## W – DataObject `Objectbrick/**` and `SelectOptions/**` (Scope 19)
+
+> Notes
+> - Scanned and skipped files: see the Scope 19 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-54–C-56,
+>   B-324–B-333).
+> - Missing `declare(strict_types=1)` in `Objectbrick/Dao.php`, `Objectbrick/Definition/Dao.php`,
+>   `Objectbrick/Data/Dao.php` is part of I-73; `@unlink()` is in I-83; the shared definition lifecycle seen from the
+>   field-collection side is I-136, its DAO / listing I-137, its data classes I-138. Points made there are not repeated.
+
+### [ ] I-175 – `Objectbrick\Definition`: one assignment model, one class-update helper, no dead code
+
+**File:** `models/DataObject/Objectbrick/Definition.php:43-567`
+
+- The "for each `Objectbricks` field: remove the key from `allowedTypes`" block is written three times
+  (`cleanupOldFiles()` `:331-340`, `updateDatabase()` `:372-381`, `delete()` `:500-509`) → one private
+  `removeKeyFromClass(ClassDefinition $class, ?string $fieldname = null): bool` that returns whether something changed,
+  so the class is saved only then.
+- Assignments are untyped arrays (`public array $classDefinitions`, keys `classname` / `fieldname` / `deleted`) and the
+  diff encodes them as `"classname-fieldname"` strings and splits them again with `explode('-')`
+  (`buildClassList()` / `getClassesToCleanup()`) → a small `final readonly class BrickAssignment` (or at least
+  `@var list<array{classname: string, fieldname: string, deleted?: bool}>`) and `array_udiff()` on tuples. The
+  `deleted` flag is a UI transport detail → filter it in the controller / importer, not in `save()`.
+- `getByKey()` uses an exception for control flow and returns whatever the file returned (B-255) → `instanceof self`
+  check, early return; return type `?self`.
+- `delete()` ends with a loop over all classes that does nothing (B-327) → remove.
+- `enforceBlockRules()` uses `method_exists($fd, 'getFieldDefinitions')` → an interface check (`Layout` / `Block` /
+  `Localizedfields` expose children); `checkContainerRestrictions()` only forwards → inline.
+- `checkTablenames()` sorts with `array_multisort()` to find the longest name → `max(array_map('strlen', $tables))`;
+  the inner loop adds the same `object_brick_localized_<key>_<id>` name once per language; build names with the
+  shared name builder (I-179).
+- `getContainerClassName()` / `getContainerNamespace()` take parameters they do not use (`$classname` /
+  `$fieldname`) → drop them or document them as extension points; `getContainerClassFolder()` mixes
+  `PIMCORE_CLASS_DEFINITION_DIRECTORY` with a PHP class folder → `PIMCORE_CLASS_DIRECTORY` (same value today,
+  `lib/Bootstrap.php:224`, but different meaning).
+- `unset($clone->oldClassDefinitions)` / `unset($clone->fieldDefinitions)` before `var_export()` leave uninitialised
+  typed properties on the clone → export an explicit array (I-83).
+- `in_array($this->key, $allowedTypes)` and `array_search()` without strict mode → strict; `$this->key` and
+  `$this->getKey()` are mixed in the same method.
+- `@method` annotations for DAO calls (`getTableName()`, `createUpdateTable()`) → typed methods that delegate to the
+  DAO, so static analysis sees them.
+
+### [ ] I-176 – `Objectbrick\Dao` (container DAO): stop inheriting from the field-collection DAO
+
+**File:** `models/DataObject/Objectbrick/Dao.php:31-144`
+
+- It extends `Fieldcollection\Dao` only to reuse `AbstractDao`, but inherits `save()`, which calls `delete($object, true)`
+  and would remove the query rows of all bricks; the signatures already drift (`load(…, array $params = [])`) →
+  extend `Model\Dao\AbstractDao` directly and make the class `final`.
+- `delete()`: the `$saveMode` parameter is unused and the method returns an always-empty `array` → `void`.
+- `load()`:
+  - builds the brick with `new $brickClass($object)`, while `Fieldcollection\Dao` uses `pimcore.model.factory`, so
+    class overrides configured in the model factory do not apply to bricks → use the factory;
+  - rebuilds the same context array for every field of every row, and mutates the caller's `$params` → build
+    `$context` once per row, use a fresh `$fieldParams`;
+  - nested `if ($fd instanceof LazyLoadingSupportInterface) { if (…) }` → one condition; `if ($value === 0 ||
+    !empty($value))` silently skips `'0'`, `0.0`, `false` → `$value !== null`;
+  - `getFieldDefinition($fieldname)` without `suppressEnrichment` (the collection DAO passes it).
+- Error handling: see B-329 (`TableNotFoundException` only).
+
+### [ ] I-177 – `Objectbrick\Data\Dao`: split `save()`, shared inheritance logic, query builder
+
+**File:** `models/DataObject/Objectbrick/Data/Dao.php:31-369`
+
+- `save()` is ~210 lines: store row, query row and inheritance detection → `writeStoreRow()`, `buildQueryRow()`,
+  `collectInheritanceChanges()`. The four nearly identical "old value vs new value vs parent value" branches
+  (`:177-231`) differ only in `addRelationToCheck()` / `addFieldToCheck()` and array vs scalar → one helper over a
+  normalised `column => value` map.
+- `DataObject::setGetInheritedValues(false)` with a `finally` "HACK" comment → `DataObject\Service::useInheritedValues(false, fn () => …)`
+  (B-175 pattern).
+- `$this->model->getDefinition()` is resolved three times in `save()` and once per object var in `delete()` → local
+  variable; `$getter` and `$method` are two names for the same thing; the commented-out `$tableName` line is dead.
+- `$this->inheritanceHelper` is a property only used inside one call → local variable.
+- `save()` passes the same `context` array to custom-persisting and column fields, but builds it twice → one
+  `$fieldParams` helper shared with `delete()` (B-324) and the container DAO (I-176).
+- `getRelationData()`: three `UNION` blocks with concatenated table names and the brick type → a query builder with
+  bound parameters (`position`, `ownername`, B-325); `"null" as published` returns the **string** `"null"` for assets,
+  which callers cast with `(bool)` → `NULL`.
+- `@internal` and not extended in core → `final`.
+
+### [ ] I-178 – `Objectbrick\Data\AbstractData`: typing and serialization
+
+**File:** `models/DataObject/Objectbrick/Data/AbstractData.php:34-248`
+
+- `$object` is typed `Concrete|ElementDescriptor|null`, but `setObject()` / `getObject()` only accept / return
+  `?Concrete` (same as I-138 for collections) → narrow the property or handle the descriptor in both.
+- `__wakeup()` is dead: `object` is always excluded in `__sleep()`. Move to `__serialize()` / `__unserialize()` with
+  an explicit field list (I-75); `in_array($key, $blockedVars)` → strict; memoise `getLazyLoadedFieldNames()` per type
+  (the definition is loaded on every cache write).
+- `isAllLazyKeysMarkedAsLoaded()` → `return $this->getObject()?->isAllLazyKeysMarkedAsLoaded() ?? true;`.
+- `get()` / `set()` build method names dynamically and return `mixed` → validate the field name against the
+  definition (clear exception instead of "Call to undefined method"), `set(): static`.
+- `getValueFromParent()` calls the parent container getter and brick getter twice → local variables.
+- `protected string $type = ''` on the abstract class can never resolve → `abstract public function getType(): string`
+  generated per brick, or a `TYPE` constant.
+- Empty docblocks (`/** * * @throws … */`, "Will be overriden") → remove or fix the wording.
+
+### [ ] I-179 – `Objectbrick\Definition\Dao` and `Definition\Listing`: one table-name builder, explicit DDL
+
+**Files:** `models/DataObject/Objectbrick/Definition/Dao.php:28-171`; `models/DataObject/Objectbrick/Definition/Listing.php:22-78`
+
+- Brick table names are built in five places: `Definition::checkTablenames()`, `Definition\Dao::getTableName()` /
+  `getLocalizedTableName()`, `Localizedfield\Dao::getTableName()` / `getQueryTableName()` (`:55-76`),
+  `Listing\Concrete\Dao.php:214`, `ClassDefinition/Data/Block.php:752` and the maintenance cleanup → one static
+  `BrickTableName` helper (store / query / localized / localized query + language), so they cannot diverge and
+  B-327 can drop all of them.
+- `createUpdateTable()`: the two `CREATE TABLE` statements are identical apart from the name → one private method;
+  the store / query column loops are the same algorithm with different getters → one loop over
+  `[table, getter, protected columns]`; `([$tableStore, $tableQuery])` has superfluous parentheses.
+- The `removeIndices()` override changes the meaning of the helper method of the same name (drops `p_index_` too,
+  ignores errors) → give it its own name; fix B-326 there.
+- DDL through `executeQuery()` → `executeStatement()` (I-76); identifiers with `quoteIdentifier()` (I-83).
+- `@internal` and not extended → `final`.
+- `Listing`: `include` per file without validation and without the custom-folder precedence (C-55, B-330) → resolve
+  keys and load through `getByKey()`; `loadFileNames()` → `Symfony\Component\Finder\Finder` or a guarded `glob()`;
+  return `list<Definition>`; `loadNames()` should not need `realpath()` on every file. Mark the class `@internal` or
+  give it an interface.
+
+### [ ] I-180 – `SelectOptions\Config` and `Config\Dao`: validation in one place, cheaper usage check
+
+**Files:** `models/DataObject/SelectOptions/Config.php:43-394`; `models/DataObject/SelectOptions/Config/Dao.php:30-161`
+
+- Validation is spread over `setId()` (reserved words), `Dao::validateId()` (unanchored regex, C-32) and the enum
+  builder (case names, traits, interfaces, after the config is saved, C-56) → one `Config::validate(): void` (or a
+  Symfony Validator constraint set) that runs before anything is written and reports all problems at once.
+- `final class` with `new static()` (`createFromData()`) and setters returning `Config` with `@return $this`
+  docblocks → `new self()`, return type `static` or `self` consistently, drop the redundant docblocks.
+- `getById()` uses an exception for control flow (`throw new RuntimeException(…)` caught right away) → check
+  `RuntimeCache::isRegistered()` / `instanceof` and return early.
+- `getFieldsUsedIn()` loads every class, field collection, brick and **every classification-store key** (one
+  `getFieldDefinitionFromKeyConfig()` per key) for each delete → query the classification store for select keys only,
+  stop at the first usage when only a yes / no answer is needed, and walk the field tree recursively (B-332).
+- `match (get_class($definition))` falls back to `'Unknown'` for subclasses → `instanceof` checks;
+  `method_exists($definition, 'getName')` → `$definition instanceof ClassDefinition`.
+- Reference parsing (trim `\` and spaces, short vs fully qualified name) is duplicated between
+  `isConfiguredAsOptionsProvider()` and the provider → one normaliser (B-332).
+- `Dao::saveConfiguration()` filters `getObjectVars()` with an allow-list loop → `array_intersect_key()` with the
+  `PROPERTY_*` constants, or simply build the array from the getters.
+- `Dao::getById(?string $id = null): void` (optional id, side effects on the model) → `load(string $id): void`.
+- `Dao::delete()`: `@unlink()` (I-83) and no runtime-cache update (B-331).
+- PHP 8.4: the five `PROPERTY_*` constants could be a backed enum; `$group` / `$useTraits` / `$implementsInterfaces`
+  are plain getter / setter pairs → property hooks or asymmetric visibility when BC allows (next major).
+
+### [ ] I-181 – `SelectOptions` listing, value object and enum traits
+
+**Files:** `models/DataObject/SelectOptions/Config/Listing.php:28-94`; `Config/Listing/Dao.php:22-46`;
+`SelectOptions/Data/SelectOption.php:22-126`; `SelectOptions/Traits/EnumGetValuesTrait.php:20-29`;
+`SelectOptions/Traits/EnumTryFromNullableTrait.php:20-30`
+
+- `Listing\Dao` extends `Config\Dao`, so the listing DAO inherits `save()`, `delete()`, `getById()` and
+  `validateId()`, all of which operate on `$this->model` – a `Listing` here → extend `PimcoreLocationAwareConfigDao`
+  and keep only `configure()` + `loadList()`.
+- `getTotalCount()` loads and hydrates every config to count them → `count($this->loadIdListByReadTargets())`.
+- `Listing::hasConfig()` → `array_any()` (PHP 8.4) with `strcasecmp()`; document why the comparison is
+  case-insensitive (enum file names on case-insensitive filesystems) and use the same rule when saving.
+- `Listing::setSelectOptions()` / the `@internal` property are public mutation of a read model → keep them internal
+  to the DAO.
+- `SelectOption` is mutable (`setValue()` / `setLabel()` / `setName()`) while instances are shared through the runtime
+  cache: changing an option of a cached config changes it for every caller in the process → `final readonly class`
+  with `with*()` methods; `static::PROPERTY_*` / `new static()` in a class nobody extends → `self::` / `new self()`.
+- Traits: `EnumGetValuesTrait` / `EnumTryFromNullableTrait` only work in backed enums → `@phpstan-require-implements
+  \BackedEnum`; `getValues()` → `@return list<string>` and `array_map(static fn (self $case) => $case->value,
+  self::cases())` (clearer than `array_column()` on enum objects, which works but relies on public property access).
+- The enum builder (`lib/DataObject/ClassBuilder/SelectOptionsEnumBuilder.php`) builds code with `strtr()` templates
+  and ad-hoc escaping → code generator (I-83, C-56); its case-name regex has a stray `-`.
+
+### [ ] I-182 – Tests for Scope 19
+
+- Existing brick tests cover one inheritance case and one relation case (`tests/Model/Inheritance/ObjectbrickTest.php`,
+  `tests/Model/Relations/ObjectbrickTest.php`); nothing covers two `Objectbricks` fields, brick removal, definition
+  delete or the select-options model (only a unit test mentions it).
+- Bricks: two fields sharing a brick (add, update, remove, inherit – C-54); `classes-rebuild` with a key in both
+  definition folders keeps columns (C-55); removing a brick keeps the metadata of a class field with the same name
+  (B-324); edit-mode relation data per field (B-325); a class save does not drop / re-add indexes (B-326); delete drops
+  localized tables and clears the runtime cache (B-327); a failing assignment leaves classes unchanged (B-328); a read
+  error is not turned into "no bricks" (B-329); a new brick without field name, falsy values in
+  `getValueForFieldName()` (B-330).
+- Select options: values / labels with `\`, `'`, duplicates and a leading `-` are rejected and nothing is written
+  (C-56); `getById()` after save / delete in the same process, `exists()`, reserved-word ids (B-331); usage inside a
+  `Block` and with a fully qualified reference blocks the delete (B-332); integer / `null` values from YAML (B-333).

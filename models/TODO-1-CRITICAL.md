@@ -113,6 +113,13 @@ consumers where a defect originates in the model interplay (`Data/AbstractQuanti
 `ClassDefinition/Data/AbstractQuantityValue.php::getFilterCondition()`, `ClassDefinition/Helper/UnitConverterResolver.php`,
 `bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`), the `quantityvalue_units` schema
 (`bundles/InstallBundle/dump/install.sql:695-709`) and `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:86-147`
+**(19)** `models/DataObject/Objectbrick/**` (Definition, Dao, Definition/Dao, Definition/Listing, Data/AbstractData,
+Data/Dao) and `models/DataObject/SelectOptions/**` (Config, Config/Dao, Config/Listing, Config/Listing/Dao,
+Data/SelectOption, Traits/EnumGetValuesTrait, Traits/EnumTryFromNullableTrait; both listed under Scope 6 but not processed
+there), plus the direct consumers where a defect originates in the model interplay (`models/DataObject/Objectbrick.php`,
+`ClassDefinition/Data/Objectbricks.php`, the advanced relations' `delete()`, `Concrete/Dao/InheritanceHelper.php`,
+`lib/DataObject/ClassBuilder/ObjectBrick*` / `SelectOptionsEnumBuilder.php`,
+`bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -144,13 +151,16 @@ columns (data loss) when a definition exists in both definition directories**, a
 **advanced-relation metadata crashing or being stored under another field name when a column key matches a model
 method** (`value`, `data`, `fieldname`, …), and in Scope 18 **an override unit import deleting units
 before re-creating them (derived units outside the file permanently lose their base unit; a failure leaves units
-missing)**.
+missing)**, and in Scope 19 **object-brick rows addressed by object id only (two
+`Objectbricks` fields sharing a brick overwrite, move and delete each other's data)**, **`classes-rebuild` dropping
+object-brick columns for shadowed definitions** and **PHP code injection / broken enums through select-option
+values**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1945,3 +1955,148 @@ whole file first (list of objects, `id` present, every `baseunit` resolvable in 
 topologically, run all writes in one transaction and clear the unit cache once at the end. Add a test: override import
 of a base unit whose derived units are not in the file keeps their `baseunit`, and a failing import leaves the table
 unchanged.
+
+---
+
+# Scope 19 – DataObject `Objectbrick/**` and `SelectOptions/**`
+
+> Notes
+> - Scanned (13 files, read in full): `Objectbrick/Definition.php`, `Objectbrick/Dao.php`, `Objectbrick/Definition/Dao.php`,
+>   `Objectbrick/Definition/Listing.php`, `Objectbrick/Data/AbstractData.php`, `Objectbrick/Data/Dao.php`,
+>   `SelectOptions/Config.php`, `SelectOptions/Config/Dao.php`, `SelectOptions/Config/Listing.php`,
+>   `SelectOptions/Config/Listing/Dao.php`, `SelectOptions/Data/SelectOption.php`,
+>   `SelectOptions/Traits/EnumGetValuesTrait.php`, `SelectOptions/Traits/EnumTryFromNullableTrait.php`.
+> - None of them was processed before. Both folders are listed in the Scope 6 header, but the earlier items only name
+>   these files in passing. Those points are not repeated: select-options id validation – C-32; brick fields named
+>   `objectId` / `loadedLazyKeys` – C-44; the open question in C-45 about `Objectbrick\Definition\Listing` is answered
+>   by C-55; `getByKey()` include path and caching – B-255; `@unlink()` – I-83; missing `declare(strict_types=1)` in
+>   `Objectbrick/Dao.php`, `Definition/Dao.php`, `Data/Dao.php` – I-73; brick calculated values via `getCalculatedFieldValue()` – B-247
+>   (comparison); the field-collection side of the shared lifecycle – I-136 / B-252–B-254.
+> - Collaborators read where a defect originates in the interplay: `models/DataObject/Objectbrick.php`,
+>   `Fieldcollection/Definition.php`, `Fieldcollection/Dao.php`, `Traits/FieldcollectionObjectbrickDefinitionTrait.php`,
+>   `Traits/LocateFileTrait.php`, `ClassDefinition/Data/Objectbricks.php`, `ClassDefinition/Data/AdvancedManyToManyRelation.php:627-672`,
+>   `ClassDefinition/Data/Relations/AbstractRelations.php:302-318`, `ClassDefinition/Helper/Dao.php`,
+>   `Concrete/Dao/InheritanceHelper.php`, `Localizedfield/Dao.php:48-80`,
+>   `lib/DataObject/ClassBuilder/ObjectBrick*Builder.php`, `PHPObjectBrickContainerClassDumper.php`,
+>   `SelectOptionsEnumBuilder.php`, `PHPSelectOptionsEnumDumper.php`, `lib/Model/Dao/PimcoreLocationAwareConfigDao.php`,
+>   `lib/Maintenance/Tasks/DataObject/CleanupBrickTablesTaskHelper.php`,
+>   `bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php:136-178`,
+>   `ClassesDefinitionsBuildCommand.php:95-98`, `doc/05_Objects/01_Object_Classes/01_Data_Types/60_Object_Bricks.md`.
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found (the files already use typed class constants and
+>   `new X()->method()` without parentheses). Modernisation is in TODO-3 (I-175–I-182).
+> - Checked with `php` 8.4.27: the enum code injection and the parse error of C-56, `Error` on `tryFrom()` for duplicate
+>   enum values, `ucfirst(null)` `TypeError` under strict types (B-330), `(bool)'false' === true` (B-330). The admin UI
+>   (`pimcore/admin-ui-classic-bundle`) is not in this repo and `vendor/` is not installed: which permission guards the
+>   select-options editor and how the editor sends values was **not verified**. Nothing else was executed.
+> - Critical items: C-54–C-56. Bugs: B-324–B-333. Improvements: I-175–I-182.
+
+## [ ] C-54 – Brick rows are addressed by object id only: two `Objectbricks` fields that allow the same brick overwrite, move and delete each other's data
+
+**Files:** `models/DataObject/Objectbrick/Data/Dao.php:39-248` (`:62-69` exists check, `:116-120` store write, `:131`
+old query row, `:143` parent row), `:250-321` (`:254`, `:259-260`); `models/DataObject/Concrete/Dao/InheritanceHelper.php:71-90`,
+`:232-244`, `:315`, `:337` (constructed with `id` as the only key, `Data/Dao.php:47`, `:270`);
+`models/DataObject/Objectbrick/Definition/Dao.php:61-82` (primary key `(id, fieldname)`); docs
+`60_Object_Bricks.md:49`, `:61` (a brick is assigned per class **and field**)
+
+```php
+$existsResult = $this->db->fetchOne('SELECT id FROM ' . $storetable . ' WHERE id = ? LIMIT 1', [$object->getId()]);
+// …
+$this->db->update($storetable, Helper::quoteDataIdentifiers($this->db, $data), ['id' => $object->getId()]); // $data contains 'fieldname'
+// delete():
+$this->db->delete($storeTable, ['id' => $object->getId()]);
+$this->db->delete($queryTable, ['id' => $object->getId()]);
+```
+
+- The brick tables are shared by every `Objectbricks` field of a class (`object_brick_store_<key>_<classId>`, primary key
+  `(id, fieldname)`); the definition explicitly supports assigning one brick to several fields
+  (`classDefinitions` = list of `classname` + `fieldname`, one container class per field). Loading filters by
+  `fieldname` (`Objectbrick/Dao.php:50`), but every write path in `Data\Dao` filters by `id` only.
+- Example: class `Product` has fields `specs` and `specsOverride`, both allowing brick `Engine`.
+  - The object has `Engine` in `specs`; an editor adds `Engine` to `specsOverride` and saves. The existence check finds
+    the `specs` row, so the new brick is written with `UPDATE … SET fieldname = 'specsOverride', … WHERE id = ?`. The
+    `specs` row is **moved** to the other field and its values are replaced; the `specs` brick is gone.
+  - Both rows exist (both bricks added while the object was new, which uses `INSERT`): the next save runs
+    `UPDATE … SET fieldname = 'specs' WHERE id = ?` on both rows → duplicate primary key → the object save fails and
+    keeps failing until someone removes a brick by hand.
+  - Removing `Engine` from one field deletes the store **and** query rows of both fields.
+- The query table is affected too: `oldData` and the parent row used for inheritance (`FOR UPDATE`) are read
+  `WHERE id = ?`, i.e. an arbitrary row of either field, so the change detection and the inherited values mix the two
+  fields. `InheritanceHelper` updates and deletes children's query rows by `id` only, so a change in one field is
+  propagated into the other field's rows of all children.
+- Nothing rejects the configuration; the admin allows it and the docs describe per-field assignment.
+
+**Fix direction:** add `fieldname` to every condition (`exists`, `update`, `delete`, the old / parent query rows) and
+pass `fieldname` as an additional key column to `InheritanceHelper` (it needs a composite-key mode for brick and
+collection tables). Until that ships, reject a brick definition that is assigned to two fields of the same class
+(`Definition::save()`), and add a test with two fields sharing a brick (add, update, remove, inherit).
+
+---
+
+## [ ] C-55 – `classes-rebuild` also drops object-brick columns for definitions shadowed in the other definition directory (C-45 for bricks)
+
+**Files:** `models/DataObject/Objectbrick/Definition/Listing.php:57-77`; `models/DataObject/Objectbrick/Definition.php:66-92`,
+`:144-214`, `:351-387`, `:413-449`; `Objectbrick/Definition/Dao.php:61-149` (`:147-148`);
+`bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:136-149`;
+`lib/DataObject/ClassBuilder/PHPObjectBrickContainerClassDumper.php:44-55`
+
+- Answers the open question in C-45: `Objectbrick\Definition\Listing::loadFileNames()` returns every `*.php` from
+  `var/classes/objectbricks` **and** `config/pimcore/classes/objectbricks`, while `getByKey()` lets the custom file
+  win. A key present in both folders is listed twice, the `var/classes` copy first.
+- `ClassesRebuildCommand` calls `save(false)` for each listed definition. For the stale copy this:
+  - runs `createUpdateTable()` for every class it lists, and `removeUnusedColumns()` drops every store / query column
+    the stale copy does not know (**data loss**; the custom copy saved afterwards re-adds them empty);
+  - adds the key to the `allowedTypes` of classes and fields that only the stale copy lists and **saves those
+    classes** (`createContainerClasses()`); the later save of the custom copy runs with `save(false)`, which skips
+    `cleanupOldFiles()`, so those assignments stay for good and the brick shows up in classes nobody configured;
+  - puts the stale instance into the runtime cache (`:198`), so class saves triggered in between rebuild tables of
+    other bricks against it.
+- Unlike the field-collection loop, the brick loop catches every exception and only prints it (`:145-148`): the
+  deployment goes on and reports success.
+- The same listing feeds `PHPObjectBrickContainerClassDumper` (containers are built from both copies' assignments,
+  `:44-55`), `ClassesDefinitionsBuildCommand` and `SelectOptions\Config::getFieldsUsedIn()`.
+
+**Fix direction:** same fix as C-45: build the key list from both folders, load each key once through `getByKey()`,
+log shadowed files; let `ClassesRebuildCommand` fail (non-zero exit) when a brick cannot be saved. Add a test with a
+key in both folders.
+
+---
+
+## [ ] C-56 – Select-option values and labels are written unescaped into the generated enum: a backslash breaks out of the string (PHP code injection), duplicate values break every `from()`
+
+**Files:** `models/DataObject/SelectOptions/Config/Dao.php:80-86`, `:110-120`; `models/DataObject/SelectOptions/Config.php:165-183`,
+`:367-370`; `models/DataObject/SelectOptions/Data/SelectOption.php:30-36`, `:118-125`;
+`lib/DataObject/ClassBuilder/SelectOptionsEnumBuilder.php:109-142` (`:111`, `:136`), `:144-165`, `:182-185`, `:192`;
+`lib/DataObject/ClassBuilder/PHPSelectOptionsEnumDumper.php:32-38`
+
+```php
+$template = 'case %caseName% = \'%optionValue%\';';
+protected function escapeSingleQuote(string $value): string { return str_replace("'", "\\'", $value); } // "\" is not escaped
+```
+
+- `Config\Dao::save()` stores the options and writes `var/classes/DataObject/SelectOptions/<Id>.php` without any
+  validation of the option values or labels. The builder escapes `'` but not `\`, so a value containing `\'` turns into
+  `\\'`: an escaped backslash followed by a closing quote. Checked: the value
+  `\'; public function getLabel(): string { return ""; } } echo "…"; enum Zz: string { //` (with any label set)
+  produces a file that parses and runs the top-level code each time the enum is included. The generated enum is
+  meant to be used by project code (`Colors::tryFrom($object->getColor())`), so the code runs in web requests and
+  workers.
+- Who can do it: whoever can edit select options in the admin, plus anything that writes the YAML / settings-store
+  config. That permission is normally given to fewer people than "system settings", but it is not "can deploy PHP".
+- Without malice:
+  - a value or label that ends in `\` (`C:\`, a regex, `\n` typed literally) makes the file a `ParseError` → every
+    request that touches the enum fails (checked);
+  - two options with the same value (two empty values, a copy-and-paste row) generate valid code, but every
+    `from()` / `tryFrom()` / `tryFromNullable()` then throws `Error: Duplicate value in enum …` (checked; `cases()`
+    still works, so the admin list looks fine);
+  - the case-name check `^[A-Z-a-z_]` accepts a leading `-` (the `-` in the character class is literal), which
+    generates `case -foo` → `ParseError` (checked with `preg_match`).
+- The configuration is written **before** the enum is generated: when the builder throws (unknown trait, case-name
+  collision), the broken config is already stored and `ClassesRebuildCommand` / `ClassesDefinitionsBuildCommand` fail
+  on it on every deployment.
+- C-32 covers the select-options **id**; values, labels, names and the save order are not covered there.
+
+**Fix direction:** validate in the model before saving (`Config::validate()`, called from `Dao::save()`): unique
+non-empty values, case names matching `^[A-Za-z_][A-Za-z0-9_]*$`, no PHP reserved case names (`class`, …), traits /
+interfaces resolvable. Generate code with `var_export()` for every string (or a code generator, I-83) instead of
+hand-made escaping. Build the enum first (into a temp file, `php -l` / `token_get_all()` check), then save the
+config, then move the file into place. Add tests for `\`, `'`, duplicate values and a leading `-`.
