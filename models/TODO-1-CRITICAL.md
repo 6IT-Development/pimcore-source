@@ -133,6 +133,13 @@ where a defect originates in the model interplay (`models/Document/Service.php::
 `models/Document.php::doDelete()` / `getById()` (`:621-646`, `:187-258`), `lib/Routing/Dynamic/DocumentRouteHandler.php`
 (`:120-133`, `:260-295`), `bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php`
 (`:81`, `:133`)) and the `documents_translations` schema (`bundles/InstallBundle/dump/install.sql:175-184`)
+**(22)** the not yet processed files of `models/Document/Hardlink/**` (`Wrapper/Email.php`, `Wrapper/Folder.php`,
+`Wrapper/Hardlink.php`, `Wrapper/Page.php`, `Wrapper/Snippet.php`, `Wrapper/WrapperInterface.php`; `Hardlink.php`,
+`Dao.php`, `Service.php`, `Wrapper.php` and `Wrapper/Link.php` were processed in Scope 6 and are skipped), plus the
+direct consumers where a defect originates in the model interplay (`lib/Document/StaticPageGenerator.php`,
+`bundles/CoreBundle/src/EventListener/Frontend/StaticPageGeneratorListener.php`,
+`lib/Routing/Dynamic/DocumentRouteHandler.php::buildRouteForDocument()` (`:158-188`),
+`lib/Navigation/Builder.php::buildNextLevel()` (`:346-420`), `lib/Twig/Extension/PimcoreObjectExtension.php:48`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -167,13 +174,16 @@ before re-creating them (derived units outside the file permanently lose their b
 missing)**, and in Scope 19 **object-brick rows addressed by object id only (two
 `Objectbricks` fields sharing a brick overwrite, move and delete each other's data)**, **`classes-rebuild` dropping
 object-brick columns for shadowed definitions** and **PHP code injection / broken enums through select-option
-values**.
+values**, and in Scope 22 **hardlinked pages written into the static-page storage: the hardlink URL is frozen
+(served after source changes, unpublish or delete) and the source's pretty URL is overwritten with the hardlink's
+rendering**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
+Scope 22: `c9ae84b8cf`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -2182,3 +2192,93 @@ config, then move the file into place. Add tests for `\`, `'`, duplicate values 
 >   not in this repo and `vendor/` is not installed. What the admin validates before linking was **not verified**.
 >   Nothing was executed.
 > - Critical items: none. Bugs: B-338–B-340. Improvements: I-186–I-189.
+
+---
+
+# Scope 22 – Document `Hardlink/**` files not processed in Scope 6 (`Wrapper/Email`, `Folder`, `Hardlink`, `Page`, `Snippet`, `WrapperInterface`)
+
+> Notes
+> - Scanned (read in full): `Document/Hardlink/Wrapper/Email.php`, `Wrapper/Folder.php`, `Wrapper/Hardlink.php`,
+>   `Wrapper/Page.php`, `Wrapper/Snippet.php`, `Wrapper/WrapperInterface.php` (183 lines). The five wrapper classes are
+>   empty `extends <Type> implements WrapperInterface { use Hardlink\Wrapper; }` shells, so the defects show up through
+>   the inherited type behaviour and the shared trait.
+> - Read for context, skipped because Scope 6 already processed them: `Hardlink.php`, `Hardlink/Dao.php`,
+>   `Hardlink/Service.php`, `Hardlink/Wrapper.php`, `Hardlink/Wrapper/Link.php`. Not repeated: no source validation /
+>   hardlink cycles, `null` source dereferences in `Wrapper::getProperty()` and `Wrapper\Link::getHref()`, custom
+>   document types without a wrapper, `Hardlink::hasChildren()` loading every child – B-147; type-DAO `id = NULL`
+>   overwrite in `Hardlink\Dao` – B-148; scheduled tasks of hardlinks not deleted – B-212; `func_get_args()` cache
+>   key in `Hardlink::getChildren()` – I-74; class-name rewrite in serialized data in `upperCastDocument()` – I-75;
+>   one generic type DAO – I-78; `Snippet` / `Email` / `Folder` cannot be `final` because the wrappers extend them –
+>   I-184. Also not repeated from other TODO files: the `use_main_domain` crash in `StaticPageGenerator::getStoragePath()`
+>   for hardlink children ([lib TODO-2](../lib/TODO-2-BUGS.md) B-61), stale static files after move / rename
+>   ([CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) B-38) and the `TypeError` in
+>   `HardlinkCanonicalListener` for a missing source (CoreBundle B-52).
+> - Collaborators read where a defect originates in the interplay: `Document.php::getById()` / `getBlockedVars()`
+>   (`:97-107`, `:187-258`), `Element/AbstractElement.php::__sleep()` / `__wakeup()` (`:642-670`),
+>   `Document/Page.php::getFullPath()` (`:79-93`), `lib/Document/StaticPageGenerator.php`,
+>   `StaticPageGeneratorListener.php`, `lib/Maintenance/Tasks/StaticPagesGenerationTask.php`,
+>   `lib/Routing/Dynamic/DocumentRouteHandler.php` (`:136-189`, `:269`, `:308-331`), `lib/Navigation/Builder.php`
+>   (`:328-420`), `lib/Navigation/Page/Document.php:75-95`, `lib/Cache/Core/CoreCacheHandler.php:367-376`,
+>   `HardlinkCanonicalListener.php`, `lib/Twig/Extension/PimcoreObjectExtension.php:48`,
+>   `doc/02_MVC/02_Template/README.md:101`, `default.yaml:285-318` (`type_definitions`).
+> - A wrapper is a field-by-field copy of the **source** document (same id, same class fields, source DAO via
+>   `initDao(get_class($source))`) with only `path` / `key` changed to the hardlink location. Every behaviour that the
+>   copied type keys on its own fields (pretty URL, static generator flags, controller, cache tag, id) therefore acts
+>   as if it were the source document. C-57 is the case where this writes wrong content to storage.
+> - No Symfony 7.4 / PHP 8.4 incompatibility: all six files have `declare(strict_types=1)`, no implicit nullable
+>   parameter, no removed API. Trait-over-parent method precedence (B-341) is unchanged in PHP 8.4.
+> - Nothing was executed; there are no hardlink tests in `tests/` (I-191). The admin UI that lets editors choose a
+>   hardlink source (`pimcore/admin-ui-classic-bundle`) is not in this repo, so whether it rejects a hardlink as source
+>   (B-341) was **not verified**.
+> - Critical items: C-57. Bugs: B-341–B-342. Improvements: I-190–I-191.
+
+## [ ] C-57 – Hardlinked pages are written into the static-page storage: the hardlink URL is frozen forever, and the source's pretty URL is overwritten with the hardlink rendering
+
+**Files:** `models/Document/Hardlink/Wrapper/Page.php:26-29`; `models/Document/Hardlink/Service.php:29-74` (copy of all
+fields); `lib/Document/StaticPageGenerator.php:43-80`, `:82-115`, `:126-132`;
+`bundles/CoreBundle/src/EventListener/Frontend/StaticPageGeneratorListener.php:71-121`, `:125-153`, `:155-172`;
+`lib/Maintenance/Tasks/StaticPagesGenerationTask.php:44-48`; `lib/Routing/Dynamic/DocumentRouteHandler.php:158-189`
+
+```php
+// StaticPageGeneratorListener::onKernelResponse()
+$document = $this->documentResolver->getDocument();            // the Wrapper\Page of the hardlink request
+if ($document instanceof Page && $document->getStaticGeneratorEnabled()) {   // flag copied from the source page
+    $this->staticPageGenerator->generate($document, ['response' => $response]);
+}
+// StaticPageGenerator::getStoragePath()
+$path = $document->getRealFullPath();                           // hardlink path
+if ($document instanceof Document\Page && $document->getPrettyUrl()) {
+    $path = $document->getPrettyUrl();                          // the SOURCE page's pretty URL (copied field)
+}
+```
+
+- `Wrapper\Page` is an `instanceof Page` and carries the source page's `staticGeneratorEnabled`, `prettyUrl` and
+  `staticGeneratorLifetime`. A request to the hardlink URL (direct hardlink or a child below a `childrenFromSource`
+  hardlink) is routed with the wrapper as the request document, so `onKernelResponse()` writes the hardlink's HTML
+  (hardlink navigation, the hardlink tree's inherited `language` and other properties merged in by the wrapper) into
+  the static storage.
+- **Source has no pretty URL:** the file is `<hardlink path>.html`. The static router (`onKernelRequest()`, priority
+  510, before routing) or the web-server rule serves this file for every later request to the hardlink URL, so the
+  page is never rendered again. Nothing refreshes or removes it:
+  - saving the source page removes only `<source path>.html` (`onPostAddUpdateDeleteDocument()`);
+  - saving, unpublishing or deleting the **hardlink** does nothing (`Hardlink` is not a `PageSnippet`);
+  - `StaticPagesGenerationTask` regenerates only real `type = 'page'` rows; `staticGeneratorLifetime` is checked
+    there only.
+  → Content edits, unpublishing or deleting the source, changing / deleting the hardlink, and turning the static
+  generator off are all ignored at the hardlink URL until someone deletes the file by hand. A deleted or unpublished
+  page stays publicly reachable.
+- **Source has a pretty URL:** the wrapper writes to the **source's** pretty-URL file. Visitors of the source URL get
+  the hardlink's rendering (other language tree, other navigation, other properties) until the next source save or
+  maintenance run, and the next request to the hardlink overwrites it again (flip-flop between the two renderings).
+  `generate()` uses one lock key per document id, so the two writers do not even serialize against different paths
+  in a predictable way.
+- With `use_main_domain = true`, deeper hardlink children make `getStoragePath()` crash instead (lib B-61); fixing
+  B-61 alone makes this item reachable for them as well.
+
+**Fix direction:** never generate static files for hardlink wrappers: in `StaticPageGeneratorListener::onKernelResponse()`
+skip `WrapperInterface` documents (the same check `Page::getFullPath()` and `DocumentRouteHandler.php:269` already
+make), and add a guard in `StaticPageGenerator::generate()` / `getStoragePath()` so CLI or custom callers cannot do it
+either. If hardlink static pages are wanted, make it an explicit hardlink option with its own storage path (the
+hardlink path, never the source pretty URL) and invalidate those files on source save, hardlink save and delete. Add a
+one-off cleanup (or documentation) for existing `<hardlink path>.html` files and pretty-URL files written by wrappers.
+Tests in I-191.

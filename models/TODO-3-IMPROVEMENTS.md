@@ -130,6 +130,13 @@ where a defect originates in the model interplay (`models/Document/Service.php::
 `models/Document.php::doDelete()` / `getById()` (`:621-646`, `:187-258`), `lib/Routing/Dynamic/DocumentRouteHandler.php`
 (`:120-133`, `:260-295`), `bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php`
 (`:81`, `:133`)) and the `documents_translations` schema (`bundles/InstallBundle/dump/install.sql:175-184`)
+**(22)** the not yet processed files of `models/Document/Hardlink/**` (`Wrapper/Email.php`, `Wrapper/Folder.php`,
+`Wrapper/Hardlink.php`, `Wrapper/Page.php`, `Wrapper/Snippet.php`, `Wrapper/WrapperInterface.php`; `Hardlink.php`,
+`Dao.php`, `Service.php`, `Wrapper.php` and `Wrapper/Link.php` were processed in Scope 6 and are skipped), plus the
+direct consumers where a defect originates in the model interplay (`lib/Document/StaticPageGenerator.php`,
+`bundles/CoreBundle/src/EventListener/Frontend/StaticPageGeneratorListener.php`,
+`lib/Routing/Dynamic/DocumentRouteHandler.php::buildRouteForDocument()` (`:158-188`),
+`lib/Navigation/Builder.php::buildNextLevel()` (`:346-420`), `lib/Twig/Extension/PimcoreObjectExtension.php:48`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -140,7 +147,8 @@ IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
+Scope 22: `c9ae84b8cf`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -153,7 +161,8 @@ DataObject `ClassDefinition/**` (I-149–I-160), Scope 17 in **U** DataObject `D
 Scope 18 in **V** DataObject `QuantityValue/**` units and conversion (I-170–I-174),
 Scope 19 in **W** DataObject `Objectbrick/**` and `SelectOptions/**` (I-175–I-182),
 Scope 20 in **X** Document `Email` / `Folder` / `Snippet` (I-183–I-185),
-Scope 21 in **Y** Document sub-directory DAOs (I-186–I-189).
+Scope 21 in **Y** Document sub-directory DAOs (I-186–I-189),
+Scope 22 in **Z** Document hardlink wrappers (I-190–I-191).
 
 ---
 
@@ -2996,3 +3005,57 @@ the six `Listing/Dao.php`
   nothing matches (I-186).
 - Document listing with 100 children of mixed types: the query count is bounded, and `getTotalCount()` equals
   `count(load())` with an empty-type row present (I-187).
+
+---
+
+## Z – Document hardlink wrappers (Scope 22)
+
+> Notes
+> - Scanned and skipped files are listed in the Scope 22 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md)
+>   (C-57, B-341–B-342).
+> - Not repeated: class-name rewriting in serialized data / composition instead of upper-casting (I-75), the
+>   `func_get_args()` cache key and `#[\Override]` (I-74), the configurable wrapper map with a generic fallback
+>   (B-147), the `@final` note on `Snippet` / `Email` / `Folder` (I-184).
+
+### [ ] I-190 – Hardlink wrapper classes: correct DAO annotations, a usable interface, `final`, one type map
+
+**Files:** `models/Document/Hardlink/Wrapper/Email.php:23-29`, `Folder.php:23-29`, `Hardlink.php:23-29`,
+`Page.php:23-29`, `Snippet.php:23-29`; `models/Document/Hardlink/Wrapper/WrapperInterface.php:23-38`;
+`models/Document/Hardlink/Service.php:37`, `:45`, `:61`; `lib/Navigation/Builder.php:332-333`
+
+- All five classes declare `@method Dao getDao()` with `Dao` = `Document\Hardlink\Dao`. At runtime `wrap()` calls
+  `initDao(get_class($source))`, so a `Wrapper\Page` has a `Page\Dao`, a `Wrapper\Email` an `Email\Dao`, a
+  `Wrapper\Folder` a `Folder\Dao`. The annotation makes PHPStan / IDEs flag valid calls (`getDao()->getEditables()`)
+  and hide wrong ones → `@method Page\Dao getDao()` etc., or drop the annotation and inherit the parent's.
+- `WrapperInterface extends ElementInterface` only. Every consumer needs `Document` methods that the interface does
+  not declare: `Builder::getChildren()` calls `getChildren()` on a `WrapperInterface` (`:332-333`), `wrap()` callers
+  call `setKey()` / `initDao()`. → declare the methods consumers rely on (`getChildren()`, `hasChildren()`), or
+  type the wrapper as `Document&WrapperInterface` in `Service::wrap()` and in the consumers. `wrap()`'s return type
+  `Wrapper\WrapperInterface|Wrapper\Hardlink|null` is redundant: `Wrapper\Hardlink` implements the interface.
+- `@return $this` docblocks on `setHardLinkSource()` / `setSourceDocument()` duplicate the native `static` return type
+  → remove. Add a class docblock to the interface that says what a wrapper is (a read-only copy of the source with
+  the hardlink path, same id) and what it is not (not cacheable – `CoreCacheHandler.php:373-376`, not saveable).
+- Nothing extends the wrapper classes, and `upperCastDocument()` would never instantiate a subclass → make all five
+  `final`.
+- The five classes differ only in the parent type; the class is picked by `'Wrapper\\' . ucfirst($doc->getType())`
+  (`Service.php:61`). Replace the string building with an explicit `const array WRAPPERS = ['page' => Page::class,
+  …]` (or a `match`) next to the classes, so a missing wrapper is a clear error and the list is greppable. Delete
+  `Wrapper\Hardlink` with B-341.
+- `Wrapper\Email` and `Wrapper\Snippet`: both types have `direct_route: true` (I-184), so a `childrenFromSource`
+  hardlink on an e-mail / snippet folder publishes every e-mail and snippet a second time under the hardlink path.
+  Decide whether hardlinks to these types are needed at all; if not, return `null` from `wrap()` for them and remove
+  the two classes.
+
+### [ ] I-191 – Tests for Scope 22 (and the Scope 6 hardlink items)
+
+- `tests/` has no hardlink test at all (`grep -rl Hardlink tests` is empty).
+- `Service::wrap()` for each document type: same id, hardlink path / key, source DAO class, `save()` / `delete()`
+  throw; a wrapper is not written to the cache (`CoreCacheHandler`).
+- Static pages: a request to a hardlinked static-enabled page (with and without a source pretty URL) writes no file,
+  and the source's pretty-URL file is unchanged (C-57).
+- Hardlink → hardlink → page: the route resolves to the page or the save is rejected, depending on the B-341
+  decision; the navigation contains the entry; `getSourceDocument()` and `getSourceId()` agree.
+- `pimcore_document_wrap_hardlink()` / `Service::wrap()` with a normal page does not end in an uninitialised-property
+  `Error` (B-342).
+- Regression cases from Scope 6: a hardlink to itself / an ancestor / a deleted source (B-147), the type row missing
+  (B-148), scheduled tasks removed on hardlink delete (B-212).

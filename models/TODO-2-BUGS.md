@@ -132,6 +132,13 @@ where a defect originates in the model interplay (`models/Document/Service.php::
 `models/Document.php::doDelete()` / `getById()` (`:621-646`, `:187-258`), `lib/Routing/Dynamic/DocumentRouteHandler.php`
 (`:120-133`, `:260-295`), `bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php`
 (`:81`, `:133`)) and the `documents_translations` schema (`bundles/InstallBundle/dump/install.sql:175-184`)
+**(22)** the not yet processed files of `models/Document/Hardlink/**` (`Wrapper/Email.php`, `Wrapper/Folder.php`,
+`Wrapper/Hardlink.php`, `Wrapper/Page.php`, `Wrapper/Snippet.php`, `Wrapper/WrapperInterface.php`; `Hardlink.php`,
+`Dao.php`, `Service.php`, `Wrapper.php` and `Wrapper/Link.php` were processed in Scope 6 and are skipped), plus the
+direct consumers where a defect originates in the model interplay (`lib/Document/StaticPageGenerator.php`,
+`bundles/CoreBundle/src/EventListener/Frontend/StaticPageGeneratorListener.php`,
+`lib/Routing/Dynamic/DocumentRouteHandler.php::buildRouteForDocument()` (`:158-188`),
+`lib/Navigation/Builder.php::buildNextLevel()` (`:346-420`), `lib/Twig/Extension/PimcoreObjectExtension.php:48`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -143,7 +150,8 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
+Scope 22: `c9ae84b8cf`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -157,7 +165,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **QuantityValue units / conversion** B-316–B-323,
 **Object bricks** B-324–B-330, **Select options** B-331–B-333,
 **Document `Email` / `Snippet` / `Folder`** B-334–B-337,
-**Document translation links** B-338–B-340.
+**Document translation links** B-338–B-340,
+**Document hardlink wrappers** B-341–B-342.
 
 ---
 
@@ -5599,3 +5608,86 @@ foreign key from I-84 (`ON DELETE CASCADE` only after this successor logic has r
 property or the parent changes (and in `addTranslation()` take it from the property when no argument is given). Or
 drop the column and read the effective property of every member at read time (`Service::getTranslations()` loads
 the documents anyway). Decide once and document it.
+
+---
+
+# Scope 22 – Document `Hardlink/**` files not processed in Scope 6 (`Wrapper/Email`, `Folder`, `Hardlink`, `Page`, `Snippet`, `WrapperInterface`)
+
+> Notes
+> - Scanned and skipped files, and the earlier items that are not repeated (B-147, B-148, B-212, I-74, I-75, I-78,
+>   I-184, lib B-61, CoreBundle B-38 / B-52), are listed in the Scope 22 notes in
+>   [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-57).
+> - `Wrapper/Email.php`, `Wrapper/Folder.php`, `Wrapper/Snippet.php` have no bug of their own beyond C-57-like
+>   identity effects (they keep the source id, class and DAO). The two items below are in `Wrapper/Hardlink.php` and the
+>   `WrapperInterface` contract.
+
+## Document hardlink wrappers (Scope 22)
+
+## [ ] B-341 – A hardlink whose source is another hardlink gives a 404 and disappears from the navigation: `Wrapper\Hardlink::getSourceDocument()` returns the hardlink itself
+
+**Files:** `models/Document/Hardlink/Wrapper/Hardlink.php:26-29`; `models/Document/Hardlink/Wrapper.php:184-194`;
+`models/Document/Hardlink.php:51-58`, `:77-88`, `:156-179`; `models/Document/Hardlink/Service.php:29-42`;
+`lib/Routing/Dynamic/DocumentRouteHandler.php:158-189`, `:308-331`; `lib/Navigation/Builder.php:355-372`
+
+```php
+class Hardlink extends Model\Document\Hardlink implements WrapperInterface
+{
+    use Model\Document\Hardlink\Wrapper;   // trait getSourceDocument() replaces Document\Hardlink::getSourceDocument()
+}
+```
+
+Setup: hardlink `A` → hardlink `B` → page `C` (nothing rejects a hardlink as source, B-147 only covers cycles).
+
+- `Service::wrap(A)` upper-casts `A`'s source `B` → `Wrapper\Hardlink` (a copy of `B`) and calls
+  `setSourceDocument(B)`. In PHP a trait method wins over the inherited one, so on this wrapper
+  `getSourceDocument()` returns **`B` itself** (the trait's field), while `getSourceId()` still returns `C`'s id. The
+  two accessors of one object disagree.
+- **Routing:** `DocumentRouteHandler::buildRouteForDocument()` wraps `A` once and gets the `Wrapper\Hardlink`. It is
+  neither a direct-route `PageSnippet` nor a `link`, so no `_controller` is set → "Unable to find the controller"
+  → 404 for the URL of `A`, although `C` is a published page.
+- **Navigation:** `Builder::buildNextLevel()` wraps hardlink children and only keeps `Folder` / `Page` / `Link`
+  (`:370`). The `Wrapper\Hardlink` is silently dropped together with its subtree.
+- **Children / cache tags:** `Hardlink::getChildren()` (reached through the trait's `parent::getChildren()`) and
+  `Hardlink::getCacheTags()` use `getSourceDocument()` = `B`: `getCacheTags()` sees the same id and never adds `C`'s
+  tags; children are fetched from `B` (which wraps `C`'s children itself) and then wrapped a second time, serializing
+  the nested wrapper including its `hardLinkSource` object (`Wrapper.php:32` is not a blocked var).
+- So the `Wrapper\Hardlink` class exists but no frontend path can use the object it produces.
+
+**Fix direction:** decide whether chained hardlinks are supported.
+- **Supported:** resolve the chain in `Service::wrap()` (follow `getSourceId()` until a non-hardlink, with the cycle
+  guard from B-147 and a depth limit), wrap the final target with the outermost hardlink as `hardLinkSource`, and
+  delete `Wrapper\Hardlink`.
+- **Not supported:** reject a hardlink as source when saving a hardlink (together with the B-147 validation), return
+  `null` from `wrap()` for such legacy data, and delete `Wrapper\Hardlink`.
+- In both cases rename the trait accessor (e.g. `getWrappedDocument()`) so it can never shadow
+  `Document\Hardlink::getSourceDocument()` again. Tests in I-191.
+
+## [ ] B-342 – `WrapperInterface::getHardLinkSource()` is non-nullable, but a wrapper made by `wrap()` of a normal document (also the Twig function) has none: `Error` on the first property / children access
+
+**Files:** `models/Document/Hardlink/Wrapper/WrapperInterface.php:23-38`; `models/Document/Hardlink/Wrapper.php:32`,
+`:63-106`, `:130-165`, `:179-182`; `models/Document/Hardlink/Service.php:43-48`;
+`lib/Twig/Extension/PimcoreObjectExtension.php:48`; `doc/02_MVC/02_Template/README.md:101`
+
+```php
+public function getHardLinkSource(): Document\Hardlink;            // interface: always a hardlink
+protected Document\Hardlink $hardLinkSource;                       // trait: no default, uninitialised
+```
+
+- `Service::wrap()` for a non-hardlink document (`else` branch) returns a wrapper without `hardLinkSource`; every
+  internal caller sets it right after the call. Any other caller does not:
+  - `pimcore_document_wrap_hardlink(document)` is a documented Twig function that maps straight to
+    `Service::wrap()`. With a page / snippet / folder argument the template receives such a wrapper.
+  - Project code calling `Service::wrap()` with a normal document, or a wrapper created by the `else` branch and
+    passed on before `setHardLinkSource()`.
+- The first `getProperties()`, `getProperty()`, `getChildren()` or `hasChildren()` call reads `$this->hardLinkSource`
+  → `Error: Typed property … must not be accessed before initialization`. `getProperty('language')` is called for
+  every routed document (`DocumentRouteHandler.php:177`), and templates commonly call `getProperty()` → frontend 500.
+- The interface promises a `Document\Hardlink` that the implementation cannot always deliver, so static analysis does
+  not warn either.
+
+**Fix direction:** make the hardlink a required argument of wrapping: `Service::wrap(Document $doc, ?Hardlink
+$hardlink = null)` and, for a non-hardlink `$doc`, throw `InvalidArgumentException` when `$hardlink` is `null`;
+set it inside `wrap()` instead of in every caller. Alternatively make the property `?Document\Hardlink = null`, the
+interface `getHardLinkSource(): ?Document\Hardlink`, and let the trait methods fall back to the plain document
+behaviour. Point the Twig function at a small wrapper that only accepts `Document\Hardlink` (or returns the
+argument unchanged for other documents) and document that.
