@@ -47,6 +47,15 @@ consumers where a defect originates in the model interplay (`lib/Maintenance/Tas
 (`:516-560`), `models/Element/Recyclebin/Item.php`, the `properties.predefined` config node
 (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1844-1873`)), the `properties` and `schedule_tasks`
 schemas (`bundles/InstallBundle/dump/install.sql:300-310`, `:326-340`) and `tests/Support/Test/AbstractPropertiesTest.php`
+**(9)** `models/Version.php` and `models/Version/**` (Dao, Listing, Listing/Dao, SetDumpStateFilter,
+Adapter/VersionStorageAdapterInterface, Adapter/FileSystemVersionStorageAdapter, Adapter/DatabaseVersionStorageAdapter,
+Adapter/DelegateVersionStorageAdapter, Adapter/ProxyVersionStorageAdapter), plus the direct consumers where a defect
+originates in the model interplay (`lib/Maintenance/Tasks/VersionsCleanupTask.php`, `lib/Messenger/Handler/VersionDeleteHandler.php`,
+`lib/Messenger/Handler/SanityCheckHandler.php::performSanityCheck()` (`:69-95`),
+`models/Element/AbstractElement.php::doSaveVersion()` (`:573-611`), `models/Asset.php::saveVersion()` (`:839-890`), the
+`Version::disable()` / `enable()` callers, `lib/Helper/LongRunningHelper.php::cleanUp()`), the `versions` schema
+(`bundles/InstallBundle/dump/install.sql:576-600`), the `versionsData` table from
+`doc/18_Tools_and_Features/01_Versioning.md:79-87` and `tests/Service/Element/VersionTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -55,13 +64,13 @@ B-43 push/pop listener balance is the listener side of B-158)
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`, Scope 8: `d527536468`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
 **Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187,
 **Metadata** B-188–B-192, **Notification** B-193–B-200, **Property** B-201–B-205, **Predefined property**
-B-206–B-209, **Schedule** B-210–B-214.
+B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225.
 
 ---
 
@@ -2883,3 +2892,244 @@ instances with listings; let SQL errors propagate (I-97).
 
 **Fix direction:** one `INSERT` with all columns (or a transaction); ignore / reject client ids in `saveScheduledTasks()`
 unless the row belongs to the element; set `userModification` to the task user before saving; validate on save (I-97).
+
+---
+
+## Version (Scope 9)
+
+## [ ] B-215 – `Version::disable()` / `enable()` is a global flag that does not nest and is never reset: one exception switches versioning off for the rest of a worker
+
+**Files:** `models/Version.php:78`, `:106-127`, `:129-136`; `lib/Messenger/Handler/AssetUpdateTasksHandler.php:66-72`;
+`models/Asset/Video.php:202-204`, `:231-233`; `models/Asset/Video/Thumbnail/Processor.php:157-159`, `:214-216`,
+`:311-313`; `models/Element/AbstractElement.php:293-297`
+
+- None of the `disable(); save(); enable();` sequences use `try` / `finally`. If the `save()` in between throws, `$disabled`
+  stays `true`. This affects Messenger consumers (`AssetUpdateTasksHandler`, video conversion) and worker runtimes
+  (CoreBundle C-08; e.g. a frontend `Video::getDuration()` auto-save fails). From then on, **every** save in that
+  process creates no version, and `AbstractElement` stops incrementing `versionCount` (`:293-297`). There is no error
+  and no log entry. Editors find no history for changes made in that worker.
+- The flag does not nest. An importer calls `Version::disable()`, then saves a video. `Video::getDuration()` /
+  `getDimensions()` call `disable()` / `enable()` themselves, and versioning is back on for the rest of the import.
+- `public static bool $disabled` can be written from anywhere and is not reset on `kernel.reset`.
+- `save()` dispatches `PRE_SAVE` **before** checking the flag (`:131-136`). Listeners react to a version that is never
+  written, and there is no `POST_SAVE`.
+- `save()` also returns silently for **existing** versions. A metadata update (`SanityCheckHandler` re-orders the
+  draft with `setVersionCount()` / `setNote()`, B-219) is dropped while versioning is disabled.
+
+**Fix direction:** a counter-based `Version::withoutVersioning(callable $fn)` with `try` / `finally` that replaces all
+call sites; reset the counter through `ResetInterface`; check the flag before `PRE_SAVE`; do not apply the flag to
+metadata updates of existing versions (B-219, I-102).
+
+## [ ] B-216 – `Version::loadData()` calls `Pimcore::collectGarbage()` on every load: idle DB connections and Monolog handlers are closed and the runtime cache is cleared mid-request
+
+**Files:** `models/Version.php:280-283`; `lib/Pimcore.php:142-150`; `lib/Helper/LongRunningHelper.php:37-44`, `:62-105`
+
+- `collectGarbage()` runs `LongRunningHelper::cleanUp()`. It closes every DBAL connection that has no active
+  transaction, closes all registered Monolog handlers, clears the `RuntimeCache` except six protected keys
+  (`Config_system`, `pimcore_admin_user`, `Config_website`, `pimcore_error_document`, `pimcore_site`, `Pimcore_Db`) and
+  runs `gc_collect_cycles()`.
+- This happens on **every** version load, in web requests too: admin preview / diff / restore, frontend `?v=` and
+  `pimcore_version` (CoreBundle B-35), scheduled `publish-version`, `SanityCheckHandler`, and every re-save (B-219).
+  Effects:
+  - Elements loaded earlier in the request drop out of the runtime cache, so a later `getById()` returns a
+    **different instance**. Changes made to the first instance are not visible to code that reloads the element (e.g.
+    "publish version" loads the version, then saves).
+  - A listing preview of N versions reconnects to the DB N times. Connection-scoped state (user variables,
+    `GET_LOCK()` locks, temporary tables) is lost. Buffered log handlers are flushed and closed.
+- The comment ("avoid dealing with marshalled data") points at the real cause. `__wakeup()` in dump state calls
+  `getById()` for the original element (`AbstractElement.php:652-670`, `Asset.php:1613-1633`), which caches it while the
+  unserialized copy is being built.
+
+**Fix direction:** remove the call. If the cached originals are a problem, load them without caching (`force`) or
+remove only the affected keys after `unmarshalData()`.
+
+## [ ] B-217 – Uninitialised typed properties: a version without `setDate()`, with the system user, a deleted user or `NULL` columns throws `Error`
+
+**Files:** `models/Version.php:48-60`, `:139-141`, `:323-346`, `:391-399`, `:435-438`; `models/Version/Dao.php:36-48`;
+`lib/Model/AbstractModel.php:175-190`; `bundles/InstallBundle/dump/install.sql:578-583`
+
+- `$cid`, `$ctype`, `$userId` and `$date` are typed non-nullable and have no default. `save()` reads `$this->date`
+  (`if (!$this->date)`) to default it to `time()`. Without `setDate()` this throws "must not be accessed before
+  initialization" instead.
+- `setUserId()` only assigns when `User::getById()` finds a user. With `userModification = 0` ("system", documented in
+  `01_Versioning.md:132-135` and used by `SanityCheckHandler.php:82`) or a deleted user, `$userId` stays uninitialised.
+  `get_object_vars()` skips the property, so `userId` is stored as `NULL`, and `getUserId()` throws `Error`.
+- On load, `Dao::getById()` hydrates through `setValues($data, ignoreEmptyValues: true)`: `NULL` columns are skipped,
+  and `setUserId()` looks up the user again. Versions of deleted users therefore have an uninitialised `$userId`
+  after every load. The same applies to `cid`, `ctype` and `date`, which are nullable in the schema: `getCid()` /
+  `getCtype()` / `getDate()` throw (FS paths, `Element\Service::getSafeVersionInfo()`, cleanup).
+- `setUserId()` runs `User::getById()` for every hydrated version (a listing of N versions does N user lookups).
+
+**Fix direction:** `?int` / `?string` with `null` defaults (or required constructor arguments for new versions);
+`setUserId()` stores the id unconditionally and `getUser()` loads lazily; `NOT NULL` columns where the model requires
+values (I-108).
+
+## [ ] B-218 – `getData()` / `loadData()`: failures reload on every call, errors return `null`, and a missing asset binary is silently replaced by the current file
+
+**Files:** `models/Version.php:269-311`, `:401-408`
+
+- `getData()` reloads whenever `!$this->data`. Failed loads (`null`) and falsy payloads are reloaded on **every**
+  call, each time with storage I/O, `unserialize()`, `collectGarbage()` (B-216) and an error log line.
+- `loadData()` treats empty or `'0'` metadata as unreadable (`if (!$data)`).
+- Asset branch (`:297-302`): when `loadBinaryData()` returns `null` (`.bin` missing after C-39, deleted manually, or
+  stored under another storage type, B-222), the asset is returned **without** a stream. `Asset::getStream()` then
+  opens the **current** stored file. Preview shows the current binary, and restoring / publishing the version writes
+  the old metadata with the current binary. There is no warning although `binaryFileHash` is set.
+- Errors are reported as `null` plus a log entry. Not every caller checks the result: `ElementListener::handleVersion()`
+  returns it as `Document` (`ElementListener.php:121`, `TypeError` → 500), and code like `$version->getData()->…` fails with
+  a generic `Error` on `null` instead of a clear "version data missing" message.
+- `unmarshalData(ElementInterface)` receives whatever `unserialize()` returns. Non-element payloads throw `TypeError`
+  (`save()` marks arrays as serialized too, B-220).
+
+**Fix direction:** track "loaded" in a separate flag; throw a dedicated `VersionDataNotFoundException` (also when
+`binaryFileHash` is set but the binary is missing); compare the restored binary with `binaryFileHash` (I-103).
+
+## [ ] B-219 – Re-saving an existing version rewrites its whole payload: data reloaded and re-marshalled, stack trace replaced, storage re-chosen
+
+**Files:** `models/Version.php:129-192`, `:401-408`; `models/Version/Dao.php:56-79`;
+`lib/Messenger/Handler/SanityCheckHandler.php:85-94`; `models/Element/AbstractElement.php:577-611`
+
+- There is no metadata-only update. `SanityCheckHandler` (`setVersionCount()` + `setNote()` + `save()` on the latest
+  draft), the auto-save reuse in `doSaveVersion()`, and the upstream admin update of `public` / `note` (not verified
+  locally) all run the full `save()`.
+  - `getData()` → `loadData()`: unserialize, unmarshal, `collectGarbage()` (B-216), `renewReferences()`. `__wakeup()`
+    in dump state copies key and path from the **current** element.
+  - The data is marshalled and written again. The stored draft changes: current key / path, and a round trip through
+    `CustomVersionMarshalInterface` fields.
+  - `stackTrace` is replaced by the trace of the re-save. Assets are re-hashed (full binary read).
+- With the Delegate adapter the storage type can change (the size moved across the threshold). The new payload goes
+  to the other adapter, and the old one is never deleted. With the DB adapter the binary is wiped (C-38).
+- If `loadData()` fails (incompatible class, missing file), `$data` is `null` and `strlen(null)` throws `TypeError`
+  after `PRE_SAVE`. `SanityCheckHandler` nacks the message, and it is retried.
+
+**Fix direction:** `Version::updateMetadata()` / `Dao::updateMetadata()` for `note`, `public`, `versionCount` without
+touching storage; `save()` only creates. For auto-save reuse, explicitly delete the old payload in the old storage
+type before writing the new one (I-102).
+
+## [ ] B-220 – `Version::save()` defects
+
+**Files:** `models/Version.php:129-192`, `:194-221`; `models/Asset.php:1580-1593`
+
+- `is_object($data) || is_array($data)` routes arrays and non-element objects into `marshalData(ElementInterface)` →
+  `TypeError`. `method_exists($data, '__wakeup')` on an array is a `TypeError` too. Only elements work, but the
+  signature is `setData(mixed)`.
+- "Revert all changes made by `__sleep()`" calls `__wakeup()` on the **original** element (`:163-166`). `__sleep()`
+  only ran on the deep copy (`marshalData()`), so this is a leftover with side effects on the live element:
+  `Asset::__wakeup()` sets `customSettingsNeedRefresh` when `customSettingsCanBeCached === false` (in-memory custom
+  settings are re-read from the DB), and `Concrete::__wakeup()` re-binds the object-aware fields.
+- For assets the whole binary is hashed on every save (`hash_update_stream()`), also when it did not change (I-104).
+  A pending stream that is not seekable cannot be rewound by the second `getStream()` (`:189`).
+  `Asset::getStream()` then opens the **stored** file, so the hash belongs to the new data but the stored binary is
+  the old one (related C-07).
+- `$data->getfileSize()` (wrong case) returns the size of the **stored** file through a storage call, not of the
+  pending stream. The Delegate threshold for a new upload is decided on the old size.
+- The stack trace contains argument values when `zend.exception_ignore_args = Off` (the development default). Every
+  version then stores truncated arguments of the whole call stack in `versions.stackTrace`.
+- `setId($id)` after `Dao::save()` repeats what the DAO already did.
+
+**Fix direction:** accept only `ElementInterface` (`setData(?ElementInterface)`); remove the `__wakeup()` call; take
+hash and size from the pending stream (or from the asset checksum when the binary is unchanged); build the stack
+trace with `debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)` (I-104).
+
+## [ ] B-221 – Version small defects
+
+**Files:** `models/Version/Dao.php:56-79`, `:106-110`; `models/Element/AbstractElement.php:577-582`;
+`models/Version.php:465-473`, `:485-488`
+
+- `Dao::save(): int` returns `$this->model->getId()`, which is `?int`; nothing guarantees an id when `lastInsertId()`
+  is empty. The `@todo: $data could be undefined` comment is stale.
+- The auto-save lookup in `doSaveVersion()` uses `userId = ?` with `getUserModification()`. For `null` it never
+  matches, so API saves with `isAutoSave` create a new auto-save version every time instead of reusing one.
+- `isBinaryHashInUse()` compares the `fetchOne()` string with `> 1` (works only through coercion) and runs for every
+  delete, including versions without a hash (`binaryFileHash = NULL` never matches).
+- `getPublic()` / `isPublic()` duplicate each other; `getVersionCount()` returns `$this->versionCount ?: 0` for a
+  non-nullable `int`.
+
+**Fix direction:** see I-102 / I-105.
+
+---
+
+## Version storage / maintenance (Scope 9)
+
+## [ ] B-222 – Storage adapters: `storageType` is ignored by the plain adapters, binary-in-use checks span storage types, hardlinks share the live inode
+
+**Files:** `models/Version/Adapter/FileSystemVersionStorageAdapter.php:85-127`; `DatabaseVersionStorageAdapter.php:124-128`;
+`DelegateVersionStorageAdapter.php:33-53`, `:65-76`; `models/Version/Dao.php:96-110`; `models/Version.php:253-262`;
+`doc/18_Tools_and_Features/01_Versioning.md:44-114`
+
+- Only the Delegate adapter dispatches by the stored `storageType`. Switching the service alias from the FS to the DB
+  adapter, as the documentation describes, makes every existing `fs` version unreadable ("cannot read version data
+  with storage type: fs"). `delete()` then removes nothing from the old storage, so the files are orphaned. The same
+  happens the other way round.
+- Delegate: both adapters are registered by `getStorageType()`. Two adapters of the same type (e.g. two DB connections)
+  collide in `$adapters`, and reads go to the fallback connection. `getAdapter()` throws a generic `\Exception`.
+  `empty($this->fallbackAdapter)` is always `false` (non-nullable typed property).
+- `getBinaryFileIdForHash()` filters by `storageType`, but `isBinaryHashInUse()` does not. With the Delegate adapter, a
+  `.bin` in FS is kept forever when the only remaining version with that hash is stored in the DB.
+- FS `save()` opens `getBinaryFileStream()` twice (`:100-101`) and never closes either handle. That leaks two handles
+  per asset version, and on Windows the following `delete()` of the probe file fails.
+- Hardlinks (`use_hardlinks`, default `true`): the version `.bin` shares the inode with the live asset file. Pimcore's
+  own `Asset::update()` replaces the file (delete + move, C-06 keeps rename semantics), but anything that writes the
+  asset file **in place** (external tools, `rsync --inplace`, a Flysystem `write()` to the same path, which truncates
+  through `file_put_contents()`) silently changes every linked version. `chmod` / `chown` are shared too.
+- FS `delete()` removes empty directories only when the metadata file existed, so `.bin`-only directories stay.
+- Storage on a separate connection (documented for the DB adapter) or in FS is not part of the element transaction:
+  after a rollback, `versionsData` rows and files remain, and no job removes orphans.
+
+**Fix direction:** resolve the adapter per version from `storageType` through a registry of all configured adapters
+(keyed by a unique name, not the type); scope `isBinaryHashInUse()` by storage type; close probe streams; document
+the hardlink trade-off or verify `binaryFileHash` on restore (C-39); add an orphan cleanup command (I-106).
+
+## [ ] B-223 – `VersionsCleanupTask`: one failing delete stalls the cleanup for good; unbounded `NOT IN` lists and `days` result; auto-save cleanup crashes on `null`
+
+**Files:** `lib/Maintenance/Tasks/VersionsCleanupTask.php:46-62` (`:59-60`), `:98-173` (`:99`, `:105-106`, `:157`, `:165`);
+`models/Version/Dao.php:118-169` (`:120-123`, `:132-136`, `:139-158`)
+
+- `$version->delete()` is not wrapped in `try` / `catch`. One storage error (permissions, S3 outage, a `TypeError` from
+  C-38) aborts the task. The next run returns the same version first (no `ORDER BY`), so the cleanup **never
+  progresses** again and version storage grows without limit.
+- `doAutoSaveVersionCleanup()`: `Version::getById($id)->delete()` on `null` (deleted in between, e.g. by
+  `VersionDeleteHandler`) → `Error`, which aborts the run before `doVersionCleanup()` is retried.
+- `$ignoredIds` starts with **all** auto-save ids and grows with every public, scheduled or "newer than the element"
+  version. It is `implode()`d into `NOT IN (…)` of every query in every loop iteration, so the query grows without
+  bound (statement size, `max_allowed_packet`, full scans).
+- The `days` branch has no `LIMIT`. After enabling `days` on an old installation it returns millions of ids in one
+  array; the `> 1000` stop only exists in the `steps` branch.
+- The `steps` branch keeps `steps + 1` non-public versions (`HAVING COUNT(*) > steps + 1`, `LIMIT steps + 1, …`). Check
+  this against the label of the system setting.
+- `Logger::info()` once per element and `Logger::debug()` once per version flood the maintenance log.
+
+**Fix direction:** catch `\Throwable` per version, log it and skip the version; null-check; iterate with an id cursor
+(`id > :lastId ORDER BY id LIMIT n`) instead of a growing `NOT IN`; bound the `days` query; check public / scheduler
+state in SQL instead of loading every version (I-107).
+
+## [ ] B-224 – `Version\Listing` returns `null` entries and hides SQL errors; deleting an element leaves its auto-save versions
+
+**Files:** `models/Version/Listing/Dao.php:29-41`, `:48-60`, `:72-79`; `lib/Messenger/Handler/VersionDeleteHandler.php:42-65`;
+`models/Element/Traits/VersionDaoTrait.php:31-47`
+
+- `load()` selects ids and calls `Version::getById()` per id (N+1). A row deleted in between (cleanup, delete handler)
+  puts `null` into the list, which then breaks `VersionDeleteHandler` (`$version->delete()` on `null` → `Error` →
+  `catch (Exception)` misses it → the whole message is nacked and retried), the admin version list and
+  `getSafeVersionInfo()` (same pattern as B-213).
+- `getTotalCount()` returns `0` on any SQL error.
+- `VersionDeleteHandler` uses the default listing, which adds `autoSave = 0`. Auto-save versions of a deleted element
+  and their storage stay until the 72-hour cleanup. If the element is restored from the recycle bin in the meantime,
+  `getLatestVersion()` (which includes the user's auto-save) offers the editor the stale auto-save draft.
+
+**Fix direction:** hydrate from one `SELECT *` (no per-id lookup, no `null`); let SQL errors propagate;
+`setLoadAutoSave(true)` in the delete handler and catch `\Throwable` per version (I-105).
+
+## [ ] B-225 – `VersionTest` cannot run on PHPUnit 10 / 11 and never loads, deletes or re-saves a version
+
+**Files:** `tests/Service/Element/VersionTest.php:38-79`, `:294-300`, `:324-333`; `composer.json:154`
+
+- `MockBuilder::setMethods()` was removed in PHPUnit 10, and `composer.json` requires `^10.0 || ^11.0`. Every storage
+  test calls it through `mock*StorageAdapter()`, so they error before asserting (not run locally, `vendor/` is not
+  installed). The mocks mock nothing (`setMethods(null)`); real instances would do.
+- The tests only inspect rows after saving. No test loads a version (C-38 would fail at once), deletes versions that
+  share a binary (C-38), re-saves a version (B-219), restores an asset version, or checks that `disable()` is
+  re-enabled after an exception (B-215).
+- `tearDown()` drops `versionsData` unconditionally; SQL is built by string concatenation (`:70-74`, `:90`, `:327`).
+
+**Fix direction:** `onlyMethods([])` or plain instances; add the missing cases (I-109).

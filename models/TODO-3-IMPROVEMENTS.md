@@ -45,6 +45,15 @@ consumers where a defect originates in the model interplay (`lib/Maintenance/Tas
 (`:516-560`), `models/Element/Recyclebin/Item.php`, the `properties.predefined` config node
 (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1844-1873`)), the `properties` and `schedule_tasks`
 schemas (`bundles/InstallBundle/dump/install.sql:300-310`, `:326-340`) and `tests/Support/Test/AbstractPropertiesTest.php`
+**(9)** `models/Version.php` and `models/Version/**` (Dao, Listing, Listing/Dao, SetDumpStateFilter,
+Adapter/VersionStorageAdapterInterface, Adapter/FileSystemVersionStorageAdapter, Adapter/DatabaseVersionStorageAdapter,
+Adapter/DelegateVersionStorageAdapter, Adapter/ProxyVersionStorageAdapter), plus the direct consumers where a defect
+originates in the model interplay (`lib/Maintenance/Tasks/VersionsCleanupTask.php`, `lib/Messenger/Handler/VersionDeleteHandler.php`,
+`lib/Messenger/Handler/SanityCheckHandler.php::performSanityCheck()` (`:69-95`),
+`models/Element/AbstractElement.php::doSaveVersion()` (`:573-611`), `models/Asset.php::saveVersion()` (`:839-890`), the
+`Version::disable()` / `enable()` callers, `lib/Helper/LongRunningHelper.php::cleanUp()`), the `versions` schema
+(`bundles/InstallBundle/dump/install.sql:576-600`), the `versionsData` table from
+`doc/18_Tools_and_Features/01_Versioning.md:79-87` and `tests/Service/Element/VersionTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -52,11 +61,12 @@ Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`, Scope 8: `d527536468`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
-DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100).
+DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100),
+Scope 9 in **M** Version (I-101–I-109).
 
 ---
 
@@ -1338,3 +1348,136 @@ Add model tests for:
   throwing listener on one task does not block the others (C-36); publish / unpublish due in the same run (B-210);
   skipped tasks are logged (B-211); recycle-bin restore keeps the tasks, and deleting a link removes them (B-212);
   `DataObject\Service::copyContents()` keeps the source's tasks (B-182).
+
+---
+
+## M – Version (Scope 9)
+
+### [ ] I-101 – Strictness and native types (PHP 8.4)
+
+- Add `declare(strict_types=1)` to `Version/Dao.php` and `Version/Listing/Dao.php`. Prerequisites that rely on
+  coercion today: `isBinaryHashInUse()` compares the `fetchOne()` string (`(int)` cast); the `Listing/Dao.php` /
+  `Dao.php` ids from `fetchFirstColumn()` are already `intval`ed.
+- Setters typed `: Version` with `@return $this` → `: static`. Mixed `void` / fluent setters (`setVersionCount()`,
+  `setBinaryFileHash()`, `setBinaryFileId()`, `setGenerateStackTrace()`, `setStackTrace()`, `setStorageType()`) →
+  all fluent. `getById(): ?Version` → `?self`.
+- `final class Version` with `protected` members → `private`. `SetDumpStateFilter` (final) has a `protected bool
+  $state` → `private readonly` via constructor promotion.
+- PHP 8.4 asymmetric visibility for instance properties: `public private(set) ?int $id` (only the DAO assigns it).
+  The static `$disabled` cannot use it (asymmetric visibility for static properties arrives in PHP 8.5) → make it
+  `private static` behind `disable()` / `enable()` / `isEnabled()` (B-215).
+- Backed enums: `ElementType` for `ctype` (shared with I-86 / I-93) and `VersionStorageType` (`fs`, `db`) instead of
+  free strings.
+- Adapter streams are typed `mixed`; add `@param` / `@return resource|null` everywhere (only `save()` has it) and fix
+  `getStream(): ?false` (C-38).
+- Strict comparisons: `in_array()` without `true` (`Dao.php:62`), `!= 'folder'` (`Version.php:171`), `$count % 100 == 0`
+  (`Dao.php:149`).
+
+### [ ] I-102 – `Version` model API
+
+- Separate creation from metadata updates: `Version::create(ElementInterface $element, …)` for new versions and
+  `updateMetadata(note, public, versionCount)` for existing ones (B-219). `save()` currently does both.
+- Replace the global `disable()` / `enable()` with `Version::withoutVersioning(callable)` (counter + `finally`), deprecate
+  the pair, and migrate the eight call sites in `lib/`, `models/` and `bundles/` (B-215).
+- The constructor pulls the storage adapter from the container (`Pimcore::getContainer()->get(...)`). Every
+  `new Version()` needs a booted kernel, and `VersionsCleanupTask` builds a full model only to reach the DAO. Inject
+  it (model factory / a `VersionRepository` service) and keep the static accessors as BC facades.
+- `getPublic()` / `isPublic()` duplicates → keep `isPublic()`; `getVersionCount()` `?: 0` → plain return;
+  `getSerialized()` → `isSerialized()`.
+- `setUserId()` loads the user as a side effect (B-217) → store the id; `getUser()` resolves lazily.
+- Empty doc blocks (`/** * * @internal */` at `:264-268`) and "see @ self::disable()" → real `@see` tags.
+
+### [ ] I-103 – Loading and (un)marshalling
+
+- `marshalData()` / `unmarshalData()` are 90 % identical → one `copyForVersion(ElementInterface, 'marshal'|'unmarshal')`
+  with the filter callback built once.
+- `loadData()` mixes storage access, unserialization, unmarshalling, asset stream restore and reference renewal → split
+  into `readPayload()`, `hydrate()` and `restoreBinary()`; throw instead of returning `null` (B-218).
+- `Serialize::unserialize()` without `allowed_classes`: whoever can write to version storage (a separate DB for the DB
+  adapter, a shared NFS / S3 bucket) gets PHP object injection on the next version load. Prefer a format without
+  arbitrary object instantiation for new versions, or at least sign the payload (HMAC with the kernel secret) and
+  verify it before `unserialize()`. Same family as I-75.
+- The `__PHP_Incomplete_Class` check only looks at the top-level value; nested incomplete objects are handled later
+  by `renewReferences()` with a log entry. Report both through one result object.
+
+### [ ] I-104 – `Version::save()` clean-up and asset hashing cost
+
+- For assets, `save()` reads the whole binary for `sha3-512` on every save (2 GB video → 2 GB read per metadata edit),
+  plus a storage `fileSize()` call. Reuse the hash when the binary is unchanged (`dataChanged` flag, or the asset
+  `checksum` custom setting when its algorithm matches), and take the size from the stream (`fstat()`) (B-220).
+- Remove the `__wakeup()` leftover, the `setId()` duplication and the misspelled `getfileSize()` (B-220).
+- Stack trace via `debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)` and a length cap (the column is `TEXT` and has a
+  `stackTrace(1)` index, I-108).
+- `$isAsset ? $data->… : null` is evaluated three times → compute `$binaryStream` / `$binarySize` once.
+
+### [ ] I-105 – `Version\Dao` and `Version\Listing\Dao`
+
+- `Dao::save()`: `getValidTableColumns('versions')` is called inside the loop → once; `upsert()` + `lastInsertId()` →
+  `insert()` for new and `update()` for existing versions; `lastInsertId()` returns `int|string` in DBAL 4 → cast once.
+- `isVersionUsedInScheduler()` queries `schedule_tasks` → belongs in `Schedule\Task\Dao` (I-97).
+- `maintenanceGetOutdatedVersions()` (50 lines, nested loops, `$stop` flag, logging, garbage collection) → a dedicated
+  maintenance query service with two methods (`findOutdatedByDays()`, `findOutdatedBySteps()`), bound parameters
+  (`ArrayParameterType::INTEGER`) instead of `implode()`, and no `Logger` / `collectGarbage()` in the DAO (B-223).
+- `Listing\Dao::load()` N+1 → hydrate rows directly (B-224); `getCondition()` string juggling → add `autoSave = 0` as a
+  regular condition part; typo "specicified" (`:44`).
+
+### [ ] I-106 – Storage adapter design
+
+- The interface has overlapping methods: `loadBinaryData()` vs. `getBinaryFileStream()` (identical in DB, existence
+  check in FS) and `loadMetaData()` vs. `getFileStream()`. Reduce it to `readMetadata()`, `readBinary()` (stream or
+  `null`), `write()`, `delete()` and `getStorageType()`, and document the stream contract (rewound, caller closes).
+- `FileSystemVersionStorageAdapter` calls `Storage::get('version')` and `Config::getSystemConfiguration()` itself →
+  inject the `pimcore.version.storage` Flysystem operator and the `use_hardlinks` flag. Replace the `'1'` probe write
+  with a configuration check (C-39). `floor($cId / 10000) * 10000` → `intdiv()`. Make `getStorageFilename()` /
+  `getBinaryStoragePath()` private or part of an explicit path strategy.
+- `DatabaseVersionStorageAdapter`: `const string versionsTableName` → `TABLE_NAME` (or a constructor argument);
+  `executeQuery()` for DML → `executeStatement()`; `isset(...) === true` / `empty(...) === true` style → plain checks;
+  ship the `versionsData` DDL as a migration / `pimcore:versions:install-db-storage` command instead of only in the
+  docs; `binaryData` in its own table (C-38).
+- `DelegateVersionStorageAdapter`: dead `empty($this->fallbackAdapter)` check; adapters keyed by name instead of storage
+  type (B-222); dedicated exception for unknown types.
+- `ProxyVersionStorageAdapter` is only used by the CI config (`.github/ci/files/config/services.yaml:49-51`) but is not
+  `@internal` and accepts only the FS adapter in its constructor → mark `@internal`, type the constructor with the
+  interface, or move it to `tests/Support`.
+- All adapters: constructor promotion with `readonly`; one parameter per line formatting (`loadData()` / `getStorageType()`
+  use column-aligned parameter lists unlike the rest of the code base); `final` where not extended.
+
+### [ ] I-107 – Version maintenance
+
+- `VersionsCleanupTask` ("Not very pretty and should be solved using a repository....", `:101`) → a
+  `VersionCleanupService` that streams candidate ids with a cursor, checks `public` / scheduler / element modification
+  date in SQL, and deletes in batches with one transaction per batch (B-223).
+- The auto-save cleanup builds its condition by string concatenation (`'`date` < ' . $timestamp`) → bound parameter; the
+  72-hour retention is hard-coded → configuration.
+- `SanityCheckHandler` re-orders the draft by re-saving it (B-219) → `updateMetadata()`.
+- Add an orphan cleanup for version files / `versionsData` rows without a `versions` row (C-39, B-222).
+
+### [ ] I-108 – Schema: `versions` (and `versionsData`)
+
+- `cid`, `ctype`, `date` are nullable although the model requires them (B-217) → `NOT NULL`; `userId` stays nullable
+  for "system" but the model must accept `null`.
+- Index support for the hot queries: auto-save lookup (`cid, ctype, autoSave, userId`), binary dedup
+  (`cid, binaryFileHash, storageType`), latest-version lookup (`cid, ctype, versionCount`). Today there are only
+  single-column indexes plus `ctype_cid`.
+- `KEY stackTrace (stackTrace(1))` (a 1-character prefix index on a `TEXT` column) only serves the
+  `stackTrace IS NOT NULL` filter of `VersionsCleanupStackTraceDbTask.php:31` → replace with an index on `date` (already
+  there) or a generated boolean column.
+- `storageType VARCHAR(5) NOT NULL` without default; values constrained only by code → enum or check constraint
+  (I-101 `VersionStorageType`).
+- `versionsData.id` is `AUTO_INCREMENT` although ids always come from `versions.id`; `cid` / `ctype` are nullable and
+  part of every lookup → `NOT NULL`, primary key `id` only (drop `AUTO_INCREMENT`).
+
+### [ ] I-109 – Tests
+
+- Fix the PHPUnit 10 incompatibility first (B-225).
+- Per adapter (FS, DB, Delegate): save + load round trip for an object, a document and an asset (C-38); asset
+  versions with an unchanged binary share it, and deleting the oldest keeps the binary readable (C-38); re-saving a
+  version keeps payload, stack trace and binary (B-219); a failing binary write leaves no reusable `.bin` (C-39);
+  switching adapters keeps old versions readable (B-222).
+- Model: `save()` without `setDate()`, with `userModification = 0` and with a deleted user (B-217); `getData()` on a
+  missing payload throws once and does not reload (B-218); a restored asset version with a missing binary fails
+  (B-218); `disable()` is reset after an exception and nested calls keep it disabled (B-215); `loadData()` does not
+  close the DB connection or clear unrelated runtime-cache keys (B-216).
+- Maintenance: a version whose delete throws does not block the others; the auto-save cleanup survives a concurrently
+  deleted version; `steps` keeps the configured number of versions (B-223); deleting an element removes its auto-save
+  versions (B-224).

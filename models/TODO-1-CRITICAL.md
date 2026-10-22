@@ -48,6 +48,15 @@ consumers where a defect originates in the model interplay (`lib/Maintenance/Tas
 (`:516-560`), `models/Element/Recyclebin/Item.php`, the `properties.predefined` config node
 (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1844-1873`)), the `properties` and `schedule_tasks`
 schemas (`bundles/InstallBundle/dump/install.sql:300-310`, `:326-340`) and `tests/Support/Test/AbstractPropertiesTest.php`
+**(9)** `models/Version.php` and `models/Version/**` (Dao, Listing, Listing/Dao, SetDumpStateFilter,
+Adapter/VersionStorageAdapterInterface, Adapter/FileSystemVersionStorageAdapter, Adapter/DatabaseVersionStorageAdapter,
+Adapter/DelegateVersionStorageAdapter, Adapter/ProxyVersionStorageAdapter), plus the direct consumers where a defect
+originates in the model interplay (`lib/Maintenance/Tasks/VersionsCleanupTask.php`, `lib/Messenger/Handler/VersionDeleteHandler.php`,
+`lib/Messenger/Handler/SanityCheckHandler.php::performSanityCheck()` (`:69-95`),
+`models/Element/AbstractElement.php::doSaveVersion()` (`:573-611`), `models/Asset.php::saveVersion()` (`:839-890`), the
+`Version::disable()` / `enable()` callers, `lib/Helper/LongRunningHelper.php::cleanUp()`), the `versions` schema
+(`bundles/InstallBundle/dump/install.sql:576-600`), the `versionsData` table from
+`doc/18_Tools_and_Features/01_Versioning.md:79-87` and `tests/Service/Element/VersionTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -68,10 +77,11 @@ and **other classes' tables dropped on class delete**, and in Scope 7 **element 
 after a notification error leaves a DB transaction open** and **SQL injection in the notification filter exposing every
 user's notifications**, and in Scope 8 **all scheduled publishing / unpublishing / deletion stalled by one
 failing task** and **scheduled tasks executed without a permission check (deleted users, versions of other
-elements)**.
+elements)**, and in Scope 9 **asset versions unreadable and their shared binaries deleted with the database version
+storage** and **asset version binaries silently replaced by a 1-byte placeholder after an aborted write**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`, Scope 8: `d527536468`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1123,3 +1133,114 @@ if ($version = Version::getById($task->getVersion())) {
 and never call `isAllowed()` with `null`. Pass the user explicitly through a permission check that has no CLI
 fallback. Verify that the version belongs to the task's element (`cid` + `ctype`) both on save (validate in
 `Task\Dao::save()`) and on execution. Related: C-36, B-211, B-214.
+
+---
+
+# Scope 9 – Version
+
+> Notes
+> - `models/Version.php`, `Version/Listing.php`, `Version/SetDumpStateFilter.php` and all `Version/Adapter/*.php` are
+>   `strict_types`; `Version/Dao.php` and `Version/Listing/Dao.php` are not (I-101). `lib/Model/AbstractModel.php`
+>   (which calls the setters during hydration) is not strict either.
+> - One hard PHP 8.x type defect was found: `DatabaseVersionStorageAdapter::getStream(): ?false` (C-38). It was
+>   reproduced with the local PHP 8.4.26 CLI (`TypeError: … Return value must be of type ?false, resource returned`).
+>   `tests/Service/Element/VersionTest.php` uses `MockBuilder::setMethods()`, which PHPUnit 10 removed (`composer.json`
+>   requires `^10.0 || ^11.0`). `vendor/` is not installed, so the suite was **not run locally** (B-225).
+> - The default adapter is `FileSystemVersionStorageAdapter` (`bundles/CoreBundle/config/services.yaml:150-154`). The
+>   DB and Delegate adapters are opt-in, but `doc/18_Tools_and_Features/01_Versioning.md:61-114` documents them as
+>   supported. The `versionsData` table exists only in that doc and in the test; no installer or migration creates it.
+> - `assets.versions.use_hardlinks` defaults to `true` (`Configuration.php:620-627`): FS version binaries are hardlinks of
+>   the live asset file whenever both storages are local.
+> - The admin version endpoints (preview, diff, "publish this version", public flag and note update) live in
+>   `pimcore/admin-ui-classic-bundle`, which is not in this repo. Statements about them are **not verified locally**.
+> - Already covered elsewhere and not repeated: C-07 (`__clone()` closes the pending asset stream during
+>   `marshalData()`), C-37 (`publish-version` tasks with a version of another element), CoreBundle B-35 (`?v=` /
+>   `pimcore_version` load any version without an ownership check), CoreBundle B-23 (`MigrateElementsCommand` null
+>   version), B-17 (`VersionDeleteMessage` dispatched inside the delete transaction), TODO-2 `Recyclebin\Item::restore()`
+>   `Version::disable()` without `finally` (Scope 6).
+
+---
+
+## [ ] C-38 – `DatabaseVersionStorageAdapter`: every asset version is unreadable (`TypeError`), and deleting the oldest version deletes the binary that all later versions share
+
+**Files:** `models/Version/Adapter/DatabaseVersionStorageAdapter.php:35-57`, `:64-77`, `:79-82`, `:84-94`, `:96-101`,
+`:103-110`, `:112-122`; `models/Version.php:171-189`, `:297-302`; `models/Version/Dao.php:96-110`;
+`lib/Messenger/Handler/SanityCheckHandler.php:85-94`; `doc/18_Tools_and_Features/01_Versioning.md:61-114`
+
+```php
+protected function getStream(string $data): ?false   // null|false only
+{
+    if ($data) {
+        $fileName = tmpfile();
+        fwrite($fileName, $data);
+        return $fileName;                             // resource → TypeError
+```
+
+- `getStream()` is declared `?false` but returns a `tmpfile()` resource, so every call with data throws `TypeError`.
+  `loadBinaryData()`, `getBinaryFileStream()` and `getFileStream()` all go through it. `Version::loadData()` calls
+  `loadBinaryData()` for **every** `Asset`, so no asset version stored in the DB can be loaded at all: no preview, no
+  diff, no restore, no scheduled `publish-version` (the `TypeError` is not caught there either, C-36), no sanity check.
+  Document / object versions break only on `getFileStream()`.
+- The tests save through the DB adapter but never load (B-225), so this was not caught.
+- If the return type is fixed, the stream is still at EOF after `fwrite()` (no `rewind()`). `Asset::getStream()` rewinds,
+  but every other caller of `getFileStream()` / `getBinaryFileStream()` reads `''`.
+- `fetchOne()` returns `false` for a missing row and `null` for `binaryData = NULL`. `getStream(string)` then throws
+  `TypeError` under `strict_types`, and `loadMetaData(): ?string` throws on `false`. The intended "cannot read version
+  data" path in `Version::loadData()` (`:273-278`) is never reached.
+- **Shared binaries are deleted:** `Version::save()` sets `binaryFileId` to the oldest version of the same asset with
+  the same hash (`Dao::getBinaryFileIdForHash()`). The DB adapter then saves `binaryData = NULL`, and later reads go to
+  the row of `binaryFileId`. `delete()` ignores `$isBinaryHashInUse` and deletes that whole `versionsData` row, binary
+  included. The FS adapter keeps the `.bin` in this case (`FileSystemVersionStorageAdapter.php:124`). Maintenance
+  cleanup deletes the oldest versions first. So once an asset has more than `steps + 1` versions with an unchanged
+  binary (every metadata-only edit), **every remaining version references a deleted binary**.
+- **Re-saving a version wipes its own binary:** `SanityCheckHandler` (`:89-94`) and every `setNote()` / `setPublic()` +
+  `save()` re-run the full `save()` (B-219). `getBinaryFileIdForHash()` now finds the version itself (the oldest with
+  that hash), so `binaryFileId` = its own id, and `ON DUPLICATE KEY UPDATE binaryData = NULL` deletes its binary and
+  the binary of every version that references it. Today the `TypeError` in `getData()` hits first; fixing only the type
+  exposes this.
+- `save()` runs `executeQuery()` for an `INSERT` (should be `executeStatement()`) and repeats the parameters for the
+  `ON DUPLICATE KEY UPDATE` part instead of using `VALUES()` / an alias.
+
+**Fix direction:** return `resource|null` (native `mixed` plus phpdoc) and `rewind()` the stream; treat `false` / `null`
+as "not found" with a dedicated exception. In `delete()`, keep `binaryData` while the hash is in use. Better: store
+binaries in a content-addressed table keyed by `(cid, hash)` with a reference count. Never overwrite `binaryData` with
+`NULL` on update (`COALESCE(VALUES(binaryData), binaryData)`). Ship a migration or command for `versionsData`, and add
+load / restore / delete tests for every adapter (I-109). Related: C-39, B-219, B-222, B-223.
+
+---
+
+## [ ] C-39 – Version storage writes are not atomic: an aborted binary write leaves a 1-byte placeholder `.bin` that later versions reuse
+
+**Files:** `models/Version/Adapter/FileSystemVersionStorageAdapter.php:85-110` (`:91-92`, `:99`, `:102-107`);
+`models/Version.php:171-189`; `models/Version/Dao.php:96-104`; `models/Asset.php:839-890`
+
+```php
+$this->storage->write($binaryStoragePath, '1'); // temp file to determine if stream is local or not
+if ($useHardlinks && stream_is_local(...) && stream_is_local($binaryDataStream)) { ... delete(); @link(...); }
+if (!$linked) {
+    $this->storage->writeStream($binaryStoragePath, $binaryDataStream);   // may throw / be aborted
+}
+```
+
+- `save()` first writes the string `'1'` to the version's `.bin` path (only to probe whether the stream is local),
+  then hardlinks or copies the real binary. The placeholder stays if `writeStream()` throws (S3 / network error,
+  disk full, quota) or the process dies while copying. Example: `max_execution_time` while copying a multi-GB video in
+  a web request, OOM, a worker killed on deploy.
+- `Version::save()` has already inserted the `versions` row with `binaryFileHash` (`Version.php:186`). Without a
+  surrounding transaction the row stays committed. That is the case for `Asset::saveVersion()` (`:839-890`, no
+  transaction), for re-saved versions (B-219) and for custom code.
+- The next version with an unchanged binary (typical: a metadata edit) gets that row from `getBinaryFileIdForHash()`.
+  FS `save()` sees that the `.bin` exists (`:91-92`) and skips the write. From then on **every** version with that
+  content points to the placeholder. Restoring or publishing any of them writes a 1-byte file containing `1` as the
+  asset binary. The stored hash says otherwise, and nothing checks it.
+- In the hardlink branch the placeholder is deleted before `link()`. If `link()` fails and `writeStream()` then throws,
+  no `.bin` exists at all. `loadData()` then returns the asset without a stream, and restoring it keeps the **current**
+  binary next to the old metadata, without an error (B-218).
+- Inside the element transaction (`Asset::save()`) the row is rolled back, but the files stay (ids are not reused, so
+  this only leaks storage; nothing cleans up orphaned version files).
+
+**Fix direction:** decide on hardlinks from the adapter configuration (both storages are `LocalFilesystemAdapter`)
+instead of writing a probe file. Write to a temporary name and `move()` it into place. Write storage before the
+`versions` row, or insert the row in a transaction and delete the files when the storage write fails. Before reusing
+an existing `.bin` / binary row, check at least its size, and verify `binaryFileHash` on restore. Related: C-07,
+C-38, B-218.
