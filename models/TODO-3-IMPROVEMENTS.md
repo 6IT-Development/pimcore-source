@@ -36,6 +36,15 @@ Service/UserService), plus the direct consumers where a defect originates in the
 (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`)), the `notifications` schema
 (`bundles/InstallBundle/dump/install.sql:801-817`, migration `Version20240813085200`) and
 `tests/Unit/Notification/Service/NotificationServiceTest.php`
+**(8)** `models/Property.php`, `models/Property/**` (Dao, Predefined, Predefined/Dao, Predefined/Listing,
+Predefined/Listing/Dao) and `models/Schedule/**` (Task, Task/Dao, Task/Listing, Task/Listing/Dao), plus the direct
+consumers where a defect originates in the model interplay (`lib/Maintenance/Tasks/ScheduledTasksTask.php`,
+`lib/Maintenance/Executor.php::executeTask()` (`:48-70`), `models/Element/Traits/ScheduledTasksTrait.php`,
+`models/Element/Traits/ScheduledTasksDaoTrait.php`, the `getProperties()` hydration in `Asset/Dao.php`,
+`DataObject/AbstractObject/Dao.php` and `Document/Dao.php`, `models/Element/Service.php::minimizePropertiesForEditmode()`
+(`:516-560`), `models/Element/Recyclebin/Item.php`, the `properties.predefined` config node
+(`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1844-1873`)), the `properties` and `schedule_tasks`
+schemas (`bundles/InstallBundle/dump/install.sql:300-310`, `:326-340`) and `tests/Support/Test/AbstractPropertiesTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -43,11 +52,11 @@ Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
-DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92).
+DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100).
 
 ---
 
@@ -1194,3 +1203,138 @@ Add model tests for:
   twice for the asset, document, object and date types (B-189); `getByName()` with `~` and with per-language
   definitions (B-190); save with a `disabled` / read-only write target (B-191); legacy numeric ids under `strict_types`
   (I-86).
+
+---
+
+## L – Property / Schedule (Scope 8)
+
+### [ ] I-93 – Strictness, native types and enums (PHP 8.4)
+
+- Add `declare(strict_types=1)` to `Property/Dao.php`, `Property/Predefined/Dao.php`, `Property/Predefined/Listing/Dao.php`,
+  `Schedule/Task/Dao.php` and `Schedule/Task/Listing/Dao.php`. Prerequisites that rely on coercion today:
+  - `fetchFirstColumn()` ids in `Task\Listing\Dao::load()` → `(int)` before `Task::getById(int)`;
+  - legacy numeric predefined-property ids from `array_keys()` → `(string)` before `Predefined::getById(string)` (same
+    as I-86);
+  - `Predefined\Dao::getById(?string $id = null)` / `getByKey(?string $key = null)` → required `string` (B-209).
+- Setters typed `: Property` / `: Predefined` (with `@return $this`) → `: static`, as `Schedule\Task` already does.
+  `Task::getById(): ?Task`, `Predefined::getById() / getByKey() / create()` → `?static` / `static`.
+- Backed enums instead of free strings checked against DB enums:
+  `PropertyType` (`text`, `document`, `asset`, `object`, `bool`, `select`, and `date` if kept, B-201) with an
+  `isRelation()` method; `ScheduledTaskAction` (`publish`, `unpublish`, `delete`, `publish-version`) with
+  `appliesTo(string $elementType)` (B-211); one shared element-type enum for `ctype` (same as I-86 `linkedElementType`).
+- `Task::$date` (unix timestamp) → keep the column, add `getDateTime(): ?\DateTimeImmutable`.
+- PHP 8.4 asymmetric visibility: `public private(set) ?int $id` on `Schedule\Task` (only the DAO sets it).
+- `final class Property` / `final class Predefined` with `protected` members → `private`.
+- Strict comparisons: `==` in `Property.php:63`, `:85`, `:87`, `Property/Dao.php:37`, `Predefined/Dao.php:52`, `:58`,
+  `:78`, `:86`; `in_array()` without `true` (`Property.php:57`, `:123`, `Predefined/Dao.php:120`,
+  `Task/Dao.php:69`).
+
+### [ ] I-94 – `Property` model clean-up
+
+- `in_array($type, ['document', 'asset', 'object'])` appears three times (`setDataFromEditmode()`, `getData()`,
+  `Dao::save()`) → `PropertyType::isRelation()` (I-93).
+- `bool` branches (`$this->data = false; if (!empty($data)) { $this->data = true; }`) → `(bool)$data` (careful with
+  `'0'`, document the intended semantics).
+- The "IMPORTANT: the type must be set first" comments in `setDataFromEditmode()` / `setDataFromResource()` describe a
+  temporal coupling → named constructors `Property::fromRow(array $row)` and `Property::create(string $name,
+  PropertyType $type, mixed $data)`.
+- `resolveDependencies()` calls `getData()` three times (each may load the element) → local variable;
+  `rewriteIds()` three nested `if`s → early returns.
+- `serialize()` has no caller in this repo (it returns the loaded element for relation types, not the id) → verify the
+  upstream admin bundle and remove or return the id.
+- `getInherited()` / `isInherited()` alias pair; `@method void save()` in the class doc duplicates the real method;
+  empty `@return $this` / blank doc-block lines.
+- `Dao::save()`: remove the dead `cpath` block (B-205) and the element load per relation (B-204); bind `inheritable` as
+  `ParameterType::INTEGER`.
+
+### [ ] I-95 – Property loading and saving are duplicated in three DAOs and three models
+
+- `getProperties()` is implemented three times (`Asset/Dao.php:234-286`, `DataObject/AbstractObject/Dao.php:222-273`,
+  `Document/Dao.php:256-315`) with the same hydration, the same `catch (Exception)` and the same "faster than mysql"
+  `usort()`. The save loop exists three times too (`Asset.php:795-808`, `DataObject/AbstractObject.php:703-717`,
+  `Document.php:485-498`).
+- Move both into `Property\Dao`: `loadForElement(int $id, string $ctype, list<int> $parentIds, bool $onlyInherited,
+  bool $onlyDirect)` and `replaceForElement(...)`. Use one multi-row insert instead of N upserts, bound `IN (?)` with
+  `ArrayParameterType::INTEGER` instead of `implode()`, `ORDER BY CHAR_LENGTH(cpath)` in SQL, and one row
+  factory (`Property::fromRow()`, I-94).
+- Load only the needed columns (`Asset/Dao` and `Document/Dao` use `SELECT *`; `AbstractObject/Dao` already lists them).
+
+### [ ] I-96 – `Property\Predefined` clean-up
+
+- `getByKey()`: `try { RuntimeCache::get() } catch (Exception)` used as control flow → `RuntimeCache::isRegistered()`;
+  better, one per-request index `key → Predefined` built from a single listing load and reset via `kernel.reset`
+  (B-208), with PHP 8.4 `array_find()` instead of `array_values(array_filter(...))[0]`.
+- `Predefined\Listing\Dao` extends the **model** DAO and inherits `save()`, `delete()`, `getById()`, `getByKey()`
+  working on a `Listing` model (same as I-87) → composition or a shared base for `configure()` only.
+  `getTotalCount()` loads and hydrates everything to count.
+- `Property\Predefined` and `Metadata\Predefined` are the same kind of location-aware config model (same `getById()`,
+  `save()` with an allow-list, `delete()`, `prepareDataStructureForYaml()`, `__clone()` rebinding the DAO) → one
+  abstract base (`AbstractLocationAwareConfigModel`), so B-188 / B-206 and B-191 / B-209 are fixed once.
+- `save()`: the `$allowedProperties` loop → `array_intersect_key($vars, array_flip(self::PERSISTED_FIELDS))`.
+- `__clone()` keeps and rebinds the DAO while `AbstractModel::__clone()` drops it → align (I-87).
+- Doc typos: "specicifies" (`Predefined/Listing/Dao.php:30`).
+
+### [ ] I-97 – `Schedule\Task` model and DAO clean-up
+
+- `Task::getById()`: `RuntimeCache` try/catch as control flow → `isRegistered()`; reconsider caching tasks at all
+  (B-213).
+- `Dao::save()`: `create()` (empty insert) + `update()` → one `insert()` with all columns for new tasks and one
+  `update()` for existing ones; `lastInsertId()` cast once (DBAL 4 returns `int|string`).
+- `Dao::update()`: `getValidTableColumns('schedule_tasks')` is called inside the loop → once; the array / object
+  serialization branch is dead (no such columns) → remove. I-75 lists `schedule_tasks.data`, which does not exist →
+  correct I-75.
+- Copy-paste leftovers: variable `$site` in `Task/Dao.php:65`; "Loads a list of thumanils for the specicifies
+  parameters" in `Task/Listing/Dao.php:30`.
+- `Listing\Dao::load()` N+1 (`SELECT id` + `getById()` per row) → hydrate from one `SELECT *`.
+- `Task::create()` does not persist although other model `create()` methods do → rename (`Task::fromArray()`) or save
+  (B-214). Add `@method void delete()` (the DAO has it).
+- `ScheduledTasksDaoTrait::deleteAllTasks()` → bound parameters (already in I-76) and move it into `Task\Dao`
+  (`deleteForElement(int $cid, string $ctype, list<int> $keepIds)`).
+
+### [ ] I-98 – `ScheduledTasksTask` restructuring
+
+- The three branches per element type (`:53-126`) repeat the same publish / unpublish / delete / publish-version logic →
+  one `ScheduledTaskRunner` service with `match ($task->getAction())` and element-type-specific capability checks
+  (`ScheduledTaskAction::appliesTo()`, I-93).
+- Dispatch one Messenger message per due task (`ExecuteScheduledTaskMessage(taskId)`), so retries and failures are per
+  task and one broken task cannot block the queue (C-36); keep the maintenance job as a scheduler that only selects due
+  ids.
+- Constructor property promotion + `readonly` (the class has a single `private LoggerInterface $logger` assigned in the
+  constructor); inject `LockFactory` (B-210).
+- Process due tasks in batches (`LIMIT`) and reset runtime caches between tasks
+  (`Pimcore::collectGarbage()`), so a large backlog does not exhaust memory.
+- Make scheduled changes traceable: set `userModification` to the task user (B-214) and add an element note / version
+  note "published by scheduled task #id"; dispatch pre / post events so projects can react (notifications, cache
+  warm-up).
+- Log with context arrays (`['task' => $id, 'element' => …, 'exception' => $e]`) instead of string concatenation; the
+  "Schedule\Task\Executor" prefix in the messages names a class that no longer exists.
+
+### [ ] I-99 – Schema: `properties` and `schedule_tasks`
+
+- `schedule_tasks`: only single-column indexes (`cid`, `ctype`, `active`, `version`). The due query
+  (`active = 1 AND date < ?`) and the element lookup (`cid = ? AND ctype = ?`) need composite indexes
+  `(active, date)` and `(cid, ctype)`.
+- `schedule_tasks`: `cid`, `ctype`, `date`, `action`, `active` are nullable although a task without them is useless
+  (B-214) → `NOT NULL`; a `lastError` / `attempts` column for C-36.
+- `properties.type`: add `date` (or remove support, B-201), `NOT NULL` (B-202).
+- `properties.cpath` is `utf8` (3-byte) while element keys are `utf8mb4` (B-205) → `utf8mb4` with a shorter index
+  prefix on the `getall` key.
+- `properties.inheritable` default `1` vs. model default `false` → align.
+- A strict `sql_mode` (or at least `STRICT_TRANS_TABLES`) would turn the silent enum / length truncations of B-201,
+  B-205 and B-211 into errors. This is a CoreBundle-wide decision (`default.yaml:148`).
+
+### [ ] I-100 – Tests
+
+- Properties (`tests/Support/Test/AbstractPropertiesTest.php` covers CRUD, inheritance and a relation). Add: `date`
+  property round trip (B-201); a row with `type = NULL` does not break the element or its children (B-202); array data
+  on a `text` property (B-203); saving an element whose relation property points to a deleted element keeps the id
+  (B-204); a direct `Property::save()` of an inheritable property is visible to cached children, and `cpath` is set
+  (B-205).
+- Predefined properties have no tests. Add: listing with a stale settings-store id (B-206); a definition without
+  `ctype` (B-207); `getByKey()` after `save()` / `delete()` in the same process and with duplicate keys (B-208);
+  `getById('0')` and `save()` with a read-only / disabled write target (B-209).
+- Scheduled tasks have **no tests at all**. Add `ScheduledTasksTask` tests for: a task with `userId = NULL`, a deleted
+  user and an inactive user (C-36, C-37); a `publish-version` task with a version of another element (C-37); a
+  throwing listener on one task does not block the others (C-36); publish / unpublish due in the same run (B-210);
+  skipped tasks are logged (B-211); recycle-bin restore keeps the tasks, and deleting a link removes them (B-212);
+  `DataObject\Service::copyContents()` keeps the source's tasks (B-182).

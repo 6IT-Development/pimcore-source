@@ -39,6 +39,15 @@ Service/UserService), plus the direct consumers where a defect originates in the
 (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`)), the `notifications` schema
 (`bundles/InstallBundle/dump/install.sql:801-817`, migration `Version20240813085200`) and
 `tests/Unit/Notification/Service/NotificationServiceTest.php`
+**(8)** `models/Property.php`, `models/Property/**` (Dao, Predefined, Predefined/Dao, Predefined/Listing,
+Predefined/Listing/Dao) and `models/Schedule/**` (Task, Task/Dao, Task/Listing, Task/Listing/Dao), plus the direct
+consumers where a defect originates in the model interplay (`lib/Maintenance/Tasks/ScheduledTasksTask.php`,
+`lib/Maintenance/Executor.php::executeTask()` (`:48-70`), `models/Element/Traits/ScheduledTasksTrait.php`,
+`models/Element/Traits/ScheduledTasksDaoTrait.php`, the `getProperties()` hydration in `Asset/Dao.php`,
+`DataObject/AbstractObject/Dao.php` and `Document/Dao.php`, `models/Element/Service.php::minimizePropertiesForEditmode()`
+(`:516-560`), `models/Element/Recyclebin/Item.php`, the `properties.predefined` config node
+(`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1844-1873`)), the `properties` and `schedule_tasks`
+schemas (`bundles/InstallBundle/dump/install.sql:300-310`, `:326-340`) and `tests/Support/Test/AbstractPropertiesTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -57,10 +66,12 @@ and object saves**, **frontend 500s from scheduled blocks**, **a path-less neare
 document**, **encrypted data and URL slugs silently destroyed**, **code / SQL injection through class definitions**
 and **other classes' tables dropped on class delete**, and in Scope 7 **element / workflow writes silently lost
 after a notification error leaves a DB transaction open** and **SQL injection in the notification filter exposing every
-user's notifications**.
+user's notifications**, and in Scope 8 **all scheduled publishing / unpublishing / deletion stalled by one
+failing task** and **scheduled tasks executed without a permission check (deleted users, versions of other
+elements)**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1018,3 +1029,97 @@ $condition = implode(' AND ', $conditions);                      // findAll(): n
 else with a 400; use fixed placeholder names; quote identifiers; wrap each condition in parentheses; replace the
 `condition` strings with a typed filter object that the DAO turns into SQL (I-88). Related: B-195 (`findAll()` keys),
 B-196 (parser robustness).
+
+---
+
+# Scope 8 – Property / Schedule
+
+> Notes
+> - `models/Property.php`, `Property/Predefined.php`, `Property/Predefined/Listing.php`, `Schedule/Task.php` and
+>   `Schedule/Task/Listing.php` are `strict_types`; `Property/Dao.php`, `Property/Predefined/Dao.php`,
+>   `Property/Predefined/Listing/Dao.php`, `Schedule/Task/Dao.php` and `Schedule/Task/Listing/Dao.php` are not (I-93).
+>   `lib/Maintenance/Tasks/ScheduledTasksTask.php` is strict, so `null` to an `int` parameter throws there.
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found (no implicit nullable parameters, no removed APIs;
+>   `Predefined\Dao` already uses a PHP 8.3 typed class constant). Modernisation is in TODO-3 (I-93–I-100).
+> - The admin controllers that create scheduled tasks and predefined properties (`ElementControllerBase` /
+>   `DocumentController` task saving, `SettingsController` predefined properties) live in `pimcore/admin-ui-classic-bundle`,
+>   which is not in this repo (`vendor/` is not installed). Statements about client-supplied task data are based on
+>   the upstream bundle source and were **not verified locally**.
+> - Maintenance runs in the CLI (`pimcore:maintenance` cron and the `pimcore_scheduled_tasks` Messenger consumer,
+>   `bundles/CoreBundle/config/pimcore/default.yaml:50`), so `php_sapi_name() === 'cli'` is always true for
+>   `ScheduledTasksTask` (relevant for C-37).
+> - `bundles/CoreBundle/config/pimcore/default.yaml:148` sets `sql_mode = ''`: invalid enum values (`properties.type`,
+>   `schedule_tasks.action`) are stored as `''` and over-long names are truncated silently (B-201, B-205, B-211).
+> - Already covered elsewhere and not repeated: C-25 (move rewrites `properties.cpath` of other element types), B-165
+>   (properties of unsaved elements cached under a shared key), B-182 (`copyContents()` moves the source's scheduled
+>   tasks), I-75 (`properties.data` PHP serialization), I-76 (`ScheduledTasksDaoTrait::deleteAllTasks()` concatenated SQL).
+
+---
+
+## [ ] C-36 – One failing scheduled task stalls all scheduled publishing, unpublishing and deletion, permanently
+
+**Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:43-135` (`:45-47`, `:50`, `:52`, `:74-76`, `:130`);
+`lib/Maintenance/Executor.php:48-70` (`:65`); `models/Schedule/Task/Listing/Dao.php:33-45` (`:39`);
+`models/Schedule/Task.php:47`, `:190-193`
+
+```php
+foreach ($tasks as $task) {
+    $taskUser = User::getById($task->getUserId());   // outside the try, strict_types
+    try {
+        ...
+    } catch (Exception $e) {                         // \Error / \TypeError not caught
+```
+
+- `User::getById(int $id)` receives `$task->getUserId()`, which is `?int` (column `userId` nullable, default `NULL`).
+  A task created through the API without `setUserId()` (imports, custom code, `new Task([...])`) gives a `TypeError`
+  **before** the `try`. It leaves `execute()`, and `Executor::executeTask()` catches only `Exception` (`:65`), so the
+  Messenger message fails, is retried and ends in the failed transport. Nothing is written to the admin.
+- `Task\Listing\Dao::load()` runs `SELECT id` and then `Task::getById()` per row. A row deleted in between (an editor
+  saves the element and `deleteAllTasks()` removes the task, or the element is deleted) puts `null` into the list →
+  `$task->getUserId()` on `null` → `Error`, same exit.
+- Inside the `try`, only `Exception` is caught. A `TypeError` / `Error` from `save()` / `delete()` (event listeners,
+  typed-property errors while restoring version data, B-163) aborts the loop the same way.
+- The listing has no `ORDER BY`, so the same broken task is reached first in every run (every maintenance interval,
+  default every 5 minutes). Every task behind it – timed publication, embargo unpublishing, "delete at" for legal
+  takedowns – **never runs**, and the editor sees the tasks still listed as pending.
+- A task that fails with an `Exception` stays `active = 1` and is retried in every run forever. For `delete`,
+  `Recyclebin\Item::create()` (`:75`, `:95`, `:122`) runs **before** `delete()`: every failed run writes another full
+  recycle-bin dump of the element tree (DB row + storage file), so the recycle bin and its storage grow without bound.
+
+**Fix direction:** resolve the user inside a per-task `try { … } catch (\Throwable)`; skip `null` list entries; record
+failures (attempt counter or `lastError` column, deactivate after N attempts, log with task id and element);
+`ORDER BY date, id`; create the recycle-bin item and delete the element in one transaction; dispatch one Messenger
+message per due task so one failure cannot block the queue (I-98). Related: C-37, B-210, B-213.
+
+---
+
+## [ ] C-37 – Scheduled tasks run without a permission check for deleted users, and `publish-version` saves any version id (other elements overwritten)
+
+**Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:50-126` (`:50`, `:56-58`, `:83-85`, `:103-105`);
+`models/Element/AbstractElement.php:480-492`; `models/User/AbstractUser.php:44-48`;
+`models/Schedule/Task.php:43`, `:110-113`, `:168-173`
+
+```php
+$taskUser = User::getById($task->getUserId());   // null for a deleted user
+$document->isAllowed('publish', $taskUser)       // null → Admin::getCurrentUser() → null → CLI → true
+if ($version = Version::getById($task->getVersion())) {
+    $document = $version->getData();              // any element of that type
+    $document->setPublished(true);
+    $document->save();
+```
+
+- `isAllowed($type, null)` falls back to `Admin::getCurrentUser()`. There is no admin session in maintenance, and
+  `php_sapi_name() === 'cli'` returns `true` (`AbstractElement.php:486-489`). Tasks of a **deleted** user therefore run
+  with full rights: deleting or offboarding an editor does not cancel their pending publish / unpublish / delete tasks,
+  and the per-element permission check is skipped completely. Deactivated users (`active = 0`) are not checked
+  either; `isAllowed()` never looks at `isActive()`.
+- `publish-version` loads `Version::getById($task->getVersion())` and saves `$version->getData()` without checking
+  `$version->getCid() === $task->getCid()` and the version's element type. The permission check ran on the task's
+  element, but the element that is saved is the one inside the version. With the version id of **another** document /
+  object / asset of the same type, that other element is overwritten with the old version and published. The
+  permission check never sees it. The `version` id of a task comes from the admin request (upstream task saving
+  passes the client's task data to `new Task($data)`; not verified locally, see notes). The model accepts any id.
+**Fix direction:** load the user. If they are missing or inactive, deactivate the task with a log entry / element note
+and never call `isAllowed()` with `null`. Pass the user explicitly through a permission check that has no CLI
+fallback. Verify that the version belongs to the task's element (`cid` + `ctype`) both on save (validate in
+`Task\Dao::save()`) and on execution. Related: C-36, B-211, B-214.

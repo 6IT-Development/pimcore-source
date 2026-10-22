@@ -38,6 +38,15 @@ Service/UserService), plus the direct consumers where a defect originates in the
 (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`)), the `notifications` schema
 (`bundles/InstallBundle/dump/install.sql:801-817`, migration `Version20240813085200`) and
 `tests/Unit/Notification/Service/NotificationServiceTest.php`
+**(8)** `models/Property.php`, `models/Property/**` (Dao, Predefined, Predefined/Dao, Predefined/Listing,
+Predefined/Listing/Dao) and `models/Schedule/**` (Task, Task/Dao, Task/Listing, Task/Listing/Dao), plus the direct
+consumers where a defect originates in the model interplay (`lib/Maintenance/Tasks/ScheduledTasksTask.php`,
+`lib/Maintenance/Executor.php::executeTask()` (`:48-70`), `models/Element/Traits/ScheduledTasksTrait.php`,
+`models/Element/Traits/ScheduledTasksDaoTrait.php`, the `getProperties()` hydration in `Asset/Dao.php`,
+`DataObject/AbstractObject/Dao.php` and `Document/Dao.php`, `models/Element/Service.php::minimizePropertiesForEditmode()`
+(`:516-560`), `models/Element/Recyclebin/Item.php`, the `properties.predefined` config node
+(`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1844-1873`)), the `properties` and `schedule_tasks`
+schemas (`bundles/InstallBundle/dump/install.sql:300-310`, `:326-340`) and `tests/Support/Test/AbstractPropertiesTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -46,12 +55,13 @@ B-43 push/pop listener balance is the listener side of B-158)
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
 **Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187,
-**Metadata** B-188–B-192, **Notification** B-193–B-200.
+**Metadata** B-188–B-192, **Notification** B-193–B-200, **Property** B-201–B-205, **Predefined property**
+B-206–B-209, **Schedule** B-210–B-214.
 
 ---
 
@@ -2600,3 +2610,276 @@ ids; dispatch post events after commit.
 
 **Fix direction:** `assertSame()`; give the group the permission and expect `1`; assert the transaction nesting level
 (I-92).
+
+---
+
+## Property (Scope 8)
+
+## [ ] B-201 – Properties of type `date` cannot be stored: the `properties.type` enum has no `date`
+
+**Files:** `models/Property.php:81-98` (`:85-86`); `models/Property/Dao.php:33-68`;
+`bundles/InstallBundle/dump/install.sql:305`; `bundles/CoreBundle/config/pimcore/default.yaml:148`
+
+- `setDataFromResource()` has a `date` branch that unserializes the stored value, so the model supports date
+  properties (`setProperty('launch', 'date', Carbon::now())`). The column is
+  `enum('text','document','asset','object','bool','select')`, and no migration adds `date`.
+- With `sql_mode = ''` the invalid enum value is stored as `''` without an error. `Dao::save()` serialized the Carbon
+  object (`:44-46`). On load, type `''` takes the plain-text branch: `getData()` returns the **serialized string**
+  (`O:13:"Carbon\Carbon":…`) and `getType()` returns `''`. The date is lost for templates and editmode, and the next
+  save keeps the broken type.
+- With a strict SQL mode, the same save fails inside the element save (the element cannot be saved).
+
+**Fix direction:** decide whether `date` is supported. If it is, add it to the enum by migration and store a
+timestamp or ISO string instead of a serialized object. If not, remove the branch and reject the type in the
+model (I-93 enum).
+
+## [ ] B-202 – One property row with `type` (or `name`) `NULL` makes the element and all its descendants unloadable
+
+**Files:** `models/Asset/Dao.php:234-286`; `models/DataObject/AbstractObject/Dao.php:222-273`;
+`models/Document/Dao.php:256-315`; `models/Property.php:184-202`; `models/Property/Dao.php:33-68`;
+`bundles/InstallBundle/dump/install.sql:305`
+
+- The three `getProperties()` hydrators call `$property->setType($propertyRaw['type'])` and `setName(...)`. Both
+  parameters are non-nullable `string`; `null` throws `TypeError` even without `strict_types`. The per-row
+  `catch (Exception)` does not catch `TypeError`, so `getProperties()` fails.
+- `properties.type` is nullable, and `Property::save()` / `Dao::save()` validate nothing: a `new Property()` with only
+  `setName()` / `setData()` passed to `setProperties()` (imports, custom code) is saved with `type = NULL`.
+- If the row is `inheritable`, every descendant reads it too: the element, its children and the whole subtree fail in
+  `getProperty()`, in editmode (`minimizePropertiesForEditmode()`), on frontend rendering (navigation and
+  `$document->getProperty()` in templates) and on save. Removing the row requires SQL.
+
+**Fix direction:** validate `name`, `type` (allowed list), `ctype` and `cid` in `Property::save()` / `Dao::save()`;
+catch `\Throwable` per row and skip it with a log entry; `type` `NOT NULL` by migration (I-99).
+
+## [ ] B-203 – Array / object values are serialized on save but returned as the serialized string on load
+
+**Files:** `models/Property/Dao.php:44-46`; `models/Property.php:81-98`, `:166-179`
+
+- `Dao::save()` serializes every array or object (`Serialize::serialize()`). `setDataFromResource()` unserializes
+  only for `date`, so `text` / `select` properties come back as the raw `a:1:{…}` string.
+  `setProperty('tags', 'text', ['a', 'b'])` reads back as `'a:2:{i:0;s:1:"a";…}'`.
+- An object that is not an element (e.g. a value object) is stored serialized and never restored. Accepting it at all
+  widens the PHP object-injection surface of `properties.data` (I-75).
+
+**Fix direction:** accept only scalar data for `text` / `select` / `bool` (`TypeError` / `InvalidArgumentException` in
+`setData()`), or store JSON and decode for every type.
+
+## [ ] B-204 – Relation properties are silently wiped: dangling targets, unknown paths and missing id mappings become `NULL`
+
+**Files:** `models/Property/Dao.php:35-42`; `models/Property.php:53-74` (`:57-62`), `:120-128`, `:292-303`
+
+- `Dao::save()` stores the id only when `getData()` resolves to an element; otherwise `data = NULL`. `getData()` loads
+  the element by id. If the target was deleted (or is not yet saved, id `null`), **any** save of the owner with
+  dirty properties replaces the stored id with `NULL`. The dependency system would have shown the dangling reference;
+  afterwards it is gone without a trace.
+- `setDataFromEditmode()` with a path that does not resolve (typo, element renamed concurrently) stores `NULL`
+  without an error.
+- `rewriteIds()` replaces the target with `getElementById(...)` of the mapped id; if that element is missing the
+  property becomes `NULL`.
+- Every save loads every relation target only to read its id back (one element load per relation property per save).
+
+**Fix direction:** keep the raw id in the model and save it as is (`is_numeric($this->data)`); resolve the element only
+in `getData()`. Throw (or report to the caller) on unknown paths. In `rewriteIds()`, keep the old id when the mapping
+target is missing.
+
+## [ ] B-205 – Property small defects
+
+**Files:** `models/Property.php:100-105`, `:166-179`; `models/Property/Dao.php:49-55`, `:67`;
+`models/Asset/Dao.php:249-251`; `models/Document/Dao.php:278-280`; `bundles/InstallBundle/dump/install.sql:300-310`
+
+- `Dao::save()` "fills" an empty `cpath` (`:49-55`): it computes `$element->getRealFullPath()` and discards the result.
+  A property saved directly via `Property::save()` (not through the element save loop, which sets `cpath`) gets
+  `cpath = NULL`. `getProperties()` sorts by `cpath`, so the `NULL` row sorts first and the element's own property is
+  **overridden by an inherited parent property of the same name**. `strcmp(null, …)` in `Asset/Dao.php` /
+  `Document/Dao.php` also emits a PHP 8.1+ deprecation. Path moves (`REPLACE(cpath, …)`) never update the row.
+- `Property::save()` removes only `<ctype>_properties_<cid>`. Descendants cache their inherited properties under
+  their own keys, so after a direct save of an inheritable property the children keep serving the old value until
+  the `<ctype>_properties` tag is cleared by an element save.
+- `name` is `VARCHAR(190)`. With `sql_mode = ''` longer names are truncated; two names with the same 190-character
+  prefix collide on the primary key `(cid, ctype, name)` and `Helper::upsert()` silently overwrites the first.
+  `cpath` is `utf8` (3-byte): keys with 4-byte characters (emoji) are stored with `?`, which breaks the ordering and
+  the move rewrite for that subtree.
+- `setData(ElementInterface)` silently overrides an explicitly set type: `setProperty('x', 'document', $asset)` saves an
+  `asset` property.
+- `ctype` is never validated. An unknown value is stored as `''` (enum + `sql_mode = ''`) and the property is lost.
+- Schema default `inheritable = 1` vs. model default `false`: rows inserted outside the model are inheritable.
+
+**Fix direction:** set `cpath` from the element in `Dao::save()` (or require it); clear the `<ctype>_properties` tag on
+direct saves; validate the name length, the type / data pair and `ctype`; align the defaults (I-99).
+
+---
+
+## Predefined property (Scope 8)
+
+## [ ] B-206 – Predefined property listing can contain `null`s → opening any element with properties in the admin fails
+
+**Files:** `models/Property/Predefined/Listing/Dao.php:34-51` (`:38-40`); `models/Property/Predefined/Dao.php:76-98`
+(`:85-88`); `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:54-84`; `lib/Config/LocationAwareConfigRepository.php:263-278`;
+`models/Element/Service.php:516-560` (`:550`)
+
+- Same root cause as B-188: `loadList()` takes ids from `loadIdList()` → `fetchAllKeys()` (settings store **and**
+  container config), but `getById()` loads through the read target only. Ids from the other store, or definitions with
+  empty data, give `getById() === null`, which is appended to the list.
+- Typical trigger: switching `config_location.predefined_properties` between settings-store and symfony-config, or a
+  definition left in the settings store after moving to YAML.
+- `Predefined::getByKey()` → `Dao::getByKey()` filters the list with `$item->getKey()` → `Error` on `null`.
+  `Element\Service::minimizePropertiesForEditmode()` calls `getByKey()` for **every** property of the element being
+  opened, so every document / asset / object that has (or inherits) a property can no longer be opened in the admin.
+- `getTotalCount()` counts the `null`s; user `setFilter()` / `setOrder()` callbacks receive `null`.
+
+**Fix direction:** `loadIdListByReadTargets()`, skip `null` results with a log entry, return `list<Predefined>`; shared
+fix with B-188.
+
+## [ ] B-207 – `Predefined::getCtype(): string` throws for definitions without `ctype`
+
+**Files:** `models/Property/Predefined.php:49`, `:189-192`, `:174-187`, `:91-97`;
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1852-1870`
+
+- The property is `?string $ctype = null`, the getter returns `string` → `TypeError` when the definition has no
+  `ctype`. The config tree does not require it, and `Predefined::create()` saves a definition without it.
+- The upstream admin predefined-properties store filters definitions by `getCtype()` for the element type being
+  edited (not verified locally): one incomplete YAML definition breaks the property panel for every element.
+- `setConfig(string)` vs. `?string $config`; `setKey()` / `setName()` / `setType()` cannot reset to `null` although
+  the getters return `?string`.
+
+**Fix direction:** `getCtype(): ?string` (or default `''` and validate on save); consistent nullability for all
+setters / getters.
+
+## [ ] B-208 – `Predefined::getByKey()`: stale cache, uncached misses, duplicate keys win by listing order
+
+**Files:** `models/Property/Predefined.php:69-89`; `models/Property/Predefined/Dao.php:76-98`, `:103-133`;
+`models/Element/Service.php:548-557`
+
+- The `RuntimeCache` entry `property_predefined_<key>` is never removed by `save()` / `delete()`. In the same process
+  (CLI, worker runtimes, CoreBundle C-08) a renamed or deleted definition is still returned; `getById()` has the same
+  issue through the static `PimcoreLocationAwareConfigDao::$cache` (B-191).
+- Misses are not cached: `getByKey()` for a property without a definition (most properties) loads and hydrates the
+  **whole** listing each time. `minimizePropertiesForEditmode()` does this for every property, so editmode load cost
+  is O(properties × definitions).
+- Keys are not unique (no check in `save()`). With two definitions sharing a key the first in listing order wins.
+  `minimizePropertiesForEditmode()` then silently drops the config (select options, description) whenever the types
+  differ (`$predefined->getType() == $p->getType()`).
+- Loose `==` key comparison (`Dao.php:86`): numeric-string keys compare numerically (`'1e1' == '10'`).
+
+**Fix direction:** one key index built per listing load (and reset with the config cache); cache misses too;
+invalidate on save / delete; reject duplicate keys on save; `===` (I-96).
+
+## [ ] B-209 – `Predefined::save()` / `create()` / `getById()` defects (mirror of B-191 / B-192)
+
+**Files:** `models/Property/Predefined.php:57-67`, `:91-97`; `models/Property/Predefined/Dao.php:50-70`, `:103-133`;
+`lib/Model/Dao/PimcoreLocationAwareConfigDao.php:100-142`
+
+- `save()` never checks `isWriteable()`: with the `symfony-config` write target and debug off the YAML file is written
+  but not loaded until the next container build; with the `disabled` write target nothing is written and `save()`
+  reports success.
+- No validation: `key`, `name` and `type` may be empty; `type` need not be one of the property types (B-201,
+  `install.sql:305`); `ctype` may contain unknown element types.
+- `create()` persists an **empty** definition immediately (no key, no type). With the symfony-config target this
+  writes a YAML file full of `null`s; until it is edited, every `getByKey()` scans it.
+- `setId()` accepts any string; the id becomes the YAML file name (C-09 path traversal, only reachable through code /
+  imports – admin ids are UUIDs).
+- `Dao::getById('0')`: `$id != null` is `false` for `'0'` → `getDataByName(null)` → `TypeError`. Legacy numeric ids
+  from `predefined-properties.php` (migration `Version20220829132224`) can reach `getById(string)` as `int` from
+  `array_keys()` (strict `Listing.php` → `Listing/Dao.php` is not strict, coerced today, I-93).
+
+**Fix direction:** same as B-191 / B-192: check writeability, `validate()` (key, name, type, ctype, id pattern),
+`$id !== null`, cast legacy ids; `create()` should not save (or take the required fields).
+
+---
+
+## Schedule (Scope 8)
+
+## [ ] B-210 – Due tasks run in id order (publish / unpublish swapped) and concurrent runs execute tasks twice
+
+**Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:43-135` (`:45-47`, `:128-129`);
+`lib/Maintenance/Executor.php:72-98`; `bundles/CoreBundle/config/pimcore/default.yaml:50`
+
+- The listing has no `ORDER BY`; InnoDB returns the rows in primary-key (creation) order. When several tasks of one
+  element are due in the same run (maintenance was down, the queue was blocked by C-36, or an editor scheduled in the
+  past), creation order decides: "unpublish 18:00" created before "publish 09:00" runs first, and the document ends
+  **published** although its last scheduled state is unpublished.
+- No lock: every maintenance run dispatches a new `ScheduledTaskMessage`. With more than one consumer on
+  `pimcore_scheduled_tasks`, or a run that takes longer than the interval, two runs load the same due tasks.
+  `publish-version` is saved twice (two versions); `delete` creates two recycle-bin items and the second delete
+  fails.
+- The task is deactivated only **after** the action (`:128-129`); a crash between the save and `$task->save()` repeats
+  the action in the next run.
+
+**Fix direction:** `ORDER BY date, id`; claim each task atomically (`UPDATE … SET active = 0 WHERE id = ? AND active = 1`
+and check the affected rows) or use a `LockFactory` lock like `LowQualityImagePreviewTask`; deactivate in the same
+transaction as the action.
+
+## [ ] B-211 – Tasks that did nothing are reported as done
+
+**Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:53-129`; `models/Schedule/Task.php:41`, `:158-163`;
+`bundles/InstallBundle/dump/install.sql:331`
+
+- After any outcome without an exception the task is set `active = 0`, also when nothing happened:
+  - the user lacks the permission (`isAllowed()` `false`), with no log entry;
+  - the element no longer exists, or a data object is not `Concrete`;
+  - the action does not apply to the element type (`publish` / `unpublish` for assets);
+  - the action is unknown (`''` – the enum column stores invalid values as `''` with `sql_mode = ''`);
+  - `publish-version` with `version = NULL` falls through all branches.
+- The editor sees the task vanish from the pending list and assumes it ran. Only the missing version and the failed
+  restore are logged (`:63`, `:66`).
+
+**Fix direction:** log every skip with the reason and add an element note; validate `action` per `ctype` and require
+`version` for `publish-version` when saving the task (I-93 enum).
+
+## [ ] B-212 – Scheduled tasks are lost on recycle-bin restore and orphaned when links / hardlinks are deleted
+
+**Files:** `models/Document.php:97-107`, `:621-646`; `models/DataObject/AbstractObject.php:131-145`;
+`models/Asset.php:177-190`, `:1015`; `models/Document/PageSnippet.php:220-231`; `models/DataObject/Concrete.php:216-223`;
+`models/Document/Link.php:32`, `:340`; `models/Document/Hardlink.php:29`, `:189`;
+`models/Element/Recyclebin/Item.php:87-123`, `:208-216`; `models/Schedule/Task/Dao.php:42-49`
+
+- `getBlockedVars()` always excludes `scheduledTasks`, also in dump state, so recycle-bin dumps never contain tasks.
+  `Item::loadChildren()` calls `$element->getScheduledTasks()` (`:216`) for nothing. Page snippets, objects and assets
+  delete their tasks in `doDelete()` / `delete()`, so a restore brings the element back **without** its scheduled
+  publication / unpublication.
+- `Document\Link` and `Document\Hardlink` use `ScheduledTasksTrait` and save tasks, but no `doDelete()` removes them
+  (`Document::doDelete()` does not call `deleteAllTasks()`). The rows stay `active = 1`; they are only deactivated when
+  they fall due. If the link is restored from the recycle bin with the same id, its old tasks come back, unlike for
+  every other type.
+- `Task\Dao::save()` with an id whose row no longer exists runs only `update()` → 0 rows, no error. Tasks carried over
+  with their ids (restore code, B-182 copies) disappear silently.
+
+**Fix direction:** store tasks explicitly in the dump and re-create them with `id = null` on restore; delete tasks in
+`Document::doDelete()` for every type; `save()` should insert when the update affects no row (or throw).
+
+## [ ] B-213 – `Task\Listing` returns `null` entries and cached tasks; `getTotalCount()` hides errors
+
+**Files:** `models/Schedule/Task/Listing/Dao.php:33-54`; `models/Schedule/Task.php:49-69`;
+`models/Element/Traits/ScheduledTasksTrait.php:39-77` (`:70`)
+
+- `load()` selects ids and calls `Task::getById()` per id. A row deleted in between gives `null` in the list: it
+  crashes the maintenance run (C-36) and `ScheduledTasksTrait::saveScheduledTasks()` (`$task->setDao(null)` on
+  `null` → `Error`, the element save fails).
+- `Task::getById()` returns the `RuntimeCache` instance. Task `delete()` / `update()` do not touch the cache, and
+  `saveScheduledTasks()` mutates the shared instance (`setDao(null)`, `setCid()`). In long CLI processes (imports that
+  save many elements) a listing returns tasks with the state of an earlier load.
+- `getTotalCount()` returns `0` on any SQL error (`catch (Exception)`), so a broken condition looks like "no tasks".
+
+**Fix direction:** hydrate rows directly from one `SELECT *` (no per-id lookup, no `null`s); do not share cached
+instances with listings; let SQL errors propagate (I-97).
+
+## [ ] B-214 – Schedule small defects
+
+**Files:** `models/Schedule/Task.php:71-83`; `models/Schedule/Task/Dao.php:42-81`;
+`models/Element/Traits/ScheduledTasksTrait.php:64-77`; `lib/Maintenance/Tasks/ScheduledTasksTask.php:60-61`, `:87`,
+`:107-108`; `models/Element/AbstractElement.php` (`updateModificationInfos()`)
+
+- `Dao::save()` for a new task runs `INSERT … () VALUES ()` and then `update()`. When `update()` fails, an all-`NULL`
+  row (`active = 0`) is left behind. Not atomic.
+- `Task::create(array $data)` rejects `id` (`checkCreateData()`), but the constructor `new Task($data)` accepts it.
+  `saveScheduledTasks()` saves tasks by id and only overwrites `cid` / `ctype`. A client-supplied task id (upstream
+  admin builds tasks with `new Task($taskData)`, not verified locally) re-binds **another element's task** to the
+  element being saved, and `deleteAllTasks($ignoreIds)` then keeps it there.
+- `Task::create()` does not save, unlike every other model `create()`.
+- A task with `active = 1` and `date = NULL` is never due (`date < ?` is `NULL`) and is never cleaned up.
+- Scheduled saves run without an admin user, so `updateModificationInfos()` records `userModification = 0` ("system")
+  instead of the task's user. Version history and audit show the system user for every scheduled publication.
+- `cid`, `ctype`, `action` and `date` are not validated in the model; invalid enum values are stored as `''`.
+
+**Fix direction:** one `INSERT` with all columns (or a transaction); ignore / reject client ids in `saveScheduledTasks()`
+unless the row belongs to the element; set `userModification` to the task user before saving; validate on save (I-97).
