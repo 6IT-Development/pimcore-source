@@ -2212,3 +2212,191 @@ the six `Listing/Dao.php`
   ambiguous-column error (B-264).
 - The existing tests (`tests/Model/DataType/ClassificationStore/*`, `tests/Model/Inheritance/ClassificationstoreTest.php`)
   only use the configs as fixtures; none covers the config models themselves.
+
+---
+
+## T – DataObject `ClassDefinition/**` (Scope 16)
+
+> Notes
+> - Scanned and skipped files: see the Scope 16 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-46–C-51,
+>   B-266–B-299).
+> - Missing `declare(strict_types=1)`: `ClassDefinition/CustomLayout/Dao.php`, `CustomLayout/Listing/Dao.php` → add to
+>   I-73. All other scanned files already declare it.
+> - Applies to every scanned data type and not repeated per item: add `#[\Override]` on the many overridden `Data`
+>   methods (`getDataForResource()`, `checkValidity()`, `isEqual()`, `synchronizeWithMainDefinition()`, …).
+
+### [ ] I-149 – `CustomLayout` persistence: dead code, missing events, O(n²) lookups
+
+- `getInfoDocBlock()` (`CustomLayout.php:199-212`) is unused – custom layouts generate no PHP code.
+- `getIdentifier()` / `Dao::getLatestIdentifier()` ignore `$classId` and return a random UUID v4: rename or document.
+- Only `PRE_ADD` / `PRE_UPDATE` events exist (`lib/Event/DataObjectCustomLayoutEvents.php:27-34`); add post-save and
+  delete events, `delete()` dispatches nothing.
+- `exists()` (on every `save()`), `getByName()`, `getNameById()` load the whole listing and call `getById()` per id →
+  look up by id / name directly (`getDataByName()`), `array_find()` in the DAO.
+- `Listing\Dao::load()` and `getTotalCount()` duplicate the loading loop; `getTotalCount()` swallows every exception
+  as `0`.
+- `Dao::getById()` still `unserialize()`s a string `layoutDefinitions` (`Dao.php:69-70`) without `allowed_classes`;
+  `save()` only writes arrays → remove the legacy branch (I-75 family). Error message "Predefined metadata config"
+  (`Dao.php:99`) is a copy-paste; `Dao.php:141` has a Hungarian TODO comment to resolve or translate.
+
+### [ ] I-150 – Resolvers, `ClassDefinition\Service` helpers, layout traits, `CountryOptionsProvider`
+
+- `OptionsProviderResolver::$providerCache` and `PathFormatterResolver::$formatterCache` are unused public statics;
+  `OptionsProviderResolver` compares modes with `==`; only `CalculatorClassResolver` is `final`.
+- Resolvers return `?object` instead of the interface type → `@var` casts at every caller; narrow the return types.
+- `Service::removeDynamicOptionsFromLayoutDefinition(mixed &$layout)` / `removeDynamicOptionsFromArray()` take
+  unnecessary references; the `setDoRemoveDynamicOptions(true/false)` pairs (`Service.php:60-62`, `:162-164`, `:218-220`,
+  `:231-237`) lack `try/finally` (same pattern as B-175); `updateTableDefinitions()` concatenates `show columns from`
+  (I-76).
+- `LabelTrait::setLabelAlign('')` silently ignores the value instead of resetting it.
+- `CountryOptionsProvider::getOptions()` does not `trim()` the `restrictTo` items (`"DE, AT"` drops `AT`); use a readonly
+  promoted constructor (`:27-32`).
+
+### [ ] I-151 – Advanced relations: shared base, stored index, source lookup, LIKE escaping
+
+- `AdvancedManyToManyObjectRelation` / `AdvancedManyToManyRelation` duplicate `save()`, `delete()`, `preGetData()`,
+  `setColumns()`, `enrichLayoutDefinition()` and the diff handling line for line → shared trait / base class.
+- The object variant loads metadata with `$index = $key + 1` (`:158`), the element variant uses the stored
+  `$element['index']`; both rely on gap-free indexes → use the stored index in both.
+- `DataObject::getById($relation['src_id'])` per row – the source is always the owning object (resolve once).
+- Dead variables (`AdvancedManyToManyRelation.php:176`, `:387`); `$context['containerType']` read without `isset()`
+  (`AdvancedManyToManyObjectRelation.php:477`, `:561`); duplicate id in the `checkValidity()` message (`:363-369`).
+- `ownername LIKE` patterns from container names without `Helper::escapeLike()` (`_` acts as wildcard).
+- `denormalize()` uses `new ObjectMetadata` / `new ElementMetadata` instead of the `pimcore.model.factory` → overrides
+  bypassed.
+- `getColumnKeys()` rewrites `$this->columnKeys` inside a getter → derive from `columns` / sync in `setColumns()`.
+
+### [ ] I-152 – Relation helpers, listing filters and performance
+
+- `addListingFilter()` (`ManyToManyObjectRelation.php:699-712`, `ManyToManyRelation.php:744-764`) binds
+  `'%,' . $data . ',%'` without `escapeLike()` / `(int)` cast; array input → "Array to string conversion"; other
+  operators fall back to the generic filter on a comma-list column.
+- Exception messages with `print_r($data, true)` (`ManyToManyObjectRelation.php:162`) – large, leaks data into logs.
+- `ManyToOneRelation.php:549` quotes the type column with hand-written backticks → `quoteIdentifier()`.
+- Allow-relation traits: `!$document instanceof Document` is dead (typed parameter); `Logger::debug('allowed:' .
+  $allowed)` concatenates a bool on every validation; `AllowDocumentRelationTrait` / `AllowAssetRelationTrait` compute
+  allowed types differently → unify with `array_filter(array_column(…))` + `in_array(…, true)`.
+- `PositionSortTrait::sort()` reads `position` without `?? 0`; make it a static callable.
+- `ReverseObjectRelation::preGetData()` queries and loads every owner on every getter call (no lazy-key caching);
+  `loadData()` of the many-to-many types calls `getById()` per relation (N+1) → batch prefetch;
+  `filterUnpublishedElements()` → `array_filter()` / `array_any()`.
+
+### [ ] I-153 – Decimal / numeric configuration duplicated three times; `Numeric` / `QuantityValue` validation cleanup
+
+- `isDecimalType()`, `buildDecimalColumnType()`, the `DECIMAL_*` constants, decimal setters and `toNumeric()` are
+  copied in `QuantityValue`, `Numeric`, `NumericRange` → one trait.
+- Unreachable "scale > precision" message (`QuantityValue.php:224`, `Numeric.php:267`; `NumericRange.php:197-205` is
+  correct); `is_numeric()` on already typed `?int` in `setDecimalSize()` / `setDecimalPrecision()`.
+- `getColumnType()` ignores `unsigned` although validation enforces it → consider `UNSIGNED` columns.
+- `QuantityValue::checkValidity()` repeats the non-numeric check (`:296-301`) with another message; remove.
+- `Numeric::setDefaultValue('')` keeps the previous value (unlike `QuantityValue.php:94-101`); redundant `?? null`
+  (`Numeric.php:462`, `Checkbox.php:198`).
+- `NumericRange`: integer detection via `(string)$data` (object `__toString()`, `:405`); messages format float thresholds
+  with `%d` (`:415`, `:421`, `:429`).
+- `Numeric` / `Slider` render floats in scientific notation in `getVersionPreview()` / `getForCsvExport()`.
+
+### [ ] I-154 – `QuantityValueRange` should extend `AbstractQuantityValue`; float unit conversion in filters
+
+- `QuantityValueRange.php:27-108`, `:326-351` copy the unit properties, `configureOptions()` and `__set_state()` from
+  `AbstractQuantityValue`; `unitWidth` is typed differently (`string|int = 0` vs `string|int|null = null`).
+- `decimalPrecision` is stored but has no effect on the `double` columns; `getDataFromEditmode()` casts `''` to `0.0`
+  (only `is_null()` is checked).
+- `AbstractQuantityValue` filters compare converted floats with `=` / `!=` (`0.30000000000000004` never matches) → compare
+  in the base unit or with a tolerance window; `Unit::getById($value[1])` with request data in a strict file (numeric
+  JSON id → `TypeError`, sender format **not verified locally**).
+
+### [ ] I-155 – `RgbaColor`, `Checkbox`, `BooleanSelect`, `InputQuantityValue` small items
+
+- `RgbaColor`: `parent::checkValidity($data, $omitMandatoryCheck)` drops `$params`; `getFilterConditionExt()` puts an array
+  into SQL as `Array`, uses `$name` unquoted in the `cskey_` branch and does not escape `LIKE`;
+  `marshalBeforeEncryption()` / `unmarshalAfterDecryption()` use `Serialize::unserialize()` without `allowed_classes` (new
+  instance of I-75) – reuse `normalize()` / `denormalize()`.
+- `Checkbox::getVersionPreview(false)` returns `''` (indistinguishable from `null`); dead commented type check (`:121-124`).
+- `BooleanSelect::setOptions()` is a silent no-op; stale `@TODO` (`:216`); `match` in `getDataForEditmode()` /
+  `getDataFromResource()`; mandatory semantics belong with I-130.
+- `InputQuantityValue` unit column `varchar(50)` vs `QuantityValue` `varchar(64)` → align; the class-level TODO about
+  duplication with the parent is still open.
+
+### [ ] I-156 – Select-like types: duplicated "dynamic options" logic, enums, unenforced restrictions
+
+- `jsonSerialize()` / `resolveBlockedVars()` with the "remove dynamic options" logic are copy-pasted 7 times (`Select`,
+  `Multiselect`, `Language`, `Languagemultiselect`, `Gender`, `User`, …); `configureOptions()` is identical in
+  `Language` / `Languagemultiselect`; `restrictTo` getter/setter identical in `Country` / `Countrymultiselect` → traits.
+  `Country` re-uses `DataWidthTrait` already used by `Select`.
+- `restrictTo` (Country*) and `onlySystemLanguages` (Language*) are not enforced server-side (see B-269); `Gender` uses
+  hard-coded labels instead of translation keys.
+- `Country::setRestrictTo()` returns `void` (others `static`); `Country(multiselect)::getOptionsProviderClass(): string`
+  narrows the trait's `?string` and ignores the stored property.
+- `OptionsProviderTrait`: validate `optionsProviderType` against `OptionsProviderInterface::TYPES` or introduce a backed
+  enum; PHP 8.4 `public private(set)` for the provider properties.
+- `Multiselect::preSave()` throws a generic `Exception` with HTML in the message; `array_reduce()` → `array_any()`.
+
+### [ ] I-157 – Date/time types and `Wysiwyg`: column types, duplication, simpler comparisons
+
+- `Datetime::setColumnType()` / `DateRange::setColumnType()` accept any string that later reaches `ALTER TABLE` →
+  restrict to `bigint(20)` / `datetime` (enum or constants) and compare with constants instead of `== 'datetime'`.
+- `getDateFromTimestamp()` duplicated in `Datetime` / `DateRange` → `Carbon::createFromTimestamp()`.
+- `Time`: `isEarlier()` / `isLater()` / `toTimestamp()` parse `H:i` via `strtotime()` relative to `time()` → a plain
+  string comparison of validated `HH:MM` values; `isEmpty()` treats invalid strings as empty (misleading "mandatory"
+  message).
+- `Wysiwyg::checkValidity()` loads every linked element on each save and blocks saving any object whose text links to a
+  deleted element → dependency-table check or warning; `getDataForQueryResource()` keeps `<a>` / `<img>` tags in the
+  query table → plain text; `preGetData()` reads `$params['data']` without `isset`.
+
+### [ ] I-158 – `Table` / `StructuredTable` code quality
+
+- `Table::getGetterCode*()` (4 methods, ~160 lines, `:477-635`) copy `Data::getGetterCode*()` only to append `?? []` and
+  have already drifted (no `getPreGetValueHookCode()` in the brick variant) → protected fallback hook in the parent;
+  `$this instanceof TypeDeclarationSupportInterface` is always true.
+- `Table::$data` (default data) is never read server-side; query/search formats (`implode('|')`, `"\n"`) do not escape
+  delimiters; `setColumnConfigActivated()` / `setColumnConfig()` return `void`; type `$columnConfig` as
+  `array<int, array{key: string, label: string}>`; `getDataForEditmode()` returns non-array data under `?array`.
+- `StructuredTable`: redeclares `TypeDeclarationSupportInterface`; `setCols()` / `setRows()` duplicated; uses `$this->cols`
+  in one place and getters elsewhere; `calculateDbColumns()` builds `stdClass` only to unpack it; `typeMapper()` → `match`
+  with a default throw; document the `__row_identifyer` wire-format typo; `getDiffDataForEditMode()` assumes
+  `$defaultData[0]`; stray docblock `v` on `$labelFirstCell`.
+
+### [ ] I-159 – Media and Geo types: walkers, `rewriteIds()`, duplication
+
+- `Hotspotimage`: five near-identical walkers over `marker` / `hotspots` (`:141-158`, `:198-214`, `:237-255`, `:314-332`,
+  `:354-373`) → one private iterator; `doRewriteIds()` wipes hotspots, markers and crop when the image id is remapped
+  (`:403-408`) – after a tree copy the image is the same picture; `rewriteIdsInDataEntries()` reads `['data']` without
+  `isset`.
+- `ImageGallery::getDataFromEditmode()` keeps `null` items (persisted as empty slots) → `array_filter()`; redundant
+  `array_unique()` in `getCacheTags()`; `array_merge(...$list)` instead of merging in a loop.
+- `Image::rewriteIds()` / `Video::rewriteIds()` return any asset type (`Asset::getById()`) into image/video setters and
+  clear the field when the mapped id does not exist → typed lookup, keep the original on failure.
+- `getFilterConditionExt()` reads `$params['name']` without fallback (`Hotspotimage.php:570`, `Image.php:279`).
+- `ExternalImage`: `getDataFromResource()` always returns an object (never `null`, `''` URL persisted instead of `NULL`);
+  `getDataFromEditmode()` passes mixed input to `?string`; `getDiffVersionPreview(string $data)` differs from siblings.
+  No server-side URL fetch exists (no SSRF).
+- `Geopolygon` / `Geopolyline` are identical apart from class name and field type → shared base; `Geobounds::isEqual()`
+  compares floats with `===` and carries a Hungarian `// TODO float kezelése` while `Geopoint` uses an epsilon → unify;
+  `AbstractGeo::$mapType` has no setter (dead or silently dropped config); `getDataForEditmode()` /
+  `getDiffVersionPreview()` call `->getLatitude()` without `instanceof GeoCoordinates`; `getVersionPreview(mixed)` →
+  `getDiffVersionPreview(?array)` `TypeError` for non-arrays.
+- `Video.php:141`, `:215`: use `TYPE_ASSET` instead of the `'asset'` literal.
+
+### [ ] I-160 – Data interface contracts and Scope 16 tests
+
+- `OptimizedAdminLoadingInterface` is implemented (`ManyToManyRelation`, `ManyToManyObjectRelation`) but never checked
+  in this repo; `CustomDataCopyInterface` and `CustomVersionMarshalInterface` are checked but have no core implementer →
+  document as extension points (`@api`) or remove the dead dispatch.
+- `DataContainerAwareInterface::preSave/postSave(mixed $containerDefinition)` → narrow to
+  `ClassDefinition|Objectbrick\Definition|Fieldcollection\Definition`; `PreGetDataInterface` / `PreSetDataInterface` /
+  `IdRewriterInterface` `mixed $container` → the container union already used by `CustomResourcePersistingInterface`
+  (BC break → next major).
+- `FieldDefinitionEnrichmentModelInterface::doEnrichFieldDefinition()` is public on the interface but `@internal` /
+  `abstract protected` elsewhere; `suppressEnrichment()` is missing from the interface; the
+  `FieldDefinitionEnrichmentInterface` docblock omits the `suppressEnrichment` case; `LazyLoadingSupportInterface` is
+  called a "marker interface" but declares a method; garbled docblocks in `EqualComparisonInterface`,
+  `ResourcePersistenceAwareInterface`, `QueryResourcePersistenceAwareInterface`.
+- Tests to add:
+  - Link to an object of a class without link generator renders (C-46).
+  - Version preview of StructuredTable, advanced relations, ExternalImage and Link escapes `<`/`"` (C-47).
+  - `QuantityValueRange` `0 … 1e9` saves; open-bound `NumericRange` / `QuantityValueRange` / `DateRange` round-trip
+    (C-48, C-49); object with a deleted unit loads (C-50); keyed, reordered `Table` row round-trips (C-51).
+  - One dirty-detection test per type for B-266; unpublished save with invalid e-mail / out-of-range number is
+    rejected (B-272); `Geopoint(0, 0)` round-trips (B-295); `DECIMAL` value with 19+ digits round-trips (B-296).
+  - Export a class with a `Gender` field, then call `getOptions()` in the same process (B-275); two fields `myUrl` /
+    `my_url` are rejected on class save (B-280).

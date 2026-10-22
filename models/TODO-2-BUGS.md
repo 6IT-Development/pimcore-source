@@ -4121,3 +4121,588 @@ aliases and an explicit column list (I-144).
 for unsaved configs and bind the id; default `sorter = 0` and required ids in `getByGroupAndColId()`; one FROM/JOIN
 builder for load / count / data array; `json_decode($row['definition'] ?? '[]', true) ?: []`; skip `null` entries; let
 count exceptions surface (or log them) consistently.
+
+---
+
+# Scope 16 – DataObject `ClassDefinition/**` (CustomLayout, Service, Helper, Layout, DynamicOptionsProvider, Data/**)
+
+> Notes
+> - Scanned and skipped files: see the Scope 16 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-46–C-51).
+> - Generated setters call `isEqual()` and mark the field dirty only when it returns `false`
+>   (`ClassDefinition/Data.php:592-596`); `Localizedfield::setLocalizedValue()` does the same per language
+>   (`Localizedfield.php:572-579`, `Localizedfield/Dao.php:142-148`). Every too-loose `isEqual()` therefore means a lost
+>   change (B-266).
+> - `Concrete::save()` passes `$omitMandatoryCheck = true` for unpublished objects (`Concrete.php:428-432`). Several
+>   types gate *value* checks on that flag, not just the mandatory check (B-272).
+
+## [ ] B-266 – Too-loose `isEqual()` implementations: real changes are not marked dirty and are not saved
+
+**Files:** `models/DataObject/ClassDefinition/Data/Select.php:404-407`; `Datetime.php:323-329`; `DateRange.php:278-306`;
+`ManyToOneRelation.php:475-481`; `Table.php:452-455`; `StructuredTable.php:407-413`; `Video.php:398-429`;
+`Link.php:304-327`; `QuantityValue.php:328-341`; `Numeric.php:433-440`; `Slider.php:243-252`; `NumericRange.php:464-465`;
+`models/DataObject/Traits/SimpleComparisonTrait.php:30-40`
+
+- `Select`: `==` → `'1'`/`'01'`/`'1.0'`/`'1e1'`≙`'10'` are equal.
+- `Datetime`: compares `format('Y-m-d H:i:s')` without offset → the same wall-clock time in another timezone (a
+  different instant, a different stored timestamp) is "equal". `DateRange`: compares only `Y-m-d`, although full
+  timestamps are stored → changing the time of day is never persisted.
+- `ManyToOneRelation`: key is `getType() . getId()`; `getType()` is the subtype, so asset folder 5, document folder 5
+  and object folder 5 are all `folder5`.
+- `Table` / `StructuredTable` / `Link`: `isEqualArray()` uses `==` (and `Link` filters `''`/`'0'` away) → `"10"`→`"1e1"`,
+  `0`→`null`, `''`→`'0'` are not detected.
+- `Video`: for YouTube/Vimeo/Dailymotion only the id is compared; title, description and poster changes are ignored.
+- `QuantityValue` / `Numeric`: `toNumeric(null)` is `0`; `Slider`: `(float)null` and a fixed epsilon `1e-5` (ignores
+  `decimalPrecision`); `NumericRange`: `abs(null - x)` → `null`↔`0` is "equal".
+- Concrete-level setters mark dirty for `Table`/`StructuredTable` unconditionally (`Data.php:604-605`), so for those two
+  only localized / encrypted paths lose the change; for the other types every path is affected.
+
+**Fix direction:** strict, null-aware comparisons: `getTimestamp()` for dates, element type + id for relations,
+`===` on normalised arrays, all properties for `Video`, `(string)$a === (string)$b` for `Select`. Add one dirty-detection
+test per type.
+
+## [ ] B-267 – `Datetime` with column type `datetime`: DST-dependent round-trip, broken filter condition, invalid default values
+
+**Files:** `models/DataObject/ClassDefinition/Data/Datetime.php:58-91`, `:190-201`, `:280-302`, `:309-321`
+
+- Storage uses `date('Y-m-d H:i:s', $ts)` and `strtotime()` in the PHP default timezone: a timestamp in the repeated
+  autumn DST hour comes back one hour off; changing `date.timezone` shifts every stored value.
+- `getFilterConditionExt()`, `datetime` branch: `$params['brickPrefix']` read without `isset` (warning), field name in
+  hand-written backticks instead of `quoteIdentifier()`, no fallback from `$params['name']` to `getName()`;
+  `date('Y-m-d', $value)` with a string value → `TypeError` (strict types). The bigint branch ignores `brickPrefix`
+  (ambiguous column in brick listings) and does not normalise the value to the start of the day.
+- `setDefaultValue()`: `strtotime()` returning `false` is assigned to `?int` → `TypeError`; `''` does not clear an
+  existing default. `doGetDefaultValue()` treats the timestamp `0` as "no default".
+
+**Fix direction:** convert with an explicit timezone (UTC), build the filter like `Data::getFilterConditionExt()`,
+validate and clear the default value properly.
+
+## [ ] B-268 – `DateRange`: preview `TypeError` for an open range, `normalize()` / CSV export enumerate every day
+
+**Files:** `models/DataObject/ClassDefinition/Data/DateRange.php:170-182`, `:189-200`, `:212-228`, `:146-157`
+
+- `getVersionPreview()` passes `getEndDate()` (`null` for an open range, see C-49) to
+  `UserTimezone::applyTimezone(DateTimeInterface)` (`lib/Tool/UserTimezone.php:45`) → `TypeError`.
+- `normalize()` uses `CarbonPeriod::toArray()` and `getForCsvExport()` maps every day: a multi-year range creates
+  thousands of `Carbon` instances / a huge CSV cell; `denormalize()` only uses the first and last element. With an open
+  end the iteration is unbounded (Carbon behaviour **not verified locally**).
+- `getDataFromGridEditor()` reads `start_date` / `end_date` without `isset`.
+
+**Fix direction:** null-safe preview; normalise to `['start' => ts, 'end' => ?ts]` (keep reading the old list format);
+export start/end only.
+
+## [ ] B-269 – `Multiselect` / `Select`: values are not validated against options, commas, `maxItems` or column length
+
+**Files:** `models/DataObject/ClassDefinition/Data/Multiselect.php:153-180`, `:243-246`, `:275-284`, `:476-500`;
+`Select.php:81-88`, `:221-226`; `bundles/CoreBundle/config/pimcore/default.yaml:148`
+
+- `Multiselect::preSave()` forbids commas only in configured option values (#5010). Values from API/import are not
+  checked: `['a,b']` is stored as `a,b` and reloads as `['a', 'b']`.
+- `Multiselect::checkValidity()` only checks "is array": `maxItems` and option membership are enforced by the admin UI
+  only (**not verified locally**). `getDataFromEditmode()` returns the raw input (a string is not split).
+- `Select::checkValidity()` accepts any string; strings longer than `columnLength` are truncated by MySQL under
+  `sql_mode = ''`. `setColumnLength(0)` is silently ignored and there is no upper bound before the value reaches DDL.
+
+**Fix direction:** validate in `checkValidity()` (scalar strings, no comma, `count() <= maxItems`, value in options when
+`useConfiguredOptions()`, `mb_strlen() <= columnLength`).
+
+## [ ] B-270 – `synchronizeWithMainDefinition()` misses settings: custom layouts keep stale options, providers, columns and restrictions
+
+**Files:** `models/DataObject/ClassDefinition/Data/Multiselect.php:398-402` (compare `Select.php:240-248`);
+`Table.php:443-450`; `Hotspotimage.php` (no override, `Image.php:213-216` does sync `uploadPath`);
+`ManyToManyObjectRelation.php:401-405`; `ManyToManyRelation.php:568-578`; `ManyToOneRelation.php:437-441`;
+caller `models/DataObject/Service.php:1031-1047`
+
+- `Multiselect` copies only `maxItems` and `options` – not `optionsProviderType/Class/Data`, `defaultValue`,
+  `renderType` (`Select` copies the provider settings).
+- `Table` does not copy `columnConfigActivated` / `columnConfig` → stale column headers/keys.
+- `Hotspotimage` does not sync `uploadPath`, `ratioX`, `ratioY`.
+- Relations: `ManyToManyRelation` does not copy `classes`; `ManyToOneRelation` copies none of the allowed flags, types or
+  classes; `ManyToManyObjectRelation` copies neither `classes` nor `visibleFields`. (Server validation uses the main
+  definition, so this affects the UI only – rendering **not verified locally**.)
+
+**Fix direction:** copy every configuration property that is not layout-specific; ideally one generic helper that copies
+everything except an explicit list of layout properties (title, tooltip, width, …).
+
+## [ ] B-271 – Unescaped HTML in diff / version previews of `Multiselect`, `Textarea`, `Wysiwyg`, `QuantityValueRange`
+
+**Files:** `models/DataObject/ClassDefinition/Data/Multiselect.php:366-393` (`:378-379`); `Textarea.php:135-150`;
+`Wysiwyg.php:238-249` (compare `:323-326`); `QuantityValueRange.php:215-222` (compare `AbstractQuantityValue.php:157`)
+
+- `Multiselect::getDiffVersionPreview()` concatenates option labels into `<li>` unescaped (labels from a dynamic options
+  provider can be object data).
+- `Textarea::getDiffVersionPreview()` returns the raw text with `\n` → `<br>` as `type = html` → an editor stores
+  `<img src=x onerror=…>` that runs in another user's diff view.
+- `Wysiwyg::getDiffVersionPreview()` returns the HTML unsanitized while `getVersionPreview()` sanitizes it. The object
+  property keeps the unsanitized input until reload (sanitizing happens only in `getDataForResource()` `:108-119`).
+- `QuantityValueRange::getVersionPreview()` returns `__toString()` (translated unit abbreviation) unescaped.
+- The diff previews are consumed by the object-merger bundle (not in this repo – **not verified locally**); the core
+  version-preview XSS is C-47.
+
+**Fix direction:** `htmlspecialchars()` (labels, Textarea before `nl2br()`, QuantityValueRange), sanitizer for the
+Wysiwyg diff preview.
+
+## [ ] B-272 – Value constraints are skipped when `$omitMandatoryCheck` is set (unpublished saves); `Numeric` integer check can never fire
+
+**Files:** `models/DataObject/ClassDefinition/Data/Email.php:26-36`; `Textarea.php:161-170`; `Time.php:80-105`;
+`Wysiwyg.php:54`, `:93-101`, `:199-211`; `Numeric.php:296-297`, `:349-371`, `:427-431`; `NumericRange.php:397-450`;
+`models/DataObject/Concrete.php:120-124`, `:428-432`
+
+- E-mail format (`Email.php:28`), `maxLength` (`Textarea.php:163`), `minValue`/`maxValue` (`Time.php:92`), and range /
+  unsigned / integer checks of `Numeric` (`:349`) and `NumericRange` (`:397`) only run when `$omitMandatoryCheck` is
+  false. Unpublished objects (and new objects with default values) persist invalid e-mails, overlong texts,
+  out-of-range and negative values; they fail only later on publish. `QuantityValue` does it right (`:303-325`).
+- `Numeric::toNumeric()` casts to `int` first in integer mode, so `str_contains((string)$data, '.')` (`:356`) is never
+  true: `1.5` passes; `getDataFromEditmode('1.5')` silently returns `1`; a raw `1.5` set through a localized field is
+  written to `bigint(20)` and rounded by MySQL to `2`.
+- `Email`, `Textarea`, `Time` call `parent::checkValidity($data, $omitMandatoryCheck)` without `$params`.
+  `Textarea`: `mb_strlen($data)` on a non-string → `TypeError`. `Wysiwyg::$maxCharacters` is never validated server-side.
+
+**Fix direction:** gate only the mandatory check on `$omitMandatoryCheck`; check "is integer" on the raw input; forward
+`$params`; add a `maxCharacters` check.
+
+## [ ] B-273 – `User` data type: one user query per object load, all users reloaded on every save/wakeup, dangling ids silently nulled
+
+**Files:** `models/DataObject/ClassDefinition/Data/User.php:39-48`, `:53-81`, `:111-123`, `:141-153`
+
+- `getDataFromResource()` calls `checkValidity()` → `Model\User::getById()` for every loaded object and field (N+1 on
+  listings).
+- `getDataForResource()` calls `init()` → `configureOptions()` loads **all** users whenever in admin or options are
+  empty, i.e. on every save; `__wakeup()` does the same on every unserialization of the definition.
+- A reference to a deleted user becomes `NULL` on the next save without log or validation error; `checkValidity()`
+  casts `(int)$data`, so `'abc'` is looked up as id `0`.
+
+**Fix direction:** validate only in `checkValidity()`, load options lazily for layout enrichment only, log dangling
+references.
+
+## [ ] B-274 – `Select` / `Multiselect` small defects: null options loop, return-type mismatch, shared options mutation, LIKE escaping
+
+**Files:** `models/DataObject/ClassDefinition/Data/Select.php:147-150`, `:193-219`, `:276-304`, `:312-335`;
+`Multiselect.php:225-226`, `:248-256`, `:328-355`, `:404-420`
+
+- `Select::getDiffDataForEditMode()` iterates `$this->options` without a null check → warning when provider options were
+  removed (`jsonSerialize()` / `Service::doRemoveDynamicOptions()`).
+- `Select::getDataForQueryResource(): ?string` returns `getDataForResource(): null|string|int` → `TypeError` for int
+  values (strict types).
+- `getDataForGrid()` (both types) writes provider options into the shared field definition (`setOptions()`) per row →
+  options of the last row leak into later rows / requests.
+- `Select::getFilterConditionExt()` `LIKE` does not escape `%`/`_`; `Multiselect` `=` branch neither escapes nor
+  handles an array value (`Array` + warning).
+- `Multiselect::getDiffDataFromEditmode()` reads `$data[0]['data']` unchecked; `appendData()` / `removeData()` return
+  non-list arrays (`array_unique()` / `array_diff()` keep keys).
+
+**Fix direction:** null-safe loops, cast to string, keep provider options local to the call, `Helper::escapeLike()`,
+`array_values()`.
+
+## [ ] B-275 – Class / collection / brick / custom-layout JSON export mutates the live, runtime-cached definition objects
+
+**Files:** `models/DataObject/ClassDefinition/Service.php:54-58`, `:68-96`, `:157-160`, `:199`, `:215-216`, `:226-240`;
+`Data/Gender.php:37-59`; `Data/Select.php:55`; `Helper/VarExport.php:25`
+
+- `clone $class` / `$fieldCollection` / `$objectBrick` are shallow (no `__clone()` anywhere); `generateCustomLayoutJson()`
+  does not clone at all. `removeDynamicOptionsFromLayoutDefinition()` therefore works on the layout tree that
+  `ClassDefinition::getById()` keeps in the runtime cache.
+- `:71-76` `unset()`s every blocked var on `VarExporterInterface` nodes: after one export the cached `Gender` (blocked
+  var `options`) has an uninitialised `public ?array $options` → any later `getOptions()` in the process throws "must not
+  be accessed before initialization". `:89` sets `$child->options = null` on live `Select` definitions.
+- `:78-79` is dead: `blockedVarsForExport` is `protected`, so `isset()` from outside is always false.
+- Which admin endpoints export and then reuse the definition in the same request/worker is **not verified locally**.
+
+**Fix direction:** deep-copy the layout tree first (`DeepCopy`, as `DataObject/Service.php:1197-1199`) or strip the
+blocked keys from the decoded JSON array instead of the objects; remove the dead branch.
+
+## [ ] B-276 – `ClassResolver`: one cache for all resolvers/modes ignores the validation callback; rejected classes are re-instantiated; errors escape
+
+**Files:** `models/DataObject/ClassDefinition/Helper/ClassResolver.php:29-59`; `Helper/OptionsProviderResolver.php:34-51`;
+`DynamicOptionsProvider/SelectionProviderTrait.php:34-37`, `:56-57`; `MultiSelectOptionsProviderInterface.php:25-37`;
+`models/DataObject/Service.php:1486-1488`
+
+- `private static array $cache` is keyed only by the class string: the first resolved object is returned to every
+  resolver/mode without running the current callback (e.g. a legacy `MultiSelectOptionsProviderInterface` provider
+  cached in multiselect mode is returned for `MODE_SELECT`; a class first resolved by `DynamicTextResolver` is returned
+  to `LinkGeneratorResolver`).
+- `??=` does not cache `null`: a rejected class is instantiated twice per call and again on every call.
+- With `$showError = true` the first `new $class()` / `container->get()` is outside the `try` → a wrong class name throws
+  to the caller (the "Class does not exist or is not valid" handling in `DataObject/Service.php` is never reached);
+  `catch (Error)` misses `ServiceNotFoundException`.
+- `SelectionProviderTrait` calls `getDefaultValue()` on a provider that may only implement the deprecated multiselect
+  interface (which does not declare it) → "Call to undefined method". A provider returning an array default (allowed by
+  `SelectOptionsProviderInterface`) makes `Select::setDefaultValue(?string)` throw `TypeError`.
+- Hardening: any autoloadable class named in a definition is instantiated before validation (admins only).
+
+**Fix direction:** key the cache by resolver + mode (or validate on every hit), cache negative results, check
+`is_a($class, Interface, true)` before instantiating, catch `Throwable`, guard `getDefaultValue()`.
+
+## [ ] B-277 – `Layout\Text`: renderer output is compiled as Twig source, the result overwrites the template, non-security Twig errors break the layout
+
+**Files:** `models/DataObject/ClassDefinition/Layout/Text.php:52`, `:105-144` (`:119-120`, `:127`, `:133-141`);
+`lib/Templating/TwigDefaultDelegatingEngine.php:72-76`
+
+- The `DynamicTextLabelInterface::renderLayoutText()` result is written to `$this->html` and then passed to
+  `createTemplate()`. Renderer output usually contains object data → an editor can inject `{{ … }}` / `{% … %}` that runs
+  as Twig (limited by the sandbox policy, hence bug, not critical).
+- Only `SecurityError` is caught: a `SyntaxError` (literal `{{` in admin HTML or renderer output) or `RuntimeError`
+  breaks the whole layout response.
+- `$this->html` is overwritten with rendered output; on a shared (runtime-cached) definition the next object renders the
+  previous object's output and the original template is lost (whether admin callers deep-copy first is **not verified
+  locally**).
+- `public string $renderingData` has no default; `Layout::setValues()` skips `null`, so a definition with
+  `renderingClass` and no `renderingData` throws on access.
+
+**Fix direction:** render the admin template first and pass renderer output as data (escaped), catch
+`Twig\Error\Error`, write to a separate output property, default `$renderingData = ''`.
+
+## [ ] B-278 – JSON import functions accept invalid JSON as success and pass `false` to typed setters
+
+**Files:** `models/DataObject/ClassDefinition/Service.php:98-153` (`:106`, `:108-115`), `:170-195` (`:172-177`),
+`:242-287` (`:244`, `:265-268`); `models/DataObject/Traits/FieldcollectionObjectbrickDefinitionTrait.php:97`
+
+- `json_decode()` without error check: invalid JSON → `null` → the class/collection/brick is saved unchanged with a new
+  modification date and the function returns `true`. A missing `layoutDefinitions` key warns; a non-array value is a
+  `TypeError` in `generateLayoutTreeFromArray(array …)`.
+- `importFieldCollectionFromJson()` / `importObjectBrickFromJson()` do not check `$layout === false` (the class import
+  does) → `setLayoutDefinitions(false)` → `TypeError` with `$throwException = false`.
+
+**Fix direction:** `JSON_THROW_ON_ERROR`, validate `layoutDefinitions` as array, handle `false` identically in all three.
+
+## [ ] B-279 – `Service::generateLayoutTreeFromArray()`: bypassable HTML check on title/name, unvalidated `datatype` / `fieldtype`
+
+**Files:** `models/DataObject/ClassDefinition/Service.php:296-365` (`:299-308`, `:311`, `:313-315`);
+`lib/Loader/ImplementationLoader/PrefixLoader.php:94-101`; `bundles/CoreBundle/src/Command/Definition/Import/CustomLayoutCommand.php:106-118`
+
+- `/<.+?>/` without the `s` modifier: `"<img\nsrc=x onerror=…>"` and an unclosed `<svg/onload=…` pass (checked with
+  `php -r`); only `title` and `name` are checked. A non-string `title`/`name` → `TypeError` in `preg_match()`. Where the
+  values are rendered in the admin UI is **not verified locally**.
+- `datatype` is concatenated into a container service id: a missing or unexpected value raises warnings /
+  `ServiceNotFoundException` instead of the documented `false` / `Exception('Could not add child')`.
+- `fieldtype` is resolved by the prefix loader and built with `new`: `abstractQuantityValue` resolves to the abstract
+  class → "Cannot instantiate abstract class" (`Error`, not caught by callers catching `Exception`). The built item is
+  never checked against `Data|Layout`.
+
+**Fix direction:** reject `<` in all label-like keys (or an anchored check with `s`), allowlist `datatype`, check
+`instanceof` and `ReflectionClass::isInstantiable()` before use.
+
+## [ ] B-280 – Generated `FIELD_*` constants collide for distinct field names: the generated class does not compile
+
+**Files:** `models/DataObject/ClassDefinition/Service.php:500-516`, `:521-526`, `:531-536`
+
+- `camelCaseToUpperSnakeCase()` maps `myUrl`, `my_url` and `myURL` to `MY_URL` (and `urlA` / `url_a` to `URL_A`;
+  checked with `php -r`). Fields `myUrl` and `my_url` have distinct getters and columns but both generate
+  `public const FIELD_MY_URL` → compile-time fatal for the generated DataObject class. Normal and localized fields are in
+  one list, so collisions also occur across `localizedfields`.
+- No server-side check exists (`ClassDefinition.php` validates only class name and id). Distinct from C-32 (valid names,
+  non-injective mapping).
+
+**Fix direction:** detect duplicate constant names on class save with a clear error (or use a collision-free mapping).
+
+## [ ] B-281 – `CustomLayout` caching and name lookup return wrong or stale layouts
+
+**Files:** `models/DataObject/ClassDefinition/CustomLayout.php:61-126`, `:185-193`, `:239-251`;
+`CustomLayout/Dao.php:83-123`; `bundles/CoreBundle/src/Command/Definition/Import/CustomLayoutCommand.php:77`
+
+- `getById()` and `getByName()` share the runtime-cache prefix `'customlayout_' . $id|$name` → a layout whose name equals
+  another layout's id is returned for the wrong lookup.
+- `save()` / `delete()` only call `Cache::clearTag('customlayout_<id>')` (nothing is stored under that tag) and never
+  clear `RuntimeCache` → after `delete()` / rename, `getById()` / `getByName(oldName)` still return the layout in the same
+  process.
+- `Dao::getByName()` searches across all classes and takes the first match; `getByNameAndClassId()` then returns `null`
+  when another class owns a layout with that name; `CustomLayoutCommand` may update another class's layout.
+- An empty name or id matches every layout (`getByName('')`, `exists('')` is true).
+
+**Fix direction:** distinct cache keys (`customlayout_id_…`, `customlayout_name_<classId>_…`), clear `RuntimeCache` in
+`save()` / `delete()`, filter by `classId` in the DAO, reject empty keys.
+
+## [ ] B-282 – Typed definition properties without default: getters, custom-layout sync and loaders throw "must not be accessed before initialization"
+
+**Files:** `models/DataObject/ClassDefinition/CustomLayout.php:51-55`, `:128-153`; `Layout/Iframe.php:38`, `:44`;
+`Layout/Fieldcontainer.php:42`; `Layout/Text.php:52`; `Data/AdvancedManyToManyRelation.php:41`, `:48`, `:151`, `:694-707`,
+`:751`; `Data/ManyToManyRelation.php:59`, `:571`; `Data/ManyToOneRelation.php:51`, `:439`; `Data/ReverseObjectRelation.php:46`;
+`Data/ImageTrait.php` (`$uploadPath`); `Data/Image.php:213-216`; `Data/Hotspotimage.php:38-80`; `Data/ImageGallery.php:37-73`;
+`Data/StructuredTable.php:40-44`, `:399-405`; `Data/BooleanSelect.php:74-86`, `:166-176`
+
+- `AbstractModel::setValues()` / `Layout::setValues()` skip `null` / absent keys, and definitions built in code or
+  imported from older JSON omit them, so these properties stay uninitialised: `CustomLayout::$userOwner`,
+  `$userModification`, `$classId`; `Iframe::$iframeUrl`, `$renderingData`; `Fieldcontainer::$fieldLabel`;
+  `AdvancedManyToManyRelation::$columns` / `$columnKeys` (the object variant has `= []`); `$assetUploadPath`
+  (ManyToMany/ManyToOne); `ReverseObjectRelation::$ownerFieldName`; `$uploadPath` (Image/Hotspotimage/ImageGallery);
+  `Hotspotimage::$ratioX/$ratioY/$predefinedDataTemplates`; `StructuredTable::$labelFirstCell` (as in
+  `tests/Support/Helper/Model.php:537-547`); `BooleanSelect::$yesLabel/$noLabel/$emptyLabel`.
+- Consequences: `AdvancedManyToManyRelation::loadData()` throws on every load; `synchronizeWithMainDefinition()` throws
+  for every custom layout reading the main definition's property (`DataObject/Service.php:1046`);
+  `BooleanSelect::getVersionPreview()` throws; `CustomLayout::getByNameAndClassId()` throws.
+- Related: `ImageGallery::getRatioX()/getRatioY(): int` return a `?int` property → `TypeError` when unset;
+  `CustomLayout::getFieldDefinition()` passes `?Layout` into a closure typed `Data|Layout`;
+  `BooleanSelect::setYesLabel(?string)` assigns `null` to `string` and calls `setOptionsEntry(int, string)`.
+
+**Fix direction:** defaults (`''`, `[]`, `0`) or nullable types for all of these; nullable getters where `null` is valid.
+
+## [ ] B-283 – `AdvancedManyToManyObjectRelation::delete()`: broken LIKE pattern (fieldcollection) and exception (objectbrick) for localized sub-containers
+
+**Files:** `models/DataObject/ClassDefinition/Data/AdvancedManyToManyObjectRelation.php:536-549` (`:538-541`, `:547`);
+compare `:458` and `AdvancedManyToManyRelation.php:635-648`; caller `models/DataObject/Localizedfield/Dao.php:487-503`
+
+- `"$index . /%"` is inside a double-quoted string → the pattern is `'/fieldcollection~fc/3 . /%'` (checked with
+  `php -r`); no `ownername` ever matches → orphaned `object_metadata_*` rows for fieldcollection → localizedfield.
+- For objectbrick → localizedfield the method throws `Exception('deletemeta not implemented')`. `Localizedfield\Dao::delete()`
+  catches and only logs it (B-179), so every following field in the loop is not deleted. The element variant implements
+  this branch.
+
+**Fix direction:** build the pattern as in `save()` (`'/' . $type . '~' . $name . '/' . $index . '/%'`, with
+`Helper::escapeLike()`), implement the objectbrick branch like `AdvancedManyToManyRelation`.
+
+## [ ] B-284 – Advanced relation metadata items without a resolvable target crash validation, save and normalize
+
+**Files:** `models/DataObject/ClassDefinition/Data/AdvancedManyToManyObjectRelation.php:361-369`, `:494-501`, `:670-677`,
+`:814-817`; `AdvancedManyToManyRelation.php:468-469`, `:589-595`, `:735-736`, `:780-783`;
+`models/DataObject/Data/ObjectMetadata/Dao.php:38`; `models/DataObject/Data/ElementMetadata.php:98-99`
+
+- `ObjectMetadata::getObject()` / `ElementMetadata::getElement()` return `null` for a deleted target or after
+  `setObject(null)`; `rewriteIds()` creates such items when the mapped id does not load (a folder id gives a `TypeError`
+  in `setObject(?Concrete)`).
+- `prepareDataForPersistence()` skips them, but `checkValidity()` calls `$o->getClassName()` on `null`, `save()` calls
+  `$meta->save()` → `getElement()->getId()` on `null` / `getElementType(null)` `TypeError`, and `normalize()` does the same.
+  `AdvancedManyToManyRelation::checkValidity()` even lets empty items through.
+
+**Fix direction:** skip unresolvable items in `save()` / `normalize()`; `instanceof` checks in `checkValidity()`
+returning a `ValidationException`.
+
+## [ ] B-285 – Grid filter conditions of relation types and `Checkbox`: undefined keys, ignored prefix/name, `TypeError`
+
+**Files:** `models/DataObject/ClassDefinition/Data/Relations/ManyToManyRelationTrait.php:94-96`;
+`ManyToOneRelation.php:543-556`; `Extension/RelationFilterConditionParser.php:33`; `Checkbox.php:153-179`;
+compare `ClassDefinition/Data.php:398-403`
+
+- `ManyToManyRelationTrait::getFilterConditionExt()` reads `$params['brickPrefix']` (and `$params['name']`) without
+  fallback → "Undefined array key" on every non-brick filter (an exception in debug mode).
+- `ManyToOneRelation::getFilterConditionExt()`: `preg_match()` on `mixed $value` → `TypeError` for `null` ("is empty"
+  filter) or `int`; without a `type|` prefix the fallback drops `$prefix` (unqualified column inside bricks); for
+  operators other than `=` it builds `` `brick`.(…) `` (invalid SQL) and a `LIKE` on an int column.
+- `Checkbox::getFilterConditionExt()` reads `brickPrefix` without `??`, always uses `$this->name` (ignores
+  `$params['name']` for localized / `cskey_` fields) and quotes the prefix with `quoteIdentifier()` while
+  `Data::getFilterConditionExt()` treats it as already formatted – one of the two produces broken SQL (caller format
+  **not verified locally**).
+
+**Fix direction:** `?? ''` / `?: $this->name` everywhere, cast/validate values (`null` → `IS NULL`), handle the prefix
+like `Data.php`, support only `=` where only `=` makes sense.
+
+## [ ] B-286 – `QuantityValue` filters: base unit excluded, broken `in` operator, numeric filter on `InputQuantityValue` varchar columns
+
+**Files:** `models/DataObject/ClassDefinition/Data/AbstractQuantityValue.php:226-277` (`:240-243`, `:247-256`, `:261-266`);
+`QuantityValue.php:404-418`; `InputQuantityValue.php:159-165`; `models/DataObject/QuantityValue/DefaultConverter.php:73`
+
+- `$baseUnit = $filterUnit->getBaseunit() ?? $filterUnit` is followed by `baseunit = <base> OR id = <filter unit>`: when
+  filtering in `cm` (base `m`) the base unit `m` itself is not in the list → objects stored in metres never match.
+- `QuantityValue::getFilterConditionExt()` lacks the `in` branch of the parent: `` `f__value` in '1,2' `` (syntax error).
+  `foreach ($values as $value)` overwrites the parameter → from the second unit on, `explode(',', $value[0])` reads one
+  character (`"10,20"` → `"2"`). An empty or non-numeric value → `TypeError` in `DefaultConverter`. The `cskey_` branch
+  puts `$value[0][0]` into SQL unquoted (reachability with request data **not verified locally**).
+- `InputQuantityValue` (`varchar(255)` value column) inherits the arithmetic filter: non-numeric text → `TypeError`;
+  `<` / `>` compare lexicographically, `=` misses `'1.50'` for `1.5`.
+
+**Fix direction:** add `OR id = <baseUnit>`, separate loop variable, `IN (…)` with numeric casting, quote/bind the
+`cskey_` value, string semantics (or not filterable) for `InputQuantityValue`.
+
+## [ ] B-287 – Relation small defects: folder rows in `ManyToManyRelation` editmode, `ReverseObjectRelation::getClasses()` with legacy definitions
+
+**Files:** `models/DataObject/ClassDefinition/Data/ManyToManyRelation.php:284-285`, `:632-657`;
+`ReverseObjectRelation.php:71-89`, `:125`, `:144-148`, `:207-214`; `Extension/Relation.php:85`
+
+- For an object folder `getDataForEditmode()` emits `[id, path, 'object', 'variant', 'folder']`: subtype `variant` and
+  the string `'folder'` in the published slot; the diff editor copies both into `gridrow` and the unique key.
+- `ReverseObjectRelation::getClasses()` checks `getOwnerClassId()` but passes the raw `$this->ownerClassName`; for a
+  legacy id-only definition that is `null` → `ucfirst(null)` `TypeError` during class generation. The id → name fallback
+  in `getOwnerClassName()` is bypassed. `checkValidity()` passes items to `allowObjectRelation(AbstractObject)` without a
+  type check (`TypeError` instead of `ValidationException`).
+
+**Fix direction:** `[id, path, 'object', 'folder', true]` for folders; use `getOwnerClassName()` and return `[]` when
+unresolvable; `instanceof Concrete` before `allowObjectRelation()`.
+
+## [ ] B-288 – `Table`: no shape validation, a single `"0"` is treated as empty, broken diff header, CSV `TypeError`
+
+**Files:** `models/DataObject/ClassDefinition/Data/Table.php:239-243`, `:261-277`, `:306-324`, `:337-345`, `:347-386`,
+`:397-415`
+
+- `getDataFromEditmode()` concatenates all cells and tests `empty($checkData)` → a table containing only `"0"` becomes
+  `null` (value lost); only spaces are stripped. Otherwise the input is returned unchanged; `checkValidity()` only checks
+  `is_array` (ignores `rows`/`cols`/fixed dimensions, nested or 1-D arrays) → "Array to string conversion" in
+  `implode()` (`:268`, `:377`) and warnings in the column-config loop.
+- After an admin save the in-memory value is positional, after a reload it is keyed (see C-51): the getter shape depends
+  on how the object was obtained.
+- `getDiffVersionPreview()`: `<th>` closed with `</td>`; labels read by index from `columnConfig` → missing label →
+  `htmlspecialchars(null)` `TypeError`; `getVersionPreview(mixed)` passes non-arrays to `getDiffVersionPreview(?array)`.
+- `getForCsvExport(): string` returns `json_encode()` → `false` for invalid UTF-8 → `TypeError`.
+
+**Fix direction:** validate a list of scalar rows matching the fixed dimensions, strict emptiness per cell, normalise
+the shape in `getDataFromEditmode()`, iterate `columnConfig` for the header, `JSON_THROW_ON_ERROR |
+JSON_INVALID_UTF8_SUBSTITUTE`.
+
+## [ ] B-289 – `StructuredTable` row/column keys, `type` and `length` reach column names and DDL unvalidated
+
+**Files:** `models/DataObject/ClassDefinition/Data/StructuredTable.php:96-160`, `:326-365`;
+`models/DataObject/ClassDefinition/Dao.php:164-167`, `:181-184`; `ClassDefinition/Helper/Dao.php:92-110`;
+`models/DataObject/Data/StructuredTable.php:62`
+
+- Column name is `{field}__{row}#{col}`; `setRows()` / `setCols()` only `strtolower()` the key. Row `a#b` + col `c` and
+  row `a` + col `b#c` map to the same column; keys differing in case collapse. A backtick in a key goes unescaped into
+  `ALTER TABLE … ADD COLUMN` (new concrete instance of C-32 / I-76 – the key is a nested config value, not the field
+  name). No length check (64-char identifier limit → class save fails mid-DDL). `__` in a key breaks the magic
+  `getRow__Col()` accessor. Missing `key` → `strtolower(null)` `TypeError`; missing `position` → warnings in
+  `PositionSortTrait::sort()`.
+- `typeMapper()`: an unknown/missing `type` returns `null` → `ADD COLUMN \`…\`  NULL` (SQL error); `length` passed
+  unchanged (numeric string → `TypeError`, no upper bound → `varchar(100000)` / 65,535-byte row limit). Docblock says
+  default 255, code uses 190.
+
+**Fix direction:** validate keys against `^[a-z0-9_]+$` (no `#`, no `__`, unique, required `key`/`position`) and the
+resulting identifier length; allowlist `type`, cast and bound `length`.
+
+## [ ] B-290 – `StructuredTable`: no per-cell type validation, missing cells warn, `0` / `false` count as empty
+
+**Files:** `models/DataObject/ClassDefinition/Data/StructuredTable.php:145-160`, `:202-242`, `:270-309`, `:367-374`;
+`models/DataObject/Data/StructuredTable.php:105-116`; generated getter `ClassDefinition/Data.php:518`
+
+- `getDataFromEditmode()` trusts `__row_identifyer` and cell keys (unknown rows create extra keys, missing keys warn).
+  `checkValidity()` never validates cells against `type` (`"abc"` in a `double` column fails in strict SQL mode or
+  becomes `0`) and calls `$data->getData()` before the `instanceof` check.
+- `getDataForResource()`, `getDataForEditmode()`, `getForCsvExport()` read `$data[$row][$col]` without `??` (only
+  `getDataFromResource()` uses `?? null`) → warnings for partial data from the API or older versions (exceptions in
+  debug mode).
+- `isEmpty()` / `checkValidity()` use `empty($col)`: a table with only `0` / `false` cells fails the mandatory check,
+  shows as empty in editmode and is treated as empty by the inheritance check (parent values returned).
+
+**Fix direction:** accept only known keys, validate by type, `?? null` everywhere, emptiness = `null` / `''` only.
+
+## [ ] B-291 – `Hotspotimage::getDataForEditmode()` rewrites the live `MarkerHotspotItem` values to path strings
+
+**Files:** `models/DataObject/ClassDefinition/Data/Hotspotimage.php:193-228` (`:203-209`); `ImageGallery.php:212-224`;
+`models/Element/Data/MarkerHotspotItem.php:87-112`; `lib/Cache/Core/CoreCacheHandler.php:323-346`
+
+- The closure copies the marker/hotspot arrays, but the `data` entries are `MarkerHotspotItem` objects shared with the
+  field value. `$metaData['value'] = $path` calls `offsetSet()` and stores the path into the live item; `offsetGet()`
+  then calls `getElementById($type, '/path')` → element `null`. `getCacheTags()`, `resolveDependencies()` lose the links
+  and a later `getDataForResource()` serializes the path.
+- Trigger: `getDataForEditmode()` / `getDataForGrid()` (also via `ImageGallery`) on an object that is saved later in the
+  same process or sits in the cache save queue (serialized only at `writeSaveQueue()`); whether admin GET requests flush
+  the queue is **not verified locally**.
+
+**Fix direction:** build new arrays / clone the items instead of writing through `ArrayAccess` on shared objects.
+
+## [ ] B-292 – `Hotspotimage::getDataFromEditmode()` / `getDataFromGridEditor()` throw `TypeError` on reachable inputs
+
+**Files:** `models/DataObject/ClassDefinition/Data/Hotspotimage.php:235-275` (`:243-248`, `:257`, `:265-266`);
+`ImageGallery.php:237-238`; `models/DataObject/Data/Hotspotimage.php:47`
+
+- `array_key_exists('marker', $data)` runs before any array check → `TypeError` for `null` (which `:265` expects).
+  `ImageGallery::getDataFromEditmode()` passes items through unchecked; scalar elements fail at `:243-248`.
+- `getDataFromGridEditor(): Hotspotimage` returns `getDataFromEditmode()`, which returns `null` without id → `TypeError`.
+- `new Hotspotimage($data['id'], …)` with a string id (`"12"`) → `TypeError` under strict types (whether the admin JSON
+  sends strings is **not verified locally**).
+
+**Fix direction:** `is_array()` guards, `(int)` cast, nullable grid-editor return type, skip non-array elements.
+
+## [ ] B-293 – Configured restrictions are client-side only: `Video`, `Link`, `Slider`, Geo types
+
+**Files:** `models/DataObject/ClassDefinition/Data/Video.php:90-105`, `:211-241`, `:268`; `Link.php:37-47`, `:140-150`,
+`:165-194`; `Slider.php:210-219`; `Geopoint.php:191-207`; `Geobounds.php:55-69`; `Geopolygon.php:40-69`; `Geopolyline.php`
+(`checkValidity()`)
+
+- `Video`: `Asset::getByPath()` accepts any asset type as video and as poster; `setType()` accepts any string;
+  `allowedTypes` / provider ids are never validated; `type = asset` without `data` → `Asset::getByPath(null)` `TypeError`.
+- `Link`: `getDataFromEditmode()` calls `setValues($data)` with every posted key; `allowedTypes`, `allowedTargets` and
+  `disabledFields` are never read server-side (grep) → a crafted request stores any target/type/field (including
+  `attributes`, see C-47). Non-array `$data` → `TypeError`.
+- `Slider`: `minValue`, `maxValue`, `increment` not enforced.
+- Geo: no latitude/longitude range checks, no NE/SW order check, polygons with < 3 / polylines with < 2 points accepted;
+  `[]` is stored as `a:0:{}`.
+
+**Fix direction:** enforce these settings in `checkValidity()` and strip disabled fields in `getDataFromEditmode()`.
+
+## [ ] B-294 – `Link` to a deleted object keeps `internal` with `internalType = null`; `getCacheTags()` then throws `TypeError`
+
+**Files:** `models/DataObject/ClassDefinition/Data/Link.php:62-68`, `:96-97`, `:165-194`, `:235-245`;
+`models/Element/Service.php:1416`; `models/DataObject/Concrete.php:332-336`
+
+- `checkValidity()` validates and resets only `document` and `asset` targets, never `object` (and the asset branch says
+  "referenced document").
+- After the object target is deleted and the owner re-saved, `getDataForResource()` nulls `linktype` and `internalType`
+  but keeps `internal`. On the next load `getCacheTags()` calls `getElementCacheTag(null, $id)` (`string $type`) →
+  `TypeError` from `Concrete::getCacheTags()`, which runs on cache save and object save.
+- `getDataFromResource()` runs `checkValidity()` (target lookup) on every load: N+1 on listings.
+
+**Fix direction:** reset `internal` together with `internalType`, validate `object` targets, guard `getCacheTags()` on
+`getInternalType() !== null`, validate on save only.
+
+## [ ] B-295 – `Geopoint` / `Geobounds`: coordinate `0` loads as "no value", half-filled points, nullable corners dereferenced
+
+**Files:** `models/DataObject/ClassDefinition/Data/Geopoint.php:56-62`, `:112-113`, `:191-207`;
+`Geobounds.php:40-43`, `:79-82`, `:121-124`, `:143`, `:162`, `:172`, `:192-193`; `Geopolygon.php:127`; `Geopolyline.php:127`
+
+- `getDataFromResource()` uses truthiness on latitude/longitude → a point on the equator or the Greenwich meridian (or
+  a bounds corner at 0) loads as `null` and is wiped on the next save.
+- `Geopoint::getDataFromEditmode()` accepts a point when *either* value is set (`||`, missing key warns);
+  `checkValidity()` treats a half-filled point as empty → saved with one `NULL` column, loads as `null`.
+- `Geobounds::getDataFromEditmode()` tests `!== null`: `''` reaches `GeoCoordinates(?float)` → `TypeError`; string
+  numbers in `Geopoint`, `Geopolygon`, `Geopolyline` likewise (**not verified locally** whether the UI sends strings).
+- `DataObject\Data\Geobounds` allows `null` corners (`isEqual()` uses `?->`), but `getDataForResource()`,
+  `getDataForEditmode()`, `getVersionPreview()`, `getForCsvExport()` and `normalize()` call `getNorthEast()->…`
+  directly → fatal on save of `new Geobounds($ne)`.
+
+**Fix direction:** `!== null` / `is_numeric()` checks and `(float)` casts; reject half-filled points and incomplete
+bounds in `checkValidity()` (or write `NULL` columns null-safely).
+
+## [ ] B-296 – Decimal / bigint precision loss through float casts; `PHP_INT_MAX` guard rejects valid `DECIMAL` values
+
+**Files:** `models/DataObject/ClassDefinition/Data/QuantityValue.php:247`, `:306-308`; `NumericRange.php:247-253`,
+`:401-403`; `Numeric.php:352-354`, `:446-453`
+
+- `QuantityValue::getDataFromResource()` always casts `(float)`, also for `DECIMAL(64,x)` and `bigint(20)` columns;
+  `NumericRange` likewise → values beyond ~15–17 significant digits or above 2^53 are rounded and written back rounded.
+- `Numeric::preSetData()` rounds decimal-mode values via `round((float)$data, …)`: `"1234567890123456789.99"` becomes
+  `1.2345678901234568E+18` (checked) – silent corruption on every set.
+- `>= PHP_INT_MAX` is checked regardless of column type: `DECIMAL(65,0)` is allowed by `buildDecimalColumnType()`, but
+  values ≥ 9.22e18 are rejected ("use an input data type"); the float comparison makes the cut-off imprecise.
+
+**Fix direction:** keep decimals as strings (`toNumeric()` already does for `Numeric`), cast to int in integer mode,
+round with bcmath/string logic; apply the `PHP_INT_MAX` guard only in integer mode and validate precision/scale for
+decimals.
+
+## [ ] B-297 – `0` treated as empty in quantity types: lost defaults, unwanted inheritance, dropped values
+
+**Files:** `models/DataObject/ClassDefinition/Data/AbstractQuantityValue.php:301-305`; `QuantityValue.php:303`, `:345`,
+`:366`; `InputQuantityValue.php:52`, `:73`, `:100`; `models/DataObject/Traits/DefaultValueTrait.php:49`
+
+- `AbstractQuantityValue::isEmpty()` reports `QuantityValue(0, null)` as empty (`empty(0)`) → an explicit 0 without unit
+  is replaced by the default on create and inherits from the parent when inheritance is on. `QuantityValue::checkValidity()`
+  uses the same check, so `0` skips min/max/unsigned (`:303`).
+- `QuantityValue::doGetDefaultValue()` ignores a configured default `0` without default unit (`:345`).
+- `InputQuantityValue` drops `"0"` without unit on load (`:52`), from editmode (`:73`) and as default (`:100`).
+- (The `isEqual()` null↔0 part is in B-266.)
+
+**Fix direction:** `=== null` / `=== ''` instead of truthiness for values.
+
+## [ ] B-298 – `QuantityValue` CSV export is locale-formatted, rounded to 3 decimals and uses the translated abbreviation
+
+**Files:** `models/DataObject/ClassDefinition/Data/AbstractQuantityValue.php:163-171`; `QuantityValueRange.php:229-245`;
+`models/DataObject/Data/QuantityValue.php:50-75`
+
+- `getForCsvExport()` returns `(string)$data` = `NumberFormatter::DECIMAL` in the current locale (grouping, max 3
+  fraction digits) plus the translated abbreviation: `1.23456 kg` → `1.235 kg`, in `de` `1.234,5` style. Not stable
+  across locales; precision lost. `QuantityValueRange` exports raw values with the untranslated abbreviation.
+
+**Fix direction:** export the raw value plus unit id/abbreviation without locale formatting, consistently for both types.
+
+## [ ] B-299 – Input normalisation defects: `Checkbox` default, `BooleanSelect` `-1`, `Slider` `''`, `RgbaColor` short hex
+
+**Files:** `models/DataObject/ClassDefinition/Data/Checkbox.php:36`, `:46-54`; `BooleanSelect.php:146-158`, `:186-204`;
+`Slider.php:142-163`, `:192-200`; `RgbaColor.php:108-117`
+
+- `Checkbox::setDefaultValue()`: `is_numeric("1")` → the string is assigned to `?int` (strict types) → `TypeError`;
+  `true` is not numeric → silently `null`.
+- `BooleanSelect::getDataForResource()`: `is_numeric(-1)` → `(bool)-1` → `YES_VALUE`, although `-1` is the editmode/storage
+  value for "no"; `0` (editmode "empty") becomes `NO_VALUE`. `getDiffDataForEditMode()` compares with `==`, so `false`
+  matches the `empty` option.
+- `Slider`: the `!= null` guard lets `''` / `false` through uncast → `?float` return `TypeError` (`getDataFromEditmode('')`,
+  `getDataFromGridEditor('')`).
+- `RgbaColor::getDataFromEditmode()`: `sscanf('fff', '%02x%02x%02x%02x')` → `#ff0f00ff` instead of white; `'#'` or
+  non-hex text → opaque black; no validation error.
+
+**Fix direction:** normalise with `filter_var(…, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE)` / explicit maps,
+strict comparison, `''`/`false` → `null`, accept only 6/8-digit hex (`ctype_xdigit`).

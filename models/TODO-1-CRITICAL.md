@@ -1652,3 +1652,147 @@ same way. Add a test (I-141).
 >   PHP 8.4 incompatibility was found (no implicit nullable parameter; `public const string` is already used for the
 >   table names). Modernisation is in TODO-3 (I-142–I-148). The classic admin UI bundle is not in this repo: what it
 >   sends or reads is **not verified locally**. Nothing was executed apart from the `ArrayObject` check.
+
+---
+
+# Scope 16 – DataObject `ClassDefinition/**` (CustomLayout, Service, Helper, Layout, DynamicOptionsProvider, Data/**)
+
+> Notes
+> - Scanned (114 files, read in full): `CustomLayout.php`, `CustomLayout/Dao.php`, `CustomLayout/Listing.php`,
+>   `CustomLayout/Listing/Dao.php`, `Service.php`, the root interfaces (`CalculatorClassInterface`,
+>   `DefaultValueGeneratorInterface`, `LinkGeneratorInterface`, `PathFormatterAwareInterface`, `PathFormatterInterface`,
+>   `PreviewGeneratorInterface`), `Helper/*` (except `Helper/Dao.php`), `DynamicOptionsProvider/*`, `Layout/*` subclasses
+>   and `Layout/Traits/*`, and in `Data/`: all relation types (`AdvancedManyToMany(Object)Relation`,
+>   `ManyToMany(Object)Relation`, `ManyToOneRelation`, `ReverseObjectRelation`, `Relations/*Trait`, `Extension/Relation`,
+>   `Extension/RelationFilterConditionParser`, `Extension/PositionSortTrait`), the numeric types (`AbstractQuantityValue`,
+>   `QuantityValue`, `QuantityValueRange`, `InputQuantityValue`, `Numeric`, `NumericRange`, `Slider`, `RgbaColor`,
+>   `Checkbox`, `BooleanSelect`), the select/text/date types (`Select`, `Multiselect`, `Country`, `Countrymultiselect`,
+>   `Language`, `Languagemultiselect`, `Gender`, `Firstname`, `Lastname`, `Email`, `User`, `Textarea`, `Wysiwyg`,
+>   `Extension/Text`, `OptionsProviderTrait`, `OptionsProviderInterface`, `Datetime`, `DateRange`, `Time`), the media/geo
+>   types (`Image`, `ImageTrait`, `ImageGallery`, `Hotspotimage`, `ExternalImage`, `Video`, `Link`, `Geo/AbstractGeo`,
+>   `Geobounds`, `Geopoint`, `Geopolygon`, `Geopolyline`), `Table`, `StructuredTable` and all `Data/*Interface.php`.
+> - Skipped because earlier scopes already process or name them: `ClassDefinition/Dao.php`, `Data.php`, `Layout.php`,
+>   `Listing.php`, `Listing/Dao.php` (C-45/I-141 note), `Helper/Dao.php`, `Data/Block.php`, `CalculatedValue.php`,
+>   `Classificationstore.php`, `ClassSavedInterface.php`, `Consent.php`, `Date.php`, `EncryptedField.php`,
+>   `Fieldcollections.php`, `Input.php`, `Localizedfields.php`, `Password.php`, `UrlSlug.php`, `Objectbricks.php` (B-175)
+>   and `Relations/AbstractRelations.php` (I-82). Files that are only named in the cross-cutting list of I-75 (Table,
+>   Geo*, Link, Video, ImageGallery, Hotspotimage) were scanned; the `unserialize()` point is not repeated.
+> - Stack: `composer.json` requires PHP `~8.4.0`, Symfony `^7.4`, `doctrine/dbal ^3.8`. There is no `vendor/` /
+>   `composer.lock` in the checkout, so Carbon / DBAL behaviour could not be executed; plain PHP behaviour was checked
+>   with `php -r` (PHP 8.4). The classic admin UI (ExtJS) and the object-merger bundle are not in this repo: how they
+>   render preview HTML or which values they post is **not verified locally**.
+> - Only two files lack `declare(strict_types=1)`: `CustomLayout/Dao.php`, `CustomLayout/Listing/Dao.php` (I-73).
+> - Critical items: C-46–C-51. Bugs: B-266–B-299. Improvements: I-149–I-160.
+
+## [ ] C-46 – `ClassDefinition::getLinkGenerator()` throws `TypeError` for every class without a link generator
+
+**Files:** `models/DataObject/ClassDefinition/Helper/LinkGeneratorResolver.php:27`; `PreviewGeneratorResolver.php:27`;
+`DefaultValueGeneratorResolver.php:27`; caller `models/DataObject/ClassDefinition.php:1048-1054` (`:167`);
+`models/DataObject/Data/Link.php:353`; `models/Document/Link.php:130`; `models/Document/Editable/Link.php:210`
+
+- `resolveGenerator(string $generatorClass)` does not accept `null`, but `ClassDefinition::$linkGeneratorReference`
+  defaults to `null` and `getLinkGenerator()` passes it without a guard (`ClassDefinition.php:1051`). Passing `null` to a
+  non-nullable `string` parameter is a `TypeError` in strict and coercive mode alike.
+- Common path: `DataObject\Data\Link::getHref()`, `Document\Link` and `Document\Editable\Link` call `getLinkGenerator()`
+  for every internal link to an object. Rendering a link to an object whose class has no link generator fails fatally.
+- The base `ClassResolver::resolve()` already takes `?string` and returns `null` for an empty value
+  (`Helper/ClassResolver.php:32`, `:37-39`); only the subclass signatures are narrower. `getPreviewGenerator()` guards
+  the call (`ClassDefinition.php:1072`), `getLinkGenerator()` does not.
+
+**Fix direction:** make `resolveGenerator(?string)` nullable in all generator resolvers (as the base class) and/or guard
+the call in `getLinkGenerator()`. Add a test that renders a link to an object of a class without a link generator.
+
+## [ ] C-47 – Stored XSS in the core version preview: StructuredTable cells, advanced-relation metadata, ExternalImage URL, Link
+
+**Files:** `models/DataObject/ClassDefinition/Data/StructuredTable.php:261-268`, `:384-394`;
+`models/DataObject/Data/StructuredTable.php:137-162`; `Data/AdvancedManyToManyObjectRelation.php:324-341`, `:876`;
+`Data/AdvancedManyToManyRelation.php:424-441`, `:867`; `Data/ExternalImage.php:162-169`, `:190-197`, `:213-218`;
+`Data/Link.php:160-194`; `models/DataObject/Data/Link.php:346-371`, `:402-423`
+
+- `StructuredTable::getVersionPreview()` returns `Data\StructuredTable::getHtmlTable()`, which concatenates row/column
+  labels and every cell (`"<td>$c</td>"`) without `htmlspecialchars()`; `getDiffDataForEditMode()` sends the same string
+  as `type = html`. An editor types `<img src=x onerror=…>` into a text cell.
+- `AdvancedManyToMany(Object)Relation::getVersionPreview()` builds `<span class="preview-metadata">[key: value | …]</span>`
+  from free-text metadata column values without escaping; `processDiffDataForEditMode()` sends it as `value.html`.
+- `ExternalImage::getVersionPreview()` puts the raw URL into `src="…"`, `href="…"` and the link text (and closes the
+  link with `</>`); `getDataFromEditmode()` / `checkValidity()` accept any string (`x" onerror="…`, `javascript:…`).
+- `Link::getVersionPreview()` returns `Data\Link::getHtml()`: `href` (direct, parameters, anchor), `rel`, `title`,
+  `target`, `class` are unescaped and `attributes` is appended verbatim; `Link::checkValidity()` validates none of them.
+- Element paths are safe (`Element\Service::getValidKey()` strips `<>`); sibling types escape (`Select.php:182`,
+  `Table.php:410`, `Extension/Text.php:47`). Any user with object save permission can plant script that runs for every
+  admin who opens the Versions tab / compare view (rendering via `innerHTML` **not verified locally**, but the payload
+  is explicitly typed as HTML).
+- Diff-only previews used by the object-merger bundle are in B-271.
+
+**Fix direction:** escape every interpolated value with `htmlspecialchars(…, ENT_QUOTES)` in these previews (or make
+`getHtmlTable()` / `Data\Link::getHtml()` escape), and validate URLs (`http(s)`/relative only) and `attributes` in
+`checkValidity()` of `ExternalImage` and `Link`.
+
+## [ ] C-48 – `QuantityValueRange::isEmpty()` / `isEqual()` materialise `range(min, max)` on every save: memory fatal or `ValueError`
+
+**Files:** `models/DataObject/ClassDefinition/Data/QuantityValueRange.php:353-369`, `:391-398`;
+`models/DataObject/Data/QuantityValueRange.php:79-82` (`getValue()` → `getRange()`); `models/DataObject/Concrete/Dao.php:294`;
+`models/DataObject/Localizedfield.php:575`
+
+- Both methods call `$data->getValue()`, i.e. `range($min, $max, 1)`. `Concrete\Dao` calls `isEmpty()` for every
+  query-persisted field on every save (`Concrete/Dao.php:294`), independent of dirty detection.
+- A valid range `0 … 1e9` (e.g. millimetres) tries to allocate ~17 GB → memory fatal; `0 … 1e20` throws
+  `ValueError: The supplied range exceeds the maximum array size` (both checked with `php -r`). The object can no longer
+  be saved.
+- The comparison is also wrong: `range(0.5, 1.7, 1) === range(0.5, 1.6, 1)`; `[null, 5]` and `[null, 7]` both give
+  `[0]`, so changes count as equal and are not saved in localized fields (`Localizedfield/Dao.php:142-148`).
+  `isEmpty()` can never be true for an instance (`range()` always returns ≥ 1 element).
+
+**Fix direction:** compare / test emptiness on `getMinimum()`, `getMaximum()` and `getUnitId()`; never call
+`getValue()` in persistence paths.
+
+## [ ] C-49 – Range values with an open bound (or without unit) are stored but load as `null` and are wiped on the next save
+
+**Files:** `models/DataObject/ClassDefinition/Data/NumericRange.php:243`, `:299-300`, `:397`, `:439`;
+`QuantityValueRange.php:137`, `:190-199`, `:309-320`; `DateRange.php:54-97` (`:65`, `:84`, `:89`), `:134-144`
+
+- `NumericRange::getDataFromResource()` hydrates only when both `__minimum` and `__maximum` are non-null (`isset`,
+  `:243`), while `getDataFromEditmode()` accepts a single bound. `[null, 5]` passes `checkValidity()` (`null > 5` is
+  false), is persisted with `__minimum = NULL`, loads as `null` and the next save writes `NULL, NULL`. `[5, null]` is
+  persisted for unpublished objects (all checks are skipped with `$omitMandatoryCheck`, see B-272) and lost the same way.
+- `QuantityValueRange::getDataFromResource()` additionally requires `__unit`; a non-mandatory range without unit
+  (`unit = -1` / empty → `null`, `:191-193`) is saved and disappears on load.
+- `DateRange::getDataForResource()` explicitly writes an open end (`end_date => null`, `:65`), but
+  `getDataFromResource()` requires both columns (`isset(…, …)`, `:84`) → an open-ended `CarbonPeriod` is lost on reload;
+  the "no end" branch `:89` is dead (`getDateFromTimestamp()` always returns `Carbon`).
+- `Data\NumericRange::__toString()` renders `-∞` / `+∞`, i.e. open bounds are an intended state.
+
+**Fix direction:** hydrate when any bound column is non-null (as `QuantityValue.php:239` does) and decide explicitly
+whether open bounds / a missing unit are valid; reject them in `checkValidity()` otherwise. Add round-trip tests.
+
+## [ ] C-50 – Deleting a unit makes objects with `QuantityValueRange` / `InputQuantityValue` fields unloadable; `QuantityValue` silently drops the value
+
+**Files:** `models/DataObject/ClassDefinition/Data/QuantityValueRange.php:137-142`, `:190-193`; `InputQuantityValue.php:52-53`,
+`:125-128`; `QuantityValue.php:246-258`; `models/DataObject/Data/AbstractQuantityValue.php:42-55`;
+`models/DataObject/QuantityValue/Unit/Dao.php:117-120`
+
+- The `Data\AbstractQuantityValue` constructor throws `NotFoundException` when `Unit::getById()` returns `null`.
+  `Unit\Dao::delete()` deletes the unit without a usage check; object columns keep the id (`varchar`, no foreign key).
+- `QuantityValueRange` / `InputQuantityValue::getDataFromResource()` construct the value without `try/catch` → every
+  object that references the deleted unit throws on load (cannot be opened, saved or listed with that field).
+- `QuantityValue::getDataFromResource()` catches the exception and returns `null` → the next save writes `NULL` to both
+  `__value` and `__unit`; the number is silently lost.
+- Also reachable from editmode: `QuantityValueRange::getDataFromEditmode()` compares `=== -1`, so the string `"-1"` is
+  looked up as a unit id.
+
+**Fix direction:** handle a missing unit consistently in all three types (keep the value and the raw unit id, log),
+and refuse or cascade unit deletion while the unit is referenced.
+
+## [ ] C-51 – `Table` with column config stores keyed rows by position: values swap or shift on reload
+
+**Files:** `models/DataObject/ClassDefinition/Data/Table.php:182-194`, `:201-214`, `:222-254` (`:239-251`)
+
+- With `columnConfigActivated`, `getDataFromResource()` returns rows keyed by `columnConfig[$i]['key']`, so API users
+  write keyed rows back (`setTbl([['price' => 1, 'name' => 'x']])`).
+- `getDataForResource()` → `convertDataToValueArray()` drops the keys and keeps insertion order. On reload position 0
+  maps to `columnConfig[0]['key']`: with config `[name, price]` the row reloads as `name = 1, price = 'x'`; a row missing
+  one key shifts the following cells into the wrong columns. Silent data corruption.
+- Two column configs with the same `key` collapse into one array key on load (`:245`).
+
+**Fix direction:** when column config is active, order and pad cells by the configured keys in `getDataForResource()`;
+reject duplicate / empty column keys when the definition is saved. Add a round-trip test with a keyed, reordered row.
