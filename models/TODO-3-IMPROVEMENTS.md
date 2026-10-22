@@ -70,6 +70,13 @@ a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering(
 `bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`), the `email_blocklist`, `email_log`, `tmp_store` and
 `settings_store` schemas (`bundles/InstallBundle/dump/install.sql:202-232`, `:409-430`) and
 `tests/Model/Tool/SettingsStoreTest.php`
+**(12)** the `models/DataObject/*.php` root files not processed in Scope 6 (`Classificationstore.php`,
+`DefinitionModifier.php`, `Folder.php`, `Listing.php`, `ClassDefinitionInterface.php`, `ImportDataServiceInterface.php`,
+`LazyLoadedFieldsInterface.php`, `ObjectAwareFieldInterface.php`, `OwnerAwareFieldInterface.php`,
+`PreGetValueHookInterface.php`, `SelectOptionsInterface.php`), plus the direct consumers where a defect originates in the
+model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefinition/Data/Classificationstore.php::getDataFromEditmode()`
+(`:300-350`), `ClassDefinition/Data/Password.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:52-81`) and
+`tests/Model/DataObject/DefinitionModifierTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -78,13 +85,13 @@ Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modern
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
 DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100),
 Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121),
-Scope 11 in **O** Tool (I-122–I-128).
+Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files (I-129–I-134).
 
 ---
 
@@ -1788,3 +1795,107 @@ Add model tests for:
   `add()`, expired ids in `getIdsByTag()`, class-not-found on unserialize (B-239); email log with oversized params, a
   CLI-sent mail (no request URI) loaded back and all getters called, `save()` of a loaded log keeps `params`
   unchanged, document delete leaves no body files, cleanup with a concurrently deleted row (B-241–B-243).
+
+---
+
+## P – DataObject root files (Scope 12)
+
+### [ ] I-129 – Strictness and native types (PHP 8.4)
+
+- All eleven files are `strict_types`; the remaining loose spots: `!=` / `==` id and type comparisons
+  (`Classificationstore.php:115`, `:340`, `:375`, `:379`, `:381`, `:385`; `Folder.php:50`; `DefinitionModifier.php:129`)
+  → `===`; `Folder::delete()` magic `1` → a `ROOT_ID` constant (I-74).
+- `Folder::create(array $values): Folder` builds `new static()` → return `static`; `#[\Override]` on
+  `Folder::update()` / `delete()`; `Folder::$type` → `DataObject::OBJECT_TYPE_FOLDER`.
+- `Classificationstore`: `@method Dao createUpdateTable()` (returns `void`), `@method Classificationstore load()`
+  (returns `void`) are wrong; `setFieldname()`, `setActiveGroups()`, `setGroupCollectionMapping(s)()` return `void`
+  while the other setters are fluent → `static`; `getLanguage()` is a public helper returning `'default'` → private,
+  with a `DEFAULT_LANGUAGE` constant; exceptions `Exception('groupId not valid')` → `InvalidArgumentException`;
+  `setObject(Concrete)` vs `ObjectAwareFieldInterface::setObject(?Concrete)` → implement the interface.
+- `Listing`: `@method Model\DataObject|false current()`, `@method onCreateQueryBuilder(?callable)` (no return type)
+  → correct docblocks; `addDistinct(): bool` that always returns `false` → document why (the DAO selects by id) or drop.
+- PHP 8.4 asymmetric visibility for read-mostly state (`Classificationstore::$fieldname`, `$object`).
+- Empty or half docblocks (`/** Returns an array of */` at `Classificationstore.php:240`, empty `@internal` blocks,
+  `DefinitionModifier` blocks with stray blank `*` lines) → complete or remove.
+
+### [ ] I-130 – `Classificationstore` structure and logic
+
+- The class mixes value storage, dirty detection, language fallback, inheritance (two implementations:
+  `getLocalizedKeyValue()` walks parents itself `:366-393`, `getAllDataFromField()` uses
+  `Service::hasInheritableParentObject()`), calculated values and group config lookup → extract an inheritance /
+  fallback resolver and keep the model a plain value holder.
+- `getItems()`, `getActiveGroups()`, `getGroupCollectionMappings()` walk the whole ancestor chain on every call;
+  `getGroupCollectionMapping(int)` does it once per group (called in loops) → compute once per read and memoise until
+  the next mutation.
+- `getGroups()` runs `GroupConfig::getById()` per active group (N queries) → one listing by ids;
+  `getActiveGroupsWithConfig()` is a private **static** method taking `$this` as argument → instance method;
+  `createGroup(Classificationstore $classificationstore, …)` takes the instance it is called on → drop the parameter.
+- Dirty detection by `serialize(getDataForResource())` (B-248) → `EqualComparisonInterface::isEqual()`, which most data
+  types already implement.
+- The `BooleanSelect` / `Multiselect` "non-empty" workarounds (`:175-176` `@TODO`, `:208-214`) and
+  `if ($nonEmpty || $value)` (redundant `|| $value`) → ask the field definition (`isEmpty()`), fix the data types that
+  report wrong emptiness.
+- The DAO hydrates through `setLocalizedKeyValue()` (B-248) → an `@internal` raw setter.
+- `getFallbackValue()` / `getLocalizedKeyValue()` use `array_key_exists()` chains → `$this->items[$g][$k][$l] ?? null`
+  (values are never `null`, empty values are unset).
+
+### [ ] I-131 – `DefinitionModifier` API
+
+- Five public methods build closures that forward `func_get_args()` and the private helpers index `$args[0]` /
+  `$args[2]` → pass a typed callback `callable(Layout|Data\Localizedfields $parent, Data|Layout $child, int $index): bool`
+  and named parameters.
+- `@var Layout $child` inside `findField()` is wrong (children are `Data|Layout`).
+- Return `bool` hides *why* nothing happened (name not found vs target is not a container) → throw a dedicated
+  exception or return a result enum; document first-match semantics.
+- `final class` without state or dependencies → static helpers or a service registered in the container (then it
+  can dispatch an event / validate through the definition).
+- Ties to B-251: one `ChildrenAwareDefinitionInterface` (`getChildren()` / `setChildren()`) for `Layout`,
+  `Localizedfields`, `Block` replaces the `instanceof` lists.
+
+### [ ] I-132 – `DataObject\Listing`
+
+- Object types as bound `ArrayParameterType::STRING` parameter and validated against `DataObject::$types` (B-250);
+  `addFilterByField()` quotes `$field` by hand with backticks → `quoteIdentifier()` (the operator allowlist is already
+  I-76).
+- `getItems(int $offset, int $itemCountPerPage)` (pagination) mutates the listing's offset / limit and loaded data
+  permanently → work on a clone, or document it.
+- `getObjects()` / `setObjects()` duplicate `getData()` / `setData()` → keep one pair, deprecate the other.
+- The object-type and unpublished filters are implemented in the shared `QueryBuilderHelperTrait` behind
+  `if ($this instanceof DataObject\Listing\Dao)` → move them into `DataObject\Listing\Dao` (a hook such as
+  `applyListingConditions()`), so the shared trait has no type switch.
+
+### [ ] I-133 – Root interfaces
+
+- `ClassDefinitionInterface`:
+  - inconsistent setter returns: `setPreviewGeneratorReference(): void`, `setEnableGridLocking(): void`,
+    `setDeletedDataComponents(): ClassDefinitionInterface` vs `static` everywhere else;
+  - `setModificationDate(int)` vs `setCreationDate(?int)` and nullable getters;
+  - `getByIdIgnoreCase(): ClassDefinitionInterface|null` → `?static`; `getCompositeIndices(): array` without an array
+    shape; `getUseTraits()` / `getImplementsInterfaces()` comma-separated strings → `list<class-string>`;
+  - eight `@internal` members (`rename()`, `cleanupForExport(mixed &$data)` static by reference, `generateClassFiles()`,
+    `isWritable()`, `getDefinitionFile()`, `getPhpClassFile()`, …) in a public interface → split into a public read
+    interface and an internal writer interface.
+- `SelectOptionsInterface` is implemented only by generated enums (`lib/DataObject/ClassBuilder/SelectOptionsEnumBuilder.php:51`)
+  → `extends \BackedEnum` so `from()` / `tryFrom()` / `cases()` are part of the contract; `getValues()` returns
+  `string[]` → `list<string>`.
+- `OwnerAwareFieldInterface`: `_setOwner(mixed)` / `_getOwner(): mixed` → a union of the real owner types
+  (`Concrete|Localizedfield|Fieldcollection\Data\AbstractData|Objectbrick\Data\AbstractData|…`); the underscore
+  prefix exists to avoid clashing with generated getters → keep it, but document that.
+- `PreGetValueHookInterface::preGetValue()`: generated getters treat `null` as "no override" (`ClassDefinition/Data.php:475-485`),
+  so a hook cannot force `null`, and the hook is skipped in admin (`\Pimcore::inAdmin()`) → document both in the
+  interface, or return a sentinel / `?callable`.
+- `ImportDataServiceInterface` (`stdClass $resolverConfig`) has no implementer or caller in this repo → deprecate (with a
+  `trigger_deprecation()` note; PHP 8.4's `#[\Deprecated]` does not apply to classes or interfaces), or type the config
+  as a DTO / array shape.
+- `LazyLoadedFieldsInterface`: `isAllLazyKeysMarkedAsLoaded()` is `@internal` in a public interface; lazy keys are
+  built by string concatenation with `LAZY_KEY_SEPARATOR` → a small value object.
+
+### [ ] I-134 – Tests
+
+- Classification store: password key hashed for the second changed key, for a newly activated group and for a new
+  object (C-43); mutual fallback languages and the "last chain wins" case (B-245); inherited multiselect / table values
+  through `getItems()` (B-246); calculated-value key read in the frontend context (B-247); `removeGroupData()` /
+  `setGroupCollectionMapping()` alone followed by save and reload (B-248); deleted key config read (B-249).
+- `DataObject\Listing` with `setObjectTypes([OBJECT_TYPE_OBJECT])` and an `OR` condition (B-250).
+- `DefinitionModifierTest`: `insertFieldsFront()` into `localizedfields`, a field inside a `block`, and
+  `getFieldDefinitions()` after `appendFields()` / `removeField()` on a class (B-251).

@@ -73,6 +73,13 @@ a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering(
 `bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`), the `email_blocklist`, `email_log`, `tmp_store` and
 `settings_store` schemas (`bundles/InstallBundle/dump/install.sql:202-232`, `:409-430`) and
 `tests/Model/Tool/SettingsStoreTest.php`
+**(12)** the `models/DataObject/*.php` root files not processed in Scope 6 (`Classificationstore.php`,
+`DefinitionModifier.php`, `Folder.php`, `Listing.php`, `ClassDefinitionInterface.php`, `ImportDataServiceInterface.php`,
+`LazyLoadedFieldsInterface.php`, `ObjectAwareFieldInterface.php`, `OwnerAwareFieldInterface.php`,
+`PreGetValueHookInterface.php`, `SelectOptionsInterface.php`), plus the direct consumers where a defect originates in the
+model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefinition/Data/Classificationstore.php::getDataFromEditmode()`
+(`:300-350`), `ClassDefinition/Data/Password.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:52-81`) and
+`tests/Model/DataObject/DefinitionModifierTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -97,11 +104,12 @@ elements)**, and in Scope 9 **asset versions unreadable and their shared binarie
 storage** and **asset version binaries silently replaced by a 1-byte placeholder after an aborted write**, and in
 Scope 10 **admin permission checks crashing and Symfony roles silently dropped once a role was loaded through
 `UserRole::getById()`** and **deactivated, deleted or re-passworded users keeping their admin sessions**, and in
-Scope 11 **the email blocklist never being applied (blocklisted recipients still receive every mail)**.
+Scope 11 **the email blocklist never being applied (blocklisted recipients still receive every mail)**, and in
+Scope 12 **classification store passwords saved in plain text**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1428,3 +1436,70 @@ foreach ($addresses as $addrKey => $address) {
 **Fix direction:** `unset($addresses[$addrKey])` in the `Address` branch and look up `$address` (the value) in the string
 branch; `array_values()` the result; normalise addresses (trim + lower-case) on blocklist write and lookup (B-244); skip
 sending (and log as "suppressed") when no recipient is left; add a test (I-128).
+
+---
+
+# Scope 12 – DataObject root files (not covered by Scope 6)
+
+> Notes
+> - Scanned: `models/DataObject/Classificationstore.php`, `DefinitionModifier.php`, `Folder.php`, `Listing.php`,
+>   `ClassDefinitionInterface.php`, `ImportDataServiceInterface.php`, `LazyLoadedFieldsInterface.php`,
+>   `ObjectAwareFieldInterface.php`, `OwnerAwareFieldInterface.php`, `PreGetValueHookInterface.php`,
+>   `SelectOptionsInterface.php`. Skipped because Scope 6 already processed them: `AbstractObject.php`, `Concrete.php`,
+>   `ClassDefinition.php`, `Localizedfield.php`, `Fieldcollection.php`, `Objectbrick.php`, `Service.php`.
+>   `Listing.php` and `Folder.php` were only mentioned in passing before (I-76 operator allowlist, B-150 return type);
+>   those points are not repeated.
+> - Collaborators read where a defect originates in the interplay: `Classificationstore/Dao.php` (`save()` `:52-160`,
+>   `load()` `:200-272`), `ClassDefinition/Data/Classificationstore.php::getDataFromEditmode()` (`:300-350`),
+>   `ClassDefinition/Data/Password.php`, `Service.php::getCalculatedFieldValueForEditMode()` / `getCalculatedFieldValue()`
+>   (`:1458-1530`), `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php::applyConditionsToQueryBuilder()` (`:52-81`),
+>   `ClassDefinition.php::setLayoutDefinitions()` (`:708-760`).
+> - All eleven files are `strict_types`. No hard Symfony 7.4 / PHP 8.4 incompatibility was found (no implicit nullable
+>   parameter, typed class constant `public const string` already used in `LazyLoadedFieldsInterface`). Modernisation
+>   is in TODO-3 (I-129–I-134).
+> - The classic admin UI (`pimcore/admin-ui-classic-bundle`) is not in this repo; statements about what it sends are
+>   **not verified locally**. Nothing was executed.
+
+---
+
+## [ ] C-43 – Classification store `password` keys are saved in plain text unless the key is the first changed value of a clean, loaded store
+
+**Files:** `models/DataObject/Classificationstore.php:178-206` (`:183`, `:185`, `:194-195`), `:216-217`;
+`models/DataObject/Classificationstore/Dao.php:126-147` (save), `:267` (load); `models/DataObject/ClassDefinition/Data/Password.php:135-160`;
+`models/DataObject/Traits/SimpleNormalizerTrait.php:25-28`; `models/DataObject/ClassDefinition/Data/Classificationstore.php:300-350`
+
+```php
+$this->setActiveGroups($this->activeGroups + [$groupId => true]);    // can mark the store dirty first
+if (!$this->isFieldDirty('_self')) {
+    if ($this->object) {
+        …
+        $newData = $dataDefinition->getDataForResource($value, $this->object, ['owner' => $this]);
+        if ($dataDefinition instanceof Password) { $value = $newData; }   // the only place a password is hashed
+        …
+    }
+}
+$this->items[$groupId][$keyId][$language] = $value;                   // plain text in every other case
+```
+
+- Hashing is a side effect of the dirty check. The dirty check is skipped as soon as the store is dirty, and when it
+  has no object. The DAO never hashes: `Password` uses `SimpleNormalizerTrait::normalize()` (returns the value
+  unchanged), and there is no `classificationstore_password` marshaller, so the value is written as-is to
+  `object_classificationstore_data_<classId>.value`.
+- A password is stored **in plain text** when:
+  - another key was changed earlier in the same request (admin save: `getDataFromEditmode()` calls
+    `setLocalizedKeyValue()` for every submitted key, `:322-330`);
+  - its group is activated in the same call (`setActiveGroups()` at `:183` runs before the check and marks the store
+    dirty), i.e. the normal "add group, fill password" flow;
+  - the object is new or the store was created with `new Classificationstore()` (no object → no hashing);
+  - API / import code calls `setLocalizedKeyValue()` for two password keys (only the first is hashed).
+- The plain text also goes into versions, the recycle bin and the cache, and `getDataForEditmode()` returns it to the
+  admin UI (`Password.php:290-293`). Later it gets hashed only by accident (a later save where that key happens to be the
+  first one compared), so DB contents are inconsistent: some rows hashed, some plain.
+- `Password` is a valid key type: `Classificationstore\Service::getFieldDefinitionFromKeyConfig()` builds any registered
+  data type from the key's `type`. Whether the classic admin offers `password` in the key editor was not verified
+  locally; API- and import-created keys can use it either way.
+
+**Fix direction:** hash in the persistence path, independently of dirty detection: in `setLocalizedKeyValue()` always
+run `Password::getDataForResource()` for password keys (it already skips existing hashes), or add a
+`classificationstore_password` marshaller / `normalize()` that hashes. Add a migration that hashes the existing
+plain-text rows (`type = 'password'` and `password_get_info(value)['algo'] === null`), and a test (I-134).

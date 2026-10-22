@@ -72,6 +72,13 @@ a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering(
 `bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`), the `email_blocklist`, `email_log`, `tmp_store` and
 `settings_store` schemas (`bundles/InstallBundle/dump/install.sql:202-232`, `:409-430`) and
 `tests/Model/Tool/SettingsStoreTest.php`
+**(12)** the `models/DataObject/*.php` root files not processed in Scope 6 (`Classificationstore.php`,
+`DefinitionModifier.php`, `Folder.php`, `Listing.php`, `ClassDefinitionInterface.php`, `ImportDataServiceInterface.php`,
+`LazyLoadedFieldsInterface.php`, `ObjectAwareFieldInterface.php`, `OwnerAwareFieldInterface.php`,
+`PreGetValueHookInterface.php`, `SelectOptionsInterface.php`), plus the direct consumers where a defect originates in the
+model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefinition/Data/Classificationstore.php::getDataFromEditmode()`
+(`:300-350`), `ClassDefinition/Data/Password.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:52-81`) and
+`tests/Model/DataObject/DefinitionModifierTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -81,14 +88,14 @@ Functional defects: wrong results, crashes on reachable input, swallowed errors,
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
 **Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187,
 **Metadata** B-188–B-192, **Notification** B-193–B-200, **Property** B-201–B-205, **Predefined property**
 B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225,
-**User** B-226–B-237, **Tool** B-238–B-244.
+**User** B-226–B-237, **Tool** B-238–B-244, **DataObject root files** B-245–B-251.
 
 ---
 
@@ -3551,3 +3558,180 @@ clean up in code); skip `null` in `load()`; batch the cleanup (`LIMIT` + loop) a
 
 **Fix direction:** normalise (`trim`, lower-case, `Address::create()->getAddress()`) on write and lookup and reject
 invalid addresses; hydrate listings from one `SELECT *` (I-125).
+
+---
+
+## DataObject root files (Scope 12)
+
+## [ ] B-245 – Classification store fallback lookup: unbounded recursion on mutual fallback languages, and the last fallback chain wins
+
+**Files:** `models/DataObject/Classificationstore.php:299-322`, `:356-359`, `:406-409`; `lib/Tool.php:136-151`
+
+```php
+foreach ($fallbackLanguages as $l) { /* direct hit → return */ }
+foreach ($fallbackLanguages as $l) {
+    $data = $this->getFallbackValue($groupId, $keyId, $l, $fielddefinition);   // no visited set, result overwritten
+}
+return $data;
+```
+
+- The second loop recurses into every fallback language's own fallbacks with no visited set. With a mutual or
+  self-referencing configuration (`de → en`, `en → de`, or `de → de`), every read of a key that is empty in both
+  languages recurses until "Maximum call stack size reached" (`zend.max_allowed_stack_size`, PHP ≥ 8.3) or a segfault.
+  Empty keys are the normal case, so a valid-looking language setting breaks every page and admin view that reads
+  the store. `Tool::getFallbackLanguagesFor()` does not prevent cycles.
+- `doGetFallbackValues()` is hard-coded to `true` (`:406-409`); unlike `Localizedfield` the lookup cannot be switched
+  off, so the admin and exports are affected too.
+- Wrong result even without a cycle: the loop keeps the value of the **last** fallback chain. For `de → [en, fr]`,
+  `en → [it]` with only `it` filled, the `it` value is found for `en` and then overwritten by the empty result for
+  `fr` → `null`.
+- The recursion also runs when the group or key has no data at all (`array_key_exists()` only guards the first loop).
+
+**Fix direction:** iterate breadth-first over `[language => true]` visited, return the first non-empty value, stop on
+revisits; make `doGetFallbackValues()` follow `Localizedfield::doGetFallbackValues()` (or a dedicated flag).
+`Localizedfield::getLocalizedValue()` (`:472-483`) has the same cycle when both languages exist; it is guarded only by
+`languageExists()`, so it should get the same visited set.
+
+## [ ] B-246 – `Classificationstore::getItems()` with inherited values: parent array values replace the child's own values element by element
+
+**Files:** `models/DataObject/Classificationstore.php:97-110`, `:452-463`, `:494-509`
+
+```php
+$a2[$key] = $this->mergeArrays($a2[$key], $value);   // arguments swapped on every recursion level
+```
+
+- `mergeArrays($child, $parent)` is meant to let the child win. The recursive call swaps the arguments, so the winner
+  alternates by depth: group level child, key level parent, language level child, **value level parent**.
+- Every array-valued key type (multiselect, countrymultiselect, languagemultiselect, table, …) is merged index by index with the parent's value, the parent winning: child `['a']`, parent `['b', 'c']`
+  → `['b', 'c']`; child `['a', 'b', 'c']`, parent `['x']` → `['x', 'b', 'c']`. An explicitly emptied child multiselect
+  (`[]`, stored on purpose, `:212-214`) shows the parent's values.
+- When a key's type changed (child value array, parent value scalar or the other way round) the recursion receives a
+  non-array → `TypeError` under `strict_types`.
+- `getItems()` with inheritance is what exports, the frontend and `doGetDataForEditMode()` (`ClassDefinition/Data/Classificationstore.php:214`)
+  read. `getLocalizedKeyValue()` resolves inheritance separately and returns the right value, so the two APIs disagree.
+
+**Fix direction:** merge only down to the language level (`[group][key][language]`) and treat the value as opaque
+(`$a2[$key] = $value` below that level); better, build the inherited view from `getLocalizedKeyValue()` so one rule
+applies.
+
+## [ ] B-247 – Classification store calculated-value keys: the getter returns the edit-mode string, and the setter throws
+
+**Files:** `models/DataObject/Classificationstore.php:339-345`, `:178-206`; `models/DataObject/Service.php:1458-1507`, `:1509-1530`;
+`models/DataObject/ClassDefinition/Data/CalculatedValue.php:28`
+
+- `getLocalizedKeyValue()` returns `Service::getCalculatedFieldValueForEditMode()` (`?string`, admin representation).
+  Object, localized and brick getters use `getCalculatedFieldValue()` (`Concrete.php:319-321`, `Localizedfield.php:404-407`,
+  `Objectbrick/Data/AbstractData.php:173-177`). In frontend / API code, numeric or array results come back as strings,
+  calculator classes' `compute()` is not used (only `getCalculatedValueForEditMode()`), and expression results are
+  cast to `string` (`:1498`). (Both variants return a syntax error's message as the value, `:1499`, `:1556`; that
+  part belongs to `Service`, Scope 6.)
+- `$this->getObject()` is passed without a null check → `TypeError` for a store without object.
+- `setLocalizedKeyValue()` for a calculated-value key: `CalculatedValue` does not implement
+  `ResourcePersistenceAwareInterface`, so `$dataDefinition->getDataForResource()` (`:188`) is an undefined method
+  `Error` when the store is clean and has an object. Admin data for calculated keys is added to the edit-mode payload
+  (`ClassDefinition/Data/Classificationstore.php:183-196`); whether the UI sends them back on save was not verified
+  locally.
+
+**Fix direction:** use `getCalculatedFieldValue()` in the getter; reject or ignore calculated keys in
+`setLocalizedKeyValue()`.
+
+## [ ] B-248 – Classification store changes that are not saved, and a dirty check that is wrong both ways
+
+**Files:** `models/DataObject/Classificationstore.php:183`, `:185-206`, `:216-226`, `:235-238`, `:427-437`;
+`models/DataObject/Classificationstore/Dao.php:54-56`
+
+- `removeGroupData()`, `setGroupCollectionMappings()` and `setGroupCollectionMapping()` do not mark the store dirty.
+  `Dao::save()` returns early for a clean store, so on their own these changes are silently lost (API / import code);
+  they only reach the DB when another change happens to make the store dirty.
+- `removeGroupData()` leaves the group in `activeGroups` and in the collection mapping.
+- `setLocalizedKeyValue()` activates the group (`:183`) even when the call **removes** a value (`null` / `''`): clearing
+  a key of an inactive group switches the group on.
+- Dirty comparison: `serialize(getDataForResource())` of old vs new value. For `EncryptedField` (random IV) and
+  `Password` (a new hash vs the stored hash) the values always differ → always dirty. For values whose resource form
+  is not a full representation the check can miss changes. Only the first key is compared; once dirty, nothing is.
+- `Dao::load()` hydrates every row through `setLocalizedKeyValue()` (`Dao.php:267`), i.e. it runs the dirty check
+  (two `getDataForResource()` calls and `serialize()`) and the group activation for every loaded value, and relies on
+  `resetDirtyMap()` at the end.
+
+**Fix direction:** mark `_self` dirty in every mutator (and clean up `activeGroups` / mappings in `removeGroupData()`);
+activate the group only for non-empty values; compare with `EqualComparisonInterface::isEqual()` where available; give
+the DAO a raw hydration method that bypasses dirty detection (I-130).
+
+## [ ] B-249 – Classification store: `null` key configurations, stores without object and uninitialised state end in `Error`s
+
+**Files:** `models/DataObject/Classificationstore.php:48`, `:59`, `:124-127`, `:178-180`, `:339-347`, `:357-393`,
+`:452-463`; `models/DataObject/Classificationstore/DefinitionCache.php:27`;
+`models/DataObject/Classificationstore/Service.php:50-77`
+
+- `DefinitionCache::get($keyId)` returns `null` for a deleted or unknown key: `getLocalizedKeyValue()` calls
+  `->getType()` on it (`:340`), `setLocalizedKeyValue()` passes it to `getFieldDefinitionFromKeyConfig()` (not nullable
+  → `TypeError`). Reading a key that was deleted while objects still reference it (templates, exports) crashes instead
+  of returning `null`. `Dao::load()` already skips such rows with a log line (`Dao.php:238-243`).
+- `getFieldDefinitionFromKeyConfig()` returns `null` for a key with an empty definition → `->isEmpty()` / `->preGetData()`
+  `Error`s in the getter.
+- No validation that `$keyId` belongs to `$groupId` (any key can be stored under any group).
+- Inheritance branch: `$object = $this->getObject(); $object->getClass()` (`:368-369`) without a null check; parent store
+  compared through `$classificationStore->object->getId()` (`:385`, direct property access).
+- `getAllDataFromField()` calls the parent's getter and reads `->items` / `->activeGroups` from the result without a
+  type check; a getter that returns `null` (custom `preGetValue()` hook, field removed from the parent's class
+  version) gives a warning and then a `TypeError` in the merge function.
+- `$fieldname` is a typed property without default: `getFieldname()` / the getter's inheritance branch throw for a
+  store that was never given a field name (e.g. `new Classificationstore($items)`).
+- `$object` admits `ElementDescriptor` (`:48`) but `getObject(): ?Concrete` would throw a `TypeError` for it;
+  `Localizedfield::setObject()` (`:225-229`) handles the descriptor, this class does not.
+
+**Fix direction:** return `null` (and log) for unknown keys / empty definitions; validate the group-key relation in the
+setter; guard the inheritance paths; give `$fieldname` a default or require it in the constructor; narrow `$object` to
+`?Concrete`.
+
+## [ ] B-250 – `DataObject\Listing`: the object-type filter is ANDed to an unparenthesised condition – folders and variants leak through `OR` conditions
+
+**Files:** `models/DataObject/Listing.php:37`, `:63-75`; `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:56-74`
+
+```php
+$condition .= ' AND ';
+$condition .= ' ' . $tableName . ".type IN ('" . implode("','", $objectTypes) . "')";
+// "key = 'a' OR key = 'b'"  →  "key = 'a' OR key = 'b' AND objects.type IN ('object')"
+```
+
+- `AND` binds tighter than `OR`: everything matched by the first `OR` branch is returned **regardless of type**. A listing
+  restricted to `[OBJECT_TYPE_OBJECT]` (the usual way to hide variants or folders) returns variants / folders whenever
+  the condition contains a top-level `OR`. The published filter right below wraps the condition in parentheses
+  (`:69-70`); the type filter does not.
+- The published filter then wraps the already broken string, so `published = 1` still applies to all rows; only the
+  type restriction is lost.
+- `setObjectTypes()` accepts any array; the values are concatenated into SQL unescaped (public API, injectable when
+  callers pass request input, e.g. a type filter in a custom endpoint). `setObjectTypes([])` silently removes the type
+  filter.
+- Same pattern for every class listing (`DataObject\<Class>\Listing` inherits it).
+
+**Fix direction:** `'(' . $condition . ') AND type IN (:objectTypes)'` with `ArrayParameterType::STRING`; validate the
+values against `DataObject::$types` in `setObjectTypes()`; add a test with an `OR` condition (I-134).
+
+## [ ] B-251 – `DefinitionModifier`: modified layouts are out of sync with the definition's field list; `Localizedfields` and `Block` containers are half-supported
+
+**Files:** `models/DataObject/DefinitionModifier.php:116-150`, `:176-190`; `models/DataObject/ClassDefinition.php:337`,
+`:708-760`; `models/DataObject/ClassDefinition/Dao.php:159`; `models/DataObject/ClassDefinition/Layout.php:239-244`;
+`models/DataObject/ClassDefinition/Data/Localizedfields.php:347-353`; `models/DataObject/ClassDefinition/Data/Block.php:493-505`
+
+- The modifier edits the layout tree in place via `setChildren()`. `ClassDefinition` (and the brick / collection
+  definitions) keep a separate `fieldDefinitions` map that is rebuilt only by `setLayoutDefinitions()`.
+  `Layout::setChildren()` invalidates nothing. A modifier call on `$class->getLayoutDefinitions()` followed by
+  `$class->save()` validates (`ClassDefinition.php:337`), generates DDL (`ClassDefinition/Dao.php:159`) and PHP code
+  from the **old** field list: added fields get no column and no getter, removed fields keep both. The caller has to
+  know to call `setLayoutDefinitions($class->getLayoutDefinitions())` again; neither the class nor the docs say so
+  (no `doc/` page mentions `DefinitionModifier`).
+- `findField()` descends into `Data\Localizedfields` and treats it as a parent (append / prepend / replace / remove work
+  inside it), but `insert()` refuses every `Data` instance (`:180-182`), so `insertFieldsFront/Back(…, 'localizedfields', …)`
+  returns `false` although `Localizedfields` is a container with `setChildren()`.
+- `Data\Block` also has `getChildren()` / `setChildren()`, but `findField()` does not descend into it: fields inside a
+  block are not found (`removeField()` returns `false`).
+- No validation despite the docblocks ("appends **valid** `$fieldsToAdd`"): duplicate field names, data fields inside
+  data fields, or a `Localizedfields` inside `Localizedfields` are inserted silently and only fail on class save or at
+  runtime.
+- The name match is loose (`==`) and stops at the first hit in breadth-first-per-level order; a layout name equal to a
+  field name hits whichever comes first.
+
+**Fix direction:** accept the owning definition (or return the modified layout) and call `setLayoutDefinitions()` at
+the end; treat every type with children (`Layout`, `Localizedfields`, `Block`) uniformly through one interface;
+validate names and nesting; `===`.
