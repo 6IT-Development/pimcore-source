@@ -98,6 +98,41 @@ where a defect originates in the model interplay (`ClassDefinition/Data/Classifi
 `lib/Cache/RuntimeCache.php`, `lib/Model/AbstractModel.php::setValue()` (`:175-190`),
 `bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php`) and the `classificationstore_*` schema
 (`bundles/InstallBundle/dump/install.sql:617-694`)
+**(16)** the not yet processed files of `models/DataObject/ClassDefinition/**` (CustomLayout/**, Service, Helper/**,
+Layout/**, DynamicOptionsProvider/**, Data/**; details in the Scope 16 notes of TODO-1)
+**(17)** the not yet processed files of `models/DataObject/Data/**` (field value objects: quantity / range values,
+`BlockElement`, `CalculatedValue`, `Consent`, `Link`, `Hotspotimage`, `ImageGallery`, `Video`, `ExternalImage`, geo
+values, `RgbaColor`, `StructuredTable`, `ElementMetadata` / `ObjectMetadata` and the three metadata DAOs; `UrlSlug.php`
+and `EncryptedField.php` were processed in Scope 6), plus the direct consumers where a defect originates in the model
+interplay (advanced relation metadata handling in `ClassDefinition/Data/AdvancedManyToMany(Object)Relation.php`,
+`Concrete::getValueForFieldName()`, `lib/Cache/Core/CoreCacheHandler.php` marshalling, `Asset/Image/Thumbnail.php`
+config resolution)
+**(18)** `models/DataObject/QuantityValue/**` (Unit, Unit/Dao, Unit/Listing, Unit/Listing/Dao, Service, DefaultConverter,
+UnitConversionService, QuantityValueConverterInterface; listed under Scope 6 but not processed there), plus the direct
+consumers where a defect originates in the model interplay (`Data/AbstractQuantityValue.php::convertTo()`,
+`ClassDefinition/Data/AbstractQuantityValue.php::getFilterCondition()`, `ClassDefinition/Helper/UnitConverterResolver.php`,
+`bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`), the `quantityvalue_units` schema
+(`bundles/InstallBundle/dump/install.sql:695-709`) and `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:86-147`
+**(19)** `models/DataObject/Objectbrick/**` (Definition, Dao, Definition/Dao, Definition/Listing, Data/AbstractData,
+Data/Dao) and `models/DataObject/SelectOptions/**` (Config, Config/Dao, Config/Listing, Config/Listing/Dao,
+Data/SelectOption, Traits/EnumGetValuesTrait, Traits/EnumTryFromNullableTrait; both listed under Scope 6 but not processed
+there), plus the direct consumers where a defect originates in the model interplay (`models/DataObject/Objectbrick.php`,
+`ClassDefinition/Data/Objectbricks.php`, the advanced relations' `delete()`, `Concrete/Dao/InheritanceHelper.php`,
+`lib/DataObject/ClassBuilder/ObjectBrick*` / `SelectOptionsEnumBuilder.php`,
+`bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php`)
+**(20)** the `models/Document/*.php` root files not processed in Scope 6 (`Email.php`, `Folder.php`, `Snippet.php`;
+listed under Scope 6 but not processed there), plus the direct consumers where a defect originates in the model
+interplay (`lib/Mail.php::setDocumentSettings()` / `setDocument()` (`:379-415`, `:729-747`),
+`lib/Helper/Mail.php::parseEmailAddressField()` (`:371-395`), `models/Document.php::correctPath()` (`:415-463`), the
+`documents.type_definitions` config (`bundles/CoreBundle/config/pimcore/default.yaml:285-318`)) and the
+`documents_email` schema (`bundles/InstallBundle/dump/install.sql:109-122`)
+**(21)** the `models/Document/*/` sub-directory classes (`Email/Dao.php`, `Folder/Dao.php`, `Link/Dao.php`,
+`Listing/Dao.php`, `Page/Dao.php`, `PageSnippet/Dao.php`, `Service/Dao.php`, `Snippet/Dao.php`; every one is already
+named by an earlier item, so this scope is a gap-fill that adds only points not yet recorded), plus the direct consumers
+where a defect originates in the model interplay (`models/Document/Service.php::copyAsChild()` (`:196-206`),
+`models/Document.php::doDelete()` / `getById()` (`:621-646`, `:187-258`), `lib/Routing/Dynamic/DocumentRouteHandler.php`
+(`:120-133`, `:260-295`), `bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php`
+(`:81`, `:133`)) and the `documents_translations` schema (`bundles/InstallBundle/dump/install.sql:175-184`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -125,12 +160,20 @@ Scope 10 **admin permission checks crashing and Symfony roles silently dropped o
 Scope 11 **the email blocklist never being applied (blocklisted recipients still receive every mail)**, and in
 Scope 12 **classification store passwords saved in plain text**, and in Scope 14 **a plausible
 field-collection field name making the generated class a PHP fatal** and **`classes-rebuild` dropping field-collection
-columns (data loss) when a definition exists in both definition directories**.
+columns (data loss) when a definition exists in both definition directories**, and in Scope 17
+**advanced-relation metadata crashing or being stored under another field name when a column key matches a model
+method** (`value`, `data`, `fieldname`, …), and in Scope 18 **an override unit import deleting units
+before re-creating them (derived units outside the file permanently lose their base unit; a failure leaves units
+missing)**, and in Scope 19 **object-brick rows addressed by object id only (two
+`Objectbricks` fields sharing a brick overwrite, move and delete each other's data)**, **`classes-rebuild` dropping
+object-brick columns for shadowed definitions** and **PHP code injection / broken enums through select-option
+values**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
-Scope 15: `205ed92381`).
+Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1652,3 +1695,490 @@ same way. Add a test (I-141).
 >   PHP 8.4 incompatibility was found (no implicit nullable parameter; `public const string` is already used for the
 >   table names). Modernisation is in TODO-3 (I-142–I-148). The classic admin UI bundle is not in this repo: what it
 >   sends or reads is **not verified locally**. Nothing was executed apart from the `ArrayObject` check.
+
+---
+
+# Scope 16 – DataObject `ClassDefinition/**` (CustomLayout, Service, Helper, Layout, DynamicOptionsProvider, Data/**)
+
+> Notes
+> - Scanned (114 files, read in full): `CustomLayout.php`, `CustomLayout/Dao.php`, `CustomLayout/Listing.php`,
+>   `CustomLayout/Listing/Dao.php`, `Service.php`, the root interfaces (`CalculatorClassInterface`,
+>   `DefaultValueGeneratorInterface`, `LinkGeneratorInterface`, `PathFormatterAwareInterface`, `PathFormatterInterface`,
+>   `PreviewGeneratorInterface`), `Helper/*` (except `Helper/Dao.php`), `DynamicOptionsProvider/*`, `Layout/*` subclasses
+>   and `Layout/Traits/*`, and in `Data/`: all relation types (`AdvancedManyToMany(Object)Relation`,
+>   `ManyToMany(Object)Relation`, `ManyToOneRelation`, `ReverseObjectRelation`, `Relations/*Trait`, `Extension/Relation`,
+>   `Extension/RelationFilterConditionParser`, `Extension/PositionSortTrait`), the numeric types (`AbstractQuantityValue`,
+>   `QuantityValue`, `QuantityValueRange`, `InputQuantityValue`, `Numeric`, `NumericRange`, `Slider`, `RgbaColor`,
+>   `Checkbox`, `BooleanSelect`), the select/text/date types (`Select`, `Multiselect`, `Country`, `Countrymultiselect`,
+>   `Language`, `Languagemultiselect`, `Gender`, `Firstname`, `Lastname`, `Email`, `User`, `Textarea`, `Wysiwyg`,
+>   `Extension/Text`, `OptionsProviderTrait`, `OptionsProviderInterface`, `Datetime`, `DateRange`, `Time`), the media/geo
+>   types (`Image`, `ImageTrait`, `ImageGallery`, `Hotspotimage`, `ExternalImage`, `Video`, `Link`, `Geo/AbstractGeo`,
+>   `Geobounds`, `Geopoint`, `Geopolygon`, `Geopolyline`), `Table`, `StructuredTable` and all `Data/*Interface.php`.
+> - Skipped because earlier scopes already process or name them: `ClassDefinition/Dao.php`, `Data.php`, `Layout.php`,
+>   `Listing.php`, `Listing/Dao.php` (C-45/I-141 note), `Helper/Dao.php`, `Data/Block.php`, `CalculatedValue.php`,
+>   `Classificationstore.php`, `ClassSavedInterface.php`, `Consent.php`, `Date.php`, `EncryptedField.php`,
+>   `Fieldcollections.php`, `Input.php`, `Localizedfields.php`, `Password.php`, `UrlSlug.php`, `Objectbricks.php` (B-175)
+>   and `Relations/AbstractRelations.php` (I-82). Files that are only named in the cross-cutting list of I-75 (Table,
+>   Geo*, Link, Video, ImageGallery, Hotspotimage) were scanned; the `unserialize()` point is not repeated.
+> - Stack: `composer.json` requires PHP `~8.4.0`, Symfony `^7.4`, `doctrine/dbal ^3.8`. There is no `vendor/` /
+>   `composer.lock` in the checkout, so Carbon / DBAL behaviour could not be executed; plain PHP behaviour was checked
+>   with `php -r` (PHP 8.4). The classic admin UI (ExtJS) and the object-merger bundle are not in this repo: how they
+>   render preview HTML or which values they post is **not verified locally**.
+> - Only two files lack `declare(strict_types=1)`: `CustomLayout/Dao.php`, `CustomLayout/Listing/Dao.php` (I-73).
+> - Critical items: C-46–C-51. Bugs: B-266–B-299. Improvements: I-149–I-160.
+
+## [ ] C-46 – `ClassDefinition::getLinkGenerator()` throws `TypeError` for every class without a link generator
+
+**Files:** `models/DataObject/ClassDefinition/Helper/LinkGeneratorResolver.php:27`; `PreviewGeneratorResolver.php:27`;
+`DefaultValueGeneratorResolver.php:27`; caller `models/DataObject/ClassDefinition.php:1048-1054` (`:167`);
+`models/DataObject/Data/Link.php:353`; `models/Document/Link.php:130`; `models/Document/Editable/Link.php:210`
+
+- `resolveGenerator(string $generatorClass)` does not accept `null`, but `ClassDefinition::$linkGeneratorReference`
+  defaults to `null` and `getLinkGenerator()` passes it without a guard (`ClassDefinition.php:1051`). Passing `null` to a
+  non-nullable `string` parameter is a `TypeError` in strict and coercive mode alike.
+- Common path: `DataObject\Data\Link::getHref()`, `Document\Link` and `Document\Editable\Link` call `getLinkGenerator()`
+  for every internal link to an object. Rendering a link to an object whose class has no link generator fails fatally.
+- The base `ClassResolver::resolve()` already takes `?string` and returns `null` for an empty value
+  (`Helper/ClassResolver.php:32`, `:37-39`); only the subclass signatures are narrower. `getPreviewGenerator()` guards
+  the call (`ClassDefinition.php:1072`), `getLinkGenerator()` does not.
+
+**Fix direction:** make `resolveGenerator(?string)` nullable in all generator resolvers (as the base class) and/or guard
+the call in `getLinkGenerator()`. Add a test that renders a link to an object of a class without a link generator.
+
+## [ ] C-47 – Stored XSS in the core version preview: StructuredTable cells, advanced-relation metadata, ExternalImage URL, Link
+
+**Files:** `models/DataObject/ClassDefinition/Data/StructuredTable.php:261-268`, `:384-394`;
+`models/DataObject/Data/StructuredTable.php:137-162`; `Data/AdvancedManyToManyObjectRelation.php:324-341`, `:876`;
+`Data/AdvancedManyToManyRelation.php:424-441`, `:867`; `Data/ExternalImage.php:162-169`, `:190-197`, `:213-218`;
+`Data/Link.php:160-194`; `models/DataObject/Data/Link.php:346-371`, `:402-423`
+
+- `StructuredTable::getVersionPreview()` returns `Data\StructuredTable::getHtmlTable()`, which concatenates row/column
+  labels and every cell (`"<td>$c</td>"`) without `htmlspecialchars()`; `getDiffDataForEditMode()` sends the same string
+  as `type = html`. An editor types `<img src=x onerror=…>` into a text cell.
+- `AdvancedManyToMany(Object)Relation::getVersionPreview()` builds `<span class="preview-metadata">[key: value | …]</span>`
+  from free-text metadata column values without escaping; `processDiffDataForEditMode()` sends it as `value.html`.
+- `ExternalImage::getVersionPreview()` puts the raw URL into `src="…"`, `href="…"` and the link text (and closes the
+  link with `</>`); `getDataFromEditmode()` / `checkValidity()` accept any string (`x" onerror="…`, `javascript:…`).
+- `Link::getVersionPreview()` returns `Data\Link::getHtml()`: `href` (direct, parameters, anchor), `rel`, `title`,
+  `target`, `class` are unescaped and `attributes` is appended verbatim; `Link::checkValidity()` validates none of them.
+- Element paths are safe (`Element\Service::getValidKey()` strips `<>`); sibling types escape (`Select.php:182`,
+  `Table.php:410`, `Extension/Text.php:47`). Any user with object save permission can plant script that runs for every
+  admin who opens the Versions tab / compare view (rendering via `innerHTML` **not verified locally**, but the payload
+  is explicitly typed as HTML).
+- Diff-only previews used by the object-merger bundle are in B-271.
+
+**Fix direction:** escape every interpolated value with `htmlspecialchars(…, ENT_QUOTES)` in these previews (or make
+`getHtmlTable()` / `Data\Link::getHtml()` escape), and validate URLs (`http(s)`/relative only) and `attributes` in
+`checkValidity()` of `ExternalImage` and `Link`.
+
+## [ ] C-48 – `QuantityValueRange::isEmpty()` / `isEqual()` materialise `range(min, max)` on every save: memory fatal or `ValueError`
+
+**Files:** `models/DataObject/ClassDefinition/Data/QuantityValueRange.php:353-369`, `:391-398`;
+`models/DataObject/Data/QuantityValueRange.php:79-82` (`getValue()` → `getRange()`); `models/DataObject/Concrete/Dao.php:294`;
+`models/DataObject/Localizedfield.php:575`
+
+- Both methods call `$data->getValue()`, i.e. `range($min, $max, 1)`. `Concrete\Dao` calls `isEmpty()` for every
+  query-persisted field on every save (`Concrete/Dao.php:294`), independent of dirty detection.
+- A valid range `0 … 1e9` (e.g. millimetres) tries to allocate ~17 GB → memory fatal; `0 … 1e20` throws
+  `ValueError: The supplied range exceeds the maximum array size` (both checked with `php -r`). The object can no longer
+  be saved.
+- The comparison is also wrong: `range(0.5, 1.7, 1) === range(0.5, 1.6, 1)`; `[null, 5]` and `[null, 7]` both give
+  `[0]`, so changes count as equal and are not saved in localized fields (`Localizedfield/Dao.php:142-148`).
+  `isEmpty()` can never be true for an instance (`range()` always returns ≥ 1 element).
+
+**Fix direction:** compare / test emptiness on `getMinimum()`, `getMaximum()` and `getUnitId()`; never call
+`getValue()` in persistence paths.
+
+## [ ] C-49 – Range values with an open bound (or without unit) are stored but load as `null` and are wiped on the next save
+
+**Files:** `models/DataObject/ClassDefinition/Data/NumericRange.php:243`, `:299-300`, `:397`, `:439`;
+`QuantityValueRange.php:137`, `:190-199`, `:309-320`; `DateRange.php:54-97` (`:65`, `:84`, `:89`), `:134-144`
+
+- `NumericRange::getDataFromResource()` hydrates only when both `__minimum` and `__maximum` are non-null (`isset`,
+  `:243`), while `getDataFromEditmode()` accepts a single bound. `[null, 5]` passes `checkValidity()` (`null > 5` is
+  false), is persisted with `__minimum = NULL`, loads as `null` and the next save writes `NULL, NULL`. `[5, null]` is
+  persisted for unpublished objects (all checks are skipped with `$omitMandatoryCheck`, see B-272) and lost the same way.
+- `QuantityValueRange::getDataFromResource()` additionally requires `__unit`; a non-mandatory range without unit
+  (`unit = -1` / empty → `null`, `:191-193`) is saved and disappears on load.
+- `DateRange::getDataForResource()` explicitly writes an open end (`end_date => null`, `:65`), but
+  `getDataFromResource()` requires both columns (`isset(…, …)`, `:84`) → an open-ended `CarbonPeriod` is lost on reload;
+  the "no end" branch `:89` is dead (`getDateFromTimestamp()` always returns `Carbon`).
+- `Data\NumericRange::__toString()` renders `-∞` / `+∞`, i.e. open bounds are an intended state.
+
+**Fix direction:** hydrate when any bound column is non-null (as `QuantityValue.php:239` does) and decide explicitly
+whether open bounds / a missing unit are valid; reject them in `checkValidity()` otherwise. Add round-trip tests.
+
+## [ ] C-50 – Deleting a unit makes objects with `QuantityValueRange` / `InputQuantityValue` fields unloadable; `QuantityValue` silently drops the value
+
+**Files:** `models/DataObject/ClassDefinition/Data/QuantityValueRange.php:137-142`, `:190-193`; `InputQuantityValue.php:52-53`,
+`:125-128`; `QuantityValue.php:246-258`; `models/DataObject/Data/AbstractQuantityValue.php:42-55`;
+`models/DataObject/QuantityValue/Unit/Dao.php:117-120`
+
+- The `Data\AbstractQuantityValue` constructor throws `NotFoundException` when `Unit::getById()` returns `null`.
+  `Unit\Dao::delete()` deletes the unit without a usage check; object columns keep the id (`varchar`, no foreign key).
+- `QuantityValueRange` / `InputQuantityValue::getDataFromResource()` construct the value without `try/catch` → every
+  object that references the deleted unit throws on load (cannot be opened, saved or listed with that field).
+- `QuantityValue::getDataFromResource()` catches the exception and returns `null` → the next save writes `NULL` to both
+  `__value` and `__unit`; the number is silently lost.
+- Also reachable from editmode: `QuantityValueRange::getDataFromEditmode()` compares `=== -1`, so the string `"-1"` is
+  looked up as a unit id.
+
+**Fix direction:** handle a missing unit consistently in all three types (keep the value and the raw unit id, log),
+and refuse or cascade unit deletion while the unit is referenced.
+
+## [ ] C-51 – `Table` with column config stores keyed rows by position: values swap or shift on reload
+
+**Files:** `models/DataObject/ClassDefinition/Data/Table.php:182-194`, `:201-214`, `:222-254` (`:239-251`)
+
+- With `columnConfigActivated`, `getDataFromResource()` returns rows keyed by `columnConfig[$i]['key']`, so API users
+  write keyed rows back (`setTbl([['price' => 1, 'name' => 'x']])`).
+- `getDataForResource()` → `convertDataToValueArray()` drops the keys and keeps insertion order. On reload position 0
+  maps to `columnConfig[0]['key']`: with config `[name, price]` the row reloads as `name = 1, price = 'x'`; a row missing
+  one key shifts the following cells into the wrong columns. Silent data corruption.
+- Two column configs with the same `key` collapse into one array key on load (`:245`).
+
+**Fix direction:** when column config is active, order and pad cells by the configured keys in `getDataForResource()`;
+reject duplicate / empty column keys when the definition is saved. Add a round-trip test with a keyed, reordered row.
+
+---
+
+# Scope 17 – DataObject `Data/**` (field value objects)
+
+> Notes
+> - Scanned (22 files, read in full): `AbstractQuantityValue.php`, `QuantityValue.php`, `InputQuantityValue.php`,
+>   `QuantityValueRange.php`, `NumericRange.php`, `BlockElement.php`, `CalculatedValue.php`, `Consent.php`, `Link.php`,
+>   `Hotspotimage.php`, `ImageGallery.php`, `Video.php`, `ExternalImage.php`, `Geobounds.php`, `GeoCoordinates.php`,
+>   `RgbaColor.php`, `StructuredTable.php`, `ElementMetadata.php`, `ObjectMetadata.php`, `AbstractMetadata/Dao.php`,
+>   `ElementMetadata/Dao.php`, `ObjectMetadata/Dao.php`.
+> - Skipped because earlier scopes already process them: `UrlSlug.php` (C-31) and `EncryptedField.php` (B-184, I-75).
+>   The other files were only named in passing before (C-46/C-47 `Link` / `StructuredTable` HTML, C-48/C-50 quantity
+>   values, B-284 metadata targets, B-289/B-290 `StructuredTable`, B-291/B-292 `Hotspotimage`, B-295 `Geobounds`,
+>   B-298 `QuantityValue::__toString()`, I-73 DAO strictness, I-75 `unserialize()`, I-82 metadata N+1). Those points are
+>   not repeated.
+> - Collaborators read where a defect originates in the interplay: `ClassDefinition/Data/AdvancedManyToManyObjectRelation.php`
+>   / `AdvancedManyToManyRelation.php` (load `:135-170`, editmode `:218-282` / `:365-380`, `setColumns()`),
+>   `lib/Model/AbstractModel.php` (`setValue()` / `setValues()` / `setDao()`), `Traits/OwnerAwareFieldTrait.php`,
+>   `Traits/ObjectVarTrait.php`, `Localizedfield/Dao.php:142-149`, `Service.php:1440-1600`, `Concrete.php:312-324`,
+>   `lib/Cache/Core/CoreCacheHandler.php:486-509`, `Asset/Image/Thumbnail.php:44-49`, `:430-439`,
+>   `ClassDefinition/Data/RgbaColor.php`, `Link.php`, `Consent.php`, `ImageGallery.php`.
+> - Only the three metadata DAOs lack `declare(strict_types=1)` (already in I-73). No implicit nullable parameter and no
+>   hard Symfony 7.4 / PHP 8.4 incompatibility was found; modernisation is in TODO-3 (I-161–I-169).
+> - `vendor/` is not installed and the classic admin UI is not in this repo. Plain PHP behaviour (`range()` with `null`,
+>   `sprintf('%02x')` with out-of-range ints, typed-property assignment in `__unserialize()`, `NumberFormatter` with `0`)
+>   was checked with `php -r` on PHP 8.4.27. Nothing else was executed.
+> - Critical items: C-52. Bugs: B-300–B-315. Improvements: I-161–I-169.
+
+## [ ] C-52 – Advanced-relation metadata columns named like a real method bypass `__call`: crashes on save/load, or all metadata of the item silently stored under another field name
+
+**Files:** `models/DataObject/Data/ObjectMetadata.php:78-105` (`__call`), `:123-134`, `:57-70`, `:153-158`, `:186-205`;
+`models/DataObject/Data/ElementMetadata.php:67-94`, `:114-125`, `:130-144`, `:186-195`;
+`models/DataObject/Data/ObjectMetadata/Dao.php:33-53`, `:60-81`; `ElementMetadata/Dao.php:29-49`, `:51-76`;
+`lib/Model/AbstractModel.php:56`, `:163`, `:175`; callers `ClassDefinition/Data/AdvancedManyToManyObjectRelation.php:225-228`,
+`:272-281`, `:611-626`; `AdvancedManyToManyRelation.php:314`, `:374-380`, `:677-692`
+
+```php
+$getter = 'get' . ucfirst($column);   // Dao::save()       – a real method wins over __call()
+$setter = 'set' . ucfirst($row['column']);
+$this->model->$setter($row['data']);  // Dao::load(), and the editmode setter loop in the ClassDefinition
+```
+
+- Column values are only reachable through `__call()`. PHP calls `__call()` only when **no** method of that name
+  exists, so a column key that matches a real method of the item (or of `AbstractModel`) hits that method instead.
+  `setColumns()` accepts any `key` (no reserved-name check).
+- Crashes (the object cannot be saved from editmode or, once rows exist, cannot be loaded):
+  - `value` → `AbstractModel::setValue(string $key, mixed $value)` with one argument → `ArgumentCountError`;
+  - `values` / `data` / `columns` / `dao` → `setValues(array)` / `setData(array)` / `setColumns(array)` /
+    `setDao(?AbstractDao)` with a string → `TypeError`; on save `getData()` / `getColumns()` / `getDao()` return an
+    array / object as the column value (DBAL conversion error);
+  - `object` / `element` → `setObject(?Concrete)` / `setElement()` with a string → `TypeError`.
+- Silent corruption / data loss:
+  - `fieldname`: the editmode setter loop calls the real `setFieldname($value)`, so the **relation field name of the
+    item** becomes the user's value. `Dao::save()` then writes every column of that item with `fieldname = <value>`;
+    `load()` queries by the real field name and finds nothing → all metadata of the item is gone after the reload, and
+    the rows are never deleted (the delete statements filter by the real field name). A missing value (`?? null`) →
+    `setFieldname(null)` `TypeError`.
+  - `objectId` / `elementId` / `elementType`: the getter returns the target id / type, so that is stored instead of the
+    user's value; the editmode setter `setObjectId("text")` throws (`ClassDefinition` files are strict).
+- Same class of defect as C-44 (reserved field names); the generated class compiles, so nothing warns at class save.
+
+**Fix direction:** stop dispatching by method name: give both item classes explicit `getColumnValue(string $key)` /
+`setColumnValue(string $key, mixed $value)` methods (keep `__call()` as a BC proxy that only accepts configured
+columns) and use them in the DAOs and in the `ClassDefinition` getter/setter loops. Until then, reject column keys that
+collide with a method of `ObjectMetadata` / `ElementMetadata` (case-insensitive, `get_class_methods()`) in
+`setColumns()` / on class save. Add a round-trip test with columns `value`, `data` and `fieldname`.
+
+---
+
+# Scope 18 – DataObject `QuantityValue/**` (units and conversion)
+
+> Notes
+> - Scanned (8 files, read in full): `Unit.php`, `Unit/Dao.php`, `Unit/Listing.php`, `Unit/Listing/Dao.php`,
+>   `Service.php`, `DefaultConverter.php`, `UnitConversionService.php`, `QuantityValueConverterInterface.php`.
+> - None of them was processed before: the folder is listed in the Scope 6 header, but the earlier items only name
+>   these files in passing (C-18 translation side effect of `generateDefinitionJson()`, C-50 unit deletion without usage
+>   check, B-286 `TypeError` in `DefaultConverter` from filter input, B-306 `?string` abbreviation, I-73 strictness,
+>   I-82 cache without tags, I-154 / I-163 value-object side). Those points are not repeated.
+> - Collaborators read where a defect originates in the interplay: `Data/AbstractQuantityValue.php:39-113`,
+>   `ClassDefinition/Data/AbstractQuantityValue.php:199-277`, `ClassDefinition/Data/QuantityValue.php:234-260`,
+>   `ClassDefinition/Helper/UnitConverterResolver.php`, `ClassResolver.php`, `lib/Model/AbstractModel.php:163-190`,
+>   `lib/Model/Listing/AbstractListing.php:163-184`, `models/Translation.php:313-343`,
+>   `bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`, `bundles/CoreBundle/config/services.yaml:108-114`,
+>   `install.sql:695-709` (`fk_baseunit … ON DELETE SET NULL`), the conversion chapter of `55_Number_Types.md`.
+> - `Unit.php` and `Unit/Dao.php` have no `declare(strict_types=1)` (already in I-73); the other six files are strict.
+>   No hard Symfony 7.4 / PHP 8.4 incompatibility was found; modernisation is in TODO-3 (I-170–I-174).
+> - The unit admin grid and the export button live in `pimcore/admin-ui-classic-bundle` (not in this repo, `vendor/` not
+>   installed); how they create units (preset id or not) and call `generateDefinitionJson()` was **not verified**.
+>   The conversion formula, `array_column(null)`, string offsets on strings, `null` / non-numeric arithmetic, division
+>   by `0.0` and `ucfirst()` were checked with `php -r` on PHP 8.4.27. Nothing else was executed.
+> - Critical items: C-53. Bugs: B-316–B-323. Improvements: I-170–I-174.
+
+## [ ] C-53 – Unit import with `--override` deletes units before re-creating them: derived units outside the file lose their base unit, any failure leaves units missing
+
+**Files:** `models/DataObject/QuantityValue/Service.php:27-64` (`:36-42`, `:56-58`, `:59-61`); `Unit.php:112-119`;
+`Unit/Dao.php:117-120`; `bundles/InstallBundle/dump/install.sql:708`; caller
+`bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php:91-103` (`pimcore:definition:import:units -o`)
+
+```php
+if ($unit = Unit::getById($unitArray['id'])) {
+    if ($override) { $unit->delete(); } else { continue; }   // first loop: delete
+}
+// …
+foreach (array_merge($baseUnits, $units) as $unit) { $unit->save(); }   // second loop: re-insert, no transaction
+```
+
+- "Override" is implemented as delete + insert. Every unit of the file that already exists is deleted in the first
+  loop; the rows are written again only in the second loop. No transaction, no validation of the file beforehand.
+- `fk_baseunit … ON DELETE SET NULL`: deleting an existing **base** unit sets `baseunit = NULL` on every unit that
+  references it. Units contained in the file get their base unit back, but every derived unit that is **not** in the
+  file permanently becomes a base unit of its own. Typical trigger: importing a partial export (one group, only the
+  base units) or an older export. Effects: `convertTo()` throws "must have same base unit", the quantity-value filter
+  stops including those units (`ClassDefinition/Data/AbstractQuantityValue.php:240-243`), automatic conversion when an
+  editor switches the unit stops. Nothing reports it.
+- Any failure in the second loop leaves the deleted units missing: a FK violation for a base-unit chain deeper than
+  two levels (B-320), a DB error, or an `Error` from bad data (B-320). The method returns `false` (or crashes), and
+  objects that reference those unit ids hit C-50: `QuantityValueRange` / `InputQuantityValue` objects can no longer be
+  loaded, `QuantityValue` values are written as `NULL` on the next save. Other processes see the gap even on success:
+  every `delete()` clears the unit cache, so requests running during the import load objects while the units are
+  missing (same C-50 effects).
+- Units that are only updated fire `UNIT_PRE_DELETE` / `UNIT_POST_DELETE` followed by `UNIT_PRE_UPDATE` /
+  `UNIT_POST_UPDATE` (B-319), so delete listeners (cleanup, sync to external systems) act on units that still exist.
+
+**Fix direction:** never delete for override: load the existing unit, `setValues()`, `save()` (upsert). Validate the
+whole file first (list of objects, `id` present, every `baseunit` resolvable in the file or the DB, no cycles), sort
+topologically, run all writes in one transaction and clear the unit cache once at the end. Add a test: override import
+of a base unit whose derived units are not in the file keeps their `baseunit`, and a failing import leaves the table
+unchanged.
+
+---
+
+# Scope 19 – DataObject `Objectbrick/**` and `SelectOptions/**`
+
+> Notes
+> - Scanned (13 files, read in full): `Objectbrick/Definition.php`, `Objectbrick/Dao.php`, `Objectbrick/Definition/Dao.php`,
+>   `Objectbrick/Definition/Listing.php`, `Objectbrick/Data/AbstractData.php`, `Objectbrick/Data/Dao.php`,
+>   `SelectOptions/Config.php`, `SelectOptions/Config/Dao.php`, `SelectOptions/Config/Listing.php`,
+>   `SelectOptions/Config/Listing/Dao.php`, `SelectOptions/Data/SelectOption.php`,
+>   `SelectOptions/Traits/EnumGetValuesTrait.php`, `SelectOptions/Traits/EnumTryFromNullableTrait.php`.
+> - None of them was processed before. Both folders are listed in the Scope 6 header, but the earlier items only name
+>   these files in passing. Those points are not repeated: select-options id validation – C-32; brick fields named
+>   `objectId` / `loadedLazyKeys` – C-44; the open question in C-45 about `Objectbrick\Definition\Listing` is answered
+>   by C-55; `getByKey()` include path and caching – B-255; `@unlink()` – I-83; missing `declare(strict_types=1)` in
+>   `Objectbrick/Dao.php`, `Definition/Dao.php`, `Data/Dao.php` – I-73; brick calculated values via `getCalculatedFieldValue()` – B-247
+>   (comparison); the field-collection side of the shared lifecycle – I-136 / B-252–B-254.
+> - Collaborators read where a defect originates in the interplay: `models/DataObject/Objectbrick.php`,
+>   `Fieldcollection/Definition.php`, `Fieldcollection/Dao.php`, `Traits/FieldcollectionObjectbrickDefinitionTrait.php`,
+>   `Traits/LocateFileTrait.php`, `ClassDefinition/Data/Objectbricks.php`, `ClassDefinition/Data/AdvancedManyToManyRelation.php:627-672`,
+>   `ClassDefinition/Data/Relations/AbstractRelations.php:302-318`, `ClassDefinition/Helper/Dao.php`,
+>   `Concrete/Dao/InheritanceHelper.php`, `Localizedfield/Dao.php:48-80`,
+>   `lib/DataObject/ClassBuilder/ObjectBrick*Builder.php`, `PHPObjectBrickContainerClassDumper.php`,
+>   `SelectOptionsEnumBuilder.php`, `PHPSelectOptionsEnumDumper.php`, `lib/Model/Dao/PimcoreLocationAwareConfigDao.php`,
+>   `lib/Maintenance/Tasks/DataObject/CleanupBrickTablesTaskHelper.php`,
+>   `bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php:136-178`,
+>   `ClassesDefinitionsBuildCommand.php:95-98`, `doc/05_Objects/01_Object_Classes/01_Data_Types/60_Object_Bricks.md`.
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found (the files already use typed class constants and
+>   `new X()->method()` without parentheses). Modernisation is in TODO-3 (I-175–I-182).
+> - Checked with `php` 8.4.27: the enum code injection and the parse error of C-56, `Error` on `tryFrom()` for duplicate
+>   enum values, `ucfirst(null)` `TypeError` under strict types (B-330), `(bool)'false' === true` (B-330). The admin UI
+>   (`pimcore/admin-ui-classic-bundle`) is not in this repo and `vendor/` is not installed: which permission guards the
+>   select-options editor and how the editor sends values was **not verified**. Nothing else was executed.
+> - Critical items: C-54–C-56. Bugs: B-324–B-333. Improvements: I-175–I-182.
+
+## [ ] C-54 – Brick rows are addressed by object id only: two `Objectbricks` fields that allow the same brick overwrite, move and delete each other's data
+
+**Files:** `models/DataObject/Objectbrick/Data/Dao.php:39-248` (`:62-69` exists check, `:116-120` store write, `:131`
+old query row, `:143` parent row), `:250-321` (`:254`, `:259-260`); `models/DataObject/Concrete/Dao/InheritanceHelper.php:71-90`,
+`:232-244`, `:315`, `:337` (constructed with `id` as the only key, `Data/Dao.php:47`, `:270`);
+`models/DataObject/Objectbrick/Definition/Dao.php:61-82` (primary key `(id, fieldname)`); docs
+`60_Object_Bricks.md:49`, `:61` (a brick is assigned per class **and field**)
+
+```php
+$existsResult = $this->db->fetchOne('SELECT id FROM ' . $storetable . ' WHERE id = ? LIMIT 1', [$object->getId()]);
+// …
+$this->db->update($storetable, Helper::quoteDataIdentifiers($this->db, $data), ['id' => $object->getId()]); // $data contains 'fieldname'
+// delete():
+$this->db->delete($storeTable, ['id' => $object->getId()]);
+$this->db->delete($queryTable, ['id' => $object->getId()]);
+```
+
+- The brick tables are shared by every `Objectbricks` field of a class (`object_brick_store_<key>_<classId>`, primary key
+  `(id, fieldname)`); the definition explicitly supports assigning one brick to several fields
+  (`classDefinitions` = list of `classname` + `fieldname`, one container class per field). Loading filters by
+  `fieldname` (`Objectbrick/Dao.php:50`), but every write path in `Data\Dao` filters by `id` only.
+- Example: class `Product` has fields `specs` and `specsOverride`, both allowing brick `Engine`.
+  - The object has `Engine` in `specs`; an editor adds `Engine` to `specsOverride` and saves. The existence check finds
+    the `specs` row, so the new brick is written with `UPDATE … SET fieldname = 'specsOverride', … WHERE id = ?`. The
+    `specs` row is **moved** to the other field and its values are replaced; the `specs` brick is gone.
+  - Both rows exist (both bricks added while the object was new, which uses `INSERT`): the next save runs
+    `UPDATE … SET fieldname = 'specs' WHERE id = ?` on both rows → duplicate primary key → the object save fails and
+    keeps failing until someone removes a brick by hand.
+  - Removing `Engine` from one field deletes the store **and** query rows of both fields.
+- The query table is affected too: `oldData` and the parent row used for inheritance (`FOR UPDATE`) are read
+  `WHERE id = ?`, i.e. an arbitrary row of either field, so the change detection and the inherited values mix the two
+  fields. `InheritanceHelper` updates and deletes children's query rows by `id` only, so a change in one field is
+  propagated into the other field's rows of all children.
+- Nothing rejects the configuration; the admin allows it and the docs describe per-field assignment.
+
+**Fix direction:** add `fieldname` to every condition (`exists`, `update`, `delete`, the old / parent query rows) and
+pass `fieldname` as an additional key column to `InheritanceHelper` (it needs a composite-key mode for brick and
+collection tables). Until that ships, reject a brick definition that is assigned to two fields of the same class
+(`Definition::save()`), and add a test with two fields sharing a brick (add, update, remove, inherit).
+
+---
+
+## [ ] C-55 – `classes-rebuild` also drops object-brick columns for definitions shadowed in the other definition directory (C-45 for bricks)
+
+**Files:** `models/DataObject/Objectbrick/Definition/Listing.php:57-77`; `models/DataObject/Objectbrick/Definition.php:66-92`,
+`:144-214`, `:351-387`, `:413-449`; `Objectbrick/Definition/Dao.php:61-149` (`:147-148`);
+`bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:136-149`;
+`lib/DataObject/ClassBuilder/PHPObjectBrickContainerClassDumper.php:44-55`
+
+- Answers the open question in C-45: `Objectbrick\Definition\Listing::loadFileNames()` returns every `*.php` from
+  `var/classes/objectbricks` **and** `config/pimcore/classes/objectbricks`, while `getByKey()` lets the custom file
+  win. A key present in both folders is listed twice, the `var/classes` copy first.
+- `ClassesRebuildCommand` calls `save(false)` for each listed definition. For the stale copy this:
+  - runs `createUpdateTable()` for every class it lists, and `removeUnusedColumns()` drops every store / query column
+    the stale copy does not know (**data loss**; the custom copy saved afterwards re-adds them empty);
+  - adds the key to the `allowedTypes` of classes and fields that only the stale copy lists and **saves those
+    classes** (`createContainerClasses()`); the later save of the custom copy runs with `save(false)`, which skips
+    `cleanupOldFiles()`, so those assignments stay for good and the brick shows up in classes nobody configured;
+  - puts the stale instance into the runtime cache (`:198`), so class saves triggered in between rebuild tables of
+    other bricks against it.
+- Unlike the field-collection loop, the brick loop catches every exception and only prints it (`:145-148`): the
+  deployment goes on and reports success.
+- The same listing feeds `PHPObjectBrickContainerClassDumper` (containers are built from both copies' assignments,
+  `:44-55`), `ClassesDefinitionsBuildCommand` and `SelectOptions\Config::getFieldsUsedIn()`.
+
+**Fix direction:** same fix as C-45: build the key list from both folders, load each key once through `getByKey()`,
+log shadowed files; let `ClassesRebuildCommand` fail (non-zero exit) when a brick cannot be saved. Add a test with a
+key in both folders.
+
+---
+
+## [ ] C-56 – Select-option values and labels are written unescaped into the generated enum: a backslash breaks out of the string (PHP code injection), duplicate values break every `from()`
+
+**Files:** `models/DataObject/SelectOptions/Config/Dao.php:80-86`, `:110-120`; `models/DataObject/SelectOptions/Config.php:165-183`,
+`:367-370`; `models/DataObject/SelectOptions/Data/SelectOption.php:30-36`, `:118-125`;
+`lib/DataObject/ClassBuilder/SelectOptionsEnumBuilder.php:109-142` (`:111`, `:136`), `:144-165`, `:182-185`, `:192`;
+`lib/DataObject/ClassBuilder/PHPSelectOptionsEnumDumper.php:32-38`
+
+```php
+$template = 'case %caseName% = \'%optionValue%\';';
+protected function escapeSingleQuote(string $value): string { return str_replace("'", "\\'", $value); } // "\" is not escaped
+```
+
+- `Config\Dao::save()` stores the options and writes `var/classes/DataObject/SelectOptions/<Id>.php` without any
+  validation of the option values or labels. The builder escapes `'` but not `\`, so a value containing `\'` turns into
+  `\\'`: an escaped backslash followed by a closing quote. Checked: the value
+  `\'; public function getLabel(): string { return ""; } } echo "…"; enum Zz: string { //` (with any label set)
+  produces a file that parses and runs the top-level code each time the enum is included. The generated enum is
+  meant to be used by project code (`Colors::tryFrom($object->getColor())`), so the code runs in web requests and
+  workers.
+- Who can do it: whoever can edit select options in the admin, plus anything that writes the YAML / settings-store
+  config. That permission is normally given to fewer people than "system settings", but it is not "can deploy PHP".
+- Without malice:
+  - a value or label that ends in `\` (`C:\`, a regex, `\n` typed literally) makes the file a `ParseError` → every
+    request that touches the enum fails (checked);
+  - two options with the same value (two empty values, a copy-and-paste row) generate valid code, but every
+    `from()` / `tryFrom()` / `tryFromNullable()` then throws `Error: Duplicate value in enum …` (checked; `cases()`
+    still works, so the admin list looks fine);
+  - the case-name check `^[A-Z-a-z_]` accepts a leading `-` (the `-` in the character class is literal), which
+    generates `case -foo` → `ParseError` (checked with `preg_match`).
+- The configuration is written **before** the enum is generated: when the builder throws (unknown trait, case-name
+  collision), the broken config is already stored and `ClassesRebuildCommand` / `ClassesDefinitionsBuildCommand` fail
+  on it on every deployment.
+- C-32 covers the select-options **id**; values, labels, names and the save order are not covered there.
+
+**Fix direction:** validate in the model before saving (`Config::validate()`, called from `Dao::save()`): unique
+non-empty values, case names matching `^[A-Za-z_][A-Za-z0-9_]*$`, no PHP reserved case names (`class`, …), traits /
+interfaces resolvable. Generate code with `var_export()` for every string (or a code generator, I-83) instead of
+hand-made escaping. Build the enum first (into a temp file, `php -l` / `token_get_all()` check), then save the
+config, then move the file into place. Add tests for `\`, `'`, duplicate values and a leading `-`.
+
+---
+
+# Scope 20 – Document root files not processed in Scope 6 (`Email.php`, `Folder.php`, `Snippet.php`)
+
+> Notes
+> - Scanned (read in full): `Document/Email.php`, `Document/Folder.php`, `Document/Snippet.php`, plus their DAOs
+>   `Email/Dao.php`, `Folder/Dao.php`, `Snippet/Dao.php` for context.
+> - Skipped, already processed in Scope 6: `Dao.php`, `DocType.php`, `Editable.php`, `Hardlink.php`, `Link.php`,
+>   `Listing.php`, `Page.php`, `PageSnippet.php`, `Service.php` (C-25–C-28, B-138–B-155, I-73–I-85). Points already
+>   made there are not repeated: the type-DAO `id = NULL` overwrite for `Snippet/Dao.php` / `Email/Dao.php` – B-148;
+>   one generic type DAO – I-78; missing `declare(strict_types=1)` in the three DAOs – I-73; `Editable\Snippet`
+>   dependencies – B-163.
+> - Collaborators read where a defect originates in the interplay: `models/Document.php::correctPath()`,
+>   `PageSnippet.php` (content-main handling `:84`, `:245-262`, `:431-452`, `:462-477`, `:600-603`),
+>   `Document/Service.php::rewriteIds()` (`:341-360`), `lib/Mail.php`, `lib/Helper/Mail.php`,
+>   `lib/Routing/Dynamic/DocumentRouteHandler.php:78-90`, `bundles/CoreBundle/config/pimcore/default.yaml:285-318`,
+>   `bundles/CoreBundle/src/DependencyInjection/Configuration.php:1061-1070`, `install.sql` (`documents_email`,
+>   `documents_snippet`).
+> - `Folder.php` and `Snippet.php` only set `$type`; `Email.php` is a set of plain string accessors. None of them has
+>   behaviour that can lose data, corrupt state or open a security hole on its own: **no critical item**.
+> - No Symfony 7.4 / PHP 8.4 incompatibility: the three root files are `declare(strict_types=1)`, fully typed and use
+>   no removed API. The `documents_email` columns can be `NULL` (`create()` inserts only the id), but
+>   `assignVariablesToModel()` → `setValues($data, true)` skips `null`, so the `string` setters do not throw.
+> - The admin UI (`pimcore/admin-ui-classic-bundle`) is not in this repo and `vendor/` is not installed: how the admin
+>   tree handles `children_supported` and whether the admin preview needs `direct_route` was **not verified**.
+>   Nothing was executed.
+> - Critical items: none. Bugs: B-334–B-337. Improvements: I-183–I-185.
+
+---
+
+# Scope 21 – Document sub-directory classes (`Email/`, `Folder/`, `Link/`, `Listing/`, `Page/`, `PageSnippet/`, `Service/`, `Snippet/`)
+
+> Notes
+> - Scanned (read in full): `Document/Email/Dao.php`, `Folder/Dao.php`, `Link/Dao.php`, `Listing/Dao.php`,
+>   `Page/Dao.php`, `PageSnippet/Dao.php`, `Service/Dao.php`, `Snippet/Dao.php` (604 lines; these are the only files in
+>   the eight sub-directories).
+> - All eight classes are already named by earlier items, so this scope is a **gap-fill**: only points not recorded
+>   yet are added. Not repeated: type-DAO `id = NULL` overwrite – B-148 (`Email`, `Link`, `Page`, `Snippet`);
+>   `Link\Dao` resolving the href on load and lost object targets – B-146; unknown / corrupt editable rows in
+>   `PageSnippet\Dao::getEditables()` – B-143; `getTranslations()` overwriting `$linkedData` and `null` source
+>   documents – B-144; pretty-URL duplicates and the unordered lookup – B-153; document listing `published` column
+>   – B-154; missing `declare(strict_types=1)` – I-73; `getTranslationSourceId(): mixed` – I-74; DBAL 4
+>   `getQueryPart()` in the listing helper – I-76; one generic type DAO – I-78; `Listing::getCount()` loading all
+>   ids – I-79; duplicate `deleteAllProperties()` in `Email\Dao` / `Page\Dao` – I-183; empty `Folder\Dao` – I-184.
+> - Collaborators read where a defect originates in the interplay: `Document.php::doDelete()` (`:645` calls
+>   `removeTranslation()`), `Document.php::getById()` (two DAO loads per uncached document), `Document/Dao.php`
+>   (`getById()`, `getByPath()`, `create()`, `delete()`), `Document/Service.php::copyAsChild()` and
+>   `getNearestDocumentByPath()`, `Document/Listing.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php`,
+>   `lib/Db/Helper.php::upsert()`, `lib/Routing/Dynamic/DocumentRouteHandler.php`, `install.sql` (`documents`,
+>   `documents_page`, `documents_translations`, `tree_locks`), `bundles/CoreBundle/config/pimcore/default.yaml:148`
+>   (`sql_mode = ''`).
+> - The translation-link DAO has bugs that make translations point to the wrong document or block a delete
+>   (B-338–B-340). Nothing loses content or opens a security hole: **no critical item**.
+> - Corrections to earlier items (found while reading the schema): `documents_page.prettyUrl` **has** an index
+>   (`install.sql:160`, `KEY prettyUrl`), so the "no index" remark in B-153 and I-84 is out of date. The rest of
+>   B-153 still applies. `documents_translations.sourceId` is the leading column of the primary key
+>   (`sourceId`, `language`), so it is indexed; only the foreign key in I-84 is missing.
+> - Pretty URLs are compared with the table's default collation (case- and, with `utf8mb4_0900_ai_ci` /
+>   `utf8mb4_general_ci`, accent-insensitive). `DocumentRouteHandler::handleDirectRouteRedirect()` (`:260-295`)
+>   redirects other spellings to the stored URL, so this is **not** duplicate content. `/uber` and `/über` on two pages
+>   do collide, but that is the B-153 duplicate case.
+> - No Symfony 7.4 / PHP 8.4 incompatibility: no removed API and no implicit nullable parameter. With PHP ≥ 8.1
+>   `pdo_mysql` returns native `int`s, so `Document::getById()` gets no string ids (no deprecation per listing row).
+>   The `"source"` string literal in `getTranslations()` breaks only under `ANSI_QUOTES` (I-186).
+> - The admin UI (`pimcore/admin-ui-classic-bundle`), which calls `addTranslation()` / `removeTranslationLink()`, is
+>   not in this repo and `vendor/` is not installed. What the admin validates before linking was **not verified**.
+>   Nothing was executed.
+> - Critical items: none. Bugs: B-338–B-340. Improvements: I-186–I-189.
