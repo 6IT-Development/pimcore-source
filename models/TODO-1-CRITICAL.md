@@ -64,6 +64,15 @@ where a defect originates in the model interplay (`lib/Security/User/User.php`, 
 `lib/Security/User/UserChecker.php`, `lib/Tool/Authentication.php`, `models/Element/PermissionChecker.php:196-210`,
 `models/Notification/Service/NotificationService.php:98-102`), the `users`, `users_permission_definitions` and
 `users_workspaces_*` schemas (`bundles/InstallBundle/dump/install.sql:457-572`) and `config/dao-classmap.php:155-168`
+**(11)** `models/Tool/**` (SettingsStore, SettingsStore/Dao, TmpStore, TmpStore/Dao, Email/Log, Email/Log/Dao,
+Email/Log/Listing/**, Email/Blocklist, Email/Blocklist/Dao, Email/Blocklist/Listing/**), plus the direct consumers where
+a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering()` / `filterLogAddresses()` /
+`getDebugMailRecipients()` (`:462-588`), `lib/Helper/Mail.php::logEmail()` (`:146-197`),
+`lib/Maintenance/Tasks/TmpStoreCleanupTask.php`, `lib/Maintenance/Executor.php:114-128`,
+`lib/Config/LocationAwareConfigRepository.php:180-190`, `lib/Extension/Bundle/Installer/SettingsStoreAwareInstaller.php:95-135`,
+`bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`), the `email_blocklist`, `email_log`, `tmp_store` and
+`settings_store` schemas (`bundles/InstallBundle/dump/install.sql:202-232`, `:409-430`) and
+`tests/Model/Tool/SettingsStoreTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -87,11 +96,12 @@ failing task** and **scheduled tasks executed without a permission check (delete
 elements)**, and in Scope 9 **asset versions unreadable and their shared binaries deleted with the database version
 storage** and **asset version binaries silently replaced by a 1-byte placeholder after an aborted write**, and in
 Scope 10 **admin permission checks crashing and Symfony roles silently dropped once a role was loaded through
-`UserRole::getById()`** and **deactivated, deleted or re-passworded users keeping their admin sessions**.
+`UserRole::getById()`** and **deactivated, deleted or re-passworded users keeping their admin sessions**, and in
+Scope 11 **the email blocklist never being applied (blocklisted recipients still receive every mail)**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1361,3 +1371,60 @@ public function isEqualTo(UserInterface $user): bool
 `isEqualTo()` also compare the password hash, `isActive()`, `isAdmin()` and the role ids (or drop `EquatableInterface`
 and let Symfony compare password and roles; Symfony 7.3+ compares a hash of the password via `__serialize()`, I-117).
 Add a functional test: log in, deactivate the user, next request is unauthenticated (I-121).
+
+---
+
+# Scope 11 – Tool (SettingsStore / TmpStore / Email log / Email blocklist)
+
+> Notes
+> - `SettingsStore.php`, `TmpStore.php`, `Email/Log.php`, `Email/Blocklist.php` and both `Listing.php` files are
+>   `strict_types`; all six DAOs are not (`SettingsStore/Dao.php`, `TmpStore/Dao.php`, `Email/Log/Dao.php`,
+>   `Email/Log/Listing/Dao.php`, `Email/Blocklist/Dao.php`, `Email/Blocklist/Listing/Dao.php`) (I-122).
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found (typed class constants `public const string` are already
+>   used in `SettingsStore`). The remaining modernisation is in TODO-3 (I-122–I-128).
+> - Hydration skips `NULL` columns (`AbstractModel::setValues($data, true)`), and `getObjectVars()` is
+>   `get_object_vars()` (uninitialised typed properties are left out on save). Both matter for B-240 / B-242.
+> - The admin email-log / blocklist UI lives in `pimcore/admin-ui-classic-bundle` (not in this repo); statements about
+>   it are **not verified locally**. `vendor/` is not installed; nothing was executed.
+> - Already covered elsewhere and not repeated: C-11 (video job TmpStore entry not released), CoreBundle C-12 (Twig
+>   sandbox for mail rendering, `lib/Mail.php:593-624`), CoreBundle B-18 (`EmailLogsCleanupCommand` option parsing),
+>   SeoBundle B-27 (`robots.txt` SettingsStore keys).
+
+---
+
+## [ ] C-42 – The email blocklist is never applied: blocklisted recipients still receive every email
+
+**Files:** `lib/Mail.php:462-487`, `:545-562`, `:576-588`; `models/Tool/Email/Blocklist.php:38-48`;
+`models/Tool/Email/Blocklist/Dao.php:33-41`
+
+```php
+foreach ($addresses as $addrKey => $address) {
+    if ($address instanceof Address) {
+        if (Model\Tool\Email\Blocklist::getByAddress($address->getAddress())) {
+            unset($addrKey);                       // unsets the loop variable, not $addresses[$addrKey]
+        }
+    } else {
+        if (Model\Tool\Email\Blocklist::getByAddress($addrKey)) {   // looks up the array key, not the address
+            unset($addresses[$addrKey]);
+        }
+    }
+}
+```
+
+- `sendWithoutRendering()` (also used by `send()`) filters `To`, `Cc`, `Bcc` and `ReplyTo` through
+  `filterLogAddresses()` and writes the result back into the headers. Symfony's `Email::getTo()` / `getCc()` /
+  `getBcc()` always return `Address[]`, so only the first branch runs, and `unset($addrKey)` removes nothing. Every
+  blocklisted address keeps getting mail, and the email log records it as a normal recipient.
+- The blocklist is the only opt-out mechanism Pimcore core offers for document emails / newsletters sent through
+  `Pimcore\Mail` (e.g. hard bounces or unsubscribes added by custom code or the admin UI). Mail to opted-out recipients
+  is a GDPR / CAN-SPAM problem and hurts sender reputation (repeated hard bounces).
+- The second branch is wrong too: for string entries it looks up the numeric array key (`'0'`, `'1'`), never the
+  address, so it can only remove an entry by accident.
+- Nothing in the repo tests the blocklist.
+- After the fix, a message whose recipients are **all** blocklisted ends with empty address headers; Symfony Mailer
+  then throws ("An email must have a "To", "Cc", or "Bcc" header"), which `sendWithoutRendering()` reports as a send
+  failure. That case needs an explicit "skipped" result instead.
+
+**Fix direction:** `unset($addresses[$addrKey])` in the `Address` branch and look up `$address` (the value) in the string
+branch; `array_values()` the result; normalise addresses (trim + lower-case) on blocklist write and lookup (B-244); skip
+sending (and log as "suppressed") when no recipient is left; add a test (I-128).

@@ -63,6 +63,15 @@ where a defect originates in the model interplay (`lib/Security/User/User.php`, 
 `lib/Security/User/UserChecker.php`, `lib/Tool/Authentication.php`, `models/Element/PermissionChecker.php:196-210`,
 `models/Notification/Service/NotificationService.php:98-102`), the `users`, `users_permission_definitions` and
 `users_workspaces_*` schemas (`bundles/InstallBundle/dump/install.sql:457-572`) and `config/dao-classmap.php:155-168`
+**(11)** `models/Tool/**` (SettingsStore, SettingsStore/Dao, TmpStore, TmpStore/Dao, Email/Log, Email/Log/Dao,
+Email/Log/Listing/**, Email/Blocklist, Email/Blocklist/Dao, Email/Blocklist/Listing/**), plus the direct consumers where
+a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering()` / `filterLogAddresses()` /
+`getDebugMailRecipients()` (`:462-588`), `lib/Helper/Mail.php::logEmail()` (`:146-197`),
+`lib/Maintenance/Tasks/TmpStoreCleanupTask.php`, `lib/Maintenance/Executor.php:114-128`,
+`lib/Config/LocationAwareConfigRepository.php:180-190`, `lib/Extension/Bundle/Installer/SettingsStoreAwareInstaller.php:95-135`,
+`bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`), the `email_blocklist`, `email_log`, `tmp_store` and
+`settings_store` schemas (`bundles/InstallBundle/dump/install.sql:202-232`, `:409-430`) and
+`tests/Model/Tool/SettingsStoreTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -72,14 +81,14 @@ Functional defects: wrong results, crashes on reachable input, swallowed errors,
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
 **Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187,
 **Metadata** B-188–B-192, **Notification** B-193–B-200, **Property** B-201–B-205, **Predefined property**
 B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225,
-**User** B-226–B-237.
+**User** B-226–B-237, **Tool** B-238–B-244.
 
 ---
 
@@ -3386,3 +3395,159 @@ random token plus an expiry column (I-117, I-120).
 - `UserRole\Folder::getChildren()` caches the children forever and does not update `hasChildren`; `hasChildren()`
   caches independently, so after `setChildren([])` + `getChildren()` they can disagree.
 - `AbstractListing` documents `@method Model\User|false current()` for role listings too.
+
+---
+
+## Tool (Scope 11)
+
+## [ ] B-238 – `SettingsStore::set()` and `TmpStore` writes swallow every DB error: configs, installer state and admin session data are lost silently
+
+**Files:** `models/Tool/SettingsStore/Dao.php:32-46`; `models/Tool/TmpStore/Dao.php:30-52`;
+`lib/Config/LocationAwareConfigRepository.php:186-189`; `lib/Extension/Bundle/Installer/SettingsStoreAwareInstaller.php:98`,
+`:103`; `models/Element/Service.php:1318`; `bundles/InstallBundle/dump/install.sql:409-430`
+
+- Both DAOs wrap the upsert in `catch (Exception) { return false; }` without logging. No caller checks the `bool`:
+  - `LocationAwareConfigRepository::saveConfig()` (thumbnails, perspectives, custom views, … when the write target is
+    `settings-store`) → the admin UI reports "saved", the config is unchanged, and `stopMessengerWorkers()` still
+    runs;
+  - `SettingsStoreAwareInstaller::markInstalled()` / `markUninstalled()` → a bundle is installed (migrations ran) but
+    stays "not installed", and the next install re-runs the install steps;
+  - `Element\Service::saveElementToSession()` (`TmpStore::set()`) → the editor's unsaved element state is lost; the
+    next request loads the stored version.
+- Reachable failures: `id` / `scope` / `tag` longer than 190 characters (`varchar(190)`, strict SQL mode error;
+  `LocationAwareConfigRepository` keys are user-defined config names), `max_allowed_packet` for large serialized
+  elements, deadlocks, a lost connection in a worker.
+
+**Fix direction:** let the exception propagate (or log it and throw a domain exception); validate id / scope / tag
+length up front; change the return type to `void` (I-123).
+
+## [ ] B-239 – `TmpStore`: scalar types are lost, `add()` is not atomic, `unserialize()` failures become `false`, expired ids are returned
+
+**Files:** `models/Tool/TmpStore.php:84-134`, `:196-203`; `models/Tool/TmpStore/Dao.php:30-80`;
+`lib/Maintenance/Tasks/TmpStoreCleanupTask.php:35-38`; `lib/Maintenance/Executor.php:114-128`;
+`lib/Tool/MaintenanceModeHelper.php:77-100`
+
+- Only arrays and objects are serialized. `int`, `float` and `bool` go to the `longtext` column as strings and come
+  back as `string`: `TmpStore::set('x', false)` → `getData() === ''`, `true` → `'1'`, `5` → `'5'`. The model
+  property is `mixed`, so nothing tells the caller (the maintenance executor and `LogCleanupTask` cast with `(int)`
+  as a workaround).
+- `add()` is "insert if absent" implemented as `get()` + upsert. Two processes calling `add()` for the same id both
+  write, and the second overwrites the first (used as a marker by `MaintenanceModeHelper::addEntry()` and the
+  deferred-thumbnail / video-job code). `add()` also returns `true` without storing when the id exists, so activating
+  maintenance mode for a new session keeps the old session id while an entry exists.
+- `unserialize()` runs without `allowed_classes`. A row whose class was renamed or removed (upgrade, uninstalled
+  bundle; e.g. a stored video `Processor` or thumbnail `Config`) unserialises to `__PHP_Incomplete_Class` or `false`
+  with a warning; `get()` still returns the item, and callers (`Video\Thumbnail\Processor::execute()`,
+  `Asset\Service.php:382-383`) use its data as a config / processor object.
+- `getIdsByTag()` returns expired ids (only `get()` checks `expiryDate`). `update()` defaults to **1 day** while
+  `add()` / `set()` default to **7 days**; `lifetime = 0` means "default", negative lifetimes store an already expired
+  item.
+- `date` / `expiryDate` are nullable in the schema; a `NULL` is skipped on hydration and `get()` →
+  `getExpiryDate()` → `Error` (uninitialised `int`).
+
+**Fix direction:** serialize every non-string value (or store a type column like `SettingsStore`); `INSERT … ON
+DUPLICATE KEY` free "add" via `INSERT IGNORE` + affected rows; `unserialize($data, ['allowed_classes' => …])` and treat
+failures as "not found"; filter `expiryDate` in `getIdsByTag()`; one default lifetime (I-124).
+
+## [ ] B-240 – `SettingsStore`: `NULL` data crashes `get()`, `getScope()` is never `null`, `settype()` coerces silently
+
+**Files:** `models/Tool/SettingsStore.php:146-182`; `models/Tool/SettingsStore/Dao.php:59-74`;
+`tests/Model/Tool/SettingsStoreTest.php:45`
+
+- `getById()` hydrates with `assignVariablesToModel()` and then calls `setData($item['data'] ?? null)`. `data` is a
+  nullable `longtext`; for a `NULL` row (migrations and manual SQL write the table directly) `setData(null)` →
+  `TypeError` (`float|bool|int|string`), so `SettingsStore::get()` throws instead of returning `null` / the item.
+- `setData()` runs twice during hydration (once from `setValues()` before `type` is known, depending on column order,
+  then again from the DAO); the first call stores the raw string.
+- `setScope(null)` stores `''`, so `getScope(): ?string` never returns `null`; the test compares with `assertEquals()`
+  and does not notice.
+- `settype()` never fails: `'abc'` as `int` → `0`, `'false'` as `bool` → `true`, `'1.5e3'` as `int` → `1500`.
+  `SettingsStore::set()` does not check that `$data` matches `$type` (`set('x', 'abc', TYPE_INTEGER)` stores `abc`, and
+  reading returns `0`).
+- An invalid `type` in the DB (`enum` prevents it, but a schema without the enum from older installs does not) throws a
+  generic `Exception` from `setType()` during hydration, which `get()` does not catch.
+
+**Fix direction:** treat `NULL` data as "not set" or as the type's empty value; hydrate in one step (type first);
+validate `$data` against `$type` on write; keep `null` scope or change the getter to `string` (I-123).
+
+## [ ] B-241 – Email log rows end up empty: field overflow and DB errors are swallowed after an empty `INSERT`
+
+**Files:** `models/Tool/Email/Log/Dao.php:59-115`; `models/Tool/Email/Log.php:381-402`; `lib/Helper/Mail.php:146-197`;
+`bundles/InstallBundle/dump/install.sql:211-232`
+
+- `save()` first runs `INSERT INTO email_log () VALUES ()` (`create()`), then one `UPDATE` with all fields. The
+  `UPDATE` is wrapped in `catch (Exception) { Logger::emerg(...) }`, so any failure leaves a row with only an id
+  (no recipients, subject, date) that the admin grid shows as an empty entry, while the HTML / text bodies are still
+  written to storage under that id.
+- Failures are easy to hit with strict SQL mode: `params` is `TEXT` (64 KB) and holds the JSON of all mail params
+  (objects, arrays, rendered snippets); `subject` and `from` are `varchar(500)`, `replyTo` `varchar(255)`.
+- `json_encode()` of the params can fail (invalid UTF-8 in a param, depth) and returns `false`, which is written as
+  `''`.
+- `requestUri` is stored HTML-escaped (`htmlspecialchars()` in `logEmail()`), so the admin shows `&amp;` and any
+  search on the URI must escape too.
+
+**Fix direction:** one `INSERT` with all columns; `JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE`; truncate or
+widen the columns (`MEDIUMTEXT` for params, I-127); let the exception reach `Mail::sendWithoutRendering()`, which already
+catches and logs it; store the raw URI.
+
+## [ ] B-242 – Loaded email logs throw on most getters; `getParams()` returns a different structure and re-saving double-wraps it
+
+**Files:** `models/Tool/Email/Log.php:47-117`, `:142-145`, `:178-181`, `:186-202`, `:225-232`, `:251-254`, `:273-276`,
+`:297-300`, `:321-368`, `:471-474`; `models/Tool/Email/Log/Dao.php:117-159`
+
+- `requestUri`, `from`, `subject`, `sentDate`, `params`, `modificationDate`, `emailLogExistsHtml/Text` are non-nullable
+  typed properties without defaults. Hydration skips `NULL` columns:
+  - `modificationDate` has **no column**, so `getModificationDate()` throws on every loaded log;
+  - `requestUri` is `NULL` for every mail sent from CLI, cron, maintenance or a Messenger worker (`logEmail()` sets it
+    only when `$_SERVER['REQUEST_URI']` exists) → `getRequestUri()` throws;
+  - `from` is `NULL` when the message had no From (before the default is applied in some paths) → `getFrom()` throws.
+  On a new, unsaved log `getHtmlLog()` / `getTextLog()` / `getParams()` throw too.
+- `getParams()` documents "Returns the dynamic parameter", but the stored JSON is the **tree-grid format** produced by
+  `prepareLoggingData()` (`[{key, data|children}]`), not the original params. Calling `save()` on a loaded log runs
+  that array through `prepareLoggingData()` again, nesting every entry one level deeper (`key` → `0`, `data` → child
+  `data`). `json_decode()` failure → `null` → `TypeError` (`: array`).
+- `prepareLoggingData()` drops `bool` and `float` values and objects without `getId()` (enums, `Stringable`, value
+  objects): the key is logged with no value. `createJsonLoggingObject()` has a dead branch that returns a JSON string
+  which `save()` would encode a second time.
+- `getBodyHtml(): ?string` / `setReplyTo(string)` / `getReplyTo(): ?string` disagree on nullability.
+
+**Fix direction:** nullable properties with `null` defaults; drop `modificationDate` or add the column; separate
+`getParamsTree()` from the raw params and never re-encode a loaded tree; log scalars of all types and `Stringable` /
+`BackedEnum` values (I-125).
+
+## [ ] B-243 – Email log storage and cleanup: orphaned body files, `null` items in listings, the whole history loaded at once
+
+**Files:** `models/Tool/Email/Log.php:186-202`, `:283-340`, `:373-379`; `models/Tool/Email/Log/Listing/Dao.php:33-66`;
+`bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`; `bundles/InstallBundle/dump/install.sql:231`
+
+- `email_log.documentId` has `ON DELETE CASCADE`: deleting an email document deletes its log rows in the DB, but the
+  `email-<id>-html.log` / `-txt.log` files stay in the `email_log` storage forever (nothing iterates files). These
+  files contain full message bodies (personal data).
+- `Listing\Dao::load()` adds the result of `Log::getById()` unconditionally; a row deleted in between (cleanup command,
+  cascade) puts `null` into the list. `EmailLogsCleanupCommand` then calls `null->delete()` → `Error`.
+- `EmailLogsCleanupCommand` calls `load()` for all matching rows at once; each `getById()` adds two storage
+  `fileExists()` calls (S3 / remote storage round trips). On a large backlog this runs out of memory or time, and
+  there is no maintenance task, so logs and bodies grow without bound unless the command is scheduled manually.
+- `getTotalCount()` returns `0` on SQL errors (both email listings).
+- File names are built from `getId()`; for an unsaved log they are `email--html.log` / `email--txt.log`.
+
+**Fix direction:** delete files in a `POST_DELETE` path that also covers document deletion (or drop the cascade and
+clean up in code); skip `null` in `load()`; batch the cleanup (`LIMIT` + loop) and add a retention maintenance task
+(I-126).
+
+## [ ] B-244 – Email blocklist: addresses are not normalised; listing and getters have side effects
+
+**Files:** `models/Tool/Email/Blocklist.php:38-86`; `models/Tool/Email/Blocklist/Dao.php:33-76`;
+`models/Tool/Email/Blocklist/Listing/Dao.php:33-56`
+
+- `setAddress()` stores the string as given; `getByAddress()` compares it with `=`. Case is ignored only through the
+  column collation; leading / trailing spaces, `mailto:` prefixes or display-name forms (`"Name <a@b.c>"`) never
+  match. No validation that the value is an email address at all.
+- `getCreationDate()` / `getModificationDate()` write `time()` into the model when empty (getter side effect); the DAO
+  relies on it, so `if (!$this->model->getCreationDate())` in `save()` is always false.
+- `Listing\Dao::load()` re-queries every row by address (N+1) and silently drops vanished rows; `getTotalCount()`
+  hides SQL errors.
+- `@method void delete()*` in the listing docblock (stray `*`); the listing has no `delete()`.
+
+**Fix direction:** normalise (`trim`, lower-case, `Address::create()->getAddress()`) on write and lookup and reject
+invalid addresses; hydrate listings from one `SELECT *` (I-125).

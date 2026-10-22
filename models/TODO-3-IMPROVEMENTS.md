@@ -61,6 +61,15 @@ where a defect originates in the model interplay (`lib/Security/User/User.php`, 
 `lib/Security/User/UserChecker.php`, `lib/Tool/Authentication.php`, `models/Element/PermissionChecker.php:196-210`,
 `models/Notification/Service/NotificationService.php:98-102`), the `users`, `users_permission_definitions` and
 `users_workspaces_*` schemas (`bundles/InstallBundle/dump/install.sql:457-572`) and `config/dao-classmap.php:155-168`
+**(11)** `models/Tool/**` (SettingsStore, SettingsStore/Dao, TmpStore, TmpStore/Dao, Email/Log, Email/Log/Dao,
+Email/Log/Listing/**, Email/Blocklist, Email/Blocklist/Dao, Email/Blocklist/Listing/**), plus the direct consumers where
+a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering()` / `filterLogAddresses()` /
+`getDebugMailRecipients()` (`:462-588`), `lib/Helper/Mail.php::logEmail()` (`:146-197`),
+`lib/Maintenance/Tasks/TmpStoreCleanupTask.php`, `lib/Maintenance/Executor.php:114-128`,
+`lib/Config/LocationAwareConfigRepository.php:180-190`, `lib/Extension/Bundle/Installer/SettingsStoreAwareInstaller.php:95-135`,
+`bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`), the `email_blocklist`, `email_log`, `tmp_store` and
+`settings_store` schemas (`bundles/InstallBundle/dump/install.sql:202-232`, `:409-430`) and
+`tests/Model/Tool/SettingsStoreTest.php`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -69,12 +78,13 @@ Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modern
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
 DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100),
-Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121).
+Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121),
+Scope 11 in **O** Tool (I-122–I-128).
 
 ---
 
@@ -1669,3 +1679,112 @@ Add model tests for:
   cleanup and rollback (B-229); retry after a failed save, legacy names (B-230); `getImage()` with two sizes
   (B-231); `setTwoFactorAuthentication('secret', null)` keeps `required` (B-232); `generatePermissionList()` with no
   definitions (B-233); workspace with `NULL` `cpath` and duplicate `cid` (B-234).
+
+---
+
+## O – Tool (Scope 11)
+
+### [ ] I-122 – Strictness and native types (PHP 8.4)
+
+- Add `declare(strict_types=1)` to the six DAOs. Prerequisites that rely on coercion today: `Email\Log\Dao::getById()`
+  (`$id != null`), `prepareLoggingData(string $key, …)` called with integer array keys, the `in_array()` column loops,
+  `Log\Listing\Dao::load()` passing `fetchFirstColumn()` strings to `Log::getById(int)` (a `TypeError` once the DAO is
+  strict → cast with `(int)`).
+- `Email\Log` / `Email\Blocklist` setters: mix of `void` and fluent `static` → all `static`; `SettingsStore` /
+  `TmpStore` setters are `void` (internal hydration only) → `static` or `private`.
+- `SettingsStore::get(): ?SettingsStore` / `TmpStore::get(): ?TmpStore` / `Log::getById(): ?Log` /
+  `Blocklist::getByAddress(): ?Blocklist` → `?self` / `?static`; `SettingsStore::delete(): int|string` leaks the DBAL
+  return type → `bool` ("something was deleted") or `void`.
+- `final class SettingsStore` / `TmpStore` with `protected` members and a `protected static ?self $instance` →
+  `private`; the static singleton exists only to reach the DAO (I-123).
+- `Email\Log::$emailLogExistsHtml` / `Text` are `int` 0/1 with "Contains 1 if …" docblocks → `bool` with
+  `hasHtmlLog()` / `hasTextLog()`; `setEmailLogExistsHtml()` takes no argument (a "setter" that queries storage) →
+  rename `refreshLogFileFlags()`.
+- PHP 8.4 asymmetric visibility for `Email\Log::$id` (`public private(set) ?int`) and `SettingsStore::$id` / `$scope`.
+- Remove the one-line "Returns the …" docblocks that repeat the signature; keep the ones that explain units
+  (timestamps).
+
+### [ ] I-123 – `SettingsStore` API
+
+- Backed enum `SettingsStoreType: string { Bool = 'bool'; Int = 'int'; Float = 'float'; String = 'string'; }` replaces
+  the four `TYPE_*` constants, `ALLOWED_TYPES` and `validateType()`; keep the constants as deprecated aliases
+  (`public const string TYPE_BOOLEAN = SettingsStoreType::Bool->value`).
+- Typed accessors instead of `getData(): float|bool|int|string`: `getString()`, `getInt()`, `getBool()`, `getFloat()`
+  that throw on a type mismatch; `set()` validates `$data` against `$type` (B-240) and returns `void` (B-238).
+- Replace the static facade + singleton with an injectable `SettingsStoreRepository` service (Symfony autowiring,
+  `ResetInterface` if it caches), keeping `SettingsStore::get()` / `set()` as thin static wrappers for BC. Callers
+  that read the same key on every request (`SettingsStoreAwareInstaller::isInstalled()`, SeoBundle) can then use a
+  request-scoped cache (see SeoBundle I-items).
+- `JSON` type for structured values: `LocationAwareConfigRepository` stores `json_encode($data)` as `string` and
+  decodes it itself; a `TYPE_JSON` (`json` enum value) with `JSON_THROW_ON_ERROR` removes that duplication.
+- `getById()` hydrates through `setValues()` and then calls `setData()` again → one explicit hydration
+  (`type` first, then `data`).
+
+### [ ] I-124 – `TmpStore` API and cleanup
+
+- Same singleton / static facade as `SettingsStore` → `TmpStoreRepository` service; keep the static methods for BC.
+- Consider replacing it with Symfony Cache (`TagAwareCacheInterface` on a `DoctrineDbalAdapter` / `PdoAdapter` pool):
+  it already provides lifetimes, tags, atomic `get()` with a callback, and pruning (`PruneableInterface`, run by
+  `cache:pool:prune`). The remaining TmpStore-specific use is "list ids by tag" (`getIdsByTag()`), used by the
+  video / thumbnail processors.
+- If kept: a `type` column (or always serialize) so scalars round-trip (B-239); `add()` as one atomic `INSERT IGNORE`;
+  `unserialize()` with `allowed_classes` (each caller passes the classes it expects, e.g. `[Video\Thumbnail\Processor::class]`)
+  — today any object graph stored in `tmp_store` is revived on read (object-injection gadget if a row can be written
+  by an attacker, e.g. via a SQL injection elsewhere); one default lifetime constant; `get()` filters
+  `expiryDate > NOW` in SQL instead of loading and deleting.
+- `TmpStoreCleanupTask` deletes all expired rows in one statement; on large tables (session-stored elements are large
+  serialized blobs) → delete in batches (`LIMIT 1000` loop).
+- `getDefaultLifetime()` is a method returning a constant → `private const int DEFAULT_LIFETIME = 604800`.
+
+### [ ] I-125 – Email log model and DAO
+
+- Split the persistence of the log row (DB) from the bodies (storage) into an `EmailLogRepository` service with the
+  `pimcore.email_log.storage` Flysystem operator injected (no `Storage::get('email_log')` service location in the
+  model, called four times in `Log`).
+- `Dao::save()`: replace "`getObjectVars()` + `getValidTableColumns()` + getter lookup by name + `quoteIdentifier()`"
+  with an explicit column map; one `INSERT` for new logs (B-241).
+- `prepareLoggingData()` / `createJsonLoggingObject()` are presentation logic for the admin tree grid (stdClass with
+  `key` / `data` / `children`) inside the DAO. Move it into a `MailParamsNormalizer` (Symfony Serializer normalizer)
+  and store a stable schema (`list<array{key: string, type: string, value?: scalar|null, id?: int, class?: string,
+  children?: list<…>}>`). Call it as `$this->…` instead of `self::` on instance methods.
+- `Log::getById()` checks two files in storage per load; listings and the cleanup command pay for it N times → load
+  the flags lazily (`hasHtmlLog()` on first use) or store them in the row (`hasHtml TINYINT`).
+- `Email\Log\Listing\Dao::load()` → hydrate from one `SELECT *` (like `getDataArray()` already does).
+- Blocklist: the same N+1 listing pattern; `Blocklist` is `@internal` but used by `Pimcore\Mail` and the admin UI → make
+  it public API or move the check into a `MailRecipientFilter` service with a `isBlocked(string $address): bool`
+  method that can be backed by one `WHERE address IN (…)` query per mail instead of one query per recipient (C-42).
+
+### [ ] I-126 – Email log retention and privacy
+
+- Logs (recipients, rendered bodies, params incl. personal data from objects) are kept forever unless someone runs
+  `pimcore:email:cleanup` by hand. Add a maintenance task with a configurable retention
+  (`pimcore.email.log.retention_days`, default e.g. 30/90), batched deletes and file cleanup (B-243).
+- Optional per-mail opt-out of body logging (`Mail::disableBodyLogging()`), and masking of `Bcc` in the log.
+- `requestUri`, `from`, `to`, … are stored as formatted strings (`formatDebugReceivers()`); store structured JSON
+  (`[{address, name}]`) so the admin can search / link without parsing.
+
+### [ ] I-127 – Schema: `email_log`, `email_blocklist`, `tmp_store`, `settings_store`
+
+- `email_log.params TEXT` → `MEDIUMTEXT` / `JSON`; `subject` / `from` `varchar(500)` and `replyTo varchar(255)`
+  inconsistent with `to` / `cc` / `bcc` `LONGTEXT` (B-241).
+- `email_log.sentDate` nullable although always set; no `modificationDate` column although the model has the property
+  (B-242) → drop the property or add the column.
+- The `FULLTEXT` index includes `params` (JSON of the tree format: keys like `"type":"simple"` pollute the index).
+- `email_log.documentId` `ON DELETE CASCADE` deletes history together with the document (B-243) → `ON DELETE SET NULL`
+  keeps the audit trail.
+- `email_blocklist.address varchar(190)` — RFC 5321 allows 254 characters; `creationDate` / `modificationDate`
+  nullable but always set.
+- `tmp_store.date` / `expiryDate` nullable but required (B-239); `serialized tinyint(2)` → `tinyint(1)` / a `type`
+  column (I-124).
+- `settings_store.data longtext` nullable → `NOT NULL` or explicit `NULL` semantics (B-240).
+
+### [ ] I-128 – Tests
+
+- Only `tests/Model/Tool/SettingsStoreTest.php` exists. Its `getScope()` check uses `assertEquals()` (passes for
+  `''` vs `null`); use `assertSame()`.
+- Add: blocklist filtering in `Mail::sendWithoutRendering()` for `To` / `Cc` / `Bcc`, mixed-case and padded addresses,
+  "all recipients blocked" (C-42, B-244); `SettingsStore` with a `NULL` data row, type mismatch on `set()`, DB error
+  on `set()` surfaces (B-238, B-240); `TmpStore` round trip of `int` / `bool` / `float` / array / object, concurrent
+  `add()`, expired ids in `getIdsByTag()`, class-not-found on unserialize (B-239); email log with oversized params, a
+  CLI-sent mail (no request URI) loaded back and all getters called, `save()` of a loaded log keeps `params`
+  unchanged, document delete leaves no body files, cleanup with a concurrently deleted row (B-241–B-243).
