@@ -57,6 +57,13 @@ originates in the model interplay (`lib/Maintenance/Tasks/VersionsCleanupTask.ph
 `Version::disable()` / `enable()` callers, `lib/Helper/LongRunningHelper.php::cleanUp()`), the `versions` schema
 (`bundles/InstallBundle/dump/install.sql:576-600`), the `versionsData` table from
 `doc/18_Tools_and_Features/01_Versioning.md:79-87` and `tests/Service/Element/VersionTest.php`
+**(10)** `models/User.php`, `models/UserInterface.php` and `models/User/**` (AbstractUser, AbstractUser/Dao,
+AbstractUserInterface, UserRole, UserRole/Dao, UserRole/Folder, UserRoleInterface, Dao, Folder, Role, Role/Dao,
+Role/Folder/**, Role/Listing/**, Listing/**, Service, Permission/Definition/**, Workspace/**), plus the direct consumers
+where a defect originates in the model interplay (`lib/Security/User/User.php`, `lib/Security/User/UserProvider.php`,
+`lib/Security/User/UserChecker.php`, `lib/Tool/Authentication.php`, `models/Element/PermissionChecker.php:196-210`,
+`models/Notification/Service/NotificationService.php:98-102`), the `users`, `users_permission_definitions` and
+`users_workspaces_*` schemas (`bundles/InstallBundle/dump/install.sql:457-572`) and `config/dao-classmap.php:155-168`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -78,10 +85,13 @@ after a notification error leaves a DB transaction open** and **SQL injection in
 user's notifications**, and in Scope 8 **all scheduled publishing / unpublishing / deletion stalled by one
 failing task** and **scheduled tasks executed without a permission check (deleted users, versions of other
 elements)**, and in Scope 9 **asset versions unreadable and their shared binaries deleted with the database version
-storage** and **asset version binaries silently replaced by a 1-byte placeholder after an aborted write**.
+storage** and **asset version binaries silently replaced by a 1-byte placeholder after an aborted write**, and in
+Scope 10 **admin permission checks crashing and Symfony roles silently dropped once a role was loaded through
+`UserRole::getById()`** and **deactivated, deleted or re-passworded users keeping their admin sessions**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
+Scope 10: `70fc218e66`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1244,3 +1254,110 @@ instead of writing a probe file. Write to a temporary name and `move()` it into 
 `versions` row, or insert the row in a transaction and delete the files when the storage write fails. Before reusing
 an existing `.bin` / binary row, check at least its size, and verify `binaryFileHash` on restore. Related: C-07,
 C-38, B-218.
+
+---
+
+# Scope 10 – User
+
+> Notes
+> - `models/User.php`, `UserInterface.php` and all non-DAO files in `models/User/**` are `strict_types`. The 11 DAO files
+>   are not (`AbstractUser/Dao.php`, `Dao.php`, `UserRole/Dao.php`, `Role/Dao.php`, `Role/Folder/Dao.php`,
+>   `Listing/Dao.php`, `Listing/AbstractListing/Dao.php`, `Role/Listing/Dao.php`, `Workspace/Dao.php`,
+>   `Permission/Definition/Dao.php`, `Permission/Definition/Listing/Dao.php`) (I-110).
+> - Hydration goes through `AbstractModel::setValues($data, true)` (`lib/Model/Dao/DaoTrait.php:40-43`): `NULL` columns
+>   are **skipped**, so non-nullable setters (`setParentId(int)`, `setLastLogin(int)`, …) do not throw on load, but the
+>   property keeps its default or stays uninitialised (B-234).
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility was found. `Security\User\User::eraseCredentials()` (deprecated since
+>   Symfony 7.3) already carries `#[\Deprecated]`; `AbstractUser\Dao::setLastLoginDate()` already uses the PHP 8.4
+>   `new DateTime()->…` syntax. The remaining modernisation is in TODO-3 (I-110–I-121).
+> - The admin firewall (`security.yaml`, `_security_pimcore_admin`), the user / role editor and the 2FA setup controllers
+>   live in `pimcore/admin-ui-classic-bundle`, which is not in this repo. Statements about them are **not verified
+>   locally**. `vendor/` is not installed; nothing was executed.
+> - `User::getDefinedPerspectiveNames()` was added in this fork (`77d25eed5a`, "User perspectives without admin bundle
+>   dependency"); it reads `pimcore.perspectives.definitions` and the `pimcore_perspectives` settings-store scope.
+> - Already covered elsewhere and not repeated: C-20 (translation edit languages `[]` treated as "unrestricted"),
+>   C-37 (scheduled tasks of deleted users), B-114 (`authenticateSession()` from the model, `setLastLoginDate()` side
+>   effect), B-193 (notifications of deleted users), CoreBundle B-19 (`ResetPasswordCommand`: non-interactive `TypeError`,
+>   no password policy).
+
+---
+
+## [ ] C-40 – `UserRole::getById()` / `AbstractUser::getById()` cache a `User` object for role ids: afterwards `Role::getById()` returns `null`, permission checks crash and roles silently disappear
+
+**Files:** `models/User/AbstractUser.php:44-82`, `:288-296`; `models/User.php:276`, `:288`, `:301`, `:535`, `:592`,
+`:633`; `models/Element/PermissionChecker.php:203-204`; `lib/Security/User/User.php:63-67`;
+`models/Notification/Service/NotificationService.php:98-102`; `config/dao-classmap.php:155`
+
+```php
+$reflectionClass = new ReflectionClass(static::class);
+if ($reflectionClass->isAbstract()) {           // AbstractUser, UserRole
+    $user = new Model\User();                   // always a User, whatever the row is
+    $user->setType('');
+}
+$user->getDao()->getById($id);                  // no type filter → loads a role / folder row into a User
+$className = Service::getClassNameForType($user->getType());
+if (get_class($user) !== $className && is_a($className, Model\Element\ElementInterface::class, true)) {
+    $user = $className::getById($user->getId());   // never runs: no user class is an ElementInterface
+}
+RuntimeCache::set($cacheKey, $user);            // 'user_<id>' now holds a User with type 'role'
+```
+
+- `UserRole` is abstract. `User::getMergedPerspectives()` and both `getMergedWebsiteTranslationLanguages*()` call
+  `User\UserRole::getById($roleId)` (`User.php:535`, `:592`, `:633`). For a role id this builds a `Model\User`, fills
+  it with the role row (type `role`, workspaces loaded) and caches it under `user_<roleId>`. The `is_a(…,
+  ElementInterface)` guard was meant to re-load the right class, but `Role` / `Folder` are not elements, so it is
+  dead code.
+- Every later `Role::getById($roleId)` in the same request / process gets the cached `User`. `typeMatch()` rejects it
+  (`User` is not `instanceof Role`) and returns `null`:
+  - `User::isAllowed($key)` for a non-admin who lacks `$key` directly → `$role->getPermission()` on `null` → `Error`
+    (`User.php:276`); the same for `class` / `docType` checks (`:288`, `:301`). Example: the admin UI resolves the
+    start perspective (`getFirstAllowedPerspective()`) and then checks a permission in the same request → 500.
+  - `PermissionChecker::getUserPermissions()` (`PermissionChecker.php:203-204`) → `Error`.
+  - `Security\User\User::getRoles()` (`User.php:63-67`) silently skips the role: the `ROLE_<NAME>` Symfony roles of the
+    user are missing, so `access_control` / `isGranted('ROLE_…')` deny access without an error.
+  - `NotificationService::sendToGroup()` throws "No group found with the ID …" for an existing role.
+- The outcome depends on call order: if `Role::getById()` ran first, the cache holds a `Role` and everything works.
+  Worker runtimes and Messenger consumers keep the poisoned entry until the runtime cache is cleared, so the failure
+  shows up in unrelated later requests.
+- The same path returns a `User` object for **folder** ids (`AbstractUser::getById($userFolderId)`), and
+  `User::getById($folderId)` then returns that cached object as a "user" with type `userfolder` (it passes
+  `typeMatch()`), while a fresh `User::getById($folderId)` returns `null`.
+- A deleted or stale role id makes the same call sites fail with `null` independent of the cache (B-226).
+
+**Fix direction:** resolve the class from the row before instantiating (one `SELECT`, then `Service::getClassNameForType()`
+→ `new $className()` → hydrate), and cache only the correctly typed object. Replace `UserRole::getById()` in `User` with
+`Role::getById()`. Make all role lookups null-safe (B-226). Add a regression test that calls `UserRole::getById()` and
+then `Role::getById()` for the same id (I-121). Related: I-115.
+
+---
+
+## [ ] C-41 – Deactivating a user, changing their password or roles does not end their admin sessions: `isEqualTo()` compares only the id
+
+**Files:** `lib/Security/User/User.php:53-70`, `:84-87`; `lib/Security/User/UserProvider.php:37-48`;
+`lib/Security/User/UserChecker.php:31-60`; `lib/Tool/Authentication.php:36-68`, `:181-184`
+
+```php
+public function isEqualTo(UserInterface $user): bool
+{
+    return $user instanceof self && $user->getId() === $this->getId();
+}
+```
+
+- Symfony's `ContextListener::hasUserChanged()` delegates **completely** to `EquatableInterface::isEqualTo()` when the
+  user implements it. The built-in checks (password hash changed, roles changed, identifier changed) are skipped.
+- `UserChecker` (which calls `Authentication::isValidUser()`: `active`, password set) runs only on login, not on
+  session refresh. `refreshUser()` reloads the model but nobody checks it again.
+- Result: an admin who deactivates a compromised account, resets its password or removes its roles / admin flag does
+  **not** log out the existing sessions. They keep working until the session expires. The `ROLE_*` names stored in the
+  token are also never refreshed, so role-based `access_control` keeps the old roles.
+- Only `Authentication::authenticateSession()` (frontend requests by an admin) checks `isValidUser()` after
+  refreshing (`:58-63`). The admin firewall itself (in admin-ui-classic-bundle, not verified locally) relies on the
+  Symfony listener.
+- A **deleted** user is not handled either: `refreshUser()` passes the `null` from `PimcoreUser::getById()` to
+  `buildUser(PimcoreUser)` → `TypeError` instead of `UserNotFoundException`. Symfony would log out on
+  `UserNotFoundException`; with the `TypeError` every request of that session ends in a 500.
+
+**Fix direction:** in `refreshUser()` throw `UserNotFoundException` for a missing user and for `!isValidUser()`. In
+`isEqualTo()` also compare the password hash, `isActive()`, `isAdmin()` and the role ids (or drop `EquatableInterface`
+and let Symfony compare password and roles; Symfony 7.3+ compares a hash of the password via `__serialize()`, I-117).
+Add a functional test: log in, deactivate the user, next request is unauthenticated (I-121).

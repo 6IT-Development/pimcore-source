@@ -54,6 +54,13 @@ originates in the model interplay (`lib/Maintenance/Tasks/VersionsCleanupTask.ph
 `Version::disable()` / `enable()` callers, `lib/Helper/LongRunningHelper.php::cleanUp()`), the `versions` schema
 (`bundles/InstallBundle/dump/install.sql:576-600`), the `versionsData` table from
 `doc/18_Tools_and_Features/01_Versioning.md:79-87` and `tests/Service/Element/VersionTest.php`
+**(10)** `models/User.php`, `models/UserInterface.php` and `models/User/**` (AbstractUser, AbstractUser/Dao,
+AbstractUserInterface, UserRole, UserRole/Dao, UserRole/Folder, UserRoleInterface, Dao, Folder, Role, Role/Dao,
+Role/Folder/**, Role/Listing/**, Listing/**, Service, Permission/Definition/**, Workspace/**), plus the direct consumers
+where a defect originates in the model interplay (`lib/Security/User/User.php`, `lib/Security/User/UserProvider.php`,
+`lib/Security/User/UserChecker.php`, `lib/Tool/Authentication.php`, `models/Element/PermissionChecker.php:196-210`,
+`models/Notification/Service/NotificationService.php:98-102`), the `users`, `users_permission_definitions` and
+`users_workspaces_*` schemas (`bundles/InstallBundle/dump/install.sql:457-572`) and `config/dao-classmap.php:155-168`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -61,12 +68,13 @@ Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.
 Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modernisation. Nothing here is broken today.
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
+Scope 10: `70fc218e66`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
 DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100),
-Scope 9 in **M** Version (I-101–I-109).
+Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121).
 
 ---
 
@@ -1481,3 +1489,183 @@ Add model tests for:
 - Maintenance: a version whose delete throws does not block the others; the auto-save cleanup survives a concurrently
   deleted version; `steps` keeps the configured number of versions (B-223); deleting an element removes its auto-save
   versions (B-224).
+
+---
+
+## N – User (Scope 10)
+
+### [ ] I-110 – Strictness and native types (PHP 8.4)
+
+- Add `declare(strict_types=1)` to the 11 DAO files listed in the TODO-1 Scope 10 notes. Prerequisites that rely on
+  coercion today: `hasChildren()` (`(bool)` of a `fetchOne()` string), `getTotalCount()` (already `(int)`), the
+  `getValidTableColumns()` / `in_array()` loops in `AbstractUser\Dao::update()` and `Workspace\Dao::save()`.
+- Return types: `setPasswordRecoveryToken(): User` and `setDatetimeLocale(): User` → `static`; the `void` setters
+  (`setContentLanguages()`, `setActivePerspective()`, `setKeyBindings()`, `setTwoFactorAuthentication()`,
+  `setProvider()`, `setImage()`, `Workspace\DataObject::setLEdit()` / `setLView()` / `setLayouts()`) → fluent
+  `static` like the rest; `getImage()` has no return type → `mixed` with `@return resource` (or a typed stream, I-116);
+  `getById(): static|null` → `?static`; `Definition::create(): self|static` → `static`; `getByKey(): ?Definition`
+  → `?static`.
+- Contract mismatches: `setUsername(?string)` vs `setName(string)` (B-228); `setParentId(int)` vs `getParentId(): ?int`
+  and the nullable column; `setKeyBindings(string)` vs `getKeyBindings(): ?string`; `setLastLogin(int)` vs `?int`.
+- `final class User` has only `protected` members → `private` where not used by the parents. The parents are not
+  final; `Role` / `Folder` / `Role\Folder` could be `final`.
+- PHP 8.4 asymmetric visibility: `public private(set) ?int $id` and `public private(set) string $type` (only the DAO /
+  constructor assign them) replace `setId()` / `setType()` as public API; `type` should not be mutable at all (C-40).
+- PHP 8.4 property hooks for the eleven boolean workspace flags and the user preference flags (`welcomescreen`,
+  `closeWarning`, `memorizeTabs`, `allowDirtyClose`) instead of 30+ getter/setter pairs, keeping the methods as
+  deprecated aliases.
+- Strict comparisons: `==` in `isAllowed()` (`:271`, `:284`, `:297`, `:310`), loose `in_array()` / `array_search()`
+  in `isAllowed()`, `setPermission()`, `getPermission()`, `cleanupUserRoleRelations()`, `UserRole\Dao::getById()`.
+- Add `#[\Override]` to the overriding methods (`User::getPermission()`, `UserRole::update()`, `Folder::getChildren()`,
+  the DAO `getById()` / `getByName()` / `delete()` overrides).
+- `AbstractUser\Dao::setLastLoginDate()`: `new DateTime()->getTimestamp()` → `time()` and an initialised `$data`.
+
+### [ ] I-111 – Backed enums for user types and permission check types
+
+- `enum UserType: string { case User = 'user'; case UserFolder = 'userfolder'; case Role = 'role'; case RoleFolder =
+  'rolefolder'; }` with `className()` replaces `Service::getClassNameForType()`, the `protected string $type`
+  defaults, the `['user', 'role']` checks in `UserRole\Dao`, the `role`/`rolefolder` branch in `delete()` and the
+  string concatenation in `AbstractListing\Dao::getCondition()` (`"… IN ('" . implode("','", $types) . "')"`).
+- `enum PermissionCheckType: string { Permission, Class, DocType, Perspective }` for `isAllowed(string $key, string
+  $type = 'permission')`; an unknown type silently returns `false` today.
+- Element type for workspaces (`asset` / `document` / `object`) shares the `ElementType` enum proposed in I-86 / I-93 /
+  I-101; `UserRole\Dao::loadWorkspaces()` builds the class name by string concatenation and calls
+  `setWorkspaces{Type}()` dynamically.
+
+### [ ] I-112 – Permission resolution as a service
+
+- `User::isAllowed()`, `getPermission()`, `getMergedPerspectives()`, `getMergedWebsiteTranslationLanguages*()` and
+  `PermissionChecker::getUserPermissions()` each re-load the roles and merge lists by hand (four copies of the same
+  loop). Move this into one `UserPermissionResolver` service: load all roles of a user once (`Role\Listing` with
+  `id IN (…)`), compute an immutable `EffectivePermissions` value object (permissions, classes, docTypes,
+  perspectives, translation languages), cache it per user id and invalidate it on `UserRoleEvents::POST_UPDATE` /
+  `POST_DELETE` of the user **or** one of its roles; implement `ResetInterface` for worker runtimes.
+- Decide and document the merge semantics. Permissions are a union (more roles = more rights). For `classes`,
+  `docTypes`, perspectives and translation languages "empty = everything" is applied **after** merging, so adding a
+  restricted role to an unrestricted user narrows their rights, and an unrestricted role contributes nothing when
+  another role is restricted. Either treat "empty" per source as "everything" or name it explicitly
+  (`null` = unrestricted, `[]` = nothing; see C-20).
+- `getPermission()` (own permissions only) vs `isAllowed()` (with roles) is easy to misuse (B-237): rename to
+  `hasOwnPermission()` and keep `getPermission()` as a deprecated alias, or make it role-aware.
+- Symfony 7.4: expose the checks as a security voter (`Voter<string, User>` for `PIMCORE_PERMISSION_<key>`), so
+  controllers can use `#[IsGranted]` and `isGranted()` instead of calling the model.
+
+### [ ] I-113 – CSV columns and list parsing
+
+- `roles`, `permissions`, `classes`, `docTypes`, `perspectives`, `websiteTranslationLanguagesEdit` / `View` and
+  `contentLanguages` are comma-separated strings. `cleanupUserRoleRelations()` needs `FIND_IN_SET()` (full table
+  scan), the workspace permission SQL in the element DAOs does the same, and nothing enforces referential integrity
+  (B-226). Long term: a `users_roles` join table (with FK + `ON DELETE CASCADE`) and JSON columns for the other lists.
+- Short term: one `CsvList::parse(array|string|null): list<string>` helper (trim, drop empty, unique, `array_values`)
+  for `prepareArray()`, `setPermissions()`, `setRoles()` (+ `intval` / `> 0`), `setContentLanguages()` and
+  `getContentLanguages()`; one `CsvList::format()` for `AbstractUser\Dao::update()` instead of the hard-coded key list.
+
+### [ ] I-114 – DAO structure and persistence
+
+- `AbstractUser\Dao::update()` writes every column on every save, driven by `getObjectVars()` + `getValidTableColumns()`
+  + a hard-coded list of CSV keys + a `twoFactorAuthentication` special case. Use an explicit column map per type.
+  Password, recovery token and last login need targeted updates (`updatePasswordHash()`, `updatePasswordRecoveryToken()`,
+  `updateLastLogin()`) so that login / recovery do not run a full save (B-230, B-236).
+- `castUserDataToBoolean()` and the boolean block in `loadWorkspaces()` → one hydrator per table (or Doctrine DBAL type
+  conversion).
+- `UserRole::update()` deletes and re-inserts all workspaces on every save, even when only `lastLogin` or a preference
+  changed → write workspaces only when they were set (dirty flag).
+- The `@method void setLastLoginDate()` magic on `AbstractUserInterface` / `AbstractUser` relies on
+  `AbstractModel::__call()` → an explicit model method that also updates `$lastLogin` (B-235).
+- Wrong / misleading docblocks and DAO mapping: `User\Folder` documents `@method Dao getDao()` and
+  `config/dao-classmap.php:157` really maps it to `User\Dao`, so deleting a user folder runs the seven element-
+  ownership `UPDATE`s of `User\Dao::delete()`; `UserRole\Folder` is mapped to `UserRole\Dao` (`:165`) while
+  `Role\Folder` uses `Role\Folder\Dao extends AbstractUser\Dao`; `UserRole\Dao` documents `@property Folder $model`.
+  Map all folders to `AbstractUser\Dao` and fix the docblocks.
+- Four empty DAO / listing DAO subclasses exist only for DAO resolution (`Role\Dao`, `Role\Folder\Dao`,
+  `Listing\Dao`, `Role\Listing\Dao`); with the static classmap they can map to the parent directly.
+
+### [ ] I-115 – Lookup, caching and listings
+
+- Replace the reflection-based `getById()` with one factory: fetch the row, pick the class from `UserType`, hydrate,
+  cache (C-40). Route `getByName()` and the recovery-token lookup through the same path and cache (B-235).
+- The runtime-cache key `user_<id>` is a shared namespace; prefix it with the model class or use a dedicated
+  identity map service (resettable).
+- `User\Listing\…\Dao::load()` selects `id, type` and then calls `getById()` per row: one query plus four per user
+  (row + three workspace tables). Hydrate from one `SELECT *` and load workspaces for all ids with one query per table.
+- `AbstractListing::$type` + `getType()` → a class constant / `UserType`; `AbstractListing\Dao::getCondition()` →
+  bound parameters.
+- `Listing::getUsers()` / `Role\Listing::getRoles()` aliases plus `getItems()` / `getData()` → keep one name.
+
+### [ ] I-116 – Avatar handling out of the model
+
+- Move `setImage()` / `getImage()` / `hasImage()` / path helpers into a `UserAvatarService` with the `pimcore.admin.storage`
+  Flysystem operator injected (no `Tool\Storage::get('admin')` service location, no `TemporaryFileHelperTrait` in the
+  model).
+- Per-size thumbnails, an upload check with Symfony Mime (`image/*`), write-then-delete, cleanup on user delete
+  (`UserRoleEvents::POST_DELETE` listener), a fallback avatar shipped by core (B-231).
+- Return a `resource` with a documented `@return resource` or a small value object (`mimeType`, `stream`), so
+  controllers can build a `StreamedResponse` without guessing.
+
+### [ ] I-117 – Credentials, 2FA and the security user (Symfony 7.4)
+
+- Split `setTwoFactorAuthentication(array|string $key, mixed $value = null)` into explicit methods and a readonly
+  `TwoFactorSettings` value object (`required`, `enabled`, `secret`, `type`); decode JSON in the DAO with
+  `JSON_THROW_ON_ERROR`; store it in a `JSON` column (B-232, I-120).
+- Passwords: `setPassword()` takes a hash → rename to `setPasswordHash()`; hash through Symfony PasswordHasher
+  (`PasswordHasherFactoryInterface`, `MigratingPasswordHasher` for the legacy `md5(username:pimcore:password)`
+  pre-hash in `Authentication::preparePlainTextPassword()`); implement `PasswordUpgraderInterface` on
+  `Security\User\UserProvider` instead of the rehash + full `save()` in `verifyPassword()`. Note: the md5 pre-hash ties
+  the hash to the user name, so renaming a user invalidates their password; document it or drop the pre-hash in the
+  migration.
+- Recovery tokens: `random_bytes()` token, store `hash('sha256', $token)` plus an expiry column, single use; drop the
+  encrypted `timestamp|name` format and the time-zone switching in `authenticateToken()` (B-236).
+- `Security\User\User`: implement `__serialize()` / `__unserialize()` so the session token holds the user id, the
+  identifier, the role names and a `crc32c` / `hash()` of the password hash (Symfony 7.3+ pattern), instead of the
+  whole `Model\User` (password hash, 2FA secret, recovery token, workspaces, merged caches) in the session store.
+  `eraseCredentials()` is already `#[\Deprecated]`; remove it once the Symfony 8 upgrade happens.
+- `isEqualTo()` / `refreshUser()` per C-41; `getUserIdentifier()` returns `''` for a nameless user → throw instead.
+- `Pimcore\Model\UserInterface` shares its short name with Symfony's `UserInterface` and declares `getRoles(): array`
+  with role **ids** (`int[]`), while Symfony's returns role **names**. Document it or rename (`getRoleIds()`) with a
+  deprecated alias, before anyone implements Symfony's interface on the model.
+
+### [ ] I-118 – Permission definitions
+
+- `Definition::getByKey()` builds a listing for a single primary-key lookup → direct `fetchAssociative()`.
+- `create()`: typos ("permisson", "allready"); no way to pass the category; returns an unsaved definition if
+  `save()` failed (B-233). Add `delete()` so bundles can remove permissions on uninstall.
+- `generatePermissionList()` → `array_combine($keys, array_map($this->getPermission(...), $keys))` with
+  `array<string, bool>`; remove the `@todo`.
+- The installer inserts the core permission keys with raw SQL (`bundles/InstallBundle/src/Installer.php:853-895`), next
+  to the model. Use `Definition::create()` (or a single upsert) and keep the core keys as constants in one place.
+
+### [ ] I-119 – Folder and workspace models
+
+- `UserRole\Folder` is instantiable but has no type of its own → `abstract`. `User\Folder::getChildren()` duplicates
+  the parent except for the listing class → template method `createChildListing()`. Keep `children` and
+  `hasChildren` consistent (B-237).
+- `AbstractWorkspace`: `@internal` on every property and the boilerplate accessors → property hooks or public
+  properties with asymmetric visibility (I-110); constructor with `int $cid, string $cpath`.
+- `Workspace\DataObject::$lEdit` / `$lView` / `$layouts` are CSV strings with "empty = all" semantics (`@TODO` in
+  `setLEdit()`) → `?array` with explicit `null` (all) vs `[]` (none).
+- A `getTableName()` per workspace class instead of the `instanceof` chain in `Workspace\Dao::save()` (B-234).
+
+### [ ] I-120 – Schema: `users`, `users_permission_definitions`, `users_workspaces_*`
+
+- `users.name` is nullable but required → `NOT NULL`; `parentId` uses both `0` (installer) and `NULL` (`Dao::create()`)
+  for "no parent" → pick one.
+- Defaults disagree with the model: `welcomescreen` / `closeWarning` / `memorizeTabs` `DEFAULT NULL` (model:
+  `false` / `true` / `true`), `allowDirtyClose` `DEFAULT 1` (model: `false`), `datetimeLocale` `DEFAULT ''` (model:
+  `null`). Rows created by `Dao::create()` get the DB defaults until the following `update()`.
+- `KEY password (password)` indexes the password hash (no query uses it); `KEY name`
+  is redundant next to `type_name`; `passwordRecoveryToken` has no index (lookup by token scans the table) → index the
+  token hash (I-117).
+- `twoFactorAuthentication varchar(255)` holds JSON → `JSON`; `keyBindings` is already `JSON`.
+- No foreign keys from `edit_lock`, `notes`, `schedule_tasks`, `translations_messages`, `gridconfigs`, `importconfigs`,
+  `gridconfig_*` / `importconfig_shares`, `notifications` to `users` (B-229).
+- `users_workspaces_*.cpath` nullable → `NOT NULL` (B-234).
+
+### [ ] I-121 – Tests
+
+- There is no test for the user model itself; `tests/Model/Permissions/*` cover element workspaces only.
+- Add: `UserRole::getById()` followed by `Role::getById()` for the same id (C-40); a session after deactivation,
+  password change, role removal and delete (functional, C-41); stale / folder / `0` role ids (B-226); role change
+  visible in `isAllowed('…', 'perspective')` on the same object (B-227); `setPassword(null)` (B-228); delete
+  cleanup and rollback (B-229); retry after a failed save, legacy names (B-230); `getImage()` with two sizes
+  (B-231); `setTwoFactorAuthentication('secret', null)` keeps `required` (B-232); `generatePermissionList()` with no
+  definitions (B-233); workspace with `NULL` `cpath` and duplicate `cid` (B-234).

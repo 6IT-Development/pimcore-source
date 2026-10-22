@@ -56,6 +56,13 @@ originates in the model interplay (`lib/Maintenance/Tasks/VersionsCleanupTask.ph
 `Version::disable()` / `enable()` callers, `lib/Helper/LongRunningHelper.php::cleanUp()`), the `versions` schema
 (`bundles/InstallBundle/dump/install.sql:576-600`), the `versionsData` table from
 `doc/18_Tools_and_Features/01_Versioning.md:79-87` and `tests/Service/Element/VersionTest.php`
+**(10)** `models/User.php`, `models/UserInterface.php` and `models/User/**` (AbstractUser, AbstractUser/Dao,
+AbstractUserInterface, UserRole, UserRole/Dao, UserRole/Folder, UserRoleInterface, Dao, Folder, Role, Role/Dao,
+Role/Folder/**, Role/Listing/**, Listing/**, Service, Permission/Definition/**, Workspace/**), plus the direct consumers
+where a defect originates in the model interplay (`lib/Security/User/User.php`, `lib/Security/User/UserProvider.php`,
+`lib/Security/User/UserChecker.php`, `lib/Tool/Authentication.php`, `models/Element/PermissionChecker.php:196-210`,
+`models/Notification/Service/NotificationService.php:98-102`), the `users`, `users_permission_definitions` and
+`users_workspaces_*` schemas (`bundles/InstallBundle/dump/install.sql:457-572`) and `config/dao-classmap.php:155-168`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -64,13 +71,15 @@ B-43 push/pop listener balance is the listener side of B-158)
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
-Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`).
+Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
+Scope 10: `70fc218e66`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
 **Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187,
 **Metadata** B-188–B-192, **Notification** B-193–B-200, **Property** B-201–B-205, **Predefined property**
-B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225.
+B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225,
+**User** B-226–B-237.
 
 ---
 
@@ -3133,3 +3142,247 @@ state in SQL instead of loading every version (I-107).
 - `tearDown()` drops `versionsData` unconditionally; SQL is built by string concatenation (`:70-74`, `:90`, `:327`).
 
 **Fix direction:** `onlyMethods([])` or plain instances; add the missing cases (I-109).
+
+---
+
+## User (Scope 10)
+
+## [ ] B-226 – A stale role id in `users.roles` crashes `isAllowed()`, the merged-perspective / translation-language helpers and `PermissionChecker`
+
+**Files:** `models/User.php:265-316`, `:332-343`, `:529-546`, `:586-599`, `:627-641`; `models/User/AbstractUser.php:203-265`;
+`models/Element/PermissionChecker.php:200-210`
+
+- Every role lookup dereferences the result without a check: `User\Role::getById($roleId)->getPermission()` /
+  `->getClasses()` / `->getDocTypes()` (`:276`, `:288`, `:301`), `User\UserRole::getById($role)->getPerspectives()` /
+  `->getWebsiteTranslationLanguages*()` (`:535`, `:592`, `:633`) and `PermissionChecker.php:203-204`. A `null` →
+  `Error: Call to a member function … on null`.
+- `null` is reachable without C-40:
+  - a role deleted outside `AbstractUser::delete()` (SQL, migration, an import that rewrites `users`), or a failure in
+    the middle of `cleanupUserRoleRelations()`, which is not transactional (B-229);
+  - `setRoles()` accepts any integer: a role **folder** id or a user id (the admin role tree sends folder ids when a
+    folder node is checked; not verified locally) → `Role::getById()` filters by `type = 'role'` → `null`;
+  - `setRoles('1,,2')` / a trailing comma → `intval('')` = `0` (the system user) → `null`.
+- The affected (non-admin) user gets a 500 on nearly every admin request until an admin removes the role id; there is
+  no log entry that names the bad id.
+
+**Fix direction:** skip unknown roles (log a warning) in all lookups; filter `setRoles()` input (`> 0`, unique, only ids
+of type `role`); load all roles once per user with one `Role\Listing` query (I-112).
+
+## [ ] B-227 – Merged role data is cached on the user object and never invalidated; the perspective helpers return undefined, duplicate or no longer allowed perspectives
+
+**Files:** `models/User.php:75-85`, `:310-313`, `:332-343`, `:510-517`, `:529-546`, `:553-556`, `:567-579`, `:586-599`,
+`:627-641`; `models/User/UserRole.php:314-365`
+
+- `mergedPerspectives`, `mergedWebsiteTranslationLanguagesEdit` and `…View` are computed once per object. `setRoles()`,
+  `setPerspectives()` and `setWebsiteTranslationLanguages*()` do not reset them, and a role save does not reach the
+  users that are already loaded. The user object is shared through the runtime cache (`user_<id>`), so a role change in
+  a Messenger worker / long-running process (and in the same request, e.g. "save user, then check access") is not
+  seen until the process ends. `isAllowed('…', 'class' | 'docType')` re-reads the roles on every call, so the same
+  user gets fresh class permissions but stale perspectives / translation languages.
+- `getMergedPerspectives()` does not `array_unique()` (the translation helpers do) and does not intersect with the
+  defined perspectives (`getDefinedPerspectiveNames()` is only used when nothing is assigned). A perspective that was
+  deleted or renamed in the config stays "allowed": `getFirstAllowedPerspective()` can return a name that no longer
+  exists, and the admin UI then loads an undefined perspective.
+- `getActivePerspective()` returns the stored value without checking `isAllowed($p, 'perspective')`. A user whose
+  perspective was taken away keeps opening it. The getter also writes `'default'` into the model (side effect), and
+  `'default'` may not be allowed or defined.
+- Admins are allowed every perspective in `isAllowed()` (`:267-269`), but `getFirstAllowedPerspective()` for an admin
+  with assigned perspectives returns only the first assigned one; for an admin with none, the first defined one.
+
+**Fix direction:** reset the merged caches in the setters (or compute them in a resolver service, I-112); intersect with
+the defined perspectives and `array_unique()`; validate `activePerspective` against the allowed list and fall back to
+`getFirstAllowedPerspective()`.
+
+## [ ] B-228 – `setPassword()` silently ignores `null`, `''` and every value of ≤ 4 characters; `setUsername(null)` throws
+
+**Files:** `models/User.php:106-113`, `:147-152`; `models/UserInterface.php:24-40`; `models/User/AbstractUser.php:144-149`;
+`lib/Tool/Authentication.php:160-184`
+
+- `setPassword()` keeps the old value when `strlen((string) $password) <= 4`. The value is a **hash** (callers pass
+  `Authentication::getPasswordHash()`), so the check is not a password policy. Its only effect: a password can never
+  be removed. `setPassword(null)` / `setPassword('')`, which `verifyPassword()` / `isValidUser()` treat as "login
+  disabled" (`Authentication.php:162-165`, `:183`), is a silent no-op, and the user can still log in.
+- Code that hands in a plain short password by mistake also gets no error.
+- `UserInterface::setUsername(?string)` accepts `null`, but forwards to `setName(string)` → `TypeError` under
+  `strict_types`.
+
+**Fix direction:** accept `null` / `''` as "no password"; reject non-hash values explicitly (e.g. `password_get_info()`)
+instead of ignoring them; make `setUsername()` non-nullable or handle `null` (I-110, I-117).
+
+## [ ] B-229 – `AbstractUser::delete()` is not transactional and leaves user data behind
+
+**Files:** `models/User/AbstractUser.php:203-265`; `models/User/Dao.php:30-52`; `models/User.php:416-448`;
+`bundles/InstallBundle/dump/install.sql:192`, `:248`, `:334`, `:440`, `:723-796`
+
+- `delete()` deletes children recursively, rewrites every user that has the role (`cleanupUserRoleRelations()`, one full
+  `save()` per user), deletes the row and resets element ownership (`User\Dao::delete()`, 7 `UPDATE`s) **without** a
+  transaction. A failure in the middle (e.g. one related user that cannot be saved, B-230) leaves half the subtree
+  deleted and `roles` pointing at deleted roles (B-226).
+- Not cleaned up on user delete: the avatar files `/user-image/user-<id>.png` and `user-thumbnail-<id>.png` in the
+  `admin` storage; `translations_messages.userOwner` / `userModification`; `notes.user`; `edit_lock.userId` (locks stay
+  until they expire); `gridconfigs` / `importconfigs` / `gridconfig_favourites` / `gridconfig_shares` /
+  `importconfig_shares` (`ownerId`, `sharedWithUserId`). Only the workspace tables have a foreign key. Notifications
+  and scheduled tasks are B-193 / C-37.
+- The parent-cache reset uses `$parentUserId > 1` (`:234`): a parent with id `1` keeps its cached `children`.
+- `delete()` on an unsaved object (`id === null`) throws "Deleting the system user is not allowed!".
+
+**Fix direction:** wrap `delete()` in `beginTransaction()` / `commit()` / `rollBack()` like `save()`; clear the other
+user references in `User\Dao::delete()` (or add FKs, I-120); delete the avatar files after commit; fix `> 1` → `> 0`.
+
+## [ ] B-230 – `AbstractUser::save()`: a failed insert leaves a phantom id; name validation is incomplete and blocks logins of legacy users
+
+**Files:** `models/User/AbstractUser.php:161-198`; `models/User/AbstractUser/Dao.php:95-103`, `:123-148`;
+`lib/Tool/Authentication.php:124-158`, `:160-179`, `:234-245`; `bundles/InstallBundle/dump/install.sql:461`, `:489`
+
+- `create()` sets the new id on the model before `update()`. If `update()` throws, the transaction is rolled back but
+  the model keeps the id. A retry (`save()` again) takes the update path, `UPDATE … WHERE id = <rolled-back id>`
+  matches no row, and the call "succeeds" without writing anything.
+- `PRE_ADD` / `PRE_UPDATE` are dispatched before validation; listeners act on users that are then rejected.
+- Name rules are split: the regex (`[a-zA-Z0-9\-\.~_@]+`) in the model, `strlen >= 2` in the DAO **after** the
+  `INSERT`, no maximum (the column is `varchar(50)`: longer names fail with a DB error or are truncated in non-strict
+  SQL mode, and `type_name` uniqueness is then checked on the truncated value). `preg_match()` on a `null` name →
+  `TypeError` (strict).
+- Rows that do not match the regex (users created before the check, by SQL or by an SSO provider with e.g. `+` in the
+  e-mail-style name) can no longer be saved at all. `Authentication::verifyPassword()` saves the user when the hash
+  needs a rehash (`:172-176`), and `authenticateToken()` / `generateTokenByUser()` save to set / clear the recovery
+  token (`:136-137`, `:241-242`). For such users login after an algorithm change and password recovery end in a 500.
+- The system user (id `0`) is treated as new by `if (!$this->getId())`: `save()` tries to `INSERT` a second `system`
+  row and fails on `type_name`.
+
+**Fix direction:** validate (regex, 2–50 characters, non-null) before events and before `create()`; reset the id on
+rollback; use `getId() === null` for "new"; update password hash / token / last login with targeted DAO updates
+instead of a full `save()` (I-114).
+
+## [ ] B-231 – `User::getImage()` ignores the requested size after the first call; the fallback avatar depends on the admin bundle; `setImage()` crashes on unreadable input
+
+**Files:** `models/User.php:416-427`, `:429-448`, `:454-485`, `:735-746`; `models/UserInterface.php:136-142`, `:210`
+
+- The thumbnail is stored under one path per user (`user-thumbnail-<id>.png`) regardless of `$width` / `$height`. The
+  first call fixes the size forever; `getImage(200, 200)` after `getImage()` returns the 46×46 thumbnail.
+- `getFallbackImage()` points to `PIMCORE_WEB_ROOT/bundles/pimcoreadmin/img/avatar.png`, i.e. the installed assets of
+  admin-ui-classic-bundle. Without them (Studio-only / headless setups, assets not installed) `fopen()` returns
+  `false` with a warning, although the method documents `resource`.
+- If the stored original is not a loadable image, every call reads the original into a temp file, fails and returns
+  the fallback (no negative cache, no error).
+- `setImage()`: `fopen($path, 'rb')` → `false` for a missing / unreadable path → `writeStream(false)` `TypeError`. The
+  old original and thumbnail are deleted **before** the new file is read, so a failing upload removes the existing
+  avatar. The content is not checked (any file is stored as `.png`). On an unsaved user the paths are `user-.png` /
+  `user-thumbnail-.png`, shared by all unsaved users.
+
+**Fix direction:** per-size thumbnail paths (`user-thumbnail-<id>-<w>x<h>.png`); ship the fallback in core or return
+`null`; validate the upload (Symfony Mime) and write before deleting; require a saved user (I-116).
+
+## [ ] B-232 – `setTwoFactorAuthentication('<key>', null)` wipes the whole 2FA configuration, including `required`
+
+**Files:** `models/User.php:685-702`, `:709-723`; `models/User/AbstractUser/Dao.php:140-142`;
+`lib/Security/User/User.php:93-131`
+
+```php
+if (is_string($key) && $value === null && strlen($key) > 3) {
+    $this->twoFactorAuthentication = json_decode($key, true);   // 'secret' → null
+}
+```
+
+- The method is overloaded: a string with a `null` value is treated as a JSON document. Every real key is longer than
+  3 characters (`required`, `enabled`, `secret`, `type`), so the natural way to clear a value,
+  `setTwoFactorAuthentication('secret', null)`, decodes `"secret"` → `null` and drops the whole array. The next
+  `getTwoFactorAuthentication()` restores the defaults: `required = false`, `enabled = false`. A user who was forced
+  to use 2FA is no longer forced, without any error. (Whether admin-ui-classic-bundle calls it this way was not
+  verified locally.)
+- The same happens for a stored value that is not valid JSON: `json_decode()` returns `null` and the 2FA settings
+  silently reset. `json_decode()` of a JSON scalar (`"1"`) stores a non-array and the next `[$key]` access fails.
+- `json_encode(null)` is written as the string `'null'` for users without 2FA data (`Dao.php:141`).
+
+**Fix direction:** split the API (`setTwoFactorAuthenticationConfig(array)` / `setTwoFactorAuthenticationValue(string,
+mixed)`), decode JSON only in the DAO with `JSON_THROW_ON_ERROR`, and always merge onto the defaults (I-117).
+
+## [ ] B-233 – Permission definitions and lists: `generatePermissionList()` returns `null`, `Definition::create()` reports success after a failed save
+
+**Files:** `models/User/UserRole.php:129-195`; `models/User/Permission/Definition.php:75-114`;
+`models/User/Permission/Definition/Dao.php:31-41`; `models/User/Permission/Definition/Listing/Dao.php:48-55`;
+`models/User/Listing/AbstractListing/Dao.php:33-73`
+
+- `generatePermissionList()` starts with `$permissionInfo = null` and declares `: array`. With no definitions (fresh
+  schema, failed install, test DB) it throws a `TypeError` (the `@todo` in the docblock).
+- `setPermissions('')` stores `['']`; `setPermissions()` does not dedupe, and `setPermission()` / `getPermission()` use
+  loose `in_array()`.
+- `Definition\Dao::save()` catches every exception and logs a warning. `Definition::create()` then returns the
+  definition as if it was stored (bundle installers rely on it to register their permissions).
+- Both listings return `0` from `getTotalCount()` on any SQL error, and `User\Listing\…\Dao::load()` silently drops
+  rows whose `getById()` fails, so `count(load())` and `getTotalCount()` disagree.
+
+**Fix direction:** initialise `[]`; normalise permission lists like `prepareArray()`; let DB errors propagate (I-118).
+
+## [ ] B-234 – Workspaces: uninitialised typed properties, `NULL` `cpath` breaks loading, duplicate entries abort the whole user save
+
+**Files:** `models/User/Workspace/AbstractWorkspace.php:34-46`, `:240-280`; `models/User/Workspace/Dao.php:29-54`;
+`models/User/UserRole/Dao.php:55-85`; `models/User/UserRole.php:92-111`; `bundles/InstallBundle/dump/install.sql:503-572`
+
+- `int $userId`, `int $cid` and `string $cpath` have no default. `getCid()` / `getUserId()` / `getCpath()` on a new
+  workspace → `Error: must not be accessed before initialization`.
+- `cpath` is nullable in all three tables. Hydration skips `NULL` (`setValues($row, true)`), so a row with `cpath IS
+  NULL` (inserted by SQL / an older version, or a workspace saved without a path) leaves `$cpath` uninitialised and
+  the first `getCpath()` (admin user editor, permission export) throws.
+- `UserRole::update()` deletes all workspaces and re-inserts them with a plain `INSERT`. Two entries for the same `cid`
+  (or the same `cpath`, unique key `cpath_userId`) → duplicate-key error → the whole user save is rolled back, with a
+  DB error message instead of a validation error.
+- `Workspace\Dao::save()` builds the table name with `instanceof`; any other subclass gets `''` and fails in
+  `getValidTableColumns('')`.
+
+**Fix direction:** defaults / nullable types; dedupe by `cid` before insert (or upsert); a table name per workspace class
+(I-119); `cpath NOT NULL` (I-120).
+
+## [ ] B-235 – `getById()` / `getByName()` / listings return different instances; stale or partially hydrated user objects
+
+**Files:** `models/User/AbstractUser.php:44-104`; `models/User/AbstractUser/Dao.php:35-81`, `:164-168`;
+`models/User/UserRole/Dao.php:33-53`; `lib/Security/User/UserChecker.php:38-51`; `lib/Tool/Authentication.php:36-68`,
+`:251-262`
+
+- `getById()` uses the runtime cache, `getByName()` does not. Login loads the user by name (`UserProvider`), the
+  rest of the request by id: two objects, and changes on one (e.g. `setLastLogin()`, roles) are invisible to the
+  other.
+- `setLastLoginDate()` writes the DB but not the model. `UserChecker::checkPostAuth()` throttles by
+  `getLastLogin()` (`:45-47`); with the stale value every auth in the same process writes again, and
+  `authenticateSession()` writes on every call without any throttle (side effect noted in B-114).
+- `getByPasswordRecoveryToken()` is defined only on `AbstractUser\Dao`, so the token user is hydrated **without**
+  workspaces (`UserRole\Dao` only adds them for `getById()` / `getByName()`). `authenticateToken()` reloads by id
+  before saving, but any other caller that saves this object deletes all of the user's workspaces.
+- Abstract-class lookups hydrate any row type into `User` (C-40); `create()` passes `$values` without
+  `ignoreEmptyValues`, so `['parentId' => null]` → `TypeError` in `setParentId(int)`.
+
+**Fix direction:** one cached hydration path for id, name and token; update the model in `setLastLoginDate()`; load
+workspaces in every user lookup (I-115).
+
+## [ ] B-236 – `Authentication` token / password helpers built on the user model
+
+**Files:** `lib/Tool/Authentication.php:124-158`, `:160-179`, `:224-262`; `models/User.php:118-133`
+
+- `authenticateToken()` clears the recovery token with a full `save()` (events, all columns, all workspaces deleted
+  and re-inserted) **before** it checks expiry and `$adminRequired`; the timestamp check switches the process time zone
+  (`date_default_timezone_set('UTC')`) although `time()` is time-zone independent.
+- `generateToken(string $username)` passes `User::getByName()` (nullable) to `generateTokenByUser(User)` → `TypeError`
+  for an unknown name instead of a defined error.
+- The token is stored in plain text (`passwordRecoveryToken`, no index → full table scan per lookup). A DB read
+  (backup, replica, SQL injection elsewhere) gives working login links for 24 hours.
+
+**Fix direction:** targeted DAO updates for token and password; `null` check in `generateToken()`; store a hash of a
+random token plus an expiry column (I-117, I-120).
+
+## [ ] B-237 – User model small defects
+
+**Files:** `models/User.php:212-219`, `:265-316`, `:318-325`, `:490-508`, `:748-758`; `models/User/AbstractUser/Dao.php:164-168`;
+`models/User/UserRole/Folder.php:44-78`; `models/User/Listing/AbstractListing.php:22-29`
+
+- `isAllowed()` does not check `isActive()`: a deactivated admin passes every check. Code that acts "as" a stored user
+  id (scheduled tasks C-37, the `Translation\Dao` editor check via `userModification`) treats inactive users as
+  allowed.
+- `User::getPermission()` returns only the user's own permissions (roles are only merged in `isAllowed()`); callers
+  that use `getPermission()` for a check get `false` for role-granted permissions (I-112).
+- `setLanguage()` ignores `'0'` / `''` without error and accepts any string (not checked against the admin languages).
+- `setContentLanguages()` does not trim, dedupe or validate against `Tool::getValidLanguages()`; `'de,,en'` yields an
+  empty language entry.
+- `setDatetimeLocale()` returns `User` (not `static`) and is missing from `UserInterface`.
+- `setLastLoginDate()` builds `$data` by assigning to an undefined variable.
+- `UserRole\Folder::getChildren()` caches the children forever and does not update `hasChildren`; `hasChildren()`
+  caches independently, so after `setChildren([])` + `getChildren()` they can disagree.
+- `AbstractListing` documents `@method Model\User|false current()` for role listings too.
