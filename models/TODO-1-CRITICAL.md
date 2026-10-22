@@ -126,6 +126,13 @@ interplay (`lib/Mail.php::setDocumentSettings()` / `setDocument()` (`:379-415`, 
 `lib/Helper/Mail.php::parseEmailAddressField()` (`:371-395`), `models/Document.php::correctPath()` (`:415-463`), the
 `documents.type_definitions` config (`bundles/CoreBundle/config/pimcore/default.yaml:285-318`)) and the
 `documents_email` schema (`bundles/InstallBundle/dump/install.sql:109-122`)
+**(21)** the `models/Document/*/` sub-directory classes (`Email/Dao.php`, `Folder/Dao.php`, `Link/Dao.php`,
+`Listing/Dao.php`, `Page/Dao.php`, `PageSnippet/Dao.php`, `Service/Dao.php`, `Snippet/Dao.php`; every one is already
+named by an earlier item, so this scope is a gap-fill that adds only points not yet recorded), plus the direct consumers
+where a defect originates in the model interplay (`models/Document/Service.php::copyAsChild()` (`:196-206`),
+`models/Document.php::doDelete()` / `getById()` (`:621-646`, `:187-258`), `lib/Routing/Dynamic/DocumentRouteHandler.php`
+(`:120-133`, `:260-295`), `bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php`
+(`:81`, `:133`)) and the `documents_translations` schema (`bundles/InstallBundle/dump/install.sql:175-184`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -166,7 +173,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -2134,3 +2141,44 @@ config, then move the file into place. Add tests for `\`, `'`, duplicate values 
 >   tree handles `children_supported` and whether the admin preview needs `direct_route` was **not verified**.
 >   Nothing was executed.
 > - Critical items: none. Bugs: B-334–B-337. Improvements: I-183–I-185.
+
+---
+
+# Scope 21 – Document sub-directory classes (`Email/`, `Folder/`, `Link/`, `Listing/`, `Page/`, `PageSnippet/`, `Service/`, `Snippet/`)
+
+> Notes
+> - Scanned (read in full): `Document/Email/Dao.php`, `Folder/Dao.php`, `Link/Dao.php`, `Listing/Dao.php`,
+>   `Page/Dao.php`, `PageSnippet/Dao.php`, `Service/Dao.php`, `Snippet/Dao.php` (604 lines; these are the only files in
+>   the eight sub-directories).
+> - All eight classes are already named by earlier items, so this scope is a **gap-fill**: only points not recorded
+>   yet are added. Not repeated: type-DAO `id = NULL` overwrite – B-148 (`Email`, `Link`, `Page`, `Snippet`);
+>   `Link\Dao` resolving the href on load and lost object targets – B-146; unknown / corrupt editable rows in
+>   `PageSnippet\Dao::getEditables()` – B-143; `getTranslations()` overwriting `$linkedData` and `null` source
+>   documents – B-144; pretty-URL duplicates and the unordered lookup – B-153; document listing `published` column
+>   – B-154; missing `declare(strict_types=1)` – I-73; `getTranslationSourceId(): mixed` – I-74; DBAL 4
+>   `getQueryPart()` in the listing helper – I-76; one generic type DAO – I-78; `Listing::getCount()` loading all
+>   ids – I-79; duplicate `deleteAllProperties()` in `Email\Dao` / `Page\Dao` – I-183; empty `Folder\Dao` – I-184.
+> - Collaborators read where a defect originates in the interplay: `Document.php::doDelete()` (`:645` calls
+>   `removeTranslation()`), `Document.php::getById()` (two DAO loads per uncached document), `Document/Dao.php`
+>   (`getById()`, `getByPath()`, `create()`, `delete()`), `Document/Service.php::copyAsChild()` and
+>   `getNearestDocumentByPath()`, `Document/Listing.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php`,
+>   `lib/Db/Helper.php::upsert()`, `lib/Routing/Dynamic/DocumentRouteHandler.php`, `install.sql` (`documents`,
+>   `documents_page`, `documents_translations`, `tree_locks`), `bundles/CoreBundle/config/pimcore/default.yaml:148`
+>   (`sql_mode = ''`).
+> - The translation-link DAO has bugs that make translations point to the wrong document or block a delete
+>   (B-338–B-340). Nothing loses content or opens a security hole: **no critical item**.
+> - Corrections to earlier items (found while reading the schema): `documents_page.prettyUrl` **has** an index
+>   (`install.sql:160`, `KEY prettyUrl`), so the "no index" remark in B-153 and I-84 is out of date. The rest of
+>   B-153 still applies. `documents_translations.sourceId` is the leading column of the primary key
+>   (`sourceId`, `language`), so it is indexed; only the foreign key in I-84 is missing.
+> - Pretty URLs are compared with the table's default collation (case- and, with `utf8mb4_0900_ai_ci` /
+>   `utf8mb4_general_ci`, accent-insensitive). `DocumentRouteHandler::handleDirectRouteRedirect()` (`:260-295`)
+>   redirects other spellings to the stored URL, so this is **not** duplicate content. `/uber` and `/über` on two pages
+>   do collide, but that is the B-153 duplicate case.
+> - No Symfony 7.4 / PHP 8.4 incompatibility: no removed API and no implicit nullable parameter. With PHP ≥ 8.1
+>   `pdo_mysql` returns native `int`s, so `Document::getById()` gets no string ids (no deprecation per listing row).
+>   The `"source"` string literal in `getTranslations()` breaks only under `ANSI_QUOTES` (I-186).
+> - The admin UI (`pimcore/admin-ui-classic-bundle`), which calls `addTranslation()` / `removeTranslationLink()`, is
+>   not in this repo and `vendor/` is not installed. What the admin validates before linking was **not verified**.
+>   Nothing was executed.
+> - Critical items: none. Bugs: B-338–B-340. Improvements: I-186–I-189.

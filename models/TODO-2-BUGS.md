@@ -125,6 +125,13 @@ interplay (`lib/Mail.php::setDocumentSettings()` / `setDocument()` (`:379-415`, 
 `lib/Helper/Mail.php::parseEmailAddressField()` (`:371-395`), `models/Document.php::correctPath()` (`:415-463`), the
 `documents.type_definitions` config (`bundles/CoreBundle/config/pimcore/default.yaml:285-318`)) and the
 `documents_email` schema (`bundles/InstallBundle/dump/install.sql:109-122`)
+**(21)** the `models/Document/*/` sub-directory classes (`Email/Dao.php`, `Folder/Dao.php`, `Link/Dao.php`,
+`Listing/Dao.php`, `Page/Dao.php`, `PageSnippet/Dao.php`, `Service/Dao.php`, `Snippet/Dao.php`; every one is already
+named by an earlier item, so this scope is a gap-fill that adds only points not yet recorded), plus the direct consumers
+where a defect originates in the model interplay (`models/Document/Service.php::copyAsChild()` (`:196-206`),
+`models/Document.php::doDelete()` / `getById()` (`:621-646`, `:187-258`), `lib/Routing/Dynamic/DocumentRouteHandler.php`
+(`:120-133`, `:260-295`), `bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php`
+(`:81`, `:133`)) and the `documents_translations` schema (`bundles/InstallBundle/dump/install.sql:175-184`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -136,7 +143,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -149,7 +156,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **DataObject `Data/**` value objects** B-300–B-315,
 **QuantityValue units / conversion** B-316–B-323,
 **Object bricks** B-324–B-330, **Select options** B-331–B-333,
-**Document `Email` / `Snippet` / `Folder`** B-334–B-337.
+**Document `Email` / `Snippet` / `Folder`** B-334–B-337,
+**Document translation links** B-338–B-340.
 
 ---
 
@@ -5496,3 +5504,98 @@ same rule.
 
 **Fix direction:** make `setContentMainDocumentId()` throw (or ignore and log) when `supportsContentMain()` is `false`,
 and check `supportsContentMain()` in `resolveDependencies()` and `rewriteIds()` as `getEditables()` does.
+
+---
+
+# Scope 21 – Document sub-directory classes (`Email/`, `Folder/`, `Link/`, `Listing/`, `Page/`, `PageSnippet/`, `Service/`, `Snippet/`)
+
+> Notes
+> - Gap-fill scope: scanned and skipped files, and the earlier items that are not repeated, are listed in the
+>   Scope 21 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (no critical item).
+> - `Email/`, `Folder/`, `Link/`, `Page/`, `PageSnippet/`, `Snippet/` and `Listing/` have no bug beyond B-143, B-146,
+>   B-148, B-154 and I-79. All new bugs are in the translation-link part of `Document\Service\Dao`.
+> - Translation links are stored as a star: one row `(id = translation, sourceId = source, language)` per member,
+>   primary key `(sourceId, language)`, foreign key only on `id` (`install.sql:175-184`). The source document has
+>   no row; its language is read from its `language` property at read time.
+
+## Document translation links (Scope 21)
+
+## [ ] B-338 – `addTranslation()` validates nothing: a document joins two groups, links replace each other silently, a missing language is a SQL error
+
+**Files:** `models/Document/Service/Dao.php:41-49`, `:90-103`; `models/Document/Service.php:196-206`;
+`lib/Db/Helper.php:38-53`; `bundles/InstallBundle/dump/install.sql:175-184`
+
+```php
+Helper::upsert($this->db, 'documents_translations', ['id' => $translation->getId(), 'sourceId' => $sourceId,
+    'language' => $language], $this->getPrimaryKey('documents_translations'));   // PK = (sourceId, language)
+```
+
+- **Second group:** if `$translation` is already a member of another group, a second row with the same `id` is
+  added. `getTranslationSourceId()` then reads `SELECT sourceId … WHERE id = ?` without `ORDER BY`, so which group the
+  document belongs to depends on the row order. The language switcher and the XLIFF export
+  (`DocumentDataExtractor.php:81`, `:133`) can show the other group.
+- **Silent replace:** if the group already has a member for `$language`, the insert hits the primary key and
+  `upsert()` falls back to `UPDATE … SET id = <new>`. The previous translation is unlinked without notice.
+- **Source language:** `$language` equal to the source document's own language is accepted. `getTranslations()`
+  adds the source last (`:81-85`) and overwrites that member, so the link exists but is never shown.
+- **Self / reverse links:** `addTranslation($doc, $doc)` or `addTranslation($member, $source)` writes
+  `(id = S, sourceId = S)`. This self-row is what corrupts the group on delete (B-339).
+- **No language:** without the `$language` argument, `getProperty('language')` can be `null`. Inserting `NULL` into
+  `language NOT NULL` fails with "Column 'language' cannot be null", also with `sql_mode = ''` (single-row insert).
+  The caller gets a `NotNullConstraintViolationException` instead of a message. `''` is accepted and becomes an
+  empty-string key in `getTranslations()`.
+- `copyAsChild()` passes a language, so it only hits the silent replace. The admin "link translation" action (not in
+  this repo) can reach every case.
+
+**Fix direction:** in `addTranslation()` reject (domain exception with a message) a translation that equals the
+source, is the source of another group or already belongs to a group; reject an empty language and the source's
+own language; on a primary-key conflict throw instead of replacing, unless the caller asks for `replace: true`.
+Optionally add `UNIQUE (id)` to enforce one group per document (needs a data clean-up migration first).
+
+## [ ] B-339 – Deleting a translation source: random successor, the delete can fail, and a self-link leaves an orphaned group
+
+**Files:** `models/Document/Service/Dao.php:105-113`; `models/Document.php:621-646` (`:645`), `:648-690`
+
+```php
+$newSourceId = $this->db->fetchOne('SELECT id FROM documents_translations WHERE sourceId = ?', [$document->getId()]);
+$this->db->update('documents_translations', ['sourceId' => $newSourceId], ['sourceId' => $document->getId()]);
+$this->db->delete('documents_translations', ['id' => $newSourceId]);
+```
+
+- The successor is the first row found (no `ORDER BY`). Which translation becomes the new source changes between
+  runs and database versions.
+- `DELETE … WHERE id = <successor>` deletes **every** row of the successor. If it is also linked into another group
+  (B-338), that membership is lost too.
+- If the successor is already the source of rows with the same language (possible after B-338), the `UPDATE` breaks
+  the primary key `(sourceId, language)`. The `UniqueConstraintViolationException` rolls back `Document::delete()`:
+  the document, and any folder that contains it (recursive delete), cannot be deleted.
+- With a self-row `(id = S, sourceId = S)` (B-338) the successor can be `S` itself. The update is a no-op, the delete
+  removes only the self-row, and all other rows keep `sourceId = S`. `sourceId` has no foreign key, so they survive
+  the deletion of `S`. Afterwards `getTranslations()` on any member calls `Document::getById(S)` → `null` → `Error`
+  (B-144), and `addTranslation()` keeps adding to the dead group.
+
+**Fix direction:** select the successor with a deterministic order (`ORDER BY language, id`) and exclude
+`id = sourceId`. Move only the rows of this group: `UPDATE … WHERE sourceId = :old AND id <> :new`, then
+`DELETE … WHERE id = :new AND sourceId = :old`. Check language conflicts first and resolve them (drop the duplicate)
+instead of failing the delete. Delete orphaned rows (`sourceId` not in `documents`) in a migration, and add the
+foreign key from I-84 (`ON DELETE CASCADE` only after this successor logic has run).
+
+## [ ] B-340 – The link stores a language snapshot: changing or inheriting a different `language` property leaves the translation map wrong
+
+**Files:** `models/Document/Service/Dao.php:55-88`, `:90-103`; `models/Document/Service.php:196-206`;
+`bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php:81`, `:133`
+
+- `documents_translations.language` is written once at link time. Nothing updates it when the document's `language`
+  property changes, or when the document is moved below another language root and inherits a different `language`
+  (the property is usually inherited). Only `documents_translations` code is in `Service\Dao`
+  (`grep documents_translations`).
+- `getTranslations()` builds the map from two sources: **members** by the stored row language, the **source** by its
+  current property (`:81-85`). After a change the map has the wrong key (`de` → page that is now French), or two
+  documents claim the same key and one silently wins.
+- The stale value is still part of the primary key: linking a real `de` page later replaces the wrong document
+  (B-338 silent replace) or is rejected.
+
+**Fix direction:** treat the row language as derived: refresh it in a `POST_UPDATE` listener when the `language`
+property or the parent changes (and in `addTranslation()` take it from the property when no argument is given). Or
+drop the column and read the effective property of every member at read time (`Service::getTranslations()` loads
+the documents anyway). Decide once and document it.

@@ -123,6 +123,13 @@ interplay (`lib/Mail.php::setDocumentSettings()` / `setDocument()` (`:379-415`, 
 `lib/Helper/Mail.php::parseEmailAddressField()` (`:371-395`), `models/Document.php::correctPath()` (`:415-463`), the
 `documents.type_definitions` config (`bundles/CoreBundle/config/pimcore/default.yaml:285-318`)) and the
 `documents_email` schema (`bundles/InstallBundle/dump/install.sql:109-122`)
+**(21)** the `models/Document/*/` sub-directory classes (`Email/Dao.php`, `Folder/Dao.php`, `Link/Dao.php`,
+`Listing/Dao.php`, `Page/Dao.php`, `PageSnippet/Dao.php`, `Service/Dao.php`, `Snippet/Dao.php`; every one is already
+named by an earlier item, so this scope is a gap-fill that adds only points not yet recorded), plus the direct consumers
+where a defect originates in the model interplay (`models/Document/Service.php::copyAsChild()` (`:196-206`),
+`models/Document.php::doDelete()` / `getById()` (`:621-646`, `:187-258`), `lib/Routing/Dynamic/DocumentRouteHandler.php`
+(`:120-133`, `:260-295`), `bundles/XliffBundle/src/ExportDataExtractorService/DataExtractor/DocumentDataExtractor.php`
+(`:81`, `:133`)) and the `documents_translations` schema (`bundles/InstallBundle/dump/install.sql:175-184`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -133,7 +140,7 @@ IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -145,7 +152,8 @@ Scope 15 in **S** DataObject `Classificationstore/**` configuration models (I-14
 DataObject `ClassDefinition/**` (I-149–I-160), Scope 17 in **U** DataObject `Data/**` value objects (I-161–I-169),
 Scope 18 in **V** DataObject `QuantityValue/**` units and conversion (I-170–I-174),
 Scope 19 in **W** DataObject `Objectbrick/**` and `SelectOptions/**` (I-175–I-182),
-Scope 20 in **X** Document `Email` / `Folder` / `Snippet` (I-183–I-185).
+Scope 20 in **X** Document `Email` / `Folder` / `Snippet` (I-183–I-185),
+Scope 21 in **Y** Document sub-directory DAOs (I-186–I-189).
 
 ---
 
@@ -2890,3 +2898,101 @@ the six `Listing/Dao.php`
   `Address` objects (I-183).
 - Creating or moving a document below a snippet or an email is rejected (B-336).
 - `Email::setContentMainDocument()` is rejected / has no effect on dependencies and `rewriteIds()` (B-337).
+
+---
+
+## Y – Document sub-directory DAOs (Scope 21)
+
+> Notes
+> - Gap-fill scope: scanned and skipped files are listed in the Scope 21 notes in
+>   [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (B-338–B-340).
+> - Not repeated: `declare(strict_types=1)` in all eight files (I-73), `getTranslationSourceId(): mixed` and
+>   `#[\Override]` (I-74), `getQueryPart()` in `prepareQueryBuilderForTotalCount()` (I-76), one generic type DAO
+>   with the copied `published` cast and SQL (I-78), `Listing::getCount()` → `COUNT(*)` and splitting
+>   `Document\Service` (I-79), the duplicate `deleteAllProperties()` overrides (I-183), the empty `Folder\Dao` (I-184).
+
+### [ ] I-186 – `Document\Service\Dao`: one translation query, clear parameters, a deterministic pretty-URL lookup
+
+**Files:** `models/Document/Service/Dao.php:31-39`, `:55-88`, `:90-103`, `:115-132`
+
+- `getTranslations()` marks the source row by putting the string `"source"` into the `language` column of a
+  `UNION`. Double quotes are a string literal only without `ANSI_QUOTES`; a project that sets
+  `sql_mode = 'ANSI_QUOTES,…'` (the PDO init command in `default.yaml:148` can be overridden) gets an
+  "unknown column" error. → `'source'`, or better a separate `is_source` column alias, so a real language code can
+  never be mistaken for the marker.
+- The method runs two `UNION` queries, one more query per row for `task = 'open'` (B-144), and loads the source
+  document twice with `Document::getById()` (`:74`, `:83`) just to read its `language` property → one query for the
+  group (`WHERE sourceId = :source OR id = :source`), load the source once, after B-340 read the language the same
+  way for all members.
+- `string $task = 'open'`: only `'open'` changes the behaviour, and every other string silently means "do not
+  follow". → `bool $includeLinkedGroups = true` or a small backed enum. Once B-338 keeps groups flat, remove the
+  option entirely.
+- `removeTranslationLink()`: `$newSourceId` is only an existence check (`:123`) → `$isDirectLink = (bool) …`.
+  Document the three cases (source ↔ member, member ↔ source, member ↔ member). The reverse delete (`:131`) can
+  only match rows that B-338 should forbid; remove it with that fix.
+- `addTranslation()` asks `getPrimaryKey('documents_translations')` (`SHOW COLUMNS`, cached) for a key that is fixed
+  in the schema → pass `['sourceId', 'language']`. After B-338 it no longer upserts at all.
+- `getDocumentIdByPrettyUrlInSite()`: `LEFT JOIN documents_page` with a `WHERE` on `documents_page.prettyUrl` is an
+  inner join → write `INNER JOIN` (or query `documents_page` and join `documents` for the path). Add
+  `ORDER BY documents.id LIMIT 1` until B-153 makes pretty URLs unique, and return `?int` instead of `0` for "not
+  found" (both callers only test truthiness: `DocumentRouteHandler.php:122`, `Service.php:499`).
+- Translation links are a separate concern from documents (`Service` reaches them through `__call`, `@method`
+  lines `Service.php:42-46`) → a small `DocumentTranslationRepository` service with typed methods; keep the
+  `Service` methods as deprecated proxies.
+
+### [ ] I-187 – `Document\Listing\Dao` / `Listing`: batch loading, consistent counts, dead code
+
+**Files:** `models/Document/Listing/Dao.php:33-111`; `models/Document/Listing.php:25-48`;
+`models/Document.php:187-258`
+
+- `load()` is N+1: one `Document::getById()` per row. An uncached document costs two DAO loads (base
+  `Document\Dao`, then the type DAO after the class is resolved, `Document.php:219-234`), plus the cache lookups. A
+  tree page with 100 children can run 200+ queries. → select `documents.id, documents.type` (already done), group
+  the ids by type and load each type table with one `WHERE id IN (…)` query (with the generic type DAO from I-78),
+  then build the models; check `RuntimeCache` / `Cache` first for ids already loaded.
+- `if ($documentData['type'])` silently skips rows with an empty type. With `sql_mode = ''` an unknown value written
+  to the `documents.type` enum is stored as `''` (custom `type_definitions` types, I-84). `loadIdList()`,
+  `getCount()` (when not loaded) and `getTotalCount()` still count these rows, so paginator totals and the
+  number of loaded items differ. → log the skipped ids, and filter `documents.type <> ''` in the query so that all
+  methods agree.
+- `Listing::$objectTypeDocument` (`Listing.php:42`, "return all documents as type `Document`") is never read →
+  remove it, or implement it as the cheap mode of the batch load above (no type tables).
+- `getQueryBuilder(...$columns)`: the docblock `string|string[]|null $columns` does not describe a variadic.
+  Without arguments the query is `SELECT  FROM documents` (`getTotalCount()` only works because it replaces the
+  select) → `string ...$columns` with the default `documents.*`.
+- Small items: `getSql()` / `getSQL()` mixed in one class; typos "an return", "specicifies"; the
+  `@method onCreateQueryBuilder(?callable $callback)` annotation has no return type (`Listing.php:31`); empty
+  ` *` docblock lines on the two properties.
+
+### [ ] I-188 – Type DAOs and `PageSnippet\Dao`: matching `getById()` signatures, no service locator
+
+**Files:** `models/Document/Page/Dao.php:35-52`, `Snippet/Dao.php:34-51`, `Email/Dao.php:35-52`,
+`Link/Dao.php:34-52`; `models/Document/Dao.php:42-54`; `models/Document/PageSnippet/Dao.php:45-63`
+
+- The base method is `getById(int $id)`; the four type DAOs widen it to `getById(?int $id = null)` and fall back to
+  the model id with a loose `if ($id != null)` (`0` also falls back). The only caller passes an id
+  (`Document.php:220`, `:233`). With no model id the query becomes `WHERE documents.id = NULL` and the message is
+  "Page with the ID  doesn't exists". → keep the base signature `getById(int $id)`, drop the fallback, and use one
+  message format ("document with id %d not found", as in the base DAO). Until I-78 is done, keep the four copies
+  consistent.
+- `PageSnippet\Dao::getEditables()` fetches `EditableLoader` through `Pimcore::getContainer()` (`:50`) → move the
+  loading into a service that gets the loader injected (the DAO only returns the raw rows), or at least use a
+  typed static accessor in one place. The `/** @var Document\Editable $editable */` hint is redundant:
+  `EditableLoader::build()` already returns `Editable` (`lib/Model/Document/Editable/Loader/EditableLoader.php:28`).
+- The `create()` overrides insert only `id` and rely on the `update()` that `Document::save()` runs next. Add a
+  one-line comment so nobody "fixes" it by writing the type columns twice.
+
+### [ ] I-189 – Tests for Scope 21
+
+- `tests/Model/Document/` has no test for translation links.
+- `addTranslation()`: the same document into two groups, a second document for an existing language, the source's
+  own language, a self-link and a translation without `language` are each rejected with a clear exception
+  (B-338).
+- Delete the source of a group with three members: the successor is deterministic, the other members stay linked,
+  no row points to the deleted id; the same with a successor that is also linked elsewhere (B-339).
+- Change a member's `language` property, and move a member below another language root: `getTranslations()`
+  returns the effective languages (B-340).
+- `getTranslations()` with `ANSI_QUOTES` in `sql_mode`; `getDocumentIdByPrettyUrlInSite()` returns `null` when
+  nothing matches (I-186).
+- Document listing with 100 children of mixed types: the query count is bounded, and `getTotalCount()` equals
+  `count(load())` with an empty-type row present (I-187).
