@@ -79,6 +79,13 @@ model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefiniti
 `tests/Model/DataObject/DefinitionModifierTest.php`
 **(13)** `models/DataObject/Folder/Dao.php` (the only file in `models/DataObject/AbstractObject/**`, `Concrete/**` and
 `Folder/**` not already processed in Scope 6), with `config/dao-classmap.php:57`
+**(14)** the not yet processed files of `models/DataObject/Listing/**`, `Fieldcollection/**` and `Localizedfield/**`
+(`Listing/Dao.php`, `Fieldcollection/Definition.php`, `Fieldcollection/Definition/Dao.php`,
+`Fieldcollection/Definition/Listing.php`, `Fieldcollection/Data/AbstractData.php`, `Fieldcollection/Data/Dao.php`,
+`Localizedfield/LanguageTableDoesNotExistException.php`), plus the direct consumers where a defect originates in the
+model interplay (`lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`,
+`Localizedfield/Dao.php::createUpdateTable()` (`:796-850`), `Fieldcollection/Dao.php::load()` (`:44-63`),
+`bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -87,14 +94,14 @@ Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modern
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
 DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100),
 Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121),
 Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files (I-129–I-134), Scope 13 in **Q** DataObject
-`Folder/Dao` (I-135).
+`Folder/Dao` (I-135), Scope 14 in **R** DataObject `Listing` / `Fieldcollection` / `Localizedfield` (I-136–I-141).
 
 ---
 
@@ -1923,3 +1930,120 @@ Add model tests for:
 - Alternative: map `DataObject\Folder` to `AbstractObject\Dao` in `config/dao-classmap.php` and deprecate the empty
   class. That is not worth the BC risk while `Folder::getDao()` is documented to return `Folder\Dao` (`Folder.php:24`
   `@method Dao getDao()`), so keep the class and make it final.
+
+---
+
+## R – DataObject `Listing/**`, `Fieldcollection/**`, `Localizedfield/**` (Scope 14)
+
+> Scanned and skipped files: see the Scope 14 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md). The `strict_types`
+> gap of `Listing/Dao.php`, `Fieldcollection/Data/Dao.php` and `Fieldcollection/Definition/Dao.php` is part of I-73;
+> `Listing\Dao::getCount()` is in I-79; `@unlink()` and DDL quoting are in I-83. They are not repeated.
+
+### [ ] I-136 – `Fieldcollection\Definition`: share the definition lifecycle with `Objectbrick\Definition`
+
+**File:** `models/DataObject/Fieldcollection/Definition.php:47-313`
+
+- `getByKey()` uses an exception for control flow (`throw new Exception('FieldCollection in registry is not valid')`
+  and catching it right away) → `RuntimeCache::isRegistered()` / `get()` plus an `instanceof` check, and an early return.
+- `save()` / `delete()` duplicate the brick code: the parent-class regex, the "for each class, for each field
+  definition, if `Fieldcollections` and allowed" loop (twice in this file), event dispatching for add / update, and
+  `isWritable()` / `getDefinitionFile()` / `getPhpClassFile()`. Move them into `FieldcollectionObjectbrickDefinitionTrait`
+  (or an abstract `AbstractContainerDefinition`) with hooks for the table names. That also gives collections the
+  brick validations they lack (B-254).
+- The class-loop → a private `getClassesUsingThisCollection(): iterable<ClassDefinition>` that is used by `save()`
+  and `delete()`.
+- `extractDataDefinitions()`: `method_exists($existing, 'addReferencedField')` → `instanceof Data\Localizedfields`
+  (the only implementer). The `@internal` tag on a protected method has no effect.
+- `isWritable()` reads `$_SERVER['PIMCORE_CLASS_DEFINITION_WRITABLE']` directly → an injected parameter (container
+  env). The same applies to classes and bricks.
+- `isForbiddenName()` compares with `in_array()` without strict mode → `in_array(…, true)`. The key regex is
+  duplicated in the brick and in C-32's proposal → one constant (`public const string KEY_PATTERN`).
+- `generateClassFiles()` clones with DeepCopy, `unset()`s the typed `fieldDefinitions`, and exports with `var_export()`.
+  I-83 covers the exporter; also note that the `unset()` leaves an uninitialised typed property on the clone.
+- PHP 8.4: `getByKey()` returns `?static`/`?self`; `isWritable()` could be a property hook. Not required.
+
+### [ ] I-137 – `Fieldcollection\Definition\Dao` and `Definition\Listing`
+
+**Files:** `models/DataObject/Fieldcollection/Definition/Dao.php:26-110`; `models/DataObject/Fieldcollection/Definition/Listing.php:22-78`
+
+- `Dao`: typo `$protectedColums`; superfluous parentheses `([$table])`; `$columnsToRemove = $existingColumns` is a
+  plain alias. `createUpdateTable()` mixes the store table and `Localizedfields::classSaved()` → split into
+  `createStoreTable()` / `updateStoreColumns()` / `notifyChildren()`. `getTableName()` and `getLocalizedTableName()` repeat
+  the prefix, and `Localizedfield\Dao::getTableName()` (`:48-57`) builds the same localized name again → one static
+  name builder used by both DAOs (that removes the risk that they diverge, and B-253 needs it for the drop).
+- `Dao` is `@internal` and not extended in core → `final`.
+- `Listing` has no `@internal`, no interface and loads with a bare `include` → load through `getByKey()` so that the
+  custom-folder precedence, the runtime cache and validation are applied once (C-45, B-252, B-256). Return `list<Definition>`.
+- `loadNames()` does not need to touch the files twice; `loadFileNames()` → `Symfony\Component\Finder\Finder` or a
+  guarded `glob()`. A `\Generator` would avoid loading all definitions at once in the commands.
+
+### [ ] I-138 – `Fieldcollection\Data\AbstractData` and `Data\Dao`
+
+**Files:** `models/DataObject/Fieldcollection/Data/AbstractData.php:29-161`; `models/DataObject/Fieldcollection/Data/Dao.php:29-97`
+
+- `AbstractData`:
+  - `$object` is typed `Concrete|ElementDescriptor|null`, but `setObject()` / `getObject()` accept and return only
+    `?Concrete`. Unlike `Localizedfield::setObject()` (`:225-229`), there is no descriptor handling. Narrow the property
+    to `?Concrete`, or handle the descriptor in both.
+  - `__wakeup()` is dead code: `object` is always excluded in `__sleep()`, so `$this->object` is `null` on wake-up.
+    Remove it, and move `__sleep()` to `__serialize()` / `__unserialize()` with an explicit field list (I-75).
+  - `isAllLazyKeysMarkedAsLoaded()` calls `getObject()` twice → `return $this->getObject()?->isAllLazyKeysMarkedAsLoaded() ?? true;`.
+  - `get()` / `set()` build method names dynamically and return `mixed` (the setter returns `static`). Validate the
+    field against the definition (clear exception instead of "Call to undefined method"), `set(): static`.
+  - `in_array($key, $blockedVars)` → strict; `getLazyLoadedFieldNames()` loads the definition on every serialization →
+    memoise per type.
+  - `protected string $type = ''` on the abstract class: an empty type can never resolve → `abstract public function getType(): string`
+    or a `const TYPE` in the generated class.
+- `Data\Dao::save()`:
+  - `$params = array_merge($params, […])` inside the field loop rebinds the method argument. Once one relation sets
+    `forceSave`, every following field gets it too → build a fresh `$fieldParams` per field.
+  - The custom-persisting fields get no `owner` / `fieldname` / `isUpdate`, and the column fields get no `context`. The
+    brick DAO passes them (`Objectbrick/Data/Dao.php:75-98`), and `Fieldcollection\Dao::load()` passes
+    `context.object`. Use one helper that builds the context for load and save.
+  - `getDefinition()` (→ `getByKey()`) is called twice per save; `$this->model instanceof DirtyIndicatorInterface` is
+    always true (`AbstractData` implements it); `$getter` is computed for fields that do not use it.
+  - The value is read through the generated getter (`preGetData()`, `EncryptedField` unwrapping) and written back
+    through `set()` after the resource round trip – the same pattern as `Concrete\Dao` (`:212-247`). Document why the
+    round trip is needed, or read with `getObjectVar()` the way the brick DAO does for its object vars (`:273`).
+  - `@internal` and not extended in core → `final`.
+
+### [ ] I-139 – `DataObject\Listing\Dao`
+
+**File:** `models/DataObject/Listing/Dao.php:30-116`
+
+- `load()` calls `DataObject::getById()` per id (N+1; every miss of the runtime cache is a full object load with its
+  own queries) → fetch the rows of one page in one query and hydrate from them, or at least warm the cache for the whole
+  id list in one call. Return `list<DataObject>`; log skipped ids (B-256).
+- `loadIdList()` selects `objects.type AS type` and then reads only the first column → select only the id (the extra
+  column makes `GROUP BY` / `DISTINCT` listings harder to reason about), or document why it is there.
+- `getQueryBuilder(...$columns)`: the docblock says `string|string[]|null`, but the method is variadic → `string ...$columns`.
+  The `// apply joins` comment, the `else` after `return` in `getCount()`, and "specicifies" / "document ids" in the
+  docblocks (copied from the document listing) → clean up.
+- `applyJoins()` is a hook for `Listing\Concrete\Dao` that returns `static` and is never chained → `void`, `abstract`
+  hook name or an explicit `@internal` extension point.
+
+### [ ] I-140 – `Localizedfield\LanguageTableDoesNotExistException`
+
+**File:** `models/DataObject/Localizedfield/LanguageTableDoesNotExistException.php:19-25`;
+`models/DataObject/Localizedfield/Dao.php:244`, `:283`, `:516`; `models/DataObject/AbstractObject.php:557-589`
+
+- The class implements Doctrine's `RetryableException` marker so that the retry loop in `AbstractObject::save()`
+  restarts the transaction. It therefore also gets the random 100–500 ms back-off meant for deadlocks, and its
+  semantics depend on a DBAL marker interface meant for driver errors. Once B-179 moves table creation out of the
+  save path, the exception has no purpose → deprecate it (`trigger_deprecation()`), or give it its own
+  `RetryableSaveException` contract that `AbstractObject::save()` handles explicitly without sleeping.
+- Until then: `final`, `@internal`, a constructor that takes the table name and language and builds the message
+  (`'missing table created, start next run ... ;-)'` is repeated in three places).
+
+### [ ] I-141 – Tests
+
+- Collection with a field `objectId` / `loadedLazyKeys`: the save must be rejected (C-44).
+- The same key in `var/classes` and `config/pimcore/classes` with different fields: `classes-rebuild` must keep the
+  columns and data of the custom definition (C-45).
+- `new Definition()` saved for an existing key with an added localized field after `getByKey()` in the same process:
+  the localized column exists; `getByKey()` after `delete()` returns `null` (B-252).
+- Delete a collection that has localized fields and was removed from one class earlier, re-create it with the same
+  key: no tables or items left over, `allowedTypes` cleaned (B-253).
+- Key of 40 characters, and a `localizedfields` inside a `block`: rejected before any file is written (B-254).
+- `getByKey('../x')` returns `null` without including anything (B-255).
+- `Listing\Dao::load()` with a deleted id in the middle of the page (B-256).

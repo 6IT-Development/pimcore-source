@@ -82,6 +82,13 @@ model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefiniti
 `tests/Model/DataObject/DefinitionModifierTest.php`
 **(13)** `models/DataObject/Folder/Dao.php` (the only file in `models/DataObject/AbstractObject/**`, `Concrete/**` and
 `Folder/**` not already processed in Scope 6), with `config/dao-classmap.php:57`
+**(14)** the not yet processed files of `models/DataObject/Listing/**`, `Fieldcollection/**` and `Localizedfield/**`
+(`Listing/Dao.php`, `Fieldcollection/Definition.php`, `Fieldcollection/Definition/Dao.php`,
+`Fieldcollection/Definition/Listing.php`, `Fieldcollection/Data/AbstractData.php`, `Fieldcollection/Data/Dao.php`,
+`Localizedfield/LanguageTableDoesNotExistException.php`), plus the direct consumers where a defect originates in the
+model interplay (`lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`,
+`Localizedfield/Dao.php::createUpdateTable()` (`:796-850`), `Fieldcollection/Dao.php::load()` (`:44-63`),
+`bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -107,11 +114,13 @@ storage** and **asset version binaries silently replaced by a 1-byte placeholder
 Scope 10 **admin permission checks crashing and Symfony roles silently dropped once a role was loaded through
 `UserRole::getById()`** and **deactivated, deleted or re-passworded users keeping their admin sessions**, and in
 Scope 11 **the email blocklist never being applied (blocklisted recipients still receive every mail)**, and in
-Scope 12 **classification store passwords saved in plain text**.
+Scope 12 **classification store passwords saved in plain text**, and in Scope 14 **a plausible
+field-collection field name making the generated class a PHP fatal** and **`classes-rebuild` dropping field-collection
+columns (data loss) when a definition exists in both definition directories**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1515,3 +1524,92 @@ plain-text rows (`type = 'password'` and `password_get_info(value)['algo'] === n
 >   (C-25, C-26, B-175, B-177, B-186, B-187, I-73, I-76, I-78) and are skipped.
 > - `Folder/Dao.php` is an empty subclass of `AbstractObject\Dao` with no behaviour of its own: no critical item. Its
 >   improvement is I-135.
+
+---
+
+# Scope 14 – DataObject `Listing/**`, `Fieldcollection/**`, `Localizedfield/**`
+
+> Notes
+> - Scanned: `Listing/Dao.php`, `Fieldcollection/Definition.php`, `Fieldcollection/Definition/Dao.php`,
+>   `Fieldcollection/Definition/Listing.php`, `Fieldcollection/Data/AbstractData.php`, `Fieldcollection/Data/Dao.php`,
+>   `Localizedfield/LanguageTableDoesNotExistException.php`.
+> - Skipped because Scope 6 already processed them: `Listing/Concrete.php`, `Listing/Concrete/Dao.php` (B-178),
+>   `Fieldcollection/Dao.php` (B-180, I-76), `Localizedfield/Dao.php` (B-175, B-179, I-76, I-82, I-83) and the root file
+>   `Localizedfield.php` (B-175, B-176, B-187). Points made in passing before (`declare(strict_types=1)` in the DAOs –
+>   I-73; `Listing\Dao::getCount()` – I-79; `@unlink()` in `Fieldcollection\Definition::delete()` and DDL quoting – I-83;
+>   key regex – C-32; `QueryBuilderHelperTrait` DBAL 4 blockers – I-58; object-type condition – B-250) are not repeated.
+> - Collaborators read: `lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php`, `Objectbrick/Definition.php` and
+>   `Objectbrick/Definition/Dao.php` (for comparison), `ClassDefinition/Data/Fieldcollections.php`, `Fieldcollection.php`,
+>   `Fieldcollection/Dao.php`, `Localizedfield/Dao.php`, `ClassDefinition/Helper/Dao.php`, `lib/File.php::putPhpFile()`,
+>   `lib/HttpKernel/CacheWarmer/PimcoreCoreCacheWarmer.php`, `ClassesRebuildCommand`, `ClassesDefinitionsBuildCommand`.
+> - `doctrine/dbal` is `^3.8`, PHP `~8.4.0`. No hard Symfony 7.4 / PHP 8.4 incompatibility was found in the seven
+>   files (no implicit nullable parameter, `protected const array` already typed). `vendor/` is not installed and the
+>   classic admin UI bundle is not in this repo: statements about what they do are marked **not verified locally**.
+>   The PHP redeclaration fatal in C-44 was reproduced with plain `php -r`. Nothing else was executed.
+
+---
+
+## [ ] C-44 – A field-collection field named `objectId` or `loadedLazyKeys` generates a class that is a PHP compile-time fatal: every object using the collection crashes
+
+**Files:** `lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`;
+`models/DataObject/Fieldcollection/Data/AbstractData.php:41`; `models/DataObject/Traits/LazyLoadedRelationTrait.php:27`;
+`models/DataObject/Fieldcollection/Definition.php:149-158`; `models/DataObject/ClassDefinition/Data.php:85-97`, `:1297-1312`
+
+```php
+// AbstractData (base of every generated collection class)
+protected ?int $objectId = null;          // + LazyLoadedRelationTrait: protected array $loadedLazyKeys = [];
+// generated class for a collection with a field "objectId"
+protected $objectId;                      // PHP Fatal error: Type of …\Data\X::$objectId must be ?int (as in class AbstractData)
+```
+
+- The builder declares one **untyped** `protected $<field>;` per field. PHP refuses to redeclare an inherited typed
+  property without the same type, at compile time (reproduced: `php -r 'class A { protected ?int $objectId = null; }
+  class B extends A { protected $objectId; }'` → fatal).
+- `Definition::save()` checks only `Data::isForbiddenName()`. Its list covers `object`, `index`, `fieldname`, `type`,
+  `dirtyfields`, but not `objectid` or `loadedlazykeys`, which are the remaining typed properties of `AbstractData`.
+  `objectId` is a very plausible field name (an external / legacy object id).
+- The save succeeds and the class file is written. After that, autoloading `Fieldcollection\Data\<Key>` is an
+  uncatchable fatal:
+  - `Fieldcollection\Dao::load()` builds an item for every stored row, so every object with an item of that type fatals
+    in frontend, admin, API and workers;
+  - `ClassesRebuildCommand`, `ClassesDefinitionsBuildCommand` and any `class_exists()` over all collections fatal.
+    `PimcoreCoreCacheWarmer::dataObjectClasses()` also puts the class on the preload list. Whether `cache:warmup`
+    autoloads it was **not verified locally** (no `vendor/`).
+- A custom `parentClass` can add more typed properties that collide the same way. Nothing checks for that either.
+- Recovery means editing the definition file by hand: the admin cannot load the collection, and objects cannot be
+  opened.
+
+**Fix direction:** in `Definition::save()`, reject field names that match a property or method of the base class
+(`ReflectionClass` of `AbstractData`, or of the configured `parentClass`), compared case-insensitively. At minimum,
+add `objectid` and `loadedlazykeys` to a collection-specific forbidden list. Make the generated properties typed or
+`mixed`, so that a collision is reported as a definition error and not as a fatal at runtime. Bricks
+(`Objectbrick\Data\AbstractData`) use the same builder pattern and need the same check. Add a test (I-141).
+
+---
+
+## [ ] C-45 – `classes-rebuild` drops field-collection columns (data loss) when a definition exists in both definition directories
+
+**Files:** `models/DataObject/Fieldcollection/Definition/Listing.php:27-37`, `:57-77`;
+`models/DataObject/Traits/LocateFileTrait.php:25-34`; `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`;
+`models/DataObject/Fieldcollection/Definition.php:160-175`; `models/DataObject/Fieldcollection/Definition/Dao.php:49-104`
+(`:102-103`); `models/DataObject/ClassDefinition/Helper/Dao.php:117-131`
+
+- `getByKey()` resolves a key with `locateDefinitionFile()`: the file in `PIMCORE_CUSTOM_CONFIGURATION_CLASS_DEFINITION_DIRECTORY`
+  (`config/pimcore/classes`) wins over `PIMCORE_CLASS_DEFINITION_DIRECTORY` (`var/classes`). `Listing::loadFileNames()`
+  instead returns **every** `*.php` from both folders, and `array_unique()` removes only identical real paths. A key
+  that exists in both folders is returned twice, the `var/classes` copy first.
+- `ClassesRebuildCommand` (`pimcore:deployment:classes-rebuild`, usually run on every deployment) calls
+  `$fc->save(false)` for each listed definition. Saving the shadowed `var/classes` copy runs `createUpdateTable()` for
+  every class that allows the key. `removeUnusedColumns()` then **drops every column** that the stale copy does not
+  know about (`ALTER TABLE … DROP COLUMN`). The custom definition is saved afterwards and adds the columns back, but
+  empty.
+- Typical trigger: a project moves its definitions from `var/classes` to `config/pimcore/classes` (to version them)
+  and leaves the old files behind, or a writable `var/classes` copy is created next to the committed one. The admin
+  and `getByKey()` show the custom definition, so the shadow copy goes unnoticed until data is gone.
+- The same listing feeds `ClassesDefinitionsBuildCommand` (two PHP class dumps per key; the last one wins) and the
+  migrations `Version20211018104331`, `Version20231127124738`, `Version20240708083500`.
+
+**Fix direction:** make the listing resolve keys the same way as `getByKey()`. Collect the keys from both folders and
+load each one once through `getByKey()`, so the custom file wins and the result shares the runtime cache (I-137). Log
+a warning for shadowed files. Check whether `Objectbrick\Definition\Listing` and `ClassDefinition\Listing` behave the
+same way. Add a test (I-141).

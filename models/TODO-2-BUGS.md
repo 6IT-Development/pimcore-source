@@ -81,6 +81,13 @@ model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefiniti
 `tests/Model/DataObject/DefinitionModifierTest.php`
 **(13)** `models/DataObject/Folder/Dao.php` (the only file in `models/DataObject/AbstractObject/**`, `Concrete/**` and
 `Folder/**` not already processed in Scope 6), with `config/dao-classmap.php:57`
+**(14)** the not yet processed files of `models/DataObject/Listing/**`, `Fieldcollection/**` and `Localizedfield/**`
+(`Listing/Dao.php`, `Fieldcollection/Definition.php`, `Fieldcollection/Definition/Dao.php`,
+`Fieldcollection/Definition/Listing.php`, `Fieldcollection/Data/AbstractData.php`, `Fieldcollection/Data/Dao.php`,
+`Localizedfield/LanguageTableDoesNotExistException.php`), plus the direct consumers where a defect originates in the
+model interplay (`lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`,
+`Localizedfield/Dao.php::createUpdateTable()` (`:796-850`), `Fieldcollection/Dao.php::load()` (`:44-63`),
+`bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -90,14 +97,15 @@ Functional defects: wrong results, crashes on reachable input, swallowed errors,
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
 **Document** B-138–B-155, **Document editables** B-156–B-164, **Element** B-165–B-174, **DataObject** B-175–B-187,
 **Metadata** B-188–B-192, **Notification** B-193–B-200, **Property** B-201–B-205, **Predefined property**
 B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225,
-**User** B-226–B-237, **Tool** B-238–B-244, **DataObject root files** B-245–B-251.
+**User** B-226–B-237, **Tool** B-238–B-244, **DataObject root files** B-245–B-251,
+**Field collection / listing** B-252–B-256.
 
 ---
 
@@ -3747,3 +3755,137 @@ validate names and nesting; `===`.
 >   (C-25, C-26, B-175, B-177, B-186, B-187, I-73, I-76, I-78) and are skipped.
 > - `Folder/Dao.php` is an empty subclass of `AbstractObject\Dao` with no behaviour of its own: no bug item. Its
 >   improvement is I-135.
+
+---
+
+# Scope 14 – DataObject `Listing/**`, `Fieldcollection/**`, `Localizedfield/**`
+
+> Notes
+> - Scanned and skipped files: see the Scope 14 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-44, C-45).
+> - `Listing/Dao.php`, `Fieldcollection/Data/Dao.php` and `Localizedfield/LanguageTableDoesNotExistException.php` have
+>   no functional defect of their own beyond what Scope 6 / 12 already lists (B-178, B-179, B-180, B-250). Their
+>   improvements are I-138–I-140.
+
+## Field collection / listing (Scope 14)
+
+## [ ] B-252 – Field-collection definitions go stale after save and delete: runtime cache and OPcache are not refreshed
+
+**Files:** `models/DataObject/Fieldcollection/Definition.php:95-121` (`:111-112`), `:126-182`, `:205-215`, `:231-258`;
+`models/DataObject/Objectbrick/Definition.php:196-198` (for comparison); `lib/File.php:48-56`;
+`models/DataObject/ClassDefinition.php:451`; `models/DataObject/Localizedfield/Dao.php:834-840`
+
+- `getByKey()` caches the included definition in `RuntimeCache` under `fieldcollection_<key>`. `save()` and `delete()`
+  never update that entry. `Objectbrick\Definition::save()` does it explicitly ("for localized fields getting a fresh
+  copy").
+  - During `save()`, `createUpdateTable()` → `Localizedfields::classSaved()` → `Localizedfield\Dao::createUpdateTable()`
+    reads the container through `Fieldcollection\Definition::getByKey()`. If another instance was cached earlier in
+    the process, the localized table is rebuilt from the **old** field list. New localized fields get no column, and
+    columns of fields that the old definition does not have are dropped (`removeUnusedColumns()`). Saving a
+    `new Definition()` for an existing key does this: `ClassManager::setupFieldcollection()` in tests, custom
+    importers, and `ClassesRebuildCommand` (listing instances are separate from `getByKey()` instances, see C-45).
+  - After `delete()`, `getByKey()` in the same process still returns the deleted definition. A class save in the same
+    process (`Fieldcollections::classSaved()`) then re-creates the tables that were just dropped. `Fieldcollection::save()`
+    keeps accepting items of the deleted type.
+- The definition file is written with `Filesystem::dumpFile()`. `ClassDefinition` uses `File::putPhpFile()`, which
+  calls `opcache_invalidate()`. With `opcache.validate_timestamps=0` (the usual production setting) or within
+  `revalidate_freq`, other FPM workers and Messenger consumers keep `include`-ing the old compiled definition.
+  `Fieldcollection\Data\Dao::save()` then writes the old field list: new fields are not persisted, and an insert of a
+  removed column fails with "Unknown column", inside the object save transaction.
+
+**Fix direction:** `RuntimeCache::set($cacheKey, $this)` at the end of `save()`, `RuntimeCache::set($cacheKey, null)` in
+`delete()`, and write the definition through `File::putPhpFile()`. The generated PHP class dumpers
+(`PHPFieldCollectionClassDumper`) need the same OPcache invalidation.
+
+## [ ] B-253 – `Definition::delete()` leaves tables and allowed-type references behind: re-creating the key brings back old rows as ghost items
+
+**Files:** `models/DataObject/Fieldcollection/Definition.php:231-258`; `models/DataObject/Fieldcollection/Definition/Dao.php:43-47`;
+`models/DataObject/Localizedfield/Dao.php:48-57`; `models/DataObject/ClassDefinition/Data/Fieldcollections.php:618-638`;
+`models/DataObject/Fieldcollection/Dao.php:44-63`; `models/DataObject/Objectbrick/Definition.php:480-531` (for comparison)
+
+- `Definition\Dao::delete()` drops only `object_collection_<key>_<classId>`. The localized table
+  `object_collection_<key>_localized_<classId>` (created by `Localizedfield\Dao::createUpdateTable()`) is never dropped.
+- `Definition::delete()` drops tables only for classes whose `Fieldcollections` field **currently** allows the key.
+  `Fieldcollections::classSaved()` never drops anything when a type is removed from `allowedTypes`, so tables of
+  classes that removed the type earlier stay forever.
+- The classes keep the deleted key in `allowedTypes`, and their definition files are not re-saved.
+  `Objectbrick\Definition::delete()` removes the key and saves the class.
+- When a collection with the same key is created again, `createUpdateTable()` reuses the leftover tables
+  (`CREATE TABLE IF NOT EXISTS`, columns added / dropped to match the new fields). `Fieldcollection\Dao::load()`
+  then returns every old row (`id`, `fieldname`, `index`) as an item of the new type, with empty or converted values,
+  in every object that had items. The next object save persists them. The leftover allowed-type entry silently makes
+  the new type allowed again in all those classes.
+- The order makes it worse: both files are unlinked first (`@unlink`, errors ignored), and `DROP TABLE` runs after
+  that. A failing drop leaves tables without a definition, and no `POST_DELETE` event is sent.
+- A table created by `Definition::save()` for a class that already allows the key (the re-create case above) is not
+  encrypted for an encrypted class. Only `Definition\Dao::classSaved()` calls `handleEncryption()`, and only during a
+  class save.
+
+**Fix direction:** drop the store and localized tables for **every** class (`SHOW TABLES` with escaped exact names, or
+iterate all class ids), remove the key from `allowedTypes` and save the affected classes as the brick does. Drop the
+tables before removing the files, and call `handleEncryption()` in `createUpdateTable()`. Add a test (I-141).
+
+## [ ] B-254 – `Definition::save()`: missing validations, and files are written before the DDL runs
+
+**Files:** `models/DataObject/Fieldcollection/Definition.php:126-182`, `:302-313`;
+`models/DataObject/Objectbrick/Definition.php:97-142`, `:221-242` (for comparison);
+`models/DataObject/Fieldcollection/Definition/Dao.php:33-41`, `:49-104`
+
+- No table-name length check. The key is limited only by `^[a-zA-Z]\w*$`, and `object_collection_<key>_localized_<classId>`
+  has 29 fixed characters. A key of about 30 or more characters makes `CREATE TABLE` fail with "Identifier name …
+  is too long" (MySQL limit 64). Bricks run `checkTablenames()` before writing anything.
+- No container rules: bricks reject a `localizedfields` nested in a `block` (`enforceBlockRules()`), collections
+  accept it, and it fails only at runtime.
+- `generateClassFiles()` writes the definition file and the PHP class **before** `createUpdateTable()` runs for the
+  classes. A failing DDL (the length limit above, a column type change that MySQL refuses for existing data, a lock
+  timeout) leaves the new definition and class active on top of the old tables. `PRE_*` has been dispatched,
+  `POST_*` is not. Every following object save fails with "Unknown column" until someone saves the collection again
+  successfully.
+- `DataContainerAwareInterface::preSave()` runs for the fields before validation is complete: the forbidden-name
+  loop and `preSave()` are interleaved, so `preSave()` side effects have already happened for earlier fields when a
+  later field fails the check.
+
+**Fix direction:** validate everything first (key, names, table-name length per class, nesting – share the brick
+implementation, I-136), then run the DDL, then write the files. If writing fails, the tables are a superset of what
+is needed, so that order is safe.
+
+## [ ] B-255 – `Definition::getByKey()` builds an `include` path from an unvalidated key
+
+**Files:** `models/DataObject/Fieldcollection/Definition.php:95-121`, `:271-274`; `models/DataObject/Traits/LocateFileTrait.php:25-34`;
+`models/DataObject/Listing/Concrete.php:123-131`; `models/DataObject/Fieldcollection/Data/AbstractData.php:74-77`
+
+- The key is validated only in `save()` (`isForbiddenName()`, `^[a-zA-Z]\w*$`). `getByKey()` passes any string to
+  `sprintf('%s/fieldcollections/%s.php', …)` and `include`s the file if it exists. A key such as `../../public/foo`
+  executes any `*.php` file reachable on disk. The return value is discarded unless it is a `Definition`, but the side
+  effects of the file (and "cannot redeclare" fatals) happen anyway. The result is also cached in `RuntimeCache`
+  whatever its type.
+- Public entry points in this repo: `DataObject\Listing\Concrete::addFieldCollection($type, …)`, and the item `type`
+  of unserialized data (`AbstractData::getDefinition()`). The classic admin passes request ids to
+  `Fieldcollection\Definition::getByKey()`, which was **not verified locally**. The users who can reach it there can
+  usually also edit definitions (C-32), so this is hardening rather than a privilege escalation.
+- `Objectbrick\Definition::getByKey()` has the same pattern.
+
+**Fix direction:** return `null` from `getByKey()` for keys that do not match the save regex (and log it). Do not cache
+results that are not a `Definition`.
+
+## [ ] B-256 – Field-collection small defects
+
+**Files:** `models/DataObject/Fieldcollection/Data/AbstractData.php:74-77`, `:110-123`, `:135-153`;
+`models/DataObject/Fieldcollection/Definition/Listing.php:27-37`, `:57-77`;
+`models/DataObject/Fieldcollection/Definition/Dao.php:33-41`; `models/DataObject/Listing/Dao.php:61-76`
+
+- `AbstractData::getDefinition()` is declared `: Definition`, but `getByKey()` returns `?Definition`. When the definition
+  file is missing (deleted collection while its PHP class still exists, a node without the custom-config file, a failed
+  `@unlink()`), you get a `TypeError` instead of a clear message. This happens in `__sleep()` (`getLazyLoadedFieldNames()`),
+  i.e. during a **cache write** of the owning object, and in `Data\Dao::save()` inside the save transaction.
+- `Definition\Listing::load()` returns whatever each file returns (`include`). A file that is not a definition (an
+  editor backup `foo.php`, a broken export) produces `int` / `false` entries in a `Definition[]`, and consumers call
+  `->getKey()` / `->save()` on them. `glob()` returns `false` on error, and `foreach (false)` emits a warning.
+- `Definition\Dao::getTableName()` / `getLocalizedTableName()` accept a definition without a key and return
+  `object_collection__<classId>`.
+- `DataObject\Listing\Dao::load()` silently skips ids whose `getById()` returns `null` (deleted concurrently, broken
+  class). A page then has fewer items than `setLimit()`, and `count($list)` after `load()` differs from
+  `getTotalCount()`. Nothing is logged.
+
+**Fix direction:** `getDefinition(): ?Definition` or throw a dedicated `DefinitionNotFoundException` with the type;
+type-check the listing results, and skip and log anything that is not a `Definition`. Guard `glob()`. Assert a key in
+the DAO. Log skipped ids in the listing.
