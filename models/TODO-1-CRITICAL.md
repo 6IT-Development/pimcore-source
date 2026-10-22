@@ -147,6 +147,14 @@ the direct consumers where a defect originates in the model interplay (`ClassDef
 `setCompositeIndices()`, `ClassDefinition/Dao.php::update()`, `Localizedfield/Dao.php::createUpdateTable()`,
 `ClassDefinition/Data/Relations/AbstractRelations.php`, `ClassDefinition/Data/{Block,Localizedfields}.php`,
 `DynamicOptionsProvider/SelectionProviderTrait.php`, `Concrete/Dao.php::getData()`)
+**(24)** the not yet processed files of `models/Document/Editable/**` (`Wysiwyg`, `Checkbox`, `Dao`, `Area/AbstractArea`,
+`Area/Info`, `Block/AbstractBlockItem`, `Block/Item`, `Areablock/Item`, `BlockInterface`, `EditableInterface`,
+`EditmodeDataInterface`, `IdRewriterInterface`, `LazyLoadingInterface`; the other twenty editables are already named by
+Scope 6 items and are skipped), plus the direct consumers where a defect originates in the model interplay
+(`PageSnippet::update()` / `saveVersion()`, `Editable::getDocument()`, `lib/Tool/Text.php::wysiwygText()`,
+`lib/Tool/DomCrawler.php`, `lib/Templating/Renderer/EditableRenderer.php::getEditable()`,
+`lib/Document/Editable/EditableHandler.php::renderAreaFrontend()`, the `pimcore.wysiwyg_sanitizer` config in
+`bundles/CoreBundle/config/pimcore/default.yaml:62-67`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -184,14 +192,16 @@ object-brick columns for shadowed definitions** and **PHP code injection / broke
 values**, and in Scope 22 **hardlinked pages written into the static-page storage: the hardlink URL is frozen
 (served after source changes, unpublish or delete) and the source's pretty URL is overwritten with the hardlink's
 rendering**, and in Scope 23 **SQL injection through composite-index definitions** and **localized relations of
-one brick type deleted or taken over when another brick type with the same field name is saved**.
+one brick type deleted or taken over when another brick type with the same field name is saved**, and in Scope 24
+**stored XSS through wysiwyg editables that are rendered from drafts, versions or previews without passing the
+sanitizer**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -2396,3 +2406,72 @@ relation field of the same name (`parts`; a common pattern for shared names like
 again. Data repair: for each object with two brick types sharing a localized relation name, compare
 `object_relations_<classId>` rows per ownername with the version history; document it in the upgrade notes. Tests in
 I-198.
+
+---
+
+# Scope 24 – Document `Editable/**` files not yet named by an item (`Wysiwyg`, `Checkbox`, `Dao`, `Area/*`, `Block/*`, `Areablock/Item`, the five interfaces)
+
+> Notes
+> - Scanned (read in full): `Document/Editable/Wysiwyg.php`, `Checkbox.php`, `Dao.php`, `Area/AbstractArea.php`,
+>   `Area/Info.php`, `Block/AbstractBlockItem.php`, `Block/Item.php`, `Areablock/Item.php`, `BlockInterface.php`,
+>   `EditableInterface.php`, `EditmodeDataInterface.php`, `IdRewriterInterface.php`, `LazyLoadingInterface.php`
+>   (1034 lines).
+> - Skipped because Scope 6 items already name them (a class already in the TODOs is not processed again): `Area`
+>   (B-158, I-78), `Areablock` (B-157, B-158, I-73, I-78), `Block` (B-158), `Date`, `Input`, `Textarea`, `Embed`,
+>   `Renderlet` (B-163), `Image` (B-162, B-163, I-78, I-80), `Link` (C-46, B-159, I-80), `Multiselect`, `Numeric`,
+>   `Select`, `Table`, `Pdf` (B-163, B-164), `Relation`, `Snippet` (B-160, B-163), `Relations` (B-161),
+>   `Scheduledblock` (C-28, B-156, B-158), `Video` (C-10, B-163, B-164, I-80). The `Wysiwyg` / `Checkbox` *data types* of
+>   `DataObject\ClassDefinition\Data` are different classes (B-271) and are not repeated.
+> - Not repeated: missing `declare(strict_types=1)` in `Editable/Dao.php` (I-73, "nearly all DAOs"); the `__sleep()`
+>   copies and duplicated `renderDialogBoxEditables()` (I-78); container look-ups in editables (I-80); `Areablock`
+>   passing a `null` document to `Areablock\Item` (B-157); unknown editable types / corrupt data aborting
+>   `getEditables()` (B-143); `unserialize()` without `allowed_classes` (I-75).
+> - Collaborators read where a defect originates in the interplay: `Document/Editable.php:146`, `:286-318`,
+>   `:422-466`, `:477-482`, `:538-590`, `:645-660`, `:713-728`; `Document/PageSnippet.php:138-200`, `:359-385`;
+>   `Document/Service.php:286-296`, `:345-375`; `Document/Editable/{Areablock,Block,Scheduledblock,Area}.php`
+>   (`getElements()` / `buildInfoObject()`); `lib/Tool/Text.php:41-120`, `:295-324`; `lib/Tool/DomCrawler.php`;
+>   `lib/Tool/Serialize.php`; `lib/Db/Helper.php:38-53`; `lib/Templating/Renderer/EditableRenderer.php:52-99`;
+>   `lib/Document/Editable/EditableHandler.php:167-226`; `bundles/CoreBundle/config/pimcore/default.yaml:62-120`;
+>   `bundles/InstallBundle/dump/install.sql:98-106`; `doc/03_Documents/01_Editables/06_Block.md`,
+>   `02_Areablock/02_Bricks.md:228-242`.
+> - No hard Symfony 7.4 / PHP 8.4 incompatibility: `symfony/dom-crawler` / `symfony/html-sanitizer` `^7.4` APIs used
+>   here (`Crawler::filter()` / `html()`, `HtmlSanitizer::sanitizeFor()`) are unchanged; no implicit nullable parameter;
+>   all files except `Dao.php` are strict. PHP 8.4 options (`#[\Override]`, promoted readonly properties, typed
+>   returns on `BlockInterface`) are in TODO-3.
+> - The admin UI (`pimcore/admin-ui-classic-bundle`), which sends the editmode data, saves drafts and renders version /
+>   session previews, is not in this repo; which of its paths render a document without `save()` was **not
+>   verified**. Nothing was executed.
+> - Critical items: C-60. Bugs: B-348–B-350. Improvements: I-199–I-204.
+
+## [ ] C-60 – Wysiwyg editable: the HTML sanitizer runs only in `save()`, so drafts, versions, previews and pre-sanitizer content are rendered unsanitized (stored XSS)
+
+**Files:** `models/Document/Editable/Wysiwyg.php:71-93`, `:134-141`; `models/Document/PageSnippet.php:138-158`
+(`update()` → `$editable->save()`), `:164-200` (`saveVersion()` – no editable `save()`); `lib/Tool/Text.php:41-46`
+(`wysiwygText()` does no sanitizing); sanitizer config `bundles/CoreBundle/config/pimcore/default.yaml:62-67`
+
+```php
+public function setDataFromEditmode(mixed $data): static { $this->text = $data; ... }   // raw editor HTML
+public function frontend() { return Text::wysiwygText($this->text, [...]); }             // raw output
+public function save(): void { if (is_string($this->text)) { $this->text = $helper->sanitizeFor('body', $this->text); } ... }
+```
+
+- The `pimcore.wysiwyg_sanitizer` (the fix for the wysiwyg XSS advisories) is applied in exactly one place: when the
+  editable row is written by `PageSnippet::update()`. Every other way the text reaches HTML output skips it:
+  - **Drafts / versions:** `PageSnippet::saveVersion()` (admin "save draft", autosave, `saveOnlyVersion`) serialises
+    the document with the editables as set by `setDataFromEditmode()`; no editable `save()` runs. Rendering that
+    version (version preview, editmode of the latest draft, `pimcore_preview`) outputs `<img src=x onerror=…>` /
+    `<a href="javascript:…">` unchanged.
+  - **Session / preview documents:** documents built from editmode data and rendered without saving.
+  - **Old content:** rows written before the sanitizer existed (or by imports that bypass `save()`, e.g. raw
+    `documents_editables` inserts, `setDataFromResource()` + `saveVersion()`) are never sanitized on output.
+- Impact: an editor with save-draft rights (no publish right) stores script in a draft; an administrator who opens the
+  version or draft preview runs it in the admin origin (session riding, user / permission changes). Classified
+  critical because it bypasses the security control the sanitizer was introduced for. Which admin paths render
+  without `save()` was not verified (admin bundle not in repo); the model paths above are.
+
+**Fix direction:** sanitize on input, not on persist: run the sanitizer in `setDataFromEditmode()` (and in
+`setDataFromResource()` for values that did not come from the database, or once on load with a cheap "already
+sanitized" check), keep the `save()` call as a second line of defence. Optionally sanitize in `frontend()` /
+`getDataEditmode()` behind a config flag for legacy content, and provide a one-off command that re-sanitizes existing
+`documents_editables` rows of type `wysiwyg` and the serialized versions. Type handling of the setters is B-348;
+structure in I-199; tests in I-204.

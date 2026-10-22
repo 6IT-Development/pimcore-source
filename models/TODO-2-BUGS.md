@@ -146,6 +146,14 @@ the direct consumers where a defect originates in the model interplay (`ClassDef
 `setCompositeIndices()`, `ClassDefinition/Dao.php::update()`, `Localizedfield/Dao.php::createUpdateTable()`,
 `ClassDefinition/Data/Relations/AbstractRelations.php`, `ClassDefinition/Data/{Block,Localizedfields}.php`,
 `DynamicOptionsProvider/SelectionProviderTrait.php`, `Concrete/Dao.php::getData()`)
+**(24)** the not yet processed files of `models/Document/Editable/**` (`Wysiwyg`, `Checkbox`, `Dao`, `Area/AbstractArea`,
+`Area/Info`, `Block/AbstractBlockItem`, `Block/Item`, `Areablock/Item`, `BlockInterface`, `EditableInterface`,
+`EditmodeDataInterface`, `IdRewriterInterface`, `LazyLoadingInterface`; the other twenty editables are already named by
+Scope 6 items and are skipped), plus the direct consumers where a defect originates in the model interplay
+(`PageSnippet::update()` / `saveVersion()`, `Editable::getDocument()`, `lib/Tool/Text.php::wysiwygText()`,
+`lib/Tool/DomCrawler.php`, `lib/Templating/Renderer/EditableRenderer.php::getEditable()`,
+`lib/Document/Editable/EditableHandler.php::renderAreaFrontend()`, the `pimcore.wysiwyg_sanitizer` config in
+`bundles/CoreBundle/config/pimcore/default.yaml:62-67`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -158,7 +166,7 @@ Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -174,7 +182,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **Document `Email` / `Snippet` / `Folder`** B-334–B-337,
 **Document translation links** B-338–B-340,
 **Document hardlink wrappers** B-341–B-342,
-**DataObject traits** B-343–B-347.
+**DataObject traits** B-343–B-347,
+**Document editables, remaining files** B-348–B-350.
 
 ---
 
@@ -5890,3 +5899,100 @@ sides through the column types (I-194). Tests in I-198.
 before any DDL (C-58 validation), skip or warn about indices whose columns no longer exist instead of failing; remove
 index entries of deleted fields in `setLayoutDefinitions()` / the field-delete path; compare lower-cased column lists;
 do drop and add in one `ALTER TABLE` per table (I-192). Tests in I-198.
+
+---
+
+# Scope 24 – Document `Editable/**` files not yet named by an item (`Wysiwyg`, `Checkbox`, `Dao`, `Area/*`, `Block/*`, `Areablock/Item`, the five interfaces)
+
+> Notes
+> - Scanned and skipped files, and the earlier items that are not repeated (I-73, I-75, I-78, I-80, B-143, B-157),
+>   are listed in the Scope 24 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-60).
+> - `Checkbox`, `Dao`, `AbstractArea` and the five interfaces have no bug of their own (only I-201–I-203).
+
+## Document editables, remaining files (Scope 24)
+
+## [ ] B-348 – `Wysiwyg`: unvalidated setters (`TypeError`), `rewriteIds()` throws for a `null` text, `isEmpty()` treats `"0"` as empty
+
+**File:** `models/Document/Editable/Wysiwyg.php:39`, `:81-93`, `:95-98`, `:110-132`; `lib/Tool/DomCrawler.php:30-50`;
+`lib/Templating/Renderer/EditableRenderer.php:76-78`; `models/Document/Service.php:345-375`
+
+```php
+protected ?string $text = null;
+public function setDataFromEditmode(mixed $data): static { $this->text = $data; ... }   // strict file
+$html = new DomCrawler($this->text);   // null → empty crawler
+$this->text = $html->html();           // Crawler::html() without default on an empty list → InvalidArgumentException
+```
+
+- `setDataFromResource()` / `setDataFromEditmode()` accept `mixed` and assign it to `?string` in a strict file: an
+  editmode payload with an array / number (manipulated request, API client, `defaultValue: 0` in a template through
+  `EditableRenderer`) → `TypeError` → the document save / render fails instead of a validation error (same pattern as
+  B-163 for `Input` / `Textarea`, not listed there).
+- `rewriteIds()` with `$this->text === null` (new editable created from editmode data or a template default and copied
+  before its first save, `Document\Service::rewriteIds()` / copy with "rewrite ids"): `Pimcore\Tool\DomCrawler` wraps
+  only strings, so the parent crawler is empty and `html()` throws "The current node list is empty." → the whole
+  copy / id rewrite aborts.
+- `rewriteIds()` on a text that is a full HTML document (contains `</body>`) is not wrapped either, so `html()`
+  returns the inner HTML of `<html>` (`<head></head><body>…`) and the doctype / root element is lost on every copy.
+- `isEmpty()` uses `empty()`: a text of exactly `"0"` counts as empty (required-editable check / `missingRequiredEditable`,
+  templates using `isEmpty()`), while `"<p>&nbsp;</p>"` or `"<p></p>"` counts as content.
+
+**Fix direction:** normalise in both setters (`null` / `string` accepted, scalars cast, everything else
+`InvalidArgumentException`); return early from `rewriteIds()` when the text is `null` / `''` or contains no
+`pimcore_id`; handle full documents (or reject them in the setter); `isEmpty()` → `trim(strip_tags(html_entity_decode(
+$text)), " \u{00A0}\t\n\r") === ''` (see I-199). Sanitizing in the setter is C-60.
+
+## [ ] B-349 – Block / Areablock item magic getters: custom and overridden editable types never match, `Block\Item` fallback builds unusable or non-existent editables
+
+**Files:** `models/Document/Editable/Block/AbstractBlockItem.php:61-71`; `models/Document/Editable/Block/Item.php:29-43`;
+`models/Document/Editable/Areablock/Item.php`; producers `Block.php:364-383`, `Areablock.php:609-626`,
+`Scheduledblock.php:213-224`; `models/Document/Editable.php:313-320` (`getDocument()` with `documentId === null`)
+
+```php
+$class = 'Pimcore\\Model\\Document\\Editable\\' . str_replace('get', '', $func);
+if ($element !== null && !strcasecmp(get_class($element), $class)) { return $element; }   // AbstractBlockItem
+if ($element === null) { return new $class(); }                                          // Block\Item
+```
+
+- The expected class is derived from the method name with a hard-coded core namespace and compared by **exact** class
+  name. Editables registered through `pimcore.documents.editables.map` / `prefixes` (own namespace) and project
+  subclasses that override a core type (`Image` → `App\Editable\Image`) never match → `item.getImage('img')` returns
+  `null` although the editable exists (documented usage `doc/03_Documents/01_Editables/06_Block.md:27`,
+  `:224`).
+- `Block\Item` returns `new $class()` when the child editable does not exist yet:
+  - for a custom type name (`getMyType()`) or any non-editable method name called on the item (`item.getFoo('x')`,
+    `item.isSomething()`), `$class` does not exist → fatal `Error: Class "…\Foo" not found` → page 500;
+  - the placeholder has no name, no document and no config. `Wysiwyg::frontend()` (and every editable that calls
+    `getDocument()`) runs `PageSnippet::getById(null)` → `TypeError`, swallowed by `__toString()` and logged as an
+    error on every render.
+- `str_replace('get', '', $func)` removes **every** `get`, not only the prefix (`getWidget` → `Wid`, `getTarget` →
+  `Tar`), and a call without arguments reads `$args[0]` → "Undefined array key 0" warning + `TypeError` in
+  `getEditable(string)`.
+- `Block\Item` returns a placeholder, `Areablock\Item` (and `Scheduledblock`, which reuses `Block\Item`) returns `null`
+  for the same situation → templates that work for blocks fail with "method on null" inside an areablock and vice versa.
+
+**Fix direction:** resolve the expected type by **type name** instead of class: `getImage` → `lcfirst(substr($func, 3))`
+→ compare with `$element->getType()` (works for every registered editable and subclass); only handle `get*` methods
+and throw `BadMethodCallException` otherwise; check `count($args)`. Replace the placeholder by `null` (or by an editable
+built through `EditableLoader::build($type)` with name, document and `parentBlockNames` set) and make both item types
+behave the same; document the choice. See I-200.
+
+## [ ] B-350 – `Area\Info::getDocument()` promises a `PageSnippet` but reads a nullable editable / document: `Error` / `TypeError` instead of `null`
+
+**File:** `models/Document/Editable/Area/Info.php:37`, `:75-83`, `:149-170`; `models/Document/Editable.php:313-320`
+
+```php
+protected ?Editable $editable = null;
+public function getDocument(): Document\PageSnippet { return $this->editable->getDocument(); }   // ?PageSnippet
+public function getDocumentElement(...) { $document = $this->getDocument(); if ($document instanceof Document\PageSnippet) { … } }
+```
+
+- `Info` is public API for bricks (`doc/03_Documents/01_Editables/02_Areablock/02_Bricks.md:228-242`) and has a
+  public no-argument constructor, so any caller can build one (only `Area` / `Areablock` set the editable). With no editable set,
+  `getDocument()` throws `Error: Call to a member function getDocument() on null`.
+- `Editable::getDocument()` returns `?PageSnippet` (document deleted meanwhile, `documentId` not set yet, `getById()`
+  returning `null` for a type mismatch) → `TypeError` from the return type instead of `null`.
+- Because of the non-nullable return type the `instanceof` check in `getDocumentElement()` is dead code: the
+  "no document → `null`" branch it was written for can never be reached; the method throws instead.
+
+**Fix direction:** return `?Document\PageSnippet` (`$this->editable?->getDocument()`), keep the `instanceof` guard,
+make `setEditable()` / `setRequest()` fluent and consistent with the property types (I-201).

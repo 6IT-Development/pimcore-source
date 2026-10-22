@@ -144,6 +144,14 @@ the direct consumers where a defect originates in the model interplay (`ClassDef
 `setCompositeIndices()`, `ClassDefinition/Dao.php::update()`, `Localizedfield/Dao.php::createUpdateTable()`,
 `ClassDefinition/Data/Relations/AbstractRelations.php`, `ClassDefinition/Data/{Block,Localizedfields}.php`,
 `DynamicOptionsProvider/SelectionProviderTrait.php`, `Concrete/Dao.php::getData()`)
+**(24)** the not yet processed files of `models/Document/Editable/**` (`Wysiwyg`, `Checkbox`, `Dao`, `Area/AbstractArea`,
+`Area/Info`, `Block/AbstractBlockItem`, `Block/Item`, `Areablock/Item`, `BlockInterface`, `EditableInterface`,
+`EditmodeDataInterface`, `IdRewriterInterface`, `LazyLoadingInterface`; the other twenty editables are already named by
+Scope 6 items and are skipped), plus the direct consumers where a defect originates in the model interplay
+(`PageSnippet::update()` / `saveVersion()`, `Editable::getDocument()`, `lib/Tool/Text.php::wysiwygText()`,
+`lib/Tool/DomCrawler.php`, `lib/Templating/Renderer/EditableRenderer.php::getEditable()`,
+`lib/Document/Editable/EditableHandler.php::renderAreaFrontend()`, the `pimcore.wysiwyg_sanitizer` config in
+`bundles/CoreBundle/config/pimcore/default.yaml:62-67`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -155,7 +163,7 @@ Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -170,7 +178,8 @@ Scope 19 in **W** DataObject `Objectbrick/**` and `SelectOptions/**` (I-175–I-
 Scope 20 in **X** Document `Email` / `Folder` / `Snippet` (I-183–I-185),
 Scope 21 in **Y** Document sub-directory DAOs (I-186–I-189),
 Scope 22 in **Z** Document hardlink wrappers (I-190–I-191),
-Scope 23 in **AA** DataObject `Traits/**` (I-192–I-198).
+Scope 23 in **AA** DataObject `Traits/**` (I-192–I-198),
+Scope 24 in **AB** Document `Editable/**` remaining files (I-199–I-204).
 
 ---
 
@@ -3210,3 +3219,139 @@ ManyToManyObjectRelation,StructuredTable,Multiselect,ImageTrait,Slider,Video,Tex
 - `isEqual()` of both advanced relation types: `[null, M(X)]` vs `[null, M(Y)]` is not equal; `'01'` vs `'1'` metadata
   is not equal; no element is loaded during the comparison (B-346).
 - `setHeight()` / `setWidth()` with `'1.5'`, `''`, `'50%'`, `300` (I-196).
+
+---
+
+## AB – Document `Editable/**` remaining files (Scope 24)
+
+> Notes
+> - Scanned and skipped files are listed in the Scope 24 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md)
+>   (C-60, B-348–B-350).
+> - Not repeated: `declare(strict_types=1)` in `Editable/Dao.php` (I-73), serialization hardening (I-75), `__sleep()`
+>   copies (I-78), container look-ups and the per-provider split of editables (I-80).
+
+### [ ] I-199 – `Wysiwyg`: inject the sanitizer, one render path, rewrite ids without re-serialising untouched HTML
+
+**File:** `models/Document/Editable/Wysiwyg.php:32-44`, `:51-79`, `:95-98`, `:110-141`
+
+- `private static HtmlSanitizer $pimcoreWysiwygSanitizer` caches a container service in a static: it survives kernel
+  reboots (functional tests, `KernelTestCase::bootKernel()` per test, workers that reset the container) and keeps a
+  sanitizer of the old container. Fetch it through the editable loader / a factory (I-80) or at least re-read it per
+  container (`Pimcore::getContainer()->get()` is cheap, the static saves nothing measurable).
+- `getDataEditmode()` and `frontend()` are identical → one private `renderText(): ?string`; `frontend()` gets the
+  `?string` return type (the abstract `Editable::frontend()` is untyped, I-74) and `#[\Override]`.
+- `rewriteIds()`:
+  - set the mapped id directly: `$el->setAttribute('pimcore_id', (string) $idMapping[$type][$id])` instead of
+    `strtr()` on the attribute value with the whole mapping table;
+  - re-serialise only when an attribute was changed (today every copy runs the text through the HTML5 parser /
+    serializer: entities are normalised, `<br />` → `<br>`, whitespace and attribute quoting change, so version diffs
+    show changes for untouched editables);
+  - drop the pointless `$html->clear(); unset($html);` at the end of the method;
+  - `/** @var DOMElement $el */` is unnecessary when iterating with `->each()` or `foreach ($elements as $el)` with
+    `instanceof DOMElement`.
+- `isEmpty()` → text-content based check (B-348); `getText()` is an alias of `getData()` – keep one, deprecate the
+  other.
+- Keep sanitizing in `save()` as defence in depth after C-60 moves it into the setters.
+
+### [ ] I-200 – Block / Areablock items: explicit typed accessor instead of `__call()`, one behaviour, readonly state
+
+**Files:** `models/Document/Editable/Block/AbstractBlockItem.php`; `Block/Item.php`; `Areablock/Item.php`
+
+- Replace the magic `__call()` with an explicit `getEditableOfType(string $type, string $name): ?Document\Editable`
+  (type-name based, B-349) and keep `__call()` only as a thin BC layer that maps `getXxx($name)` onto it.
+  Add `@method` annotations for the core types (`getInput()`, `getImage()`, `getWysiwyg()`, …) so IDEs / PHPStan and
+  Twig users see the API.
+- `Block\Item::__call()` is a copy of the parent method with a different `null` branch → one implementation in the
+  abstract class; the item type only provides `getItemType()` (or make it a constructor argument / backed enum and
+  drop the two one-method subclasses, keeping them as deprecated aliases).
+- PHP 8.4: constructor property promotion with `private readonly` (`PageSnippet $document`, `array $parentBlockNames`,
+  `int $index`); remove the three empty `@internal * *` docblocks; type `$parentBlockNames` as `list<string>`.
+- `getEditable()` mutates the shared editable stored in the document (`setParentBlockNames()`); document that or move
+  the assignment to the place where the editable is built.
+- Expose `getIndex()` – templates currently cannot read the index of an item without the parent block.
+
+### [ ] I-201 – `Area\Info` / `Area\AbstractArea`: consistent fluent setters, nullable contracts, remove the dead base class
+
+**Files:** `models/Document/Editable/Area/Info.php`; `models/Document/Editable/Area/AbstractArea.php`
+
+- `AbstractArea` has no user in core, bundles or docs (legacy Pimcore 5 brick base). Its `array $config` and
+  `Info $brick` are uninitialised typed properties, so `getConfig()` / `getBrick()` before the setter throw
+  `Error: … must not be accessed before initialization`. Mark it `@deprecated` (trigger
+  `trigger_deprecation()`) and remove it in the next major; until then initialise `$config = []` and make
+  `getBrick(): ?Info`.
+- `Info`: `setEditable()` returns `void` while every other setter is fluent; `setEditable(Editable)` /
+  `setRequest(Request)` do not accept `null` although the properties are nullable → make all setters
+  `static`-returning and symmetric with the properties (B-350 for the getter).
+- `getParam()` uses `isset()` here and `array_key_exists()` in `AbstractArea` → `return $this->params[$name] ?? null;`
+  in both.
+- `getDocumentElement(string $name, string $type = '')` passes `''` as editable type into
+  `Editable::buildEditableName()` / the `EDITABLE_NAME` event → listeners that branch on the type see an empty type.
+  Make `$type` required (or nullable and documented) and rename the method to `getDocumentEditable()` (keep the old
+  name as deprecated alias; "element" is the Pimcore 5 term).
+- Remove the empty `@internal * *` and `* * @throws` docblocks; consider a constructor with named arguments
+  (`new Info(id: …, editable: …, index: …, params: …)`) for `Area::buildInfoObject()` and
+  `Areablock::buildInfoObject()`, which today repeat the same five setter calls (I-78).
+
+### [ ] I-202 – Editable interfaces: real return types, complete contracts, accurate docs
+
+**Files:** `models/Document/Editable/BlockInterface.php`; `EditableInterface.php`; `EditmodeDataInterface.php`;
+`IdRewriterInterface.php`; `LazyLoadingInterface.php`; users `lib/Templating/Renderer/EditableRenderer.php:52`, `:99`,
+`lib/Controller/FrontendController.php:102`, `lib/Extension/Document/Areabrick/AbstractAreabrick.php:113`,
+`lib/Twig/Extension/DocumentEditableExtension.php`
+
+- `BlockInterface::start()`, `end()`, `blockStart()`, `blockEnd()` have no return type (docblocks `void|string|$this`,
+  `void|string|array`). Decide the contract (`start(): void`, `blockStart(): array` for template params as
+  `Areablock` returns today, `end(): void`, `blockEnd(): void`) and add native types – breaking for third-party block
+  editables, so ship with a deprecation layer in a minor and the types in the next major.
+- `BlockInterface::getIterator(): Generator` without `extends IteratorAggregate` → extend it, so blocks are usable
+  with `foreach` / `iterator_to_array()` and typed as `Traversable`. Fix the typos ("evertime", "setup").
+- `getCurrentIndex(): int`: `Areablock` returns `$this->indices[...]['key']`, which is a string after JSON decoding;
+  it only works because `Areablock.php` is not strict (I-73). Normalise the keys to `int` when the indices are set,
+  before adding `declare(strict_types=1)` there.
+- `EditableInterface::render(): mixed` while the only implementation is `final public function render(): ?string`
+  → narrow to `?string`. The interface is the declared return type of `EditableRenderer::getEditable()` / `render()`,
+  `FrontendController::getDocumentEditable()` and `AbstractAreabrick::getDocumentEditable()`, while the everyday API
+  of an editable (`getName()`, `getConfig()`, `setEditmode()`, `frontend()`, `admin()`, `getDocument()`) is not on
+  it → callers need `instanceof Document\Editable` checks / PHPStan ignores. Either return `Document\Editable` from
+  those methods or add the used methods to the interface.
+- Docblocks: `setDataFromEditmode()` / `setDataFromResource()` describe a Pimcore 4 "image-id to Asset\Image"
+  conversion, "an convert", empty `*` lines; `IdRewriterInterface` documents the mapping with `array(...)` prose →
+  `@param array{document?: array<int, int>, asset?: array<int, int>, object?: array<int, int>} $idMapping`;
+  `EditmodeDataInterface::getDataEditmode(): mixed` → document the JSON-serialisable contract.
+
+### [ ] I-203 – `Checkbox` and `Editable\Dao`: precise types, explicit boolean parsing, correct DAO contract
+
+**Files:** `models/Document/Editable/Checkbox.php`; `models/Document/Editable/Dao.php`; `lib/Db/Helper.php:38-53`;
+`models/Document/PageSnippet.php:138-152`
+
+- `Checkbox::getValue(): mixed` → `bool`; `frontend()` returns `'1'` / `''` via `(string) bool` – return
+  `$this->value ? '1' : ''` explicitly (or `'true'` / `'false'`) and document it; `isChecked()` and `getData()` are
+  duplicates of each other.
+- `Checkbox::setDataFromEditmode()` / `setDataFromResource()` use `(bool)$data`: the string `"false"` (form posts,
+  API clients, YAML `defaultValue: 'false'`) becomes `true`. Use `filter_var($data, FILTER_VALIDATE_BOOL)`.
+- `Dao`: `@property Areablock $model` is wrong (the DAO serves every editable) → `@property Document\Editable $model`.
+- `Dao::save()` serialises arrays **and objects**, but `Editable::getUnserializedData()` (`Editable.php:713-728`)
+  rejects anything that is not an array or `null`, so an editable whose `getDataForResource()` returns an object can
+  be written but never read back (B-143 then breaks the whole document). Accept `null|scalar|array` only and throw
+  for objects, or document an explicit object contract.
+- `Dao::save()` uses `Helper::upsert()` (insert, catch the unique violation, update) although `PageSnippet::update()`
+  has just run `deleteAllEditables()` → a plain `insert()` is enough there; keep the upsert only for direct
+  `$editable->save()` calls, or batch all editables of a document into one multi-row insert.
+- `Dao::delete()` has no caller in core (documents use `PageSnippet\Dao::deleteAllEditables()`); keep it but cover it
+  with a test, or remove it.
+
+### [ ] I-204 – Tests for the remaining editable files
+
+**Files:** new tests under `tests/Model/Document/Editable/` (or the existing document editable tests)
+
+- `Wysiwyg`: sanitizing on `setDataFromEditmode()` before `save()`, a draft saved via `saveVersion()` and rendered from
+  the version (C-60); setters with `null`, int, array; `rewriteIds()` on `null`, on text without `pimcore_id`
+  (unchanged string, no re-serialisation), on ids `1` / `12` with mapping `[1 => 5, 12 => 34]`, and on a full HTML
+  document; `isEmpty()` with `"0"`, `"<p>&nbsp;</p>"` (B-348, I-199).
+- Block / Areablock items: core type, custom type registered in `pimcore.documents.editables.map`, subclass of a core
+  type, missing child, unknown method name, call without arguments; same result for `Block`, `Areablock`,
+  `Scheduledblock` (B-349, I-200).
+- `Area\Info`: without editable, with an editable whose document was deleted, `getDocumentElement()` inside a block
+  state (B-350, I-201).
+- `Checkbox`: `"false"`, `"0"`, `0`, `true`, `null`; `Dao::save()` round trip for array, scalar and object data
+  (I-203).
