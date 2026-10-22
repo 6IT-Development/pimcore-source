@@ -120,6 +120,12 @@ there), plus the direct consumers where a defect originates in the model interpl
 `ClassDefinition/Data/Objectbricks.php`, the advanced relations' `delete()`, `Concrete/Dao/InheritanceHelper.php`,
 `lib/DataObject/ClassBuilder/ObjectBrick*` / `SelectOptionsEnumBuilder.php`,
 `bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php`)
+**(20)** the `models/Document/*.php` root files not processed in Scope 6 (`Email.php`, `Folder.php`, `Snippet.php`;
+listed under Scope 6 but not processed there), plus the direct consumers where a defect originates in the model
+interplay (`lib/Mail.php::setDocumentSettings()` / `setDocument()` (`:379-415`, `:729-747`),
+`lib/Helper/Mail.php::parseEmailAddressField()` (`:371-395`), `models/Document.php::correctPath()` (`:415-463`), the
+`documents.type_definitions` config (`bundles/CoreBundle/config/pimcore/default.yaml:285-318`)) and the
+`documents_email` schema (`bundles/InstallBundle/dump/install.sql:109-122`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -160,7 +166,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -2100,3 +2106,31 @@ non-empty values, case names matching `^[A-Za-z_][A-Za-z0-9_]*$`, no PHP reserve
 interfaces resolvable. Generate code with `var_export()` for every string (or a code generator, I-83) instead of
 hand-made escaping. Build the enum first (into a temp file, `php -l` / `token_get_all()` check), then save the
 config, then move the file into place. Add tests for `\`, `'`, duplicate values and a leading `-`.
+
+---
+
+# Scope 20 – Document root files not processed in Scope 6 (`Email.php`, `Folder.php`, `Snippet.php`)
+
+> Notes
+> - Scanned (read in full): `Document/Email.php`, `Document/Folder.php`, `Document/Snippet.php`, plus their DAOs
+>   `Email/Dao.php`, `Folder/Dao.php`, `Snippet/Dao.php` for context.
+> - Skipped, already processed in Scope 6: `Dao.php`, `DocType.php`, `Editable.php`, `Hardlink.php`, `Link.php`,
+>   `Listing.php`, `Page.php`, `PageSnippet.php`, `Service.php` (C-25–C-28, B-138–B-155, I-73–I-85). Points already
+>   made there are not repeated: the type-DAO `id = NULL` overwrite for `Snippet/Dao.php` / `Email/Dao.php` – B-148;
+>   one generic type DAO – I-78; missing `declare(strict_types=1)` in the three DAOs – I-73; `Editable\Snippet`
+>   dependencies – B-163.
+> - Collaborators read where a defect originates in the interplay: `models/Document.php::correctPath()`,
+>   `PageSnippet.php` (content-main handling `:84`, `:245-262`, `:431-452`, `:462-477`, `:600-603`),
+>   `Document/Service.php::rewriteIds()` (`:341-360`), `lib/Mail.php`, `lib/Helper/Mail.php`,
+>   `lib/Routing/Dynamic/DocumentRouteHandler.php:78-90`, `bundles/CoreBundle/config/pimcore/default.yaml:285-318`,
+>   `bundles/CoreBundle/src/DependencyInjection/Configuration.php:1061-1070`, `install.sql` (`documents_email`,
+>   `documents_snippet`).
+> - `Folder.php` and `Snippet.php` only set `$type`; `Email.php` is a set of plain string accessors. None of them has
+>   behaviour that can lose data, corrupt state or open a security hole on its own: **no critical item**.
+> - No Symfony 7.4 / PHP 8.4 incompatibility: the three root files are `declare(strict_types=1)`, fully typed and use
+>   no removed API. The `documents_email` columns can be `NULL` (`create()` inserts only the id), but
+>   `assignVariablesToModel()` → `setValues($data, true)` skips `null`, so the `string` setters do not throw.
+> - The admin UI (`pimcore/admin-ui-classic-bundle`) is not in this repo and `vendor/` is not installed: how the admin
+>   tree handles `children_supported` and whether the admin preview needs `direct_route` was **not verified**.
+>   Nothing was executed.
+> - Critical items: none. Bugs: B-334–B-337. Improvements: I-183–I-185.

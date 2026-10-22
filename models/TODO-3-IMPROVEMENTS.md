@@ -117,6 +117,12 @@ there), plus the direct consumers where a defect originates in the model interpl
 `ClassDefinition/Data/Objectbricks.php`, the advanced relations' `delete()`, `Concrete/Dao/InheritanceHelper.php`,
 `lib/DataObject/ClassBuilder/ObjectBrick*` / `SelectOptionsEnumBuilder.php`,
 `bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php`)
+**(20)** the `models/Document/*.php` root files not processed in Scope 6 (`Email.php`, `Folder.php`, `Snippet.php`;
+listed under Scope 6 but not processed there), plus the direct consumers where a defect originates in the model
+interplay (`lib/Mail.php::setDocumentSettings()` / `setDocument()` (`:379-415`, `:729-747`),
+`lib/Helper/Mail.php::parseEmailAddressField()` (`:371-395`), `models/Document.php::correctPath()` (`:415-463`), the
+`documents.type_definitions` config (`bundles/CoreBundle/config/pimcore/default.yaml:285-318`)) and the
+`documents_email` schema (`bundles/InstallBundle/dump/install.sql:109-122`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -127,7 +133,7 @@ IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -138,7 +144,8 @@ Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files 
 Scope 15 in **S** DataObject `Classificationstore/**` configuration models (I-142–I-148), Scope 16 in **T**
 DataObject `ClassDefinition/**` (I-149–I-160), Scope 17 in **U** DataObject `Data/**` value objects (I-161–I-169),
 Scope 18 in **V** DataObject `QuantityValue/**` units and conversion (I-170–I-174),
-Scope 19 in **W** DataObject `Objectbrick/**` and `SelectOptions/**` (I-175–I-182).
+Scope 19 in **W** DataObject `Objectbrick/**` and `SelectOptions/**` (I-175–I-182),
+Scope 20 in **X** Document `Email` / `Folder` / `Snippet` (I-183–I-185).
 
 ---
 
@@ -2826,3 +2833,60 @@ the six `Listing/Dao.php`
 - Select options: values / labels with `\`, `'`, duplicates and a leading `-` are rejected and nothing is written
   (C-56); `getById()` after save / delete in the same process, `exists()`, reserved-word ids (B-331); usage inside a
   `Block` and with a fully qualified reference blocks the delete (B-332); integer / `null` values from YAML (B-333).
+
+---
+
+## X – Document `Email` / `Folder` / `Snippet` (Scope 20)
+
+> Notes
+> - Scanned and skipped files: see the Scope 20 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (B-334–B-337).
+> - Missing `declare(strict_types=1)` in `Email/Dao.php`, `Folder/Dao.php`, `Snippet/Dao.php` is part of I-73; one
+>   generic type DAO is I-78; `#[\Override]` on DAO / model overrides is I-74. Points made there are not repeated.
+
+### [ ] I-183 – `Document\Email`: typed address accessors, shorter docblocks, no duplicate property delete
+
+**Files:** `models/Document/Email.php:29-203`; `models/Document/Email/Dao.php:63-71`;
+`models/Document/Page/Dao.php:63-71`; `models/Document.php:637`; `lib/Mail.php:379-415`
+
+- The address fields are comma-separated strings, and `Mail::setDocumentSettings()` repeats the same
+  parse-and-add loop four times → add `getToAddresses()`, `getCcAddresses()`, `getBccAddresses()`,
+  `getReplyToAddresses(): list<Address>` and `getFromAddress(): ?Address`, built by the shared parser of B-335; `Mail` then
+  calls `->to(...$document->getToAddresses())`. Keep the string getters/setters as the persisted form.
+- Docblocks are copy-paste noise: the setter of `subject` says "Contains the email subject", every method has empty
+  ` *` lines and `@return $this` next to a native `static` return type, and the property comments repeat the property
+  names → remove them, keep only the ones that say something (separator `,` / `;`, "first `from` wins" until B-335 is
+  fixed).
+- `Email\Dao::delete()` and `Page\Dao::delete()` call `deleteAllProperties()`, which `Document::doDelete()` already does
+  (`Document.php:637`) before `getDao()->delete()` → remove both overrides (one query less per delete, one copy less
+  for I-78).
+- Name the type once: `public const string TYPE = 'email';` (typed class constant, PHP 8.3+) and
+  `protected string $type = self::TYPE;` – same for `Snippet`, `Folder` and the other document types, so `typeMatch()`,
+  `Service` and the hardlink wrappers can use the constant instead of string literals (ties to the document-type enum
+  in I-74).
+- `$supportsContentMain = false` is a mutable instance property used as a class trait → `protected const bool
+  SUPPORTS_CONTENT_MAIN` or an overridden `supportsContentMain(): bool` in `Email` (see B-337).
+
+### [ ] I-184 – `Folder` / `Snippet` marker classes and the `direct_route` of snippets / emails
+
+**Files:** `models/Document/Folder.php:22-28`; `models/Document/Folder/Dao.php`; `models/Document/Snippet.php:18-26`;
+`bundles/CoreBundle/config/pimcore/default.yaml:288-318`; `lib/Routing/Dynamic/DocumentRouteHandler.php:78-90`
+
+- `Folder\Dao` is an empty subclass of `Document\Dao` (like `DataObject\Folder\Dao`, I-135); it exists only for the
+  `@method` annotation and the DAO class map → map `Folder` directly to `Document\Dao` or keep it with a short comment
+  that it is a typed extension point.
+- `Snippet`, `Email` and `Folder` cannot be `final` (`Hardlink\Wrapper\Snippet` / `Email` / `Folder` extend them), but
+  nothing else should → mark them `@final` in the docblock so static analysis flags project subclasses that the
+  type map would not instantiate anyway.
+- `direct_route: true` for `snippet` and `email`: every published snippet and email is rendered at its own URL for
+  anonymous visitors (`/snippets/footer`, `/emails/password-reset`), with the layout of a fragment and without SEO
+  data. Check whether the admin preview needs this (**not verified**); if not, set it to `false` by default or send
+  `X-Robots-Tag: noindex` for these types, and document the option.
+
+### [ ] I-185 – Tests for Scope 20
+
+- `tests/Model/Document/` has no test for `Email`, `Snippet` or `Folder` specifics.
+- `Email`: a `to` list longer than 255 characters saves and loads unchanged (B-334); an invalid address, a display name
+  with a comma and two `from` addresses are handled on save, not on send (B-335); the typed address accessors return
+  `Address` objects (I-183).
+- Creating or moving a document below a snippet or an email is rejected (B-336).
+- `Email::setContentMainDocument()` is rejected / has no effect on dependencies and `rewriteIds()` (B-337).

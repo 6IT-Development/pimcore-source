@@ -119,6 +119,12 @@ there), plus the direct consumers where a defect originates in the model interpl
 `ClassDefinition/Data/Objectbricks.php`, the advanced relations' `delete()`, `Concrete/Dao/InheritanceHelper.php`,
 `lib/DataObject/ClassBuilder/ObjectBrick*` / `SelectOptionsEnumBuilder.php`,
 `bundles/CoreBundle/src/OptionsProvider/SelectOptionsOptionsProvider.php`, `ClassesRebuildCommand.php`)
+**(20)** the `models/Document/*.php` root files not processed in Scope 6 (`Email.php`, `Folder.php`, `Snippet.php`;
+listed under Scope 6 but not processed there), plus the direct consumers where a defect originates in the model
+interplay (`lib/Mail.php::setDocumentSettings()` / `setDocument()` (`:379-415`, `:729-747`),
+`lib/Helper/Mail.php::parseEmailAddressField()` (`:371-395`), `models/Document.php::correctPath()` (`:415-463`), the
+`documents.type_definitions` config (`bundles/CoreBundle/config/pimcore/default.yaml:285-318`)) and the
+`documents_email` schema (`bundles/InstallBundle/dump/install.sql:109-122`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -130,7 +136,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
-Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`).
+Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -142,7 +148,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **Classification store configuration** B-257–B-265, **ClassDefinition data types** B-266–B-299,
 **DataObject `Data/**` value objects** B-300–B-315,
 **QuantityValue units / conversion** B-316–B-323,
-**Object bricks** B-324–B-330, **Select options** B-331–B-333.
+**Object bricks** B-324–B-330, **Select options** B-331–B-333,
+**Document `Email` / `Snippet` / `Folder`** B-334–B-337.
 
 ---
 
@@ -5402,3 +5409,90 @@ fallback in the provider.
 
 **Fix direction:** normalise in `createFromData()` / `Dao::getById()` (`(string)` for scalars, `''` for `null`), reject
 non-scalars with a message that names the config id and the key, and log instead of failing the whole listing.
+
+---
+
+# Scope 20 – Document root files not processed in Scope 6 (`Email.php`, `Folder.php`, `Snippet.php`)
+
+> Notes
+> - Scanned and skipped files: see the Scope 20 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (no critical item).
+> - `Folder.php` has no bug of its own. B-148 (type DAO `id = NULL`) also applies to `Email/Dao.php` and
+>   `Snippet/Dao.php` and is not repeated.
+
+## Document `Email` / `Snippet` / `Folder` (Scope 20)
+
+## [ ] B-334 – Email address fields are `varchar(255)`: a longer recipient list makes the save fail or is cut off
+
+**Files:** `bundles/InstallBundle/dump/install.sql:113-118`; `models/Document/Email.php:34-69`, `:79-203`;
+`models/Document/Dao.php:102-147` (`update()` writes the type columns as they are)
+
+- `to`, `from`, `replyTo`, `cc`, `bcc` and `subject` are `varchar(255)`. The model accepts any string length and nothing
+  checks it before the `UPDATE`.
+- A list of 6 entries like `Firstname Lastname <firstname.lastname@company-name.com>` is already over 255 characters.
+  With MySQL / MariaDB in strict mode (default since MySQL 5.7 / MariaDB 10.2.4) the save fails with
+  `Data too long for column 'to'`; `Document::save()` rolls back and the editor gets a SQL error instead of a
+  validation message.
+- Without strict mode the value is silently cut at 255 characters: the last address is cut in the middle and
+  `Mail::setDocumentSettings()` then throws on it (B-335), or a shortened but still valid address receives the mail.
+- No migration changed these columns (`Version20220120121803` only adds the foreign key).
+
+**Fix direction:** migration to `TEXT` (or `varchar(1000)`) for `to` / `cc` / `bcc` / `replyTo`, same in
+`install.sql`; keep `subject` / `from` at 255 but check the length in a model `validate()` (B-335) and throw a
+`ValidationException` that names the field.
+
+## [ ] B-335 – Email addresses are only parsed when the mail is sent: a typo or a display name with a comma breaks every send of the document
+
+**Files:** `models/Document/Email.php:101-203`; `lib/Mail.php:379-415`, `:729-747`;
+`lib/Helper/Mail.php:371-395`
+
+```php
+$emailArray = preg_split('/,|;/', ($emailString ?? ''));   // splits inside "Doe, John" <john@example.com>
+…
+$this->addTo(new Address($toEntry['email'], $toEntry['name'])); // throws RfcComplianceException
+```
+
+- The email document stores free text; `setTo()` / `setCc()` / … do not validate, and nothing in `save()` does.
+- `parseEmailAddressField()` splits at every `,` and `;`, also inside a quoted display name. `"Doe, John" <john@example.com>`
+  becomes `"Doe` and `John" <john@example.com>`; `new Address('"Doe')` throws `RfcComplianceException`
+  (`egulias/email-validator` is required by `composer.json:55`, so the address is always validated).
+- The exception is thrown inside `Mail::setDocument()`, i.e. as soon as code calls `new Mail(['document' => …])` /
+  `setDocument()`. Every send of that document fails (password reset, order confirmation, form mails) until an editor
+  fixes the field; the editor was never told, because the save succeeded.
+- More than one `from` address is accepted and stored; `setDocumentSettings()` silently uses only the first (`:407-413`).
+
+**Fix direction:** one parser that returns `list<Address>` (quote-aware split, `Address::create()` per entry), used both
+by `Mail` and by a new `Email::validate()` that runs on save and rejects invalid entries and more than one `from`
+address with a field-specific message. Add typed accessors (I-183) so `Mail` does not parse strings itself.
+
+## [ ] B-336 – `children_supported: false` (snippet, email) is enforced nowhere in the model
+
+**Files:** `bundles/CoreBundle/config/pimcore/default.yaml:297-302`, `:312-318`;
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php:1064`; `models/Document.php:415-463`
+
+- The type definitions declare that snippets and emails have no children. The only code that reads
+  `children_supported` is the config tree; `correctPath()` loads the parent but never checks its type.
+- `Document::create()`, `setParentId()` + `save()`, `Document\Service::copyAsChild()` and imports can put any document
+  under a snippet or an email. The child gets a path below the snippet (`/snippets/footer/child`) and is routable.
+- Whether the admin tree shows such children is **not verified** (admin UI not in this repo); if it treats the parent as
+  a leaf, the child can neither be found nor edited there, and it is deleted together with the parent.
+
+**Fix direction:** in `correctPath()` read `type_definitions.map.<parentType>.children_supported` and throw a
+`ValidationException` when it is `false`; add a `Document::supportsChildren(): bool` helper so the admin and API use the
+same rule.
+
+## [ ] B-337 – `Email` accepts a content-main document that is never stored, but is still used in the same process
+
+**Files:** `models/Document/Email.php:71`; `models/Document/PageSnippet.php:84`, `:245-262`, `:431-452`, `:462-477`;
+`models/Document/Service.php:341-360`; `install.sql:109-122` (no `contentMainDocumentId` column)
+
+- `Email` sets `$supportsContentMain = false`, but `setContentMainDocument()` / `setContentMainDocumentId()` accept a value
+  anyway. Only `getEditables()` checks `supportsContentMain()`.
+- `resolveDependencies()` adds the main document as a dependency of the email during `save()`, so the dependency row is
+  written although the relation itself is dropped (`documents_email` has no column). After a reload the id is `null`;
+  until the next save of the email the main document shows the email as a user and cannot be deleted without a
+  warning.
+- `Document\Service::rewriteIds()` with `enableInheritance` copies rewritten editables from that main document into the
+  email in the same request.
+
+**Fix direction:** make `setContentMainDocumentId()` throw (or ignore and log) when `supportsContentMain()` is `false`,
+and check `supportsContentMain()` in `resolveDependencies()` and `rewriteIds()` as `getEditables()` does.
