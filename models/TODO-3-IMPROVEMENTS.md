@@ -86,6 +86,15 @@ model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefiniti
 model interplay (`lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`,
 `Localizedfield/Dao.php::createUpdateTable()` (`:796-850`), `Fieldcollection/Dao.php::load()` (`:44-63`),
 `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`)
+**(15)** the not yet processed files of `models/DataObject/Classificationstore/**` (`KeyConfig.php`, `KeyConfig/Dao.php`,
+`KeyConfig/Listing/**`, `GroupConfig.php`, `GroupConfig/Dao.php`, `GroupConfig/Listing/**`, `CollectionConfig.php`,
+`CollectionConfig/Dao.php`, `CollectionConfig/Listing/**`, `StoreConfig.php`, `StoreConfig/Dao.php`, `StoreConfig/Listing/**`,
+`KeyGroupRelation.php`, `KeyGroupRelation/Dao.php`, `KeyGroupRelation/Listing/**`, `CollectionGroupRelation.php`,
+`CollectionGroupRelation/Dao.php`, `CollectionGroupRelation/Listing/**`, `Group.php`, `Key.php`), plus the direct consumers
+where a defect originates in the model interplay (`ClassDefinition/Data/Classificationstore.php::denormalize()` (`:1066-1090`),
+`lib/Cache/RuntimeCache.php`, `lib/Model/AbstractModel.php::setValue()` (`:175-190`),
+`bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php`) and the `classificationstore_*` schema
+(`bundles/InstallBundle/dump/install.sql:617-694`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -94,14 +103,16 @@ Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modern
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
+Scope 15: `205ed92381`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
 DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100),
 Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121),
 Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files (I-129–I-134), Scope 13 in **Q** DataObject
-`Folder/Dao` (I-135), Scope 14 in **R** DataObject `Listing` / `Fieldcollection` / `Localizedfield` (I-136–I-141).
+`Folder/Dao` (I-135), Scope 14 in **R** DataObject `Listing` / `Fieldcollection` / `Localizedfield` (I-136–I-141),
+Scope 15 in **S** DataObject `Classificationstore/**` configuration models (I-142–I-148).
 
 ---
 
@@ -2047,3 +2058,157 @@ Add model tests for:
 - Key of 40 characters, and a `localizedfields` inside a `block`: rejected before any file is written (B-254).
 - `getByKey('../x')` returns `null` without including anything (B-255).
 - `Listing\Dao::load()` with a deleted id in the middle of the page (B-256).
+
+---
+
+## S – DataObject `Classificationstore/**` configuration models (Scope 15)
+
+> Scanned and skipped files: see the Scope 15 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md). The `strict_types`
+> gap of the 13 DAOs is part of I-73; `Classificationstore\Dao` bound parameters are in I-76 and its delete / re-insert
+> in I-82; `Classificationstore::getGroups()` (N queries) is in I-130. They are not repeated.
+
+### [ ] I-142 – `KeyConfig` / `GroupConfig` / `CollectionConfig` / `StoreConfig`: one config lifecycle
+
+**Files:** `models/DataObject/Classificationstore/KeyConfig.php:31-328`; `GroupConfig.php:32-301`;
+`CollectionConfig.php:31-277`; `StoreConfig.php:28-154`
+
+- `getById()`, `getByName()`, `save()`, `delete()`, `getCacheKey()` and `removeCache()` are copied three times, and
+  already diverged (`offsetUnset()` vs `set(null)` – B-257; `KeyConfig` clears `DefinitionCache`, the others do not;
+  `StoreConfig` has no cache and no `getByName()` store argument). Move them into a trait or an abstract
+  `AbstractConfig` with `protected const string CACHE_PREFIX` and event-class hooks; the cache helper fixes B-257 /
+  B-258 once.
+- The save / delete event pairs (`PRE_ADD` / `PRE_UPDATE` / `POST_*`) are repeated in every `save()` → one
+  `dispatchSaveEvents(bool $isUpdate, callable $write)` helper.
+- Signatures: `getById(int $id, ?bool $force = false)` → `bool $force = false`; return `?self` → `?static` not needed
+  (classes are `final`) but the declared return types use the class name (`?KeyConfig`) → `?self`; fluent setters return
+  the class name → `static`. Setters are inconsistent: `setName()` / `setDescription()` / `setId()` are fluent,
+  `setType()`, `setStoreId()`, `setEnabled()`, `setCreationDate()` (`KeyConfig`) return `void`, `StoreConfig::setId()` returns
+  `void` → all fluent (`static`).
+- Nullability mismatches between property, setter and schema: `KeyConfig::$title` is `?string`, `setTitle(string)`, column
+  `NOT NULL DEFAULT ''`; `StoreConfig::$name` / `$description` are `?string`, the setters take `string`;
+  `GroupConfig::$parentId` is `?int`, `setParentId(int)`, column `NOT NULL DEFAULT 0` → `int $parentId = 0`;
+  `CollectionConfig::$description` defaults to `''`, the others to `null`. `$name` / `$type` are uninitialised typed
+  properties → `''` defaults or constructor parameters (B-262).
+- `KeyConfig::save()` derives `title` from the definition JSON (`json_decode($this->definition, true)` on every save)
+  → `json_decode(…, flags: JSON_THROW_ON_ERROR)` with a clear exception for invalid JSON, and document that `setTitle()`
+  is overwritten on save (or remove the setter).
+- `getEnabled(): bool` → `isEnabled()` (keep the old name with `#[\Deprecated]`), consistent with `KeyGroupRelation`.
+- `removeCache()` is private but called as `self::removeCache()` → `$this->removeCache()`.
+- `hasChildren()` (`GroupConfig`) is only available through `@method` / `__call` → a real method.
+- PHP 8.4: `public private(set) ?int $id`, `creationDate`, `modificationDate` (set by the DAO only); `#[\Override]` where
+  `AbstractModel` methods are overridden.
+- Docblocks: `/** The key */` on one line, `Pseudo column for title`, empty `*` lines, "Deletes the key value group
+  configuration" on `StoreConfig::delete()`, `@throws Exception` on methods that cannot throw it → clean up.
+
+### [ ] I-143 – Config DAOs (`KeyConfig\Dao`, `GroupConfig\Dao`, `CollectionConfig\Dao`, `StoreConfig\Dao`)
+
+**Files:** `models/DataObject/Classificationstore/KeyConfig/Dao.php:28-146`; `GroupConfig/Dao.php:28-141`;
+`CollectionConfig/Dao.php:28-129`; `StoreConfig/Dao.php:28-123`
+
+- Four copies of `getById()` / `getByName()` / `save()` / `create()` / `update()` / `delete()` → one abstract
+  `AbstractConfigDao` with `TABLE` constant and a column map.
+- `update()` calls `getValidTableColumns()` inside the loop for every property → hoist it. The `is_array()` /
+  `is_object()` → `Serialize::serialize()` / `json_encode()` branches are dead (no config property is an array or object;
+  the `type == 'select'` branch in `KeyConfig\Dao` can never run) → remove.
+- `save()` = `create()` (`INSERT []`) + `update()` → one `insert()` with all columns (B-262), `lastInsertId()` cast once.
+- `KeyConfig\Dao::getByName()` concatenates `quote($name)` and `$storeId` into the SQL → bound parameters, like the other
+  DAOs (I-76 lists only `Classificationstore\Dao`).
+- `getById(?int $id = null)` with `$id != null` (`0` is treated as "not given") → `?int $id = null` and `$id !== null`.
+- `KeyConfig\Dao::update()` deletes relations as a side effect of mapping the `enabled` column → an explicit
+  `KeyGroupRelation\Dao::deleteByKeyId()` called from the model (B-260).
+- Booleans are cast by hand per DAO (`(bool)$data['enabled']`, `(bool)$data['mandatory']`) → one hydration helper with
+  a cast map (ids, dates, booleans) – prerequisite for `strict_types` (I-73).
+- `@internal` and not extended in core → `final class Dao`.
+
+### [ ] I-144 – The six listings and their DAOs
+
+**Files:** `models/DataObject/Classificationstore/{KeyConfig,GroupConfig,CollectionConfig,StoreConfig,KeyGroupRelation,CollectionGroupRelation}/Listing.php`;
+the six `Listing/Dao.php`
+
+- The six `Listing` classes are identical except for the item type (`getList()` / `setList()` + docblocks) → a shared
+  trait or `@template T` base; `@method …|false current()` → correct type.
+- Hydration differs per DAO: `setValues($row)` (keys, groups – nulls passed on), `assignVariablesToModel()` (relations –
+  nulls skipped), `getById()` per id (collections, stores – N+1 queries and persistent-cache round trips, `null`
+  entries) → one way: hydrate from the selected row with the cast helper of I-143.
+- `load()` docblocks say "group configs" in the key-relation and collection-relation DAOs → fix; return `list<…>`.
+- Comma joins with the join predicate appended to the user condition (`KeyGroupRelation`, `CollectionGroupRelation`) →
+  `INNER JOIN … ON` with aliases and qualified columns; one FROM/JOIN builder shared by `load()`, `getTotalCount()`,
+  `getDataArray()` (B-264, B-265).
+- `getTotalCount()` swallows exceptions in five of six DAOs (B-265) → remove the `try/catch`.
+- `KeyConfig\Listing`: `includeDisabled` → an enum filter (`EnabledFilter::Enabled|Disabled|All`, B-261).
+- Consider porting the listings to `QueryBuilderHelperTrait` like the other model listings, which also gives bound
+  `setCondition()` parameters a single code path.
+
+### [ ] I-145 – `KeyGroupRelation` and `CollectionGroupRelation`
+
+**Files:** `models/DataObject/Classificationstore/KeyGroupRelation.php:28-171`; `KeyGroupRelation/Dao.php:29-101`;
+`CollectionGroupRelation.php:28-112`; `CollectionGroupRelation/Dao.php:30-106`
+
+- The models mix the persisted relation columns (`groupId`, `keyId` / `colId`, `sorter`, `mandatory`) with denormalised
+  read-only data of the joined key / group (`name`, `description`, `definition`, `type`, `enabled`, `groupName`).
+  Setting `setName()` on a relation and saving it does nothing. Split into the relation entity and a read model, or at
+  least mark the joined fields read-only (`public private(set)`) and document them.
+- Uninitialised typed properties (`name`, `definition`, `type`, `groupName`, `CollectionGroupRelation::$sorter`) →
+  defaults (B-264, B-265).
+- `save()` / `delete()` exist only through `@method` / `__call` → real methods; relation changes dispatch no events
+  (config changes do) → `KEY_GROUP_RELATION_*` / `COLLECTION_GROUP_RELATION_*` events, or document why not.
+- Argument order differs between the factory and the DAO (`getByGroupAndKeyId($groupId, $keyId)` →
+  `Dao::getById($keyId, $groupId)`; `getByGroupAndColId($groupId, $colId)` → `Dao::getById($colId, $groupId)`) → same
+  order everywhere, named arguments at the call sites.
+- `KeyGroupRelation` is passed to `Service::getFieldDefinitionFromKeyConfig(KeyConfig|KeyGroupRelation)` as a duck-typed
+  `KeyConfig` → a small `KeyDefinitionInterface` (`getName()`, `getType()`, `getDefinition()`, `getDescription()`)
+  implemented by both.
+- `create(): self` returns `new self()` without arguments → `create(int $groupId, int $keyId, …)` that returns a
+  complete relation.
+- The DAOs `SELECT *` from a join (duplicate columns, see I-76 / B-148) → explicit column lists; `final` DAOs.
+
+### [ ] I-146 – `Group` and `Key` value objects
+
+**Files:** `models/DataObject/Classificationstore/Group.php:22-93`; `Key.php:22-65`
+
+- Constructor property promotion with `readonly` (`public function __construct(private readonly Classificationstore
+  $classificationStore, private readonly GroupConfig $configuration)`), the classes are `final` → `protected` members /
+  methods → `private`.
+- `Group::getKeys()` loads the relations (which already contain every key column from the join) and then calls
+  `KeyConfig::getById()` per relation (N lookups) → build the `KeyConfig` from the relation row or load all keys with
+  one listing by ids.
+- `array_map([$this, 'getKeyByKeyGroupRelation'], …)` → first-class callable `$this->getKeyByKeyGroupRelation(...)`;
+  spreading the relation array into a variadic just to type-check it → `array_map()` over the list.
+- `'groupId = ' . $this->configuration->getId()` → bound parameter; `getKeyGroupRelationListing()` exists only as a test
+  seam → inject a factory or keep it `private`.
+- `Key::getValue(?string $language = 'default', …)`: `null` has no meaning → `string $language = 'default'`; the return
+  type of `getFieldDefinition()` must follow `Service` (B-265).
+
+### [ ] I-147 – Schema (`classificationstore_*`)
+
+**File:** `bundles/InstallBundle/dump/install.sql:617-694` (plus a migration)
+
+- No unique index on `(storeId, name)` for keys, groups and collections, nor on `stores.name`: `getByName()` returns an
+  arbitrary row for duplicates, and nothing in the models prevents creating them → unique indexes after a
+  duplicate-check migration, and a validation in `save()` with a clear exception.
+- `classificationstore_collectionrelations.colId` has no foreign key (B-263) → `FOREIGN KEY (colId) REFERENCES
+  classificationstore_collections (id) ON DELETE CASCADE`; groups / keys / collections have no foreign key to the
+  store.
+- `classificationstore_collections.name` is `VARCHAR(255)` without index (the other tables use `VARCHAR(190)` with an
+  index) although `getByName()` queries it.
+- Nullability mismatches with the models: `storeId INT NULL` (model `int`), `keys.type` / `definition` `NULL` (model
+  non-nullable), `keys.title NOT NULL` (model writes `null`), `relations.sorter` / `collectionrelations.sorter` `NULL`
+  (model `int`) → make the columns `NOT NULL` with defaults after a data migration, so that B-262 cannot recur.
+- Mixed id signedness: `stores.id` is signed `INT`, `storeId` columns are signed, group / key ids unsigned → align.
+
+### [ ] I-148 – Tests
+
+- Update a collection, then `CollectionConfig::getById()` / `getByName()` and the collection listing in the same process
+  return the collection (B-257).
+- `KeyConfig::getByName('a')`, rename to `b`, save: `getByName('a')` returns `null`; a `PRE_UPDATE` listener that reads
+  the config does not leave a stale cache entry (B-258).
+- `CollectionGroupRelation::getByGroupAndColId()` returns the name of the related group when collection id ≠ group id
+  (B-259).
+- Save a disabled key that is in a group: the documented behaviour (relations kept or removed on the transition only)
+  holds (B-260); `setIncludeDisabled(true)` returns enabled and disabled keys (B-261).
+- `KeyConfig::create()` / a key without type does not break `KeyConfig\Listing::load()` (B-262).
+- Delete a collection: its relation rows are gone; delete a store with configs: refused or fully cleaned (B-263).
+- `KeyGroupRelation\Listing` with `setResolveGroupName(true)` and a condition on `name`: group name filled, no
+  ambiguous-column error (B-264).
+- The existing tests (`tests/Model/DataType/ClassificationStore/*`, `tests/Model/Inheritance/ClassificationstoreTest.php`)
+  only use the configs as fixtures; none covers the config models themselves.

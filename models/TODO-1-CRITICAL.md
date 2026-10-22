@@ -89,6 +89,15 @@ model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefiniti
 model interplay (`lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`,
 `Localizedfield/Dao.php::createUpdateTable()` (`:796-850`), `Fieldcollection/Dao.php::load()` (`:44-63`),
 `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`)
+**(15)** the not yet processed files of `models/DataObject/Classificationstore/**` (`KeyConfig.php`, `KeyConfig/Dao.php`,
+`KeyConfig/Listing/**`, `GroupConfig.php`, `GroupConfig/Dao.php`, `GroupConfig/Listing/**`, `CollectionConfig.php`,
+`CollectionConfig/Dao.php`, `CollectionConfig/Listing/**`, `StoreConfig.php`, `StoreConfig/Dao.php`, `StoreConfig/Listing/**`,
+`KeyGroupRelation.php`, `KeyGroupRelation/Dao.php`, `KeyGroupRelation/Listing/**`, `CollectionGroupRelation.php`,
+`CollectionGroupRelation/Dao.php`, `CollectionGroupRelation/Listing/**`, `Group.php`, `Key.php`), plus the direct consumers
+where a defect originates in the model interplay (`ClassDefinition/Data/Classificationstore.php::denormalize()` (`:1066-1090`),
+`lib/Cache/RuntimeCache.php`, `lib/Model/AbstractModel.php::setValue()` (`:175-190`),
+`bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php`) and the `classificationstore_*` schema
+(`bundles/InstallBundle/dump/install.sql:617-694`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -120,7 +129,8 @@ columns (data loss) when a definition exists in both definition directories**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
+Scope 15: `205ed92381`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1613,3 +1623,32 @@ add `objectid` and `loadedlazykeys` to a collection-specific forbidden list. Mak
 load each one once through `getByKey()`, so the custom file wins and the result shares the runtime cache (I-137). Log
 a warning for shadowed files. Check whether `Objectbrick\Definition\Listing` and `ClassDefinition\Listing` behave the
 same way. Add a test (I-141).
+
+---
+
+# Scope 15 – DataObject `Classificationstore/**` configuration models
+
+> Notes
+> - Scanned: `KeyConfig.php`, `KeyConfig/Dao.php`, `KeyConfig/Listing.php`, `KeyConfig/Listing/Dao.php`, `GroupConfig.php`,
+>   `GroupConfig/Dao.php`, `GroupConfig/Listing.php`, `GroupConfig/Listing/Dao.php`, `CollectionConfig.php`,
+>   `CollectionConfig/Dao.php`, `CollectionConfig/Listing.php`, `CollectionConfig/Listing/Dao.php`, `StoreConfig.php`,
+>   `StoreConfig/Dao.php`, `StoreConfig/Listing.php`, `StoreConfig/Listing/Dao.php`, `KeyGroupRelation.php`,
+>   `KeyGroupRelation/Dao.php`, `KeyGroupRelation/Listing.php`, `KeyGroupRelation/Listing/Dao.php`,
+>   `CollectionGroupRelation.php`, `CollectionGroupRelation/Dao.php`, `CollectionGroupRelation/Listing.php`,
+>   `CollectionGroupRelation/Listing/Dao.php`, `Group.php`, `Key.php`.
+> - Skipped because earlier scopes already processed them: `Classificationstore/Dao.php` (B-181, C-43, B-248, I-76,
+>   I-82), `Classificationstore/DefinitionCache.php` (B-181, B-249) and
+>   `Classificationstore/Service.php` (C-43, B-249). Their points are not repeated.
+> - Collaborators read: `lib/Cache/RuntimeCache.php` (`isRegistered()` is `ArrayObject::offsetExists()`, which is
+>   `true` for a `null` value – checked with plain `php -r`), `lib/Model/AbstractModel.php::setValue()` / `setValues()`,
+>   `lib/Model/Dao/DaoTrait.php::assignVariablesToModel()` (skips `null` values), `ClassDefinition/Data/Classificationstore.php`
+>   (`:180-190`, `:836-915`, `:1066-1090`), `DeleteClassificationStoreCommand`, the `classificationstore_*` schema and
+>   `bundles/CoreBundle/config/pimcore/default.yaml:148` (`SET sql_mode = ''`).
+> - **No critical item.** The worst defects – a config renamed while its old name is cached (`getByName()` then returns
+>   the renamed config, B-258), `CollectionConfig` lookups returning `null` after a save in the same process (B-257) and
+>   group relations deleted when a disabled key is saved (B-260) – lead to wrong configuration or duplicates, but need a
+>   specific sequence and are recoverable. They are in TODO-2 (B-257–B-265).
+> - 13 of the 26 files (all DAOs) have no `declare(strict_types=1)` – already covered by I-73. No hard Symfony 7.4 /
+>   PHP 8.4 incompatibility was found (no implicit nullable parameter; `public const string` is already used for the
+>   table names). Modernisation is in TODO-3 (I-142–I-148). The classic admin UI bundle is not in this repo: what it
+>   sends or reads is **not verified locally**. Nothing was executed apart from the `ArrayObject` check.

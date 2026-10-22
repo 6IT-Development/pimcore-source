@@ -88,6 +88,15 @@ model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefiniti
 model interplay (`lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`,
 `Localizedfield/Dao.php::createUpdateTable()` (`:796-850`), `Fieldcollection/Dao.php::load()` (`:44-63`),
 `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`)
+**(15)** the not yet processed files of `models/DataObject/Classificationstore/**` (`KeyConfig.php`, `KeyConfig/Dao.php`,
+`KeyConfig/Listing/**`, `GroupConfig.php`, `GroupConfig/Dao.php`, `GroupConfig/Listing/**`, `CollectionConfig.php`,
+`CollectionConfig/Dao.php`, `CollectionConfig/Listing/**`, `StoreConfig.php`, `StoreConfig/Dao.php`, `StoreConfig/Listing/**`,
+`KeyGroupRelation.php`, `KeyGroupRelation/Dao.php`, `KeyGroupRelation/Listing/**`, `CollectionGroupRelation.php`,
+`CollectionGroupRelation/Dao.php`, `CollectionGroupRelation/Listing/**`, `Group.php`, `Key.php`), plus the direct consumers
+where a defect originates in the model interplay (`ClassDefinition/Data/Classificationstore.php::denormalize()` (`:1066-1090`),
+`lib/Cache/RuntimeCache.php`, `lib/Model/AbstractModel.php::setValue()` (`:175-190`),
+`bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php`) and the `classificationstore_*` schema
+(`bundles/InstallBundle/dump/install.sql:617-694`)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -97,7 +106,8 @@ Functional defects: wrong results, crashes on reachable input, swallowed errors,
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
+Scope 15: `205ed92381`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -105,7 +115,8 @@ Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Docum
 **Metadata** B-188–B-192, **Notification** B-193–B-200, **Property** B-201–B-205, **Predefined property**
 B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225,
 **User** B-226–B-237, **Tool** B-238–B-244, **DataObject root files** B-245–B-251,
-**Field collection / listing** B-252–B-256.
+**Field collection / listing** B-252–B-256,
+**Classification store configuration** B-257–B-265.
 
 ---
 
@@ -3889,3 +3900,224 @@ results that are not a `Definition`.
 **Fix direction:** `getDefinition(): ?Definition` or throw a dedicated `DefinitionNotFoundException` with the type;
 type-check the listing results, and skip and log anything that is not a `Definition`. Guard `glob()`. Assert a key in
 the DAO. Log skipped ids in the listing.
+
+---
+
+# Scope 15 – DataObject `Classificationstore/**` configuration models
+
+> Notes
+> - Scanned and skipped files: see the Scope 15 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (no critical item).
+> - `Classificationstore/Dao.php`, `DefinitionCache.php` and `Service.php` were processed before (B-181, C-43, B-248,
+>   B-249) and are skipped.
+> - `AbstractModel::setValues()` is called in two ways here: `assignVariablesToModel()` skips `null` columns (the property
+>   keeps its default or stays **uninitialised**), plain `setValues($row)` passes `null` to the setter (`TypeError` for a
+>   non-nullable parameter, also without `strict_types`). Several items below follow from that difference.
+
+## Classification store configuration (Scope 15)
+
+## [ ] B-257 – `CollectionConfig::save()` / `delete()` cache `null`: `getById()`, `getByName()` and the collection listing return `null` for the rest of the process
+
+**Files:** `models/DataObject/Classificationstore/CollectionConfig.php:55-79` (`:60-62`), `:86-113` (`:91-93`), `:172-206`,
+`:267-276` (`:270-271`); `models/DataObject/Classificationstore/CollectionConfig/Listing/Dao.php:34-47` (`:41`);
+`lib/Cache/RuntimeCache.php:112-152`
+
+- `removeCache()` "removes" the runtime entries with `RuntimeCache::set($key, null)`. `RuntimeCache::isRegistered()` is
+  `ArrayObject::offsetExists()`, which returns `true` for a `null` value. `getById()` / `getByName()` then return the
+  cached `null` until the process ends. `KeyConfig` and `GroupConfig` use `offsetUnset()` and are not affected.
+- Effect after **updating** a collection (`save()` with an id): `CollectionConfig::getById($id)` and
+  `getByName($name, $storeId)` return `null` in the same request / CLI run / worker. Import scripts that do
+  "`getByName() ?? new CollectionConfig()`" create a **duplicate** collection on the next iteration; code that calls
+  `getById()->…` crashes with `Error`.
+- `CollectionConfig\Listing::load()` hydrates through `getById()` and stores the result unchecked, so the listing
+  contains `null` entries (typed `CollectionConfig[]`); consumers that call `->getName()` crash.
+- In a long-running worker (Messenger consumer, RoadRunner / FrankenPHP worker mode) the `null` stays until the
+  worker restarts.
+
+**Fix direction:** unset the runtime entries (`offsetUnset()`, as `KeyConfig` does) – best through the shared helper of
+I-142; skip `null` in the listing (B-265). Add a test (I-148).
+
+## [ ] B-258 – Config caches go stale: the old name stays cached after a rename, and invalidation runs before the write
+
+**Files:** `models/DataObject/Classificationstore/KeyConfig.php:100-127`, `:184-229` (`:202`, `:213-217`), `:314-327`;
+`GroupConfig.php:97-123`, `:192-226`, `:287-300`; `CollectionConfig.php:86-113`, `:172-206`, `:267-276`;
+`models/DataObject/ClassDefinition/Data/Classificationstore.php:1066-1090` (`:1072`, `:1078`)
+
+- `getByName($name, $storeId)` caches the config in the runtime **and the persistent cache** under
+  `cs_<type>config_<storeId>_<md5(name)>`, without tags and without lifetime. `removeCache()` computes the keys from the
+  **current** (already changed) name and store id. After `setName('colour')->save()` on the key loaded as `color`, the
+  entry for `color` is never removed: `KeyConfig::getByName('color')` keeps returning the stale object (old name, same
+  id) on every node until the whole cache is cleared. Moving a config to another store has the same effect.
+- When a new config is later created with the old name, `getByName()` still returns the renamed one. Consumers that
+  resolve by name write to the wrong key / group: `Classificationstore::denormalize()` (`:1072`, `:1078`), import
+  scripts and project code. The values end up under another key id in `object_classificationstore_data_*`.
+- `save()` / `delete()` invalidate **before** the DAO write and before `PRE_UPDATE` / `PRE_DELETE`. A listener of those
+  events, or a concurrent request, that calls `getById()` / `getByName()` (or `DefinitionCache::get()`) in that window
+  re-populates the persistent cache with the old row, which then stays after the write. `KeyConfig::save()` clears
+  `DefinitionCache` at the same early point.
+- `getById()` and `getByName()` cache separate instances of the same row, so a change through one is not visible
+  through the other in the same process.
+
+**Fix direction:** remember the loaded name and store id (or read the old row) and invalidate both the old and the new
+name key; invalidate **after** the DAO write (and after `POST_*` listeners could have re-read it, i.e. at the very end);
+tag the persistent entries (`classificationstore_config`) so that `Cache::clearTags()` can drop them. Share the logic
+(I-142). Add a test (I-148).
+
+## [ ] B-259 – `CollectionGroupRelation\Dao::getById()` joins the group table on `colId`: wrong group name, or an uninitialised one
+
+**Files:** `models/DataObject/Classificationstore/CollectionGroupRelation/Dao.php:38-61` (`:45`, `:56`);
+`models/DataObject/Classificationstore/CollectionGroupRelation.php:37-42`, `:51-61`;
+`models/DataObject/Classificationstore/CollectionGroupRelation/Listing/Dao.php:42-43` (correct join, for comparison)
+
+- The query is `… LEFT JOIN classificationstore_groups ON collectionrelations.colId = groups.id`. It must join on
+  `groupId`. `name` and `description` therefore come from the group whose **id equals the collection id** – an
+  unrelated group – and `getByGroupAndColId()` returns a relation with the wrong name / description.
+- If no group has that id, the joined columns are `NULL`, `assignVariablesToModel()` skips them, and `$name` stays
+  uninitialised: `getName()` throws "must not be accessed before initialization".
+- The listing DAO joins on `groupId` correctly, so the same relation looks different depending on how it was loaded.
+- The `NotFoundException` message says "KeyGroupRelation".
+
+**Fix direction:** join on `` `%1$s`.`groupId` = `%2$s`.`id` `` and select explicit columns; fix the message. Add a test
+(I-148).
+
+## [ ] B-260 – Saving a disabled key silently deletes all its group relations; new keys are disabled by default
+
+**Files:** `models/DataObject/Classificationstore/KeyConfig/Dao.php:102-134` (`:112-119`);
+`models/DataObject/Classificationstore/KeyConfig.php:68`, `:200-229`;
+`models/DataObject/Classificationstore/KeyGroupRelation.php:63`; `bundles/InstallBundle/dump/install.sql:662-673`
+
+- `KeyConfig\Dao::update()` runs `DELETE FROM classificationstore_relations WHERE keyId = ?` whenever `enabled` is false –
+  on **every** save of a disabled key, not only when it changes from enabled to disabled. The delete is a side effect
+  hidden in the column-mapping loop, runs before the key row is updated, outside a transaction, and dispatches no
+  event.
+- `KeyConfig::$enabled` defaults to `false`. A key created through the API without `setEnabled(true)` is hidden from
+  the default listing (`enabled = 1`, B-261) and loses every group assignment on its next save, e.g. when a script
+  creates the key, assigns it to groups, and then saves the key again to change the definition.
+- Disabling a key in the admin for a moment (to hide it) removes it from all groups permanently. Enabling it again
+  does not restore the relations (sorter, mandatory flag); they must be re-created by hand in every group. The values
+  stored in `object_classificationstore_data_*` stay but are no longer shown or validated, because the key is not in
+  any active group.
+- `KeyGroupRelation::$enabled` defaults to `true`, the opposite of the key default.
+
+**Fix direction:** decide whether disabling should remove memberships at all (the relation listing already exposes the
+key's `enabled` flag, and `ClassDefinition\Data\Classificationstore` skips disabled keys at `:853-855`). If it should,
+do it only on the transition enabled → disabled, explicitly in `KeyConfig::save()` inside a transaction, with an event
+and a log entry. Default new keys to `enabled = true` (BC note) or require the flag. Add a test (I-148).
+
+## [ ] B-261 – `KeyConfig\Listing::setIncludeDisabled(true)` returns **only** disabled keys
+
+**Files:** `models/DataObject/Classificationstore/KeyConfig/Listing.php:30`, `:50-58`;
+`models/DataObject/Classificationstore/KeyConfig/Listing/Dao.php:66-76` (`:68`)
+
+- The condition is `includeDisabled ? '(enabled is null or enabled = 0)' : 'enabled = 1'`. "Include disabled" therefore
+  **excludes** every enabled key. Nothing in this repo calls it; the classic admin is **not verified locally**.
+- There is no way to list all keys through the listing: callers have to run two listings or bypass the model.
+- The filter is put in front of the user condition without a table prefix, so a condition with a join or subquery that
+  also has an `enabled` column becomes ambiguous.
+
+**Fix direction:** make the flag mean what it says (`includeDisabled` → no `enabled` filter) and add an explicit
+`onlyDisabled` / enum filter for the current behaviour (BC: deprecate the old meaning with `trigger_deprecation()`).
+Qualify the column (`classificationstore_keys.enabled`).
+
+## [ ] B-262 – Config creation is `INSERT` of an empty row + `UPDATE`: incomplete rows break the key and group listings
+
+**Files:** `models/DataObject/Classificationstore/KeyConfig/Dao.php:82-89`, `:136-145`;
+`models/DataObject/Classificationstore/KeyConfig.php:129-135`, `:45`, `:60`;
+`models/DataObject/Classificationstore/KeyConfig/Listing/Dao.php:34-50` (`:43`);
+`models/DataObject/Classificationstore/GroupConfig/Dao.php:87-94`, `:131-140`; `GroupConfig/Listing/Dao.php:34-49` (`:42`);
+`CollectionConfig/Dao.php:75-82`, `:119-128`; `StoreConfig/Dao.php:77-84`, `:118-122`; `lib/Model/AbstractModel.php:163-190`;
+`bundles/InstallBundle/dump/install.sql:621-660`
+
+- Every config DAO creates a row with `insert($table, [])` and then runs `update()`. The two statements are not in a
+  transaction. If the update fails (lost connection, lock timeout, a project trigger / stricter `sql_mode`), the empty
+  row stays: `name = ''`, `type = NULL`, `storeId = NULL`, `definition = NULL`.
+- `update()` writes only **initialised** properties (`getObjectVars()`). `KeyConfig::create()` saves a key whose `name`
+  and `type` were never set, so the row has `type = NULL` even when the update succeeds.
+- `KeyConfig\Listing\Dao::load()` and `GroupConfig\Listing\Dao::load()` hydrate with `setValues($row)` (nulls are passed
+  on): `setType(null)`, `setStoreId(null)`, `setDefinition(null)` throw `TypeError`. One such row breaks **every**
+  key listing (the admin key grid, project code), and every group listing for a group row with `storeId = NULL`.
+  `getById()` uses `assignVariablesToModel()` (nulls skipped), so the same row loads there but `getType()` / `getName()`
+  then fail on an uninitialised property.
+- The `PRE_ADD` event is dispatched with `id = null`, `POST_ADD` after both statements; listeners cannot distinguish a
+  half-created row.
+- `KeyConfig::title` is written as `NULL` into `title NOT NULL` when the definition has no title, and `GroupConfig::parentId`
+  as `NULL` into `parentId NOT NULL`. Both work only because the connection sets `sql_mode = ''`
+  (`bundles/CoreBundle/config/pimcore/default.yaml:148`); with a strict mode the update fails and leaves the empty row
+  described above.
+
+**Fix direction:** one `insert()` with all columns (and `lastInsertId()` afterwards), or both statements in a
+transaction; write schema-conform values (`''` for `title`, `0` for `parentId`); validate `name` / `type` before saving
+(`KeyConfig::create()` without arguments cannot produce a valid key → deprecate it or give it parameters); hydrate the
+listings through `assignVariablesToModel()` with explicit casts (I-144). Add a test (I-148).
+
+## [ ] B-263 – `StoreConfig::delete()` and `CollectionConfig::delete()` leave orphaned configuration behind
+
+**Files:** `models/DataObject/Classificationstore/StoreConfig.php:115-120`; `StoreConfig/Dao.php:89-92`;
+`models/DataObject/Classificationstore/CollectionConfig.php:172-181`; `CollectionConfig/Dao.php:87-90`;
+`bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php` (`execute()`);
+`bundles/InstallBundle/dump/install.sql:621-694`
+
+- `StoreConfig::delete()` deletes only the `classificationstore_stores` row. There is no foreign key from groups, keys or
+  collections to the store, so all of them stay, still referenced by class definitions (`storeId` of the
+  `Classificationstore` field) and by object data. `getByName($name, $deletedStoreId)` keeps finding them; the admin
+  can no longer show them under any store. The `pimcore:classificationstore:delete-store` command does the full
+  cleanup (data rows, keys, groups, collections, `Cache::clearAll()`), the model method does none of it.
+- `classificationstore_collectionrelations` has a foreign key on `groupId` only. `CollectionConfig::delete()` leaves all
+  relation rows of the collection (`colId`) behind. They are invisible as long as the id is not reused, but are
+  returned by `CollectionGroupRelation\Listing` conditions that do not filter by an existing collection, and they
+  come back if ids are reused (table copied / truncated, `AUTO_INCREMENT` reset).
+- Neither method removes the persisted object data / group-collection mappings that reference the deleted ids.
+
+**Fix direction:** `CollectionConfig::delete()` deletes its relations (and add `FOREIGN KEY (colId) … ON DELETE CASCADE`
+via migration, I-147). `StoreConfig::delete()` either refuses to delete a store that still has configs or runs the
+same cleanup as the command (move it into a service used by both), in a transaction.
+
+## [ ] B-264 – `KeyGroupRelation\Listing::setResolveGroupName(true)` never fills the group name, and makes plain conditions ambiguous
+
+**Files:** `models/DataObject/Classificationstore/KeyGroupRelation.php:56-59`;
+`models/DataObject/Classificationstore/KeyGroupRelation/Listing/Dao.php:33-66` (`:41`, `:58`), `:78-110`;
+`lib/Model/AbstractModel.php:175-190`
+
+- With the flag the DAO joins `classificationstore_groups` and selects `… .name AS groupName`. `KeyGroupRelation` has
+  a `$groupName` property but neither a setter nor a getter. `setValue('groupName', …)` only calls setters, so the
+  value is dropped and the property stays uninitialised (also invisible in `getObjectVars()`). The feature never
+  worked through the model; whether the classic admin uses `getDataArray()` instead is **not verified locally**.
+- The listing uses a comma join (`FROM relations, keys[, groups]`) with the user condition in front. With the groups
+  table joined, a condition on `name`, `description`, `id`, `storeId`, `creationDate` or `modificationDate` (all present
+  in keys and groups) fails with "Column … is ambiguous". The same condition works without the flag.
+- `getDataArray()` selects `*` from the comma join: the duplicate column names overwrite each other in the
+  associative row (`id`, `name`, `description` of the group replace those of the key).
+
+**Fix direction:** add `getGroupName(): ?string` / `setGroupName()`, rewrite the query with explicit `INNER JOIN … ON`,
+aliases and an explicit column list (I-144).
+
+## [ ] B-265 – Classification store configuration small defects
+
+**Files:** `models/DataObject/Classificationstore/Group.php:89-92`; `Key.php:61-64`; `GroupConfig.php:257-262`;
+`CollectionConfig.php:237-242`; `CollectionGroupRelation.php:44`, `:51-61`; `CollectionGroupRelation/Listing/Dao.php:65-77`;
+`KeyGroupRelation/Listing/Dao.php:54-56`; `StoreConfig/Listing/Dao.php:34-47`, `:54-61`; `KeyConfig/Listing/Dao.php:57-64`;
+`GroupConfig/Listing/Dao.php:56-63`; `CollectionConfig/Listing/Dao.php:54-61`
+
+- `Group::getKeyConfigById(): KeyConfig` returns `KeyConfig::getById()`, which is `?KeyConfig` → `TypeError` for a key
+  deleted after the relation listing was read (or a stale cache, B-258). `Key::getFieldDefinition(): Data` returns
+  `Service::getFieldDefinitionFromKeyConfig()`, which is `?Data` (empty definition, B-249) → `TypeError`.
+- `GroupConfig::getRelations()` / `CollectionConfig::getRelations()` concatenate `$this->id`: for an unsaved config the
+  condition is `groupId = ` → SQL syntax error instead of an empty list.
+- `CollectionGroupRelation::$sorter` has no default: a relation created without `setSorter()` throws on `getSorter()`,
+  and a row with `sorter = NULL` (the column is nullable) loads with an uninitialised sorter
+  (`ClassDefinition\Data\Classificationstore.php:908` calls `getSorter()` on every relation).
+  `getByGroupAndColId(?int $groupId = null, ?int $colId = null)` casts `null` to `0` and queries for id 0.
+- `CollectionGroupRelation\Listing\Dao`: `load()` joins the groups table, `getTotalCount()` and `getDataArray()` do not.
+  A condition on a group column works in `load()` and fails (→ `0`, see below) in `getTotalCount()`, so paging is
+  wrong.
+- `KeyGroupRelation\Listing\Dao::load()` runs `json_decode($row['definition'], true)` on a nullable JSON column:
+  `json_decode(null)` is deprecated since PHP 8.1, and the key's definition becomes `{"mandatory":…}` only; a
+  definition `{}` round-trips to `[]`.
+- `StoreConfig\Listing` and `CollectionConfig\Listing` add the result of `getById()` unchecked → `null` entries for rows
+  deleted concurrently (and always after B-257).
+- `getTotalCount()` of the key, group, collection, store and collection-relation listings catches every `Exception` and
+  returns `0`: a broken condition looks like an empty result. The key-relation listing lets the exception through.
+
+**Fix direction:** nullable returns or a clear `NotFoundException` in `Group` / `Key`; return `[]` from `getRelations()`
+for unsaved configs and bind the id; default `sorter = 0` and required ids in `getByGroupAndColId()`; one FROM/JOIN
+builder for load / count / data array; `json_decode($row['definition'] ?? '[]', true) ?: []`; skip `null` entries; let
+count exceptions surface (or log them) consistently.
