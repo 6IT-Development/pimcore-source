@@ -107,6 +107,12 @@ and `EncryptedField.php` were processed in Scope 6), plus the direct consumers w
 interplay (advanced relation metadata handling in `ClassDefinition/Data/AdvancedManyToMany(Object)Relation.php`,
 `Concrete::getValueForFieldName()`, `lib/Cache/Core/CoreCacheHandler.php` marshalling, `Asset/Image/Thumbnail.php`
 config resolution)
+**(18)** `models/DataObject/QuantityValue/**` (Unit, Unit/Dao, Unit/Listing, Unit/Listing/Dao, Service, DefaultConverter,
+UnitConversionService, QuantityValueConverterInterface; listed under Scope 6 but not processed there), plus the direct
+consumers where a defect originates in the model interplay (`Data/AbstractQuantityValue.php::convertTo()`,
+`ClassDefinition/Data/AbstractQuantityValue.php::getFilterCondition()`, `ClassDefinition/Helper/UnitConverterResolver.php`,
+`bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`), the `quantityvalue_units` schema
+(`bundles/InstallBundle/dump/install.sql:695-709`) and `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:86-147`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -136,12 +142,15 @@ Scope 12 **classification store passwords saved in plain text**, and in Scope 14
 field-collection field name making the generated class a PHP fatal** and **`classes-rebuild` dropping field-collection
 columns (data loss) when a definition exists in both definition directories**, and in Scope 17
 **advanced-relation metadata crashing or being stored under another field name when a column key matches a model
-method** (`value`, `data`, `fieldname`, …).
+method** (`value`, `data`, `fieldname`, …), and in Scope 18 **an override unit import deleting units
+before re-creating them (derived units outside the file permanently lose their base unit; a failure leaves units
+missing)**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
-Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`).
+Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
+Scope 18: `bcac4499f6`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1874,3 +1883,65 @@ $this->model->$setter($row['data']);  // Dao::load(), and the editmode setter lo
 columns) and use them in the DAOs and in the `ClassDefinition` getter/setter loops. Until then, reject column keys that
 collide with a method of `ObjectMetadata` / `ElementMetadata` (case-insensitive, `get_class_methods()`) in
 `setColumns()` / on class save. Add a round-trip test with columns `value`, `data` and `fieldname`.
+
+---
+
+# Scope 18 – DataObject `QuantityValue/**` (units and conversion)
+
+> Notes
+> - Scanned (8 files, read in full): `Unit.php`, `Unit/Dao.php`, `Unit/Listing.php`, `Unit/Listing/Dao.php`,
+>   `Service.php`, `DefaultConverter.php`, `UnitConversionService.php`, `QuantityValueConverterInterface.php`.
+> - None of them was processed before: the folder is listed in the Scope 6 header, but the earlier items only name
+>   these files in passing (C-18 translation side effect of `generateDefinitionJson()`, C-50 unit deletion without usage
+>   check, B-286 `TypeError` in `DefaultConverter` from filter input, B-306 `?string` abbreviation, I-73 strictness,
+>   I-82 cache without tags, I-154 / I-163 value-object side). Those points are not repeated.
+> - Collaborators read where a defect originates in the interplay: `Data/AbstractQuantityValue.php:39-113`,
+>   `ClassDefinition/Data/AbstractQuantityValue.php:199-277`, `ClassDefinition/Data/QuantityValue.php:234-260`,
+>   `ClassDefinition/Helper/UnitConverterResolver.php`, `ClassResolver.php`, `lib/Model/AbstractModel.php:163-190`,
+>   `lib/Model/Listing/AbstractListing.php:163-184`, `models/Translation.php:313-343`,
+>   `bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`, `bundles/CoreBundle/config/services.yaml:108-114`,
+>   `install.sql:695-709` (`fk_baseunit … ON DELETE SET NULL`), the conversion chapter of `55_Number_Types.md`.
+> - `Unit.php` and `Unit/Dao.php` have no `declare(strict_types=1)` (already in I-73); the other six files are strict.
+>   No hard Symfony 7.4 / PHP 8.4 incompatibility was found; modernisation is in TODO-3 (I-170–I-174).
+> - The unit admin grid and the export button live in `pimcore/admin-ui-classic-bundle` (not in this repo, `vendor/` not
+>   installed); how they create units (preset id or not) and call `generateDefinitionJson()` was **not verified**.
+>   The conversion formula, `array_column(null)`, string offsets on strings, `null` / non-numeric arithmetic, division
+>   by `0.0` and `ucfirst()` were checked with `php -r` on PHP 8.4.27. Nothing else was executed.
+> - Critical items: C-53. Bugs: B-316–B-323. Improvements: I-170–I-174.
+
+## [ ] C-53 – Unit import with `--override` deletes units before re-creating them: derived units outside the file lose their base unit, any failure leaves units missing
+
+**Files:** `models/DataObject/QuantityValue/Service.php:27-64` (`:36-42`, `:56-58`, `:59-61`); `Unit.php:112-119`;
+`Unit/Dao.php:117-120`; `bundles/InstallBundle/dump/install.sql:708`; caller
+`bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php:91-103` (`pimcore:definition:import:units -o`)
+
+```php
+if ($unit = Unit::getById($unitArray['id'])) {
+    if ($override) { $unit->delete(); } else { continue; }   // first loop: delete
+}
+// …
+foreach (array_merge($baseUnits, $units) as $unit) { $unit->save(); }   // second loop: re-insert, no transaction
+```
+
+- "Override" is implemented as delete + insert. Every unit of the file that already exists is deleted in the first
+  loop; the rows are written again only in the second loop. No transaction, no validation of the file beforehand.
+- `fk_baseunit … ON DELETE SET NULL`: deleting an existing **base** unit sets `baseunit = NULL` on every unit that
+  references it. Units contained in the file get their base unit back, but every derived unit that is **not** in the
+  file permanently becomes a base unit of its own. Typical trigger: importing a partial export (one group, only the
+  base units) or an older export. Effects: `convertTo()` throws "must have same base unit", the quantity-value filter
+  stops including those units (`ClassDefinition/Data/AbstractQuantityValue.php:240-243`), automatic conversion when an
+  editor switches the unit stops. Nothing reports it.
+- Any failure in the second loop leaves the deleted units missing: a FK violation for a base-unit chain deeper than
+  two levels (B-320), a DB error, or an `Error` from bad data (B-320). The method returns `false` (or crashes), and
+  objects that reference those unit ids hit C-50: `QuantityValueRange` / `InputQuantityValue` objects can no longer be
+  loaded, `QuantityValue` values are written as `NULL` on the next save. Other processes see the gap even on success:
+  every `delete()` clears the unit cache, so requests running during the import load objects while the units are
+  missing (same C-50 effects).
+- Units that are only updated fire `UNIT_PRE_DELETE` / `UNIT_POST_DELETE` followed by `UNIT_PRE_UPDATE` /
+  `UNIT_POST_UPDATE` (B-319), so delete listeners (cleanup, sync to external systems) act on units that still exist.
+
+**Fix direction:** never delete for override: load the existing unit, `setValues()`, `save()` (upsert). Validate the
+whole file first (list of objects, `id` present, every `baseunit` resolvable in the file or the DB, no cycles), sort
+topologically, run all writes in one transaction and clear the unit cache once at the end. Add a test: override import
+of a base unit whose derived units are not in the file keeps their `baseunit`, and a failing import leaves the table
+unchanged.

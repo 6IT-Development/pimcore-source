@@ -106,6 +106,12 @@ and `EncryptedField.php` were processed in Scope 6), plus the direct consumers w
 interplay (advanced relation metadata handling in `ClassDefinition/Data/AdvancedManyToMany(Object)Relation.php`,
 `Concrete::getValueForFieldName()`, `lib/Cache/Core/CoreCacheHandler.php` marshalling, `Asset/Image/Thumbnail.php`
 config resolution)
+**(18)** `models/DataObject/QuantityValue/**` (Unit, Unit/Dao, Unit/Listing, Unit/Listing/Dao, Service, DefaultConverter,
+UnitConversionService, QuantityValueConverterInterface; listed under Scope 6 but not processed there), plus the direct
+consumers where a defect originates in the model interplay (`Data/AbstractQuantityValue.php::convertTo()`,
+`ClassDefinition/Data/AbstractQuantityValue.php::getFilterCondition()`, `ClassDefinition/Helper/UnitConverterResolver.php`,
+`bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`), the `quantityvalue_units` schema
+(`bundles/InstallBundle/dump/install.sql:695-709`) and `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:86-147`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -116,7 +122,8 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
-Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`).
+Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
+Scope 18: `bcac4499f6`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -126,7 +133,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **User** B-226–B-237, **Tool** B-238–B-244, **DataObject root files** B-245–B-251,
 **Field collection / listing** B-252–B-256,
 **Classification store configuration** B-257–B-265, **ClassDefinition data types** B-266–B-299,
-**DataObject `Data/**` value objects** B-300–B-315.
+**DataObject `Data/**` value objects** B-300–B-315,
+**QuantityValue units / conversion** B-316–B-323.
 
 ---
 
@@ -4974,3 +4982,174 @@ pair; throw `BadMethodCallException` for unknown methods.
 
 **Fix direction:** `return (string)$this->getObject()?->…` / `''`; make `fieldname` required (or `getFieldname():
 ?string`); cast only non-null ids.
+
+---
+
+# Scope 18 – DataObject `QuantityValue/**` (units and conversion)
+
+> Notes
+> - Scanned and skipped files: see the Scope 18 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-53).
+> - Conversion semantics documented in `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:93`: "Factor
+>   and offset define how to convert the current unit to the base unit", i.e. `base = value * factor - offset`.
+
+## [ ] B-316 – `DefaultConverter` formula is not the inverse of its own "to base" step: wrong values for units with factor **and** offset
+
+**Files:** `models/DataObject/QuantityValue/DefaultConverter.php:73`; documented in
+`doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:129-138`; consumer
+`models/DataObject/ClassDefinition/Data/AbstractQuantityValue.php:226-277` (`:248-261`)
+
+```php
+$convertedValue = ($value * $from->getFactor() - $from->getConversionOffset()) / $to->getFactor() + $to->getConversionOffset();
+```
+
+- The first half converts to the base unit (`base = v·f − o`). The inverse is `v = (base + o) / f`; the code computes
+  `base / f + o`. Both agree only when the target factor is `1` or its offset is `0`.
+- With the documentation's own example (°C: factor `1.8`, offset `-32`; °F: base °C): °C → °F is right, but
+  212 °F → °C gives `85.8` instead of `100`, and °C → °C changes the value (`v + 17.78 − 32`). With the "per base"
+  setup (°F: factor `5/9`, offset `-255.372`, base K) K → °F gives `236.3` for 273.15 K and °F → °F turns `32` into
+  `236.3` (checked).
+- The quantity-value filter converts the filter value into **every** unit of the base group, the filter unit itself
+  included. For such units the condition for the filter unit compares against a wrong number, so objects stored in
+  exactly the unit the editor filters by are not found. `convertTo()` results are silently wrong.
+- Units with only a factor (length, weight) or only an offset (°C ↔ K) are not affected.
+
+**Fix direction:** `($value * $from->factor - $from->offset + $to->offset) / $to->factor` (works for both setups and
+for the documented example), short-circuit `from === to`, and fix the formula in the documentation. Add data-provider
+tests for °C / °F / K in both setups, same-unit conversion and round trips.
+
+## [ ] B-317 – Unit definitions are never validated: factor `0` → `DivisionByZeroError`, base-unit chains / cycles are stored but cannot be converted
+
+**Files:** `models/DataObject/QuantityValue/Unit.php:91-110`, `:144-161`; `DefaultConverter.php:41-73` (`:41`, `:55`,
+`:69-71`, `:73`); `UnitConversionService.php:32-36`; callers `Data/AbstractQuantityValue.php:95-113`,
+`ClassDefinition/Data/AbstractQuantityValue.php:226-277`
+
+- `Unit::save()` accepts any values. A unit with `factor = 0` as conversion target → `DivisionByZeroError` (checked).
+  It is an `Error`, so callers that catch `Exception` (`QuantityValue` grid/filter code, custom importers) do not catch
+  it; a filter on such a unit group fails the whole listing request.
+- `baseunit` may point to a unit that itself has a base unit (`mm → cm → m`). Both converters only look one level up
+  (`getBaseunit()`), so `mm` and `m` have different "base" ids and `convertTo()` throws "must have same base unit",
+  while the filter (`baseunit = <filter base>`) silently skips part of the group. A unit whose base is itself is accepted;
+  longer cycles (`a → b → a`) make `a` and `b` mutually non-convertible.
+- A `baseunit` id that does not exist (possible through the cache race in B-322 or a manual DB edit) → `getBaseunit()`
+  returns `null` and the unit behaves like an independent base unit.
+
+**Fix direction:** add `Unit::validate()` called from `save()` (and from the importer, C-53): `factor` `null` or
+`!= 0`, `baseunit` must exist, must not be the unit itself and must not have a base unit of its own (or resolve the
+chain to its root everywhere and reject cycles). Make the converter throw a domain exception for a `0` factor.
+
+## [ ] B-318 – `DefaultConverter` side effects: mutates the shared cached `Unit` objects, converts an empty value to `0`, may return a value without unit
+
+**Files:** `models/DataObject/QuantityValue/DefaultConverter.php:36-75` (`:41-53`, `:55-67`, `:73`, `:75`);
+`Unit.php:76-81`; `Service.php:98-133`
+
+- The units are cloned only when they have **no** base unit (`:42-45`, `:56-59`). A derived unit with
+  `factor = null` / `conversionOffset = null` is modified in place (`setFactor(1)`, `setConversionOffset(0)`). That
+  object is the shared instance from the unit table in `RuntimeCache` (`Unit::getById()`), so for the rest of the
+  request every reader sees `1` / `0` instead of `null`, and a unit edited and saved in the same request persists them.
+- `QuantityValue(null, 'cm')->convertTo('m')` returns `QuantityValue(0.0, 'm')`: `null * factor` is `0` in PHP 8.4
+  (checked) – an empty value becomes a real measurement. A non-numeric string value → `TypeError` (B-286 covers the
+  filter side only).
+- The result is built from `$toUnit->getId()`; for an unsaved target unit (`new Unit()`, id `null`) the value silently
+  has no unit.
+
+**Fix direction:** never write to the unit objects – read `$unit->getFactor() ?? 1.0` / `getConversionOffset() ?? 0.0`
+into locals and drop the clones; return a value with `null` unchanged (or throw for an empty value); require a saved
+target unit (or pass the `Unit` object to the constructor).
+
+## [ ] B-319 – `Unit::save()`: add / update decided by "has an id"; a preset id silently overwrites another unit; concurrent creates get the same id
+
+**Files:** `models/DataObject/QuantityValue/Unit.php:91-110` (`:94`); `Unit/Dao.php:75-112` (`:90-95`, `:111`);
+`Service.php:43-44`, `:56-58`
+
+- Unit ids are free strings that the caller may set. `save()` fires `UNIT_PRE_ADD` / `UNIT_POST_ADD` only when the id
+  is empty, so every unit created with a preset id – all units created by `importDefinitionFromJson()` – fires the
+  **update** events and never an add event. The id `"0"` counts as empty and is replaced by a generated id.
+- `Dao::update()` is an upsert on the primary key: `(new Unit())->setId('kg')->save()` overwrites an existing unit `kg`
+  without a check, again announced as an update.
+- Id generation reads `MAX(numeric suffix) + 1` and then upserts, without a lock. Two concurrent creates (two admins,
+  parallel imports) compute the same id; the second save overwrites the first unit. The query also scans and sorts the
+  whole table on every create.
+
+**Fix direction:** decide add / update by existence in the DB (load once, or `INSERT` and catch the duplicate-key
+error), reject a preset id that already exists unless the caller explicitly updates, and generate ids inside a
+transaction with `SELECT … FOR UPDATE` (or use UUIDs for new units). Compare ids with `null` / `''`.
+
+## [ ] B-320 – `importDefinitionFromJson()`: invalid input escapes as `Error`, deeper base-unit chains violate the foreign key, failures are not reported
+
+**Files:** `models/DataObject/QuantityValue/Service.php:27-64` (`:30-31`, `:36`, `:44`, `:48-54`, `:59-61`);
+`bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php:78-89`, `:91-114`
+
+- Only `Exception` is caught, but malformed input raises `Error`s: valid JSON that is not a list of objects (`"x"`,
+  `5`, `false`, a single unit object) → `array_column()` `TypeError` or "Cannot access offset of type string on string"
+  (checked); a numeric `"id": 5` → `TypeError` in `Unit::getById(string)` (`Service.php` is strict); a missing
+  `baseunit` key → warning plus `null`; unknown keys reach any setter through `setValues()` (`"dao": "x"` →
+  `TypeError`). The command only pre-checks `json_decode() !== null`, so it ends with a stack trace instead of its
+  error message – after part of the units may already be deleted / written (C-53).
+- The ordering puts units without base first, units that are referenced as base by others at the front of the rest,
+  then the others. For chains deeper than two levels the order depends on the file order, and a unit can be inserted
+  before its base → `fk_baseunit` violation → `false`, partial import. A `baseunit` that is neither in the file nor
+  in the DB fails the same way.
+- `catch (Exception) { return false; }` drops the reason; the command prints "Failed to import definitions" without
+  any detail, and nothing is logged.
+
+**Fix direction:** decode with `JSON_THROW_ON_ERROR`, validate the structure (list of arrays with string `id`, known
+keys only) before writing, sort topologically, and return / throw a result that names the failing unit; catch
+`Throwable` around the write phase inside the transaction from C-53.
+
+## [ ] B-321 – `generateDefinitionJson()` exports translated texts instead of the stored keys: export → import is not a round trip
+
+**Files:** `models/DataObject/QuantityValue/Service.php:66-91` (`:76-83`, `:85-87`); `models/Translation.php:313-343`
+
+- Abbreviation and long name are replaced by `Translation::getByKeyLocalized(…, 'admin')` before export, in the
+  language of the current admin user (or the session / locale / system fallback). The export therefore contains
+  `"longname": "Millimeter"` (German admin) instead of the stored key, and the result differs per user. Importing it
+  into another system stores the translated text as the key; `Unit::getByAbbreviation()` / `convertTo('<abbr>')` with
+  the original abbreviation no longer finds the unit, and the original admin translations no longer apply.
+- When no language can be resolved (CLI without locale) `getByKeyLocalized()` returns `null` and the abbreviation /
+  long name are exported as `null`.
+- One translation exception aborts the whole export (`return false`); the side effect of writing the keys as
+  translations (C-18) happens on every export.
+
+**Fix direction:** export the raw model values (`getObjectVars()` without translation) and translate only in the
+admin presentation layer; do not create translations during export. If a "translated" export is wanted, add it as a
+separate, explicitly named option.
+
+## [ ] B-322 – Unit table cache: any error turns into "unit not found"; a concurrent save can leave a stale table cached indefinitely
+
+**Files:** `models/DataObject/QuantityValue/Service.php:98-133` (`:106-111`, `:113-125`, `:128-132`); `Unit.php:76-81`,
+`:101-103`, `:115-117`; consumers `ClassDefinition/Data/QuantityValue.php:234-260` (`:256`),
+`Data/AbstractQuantityValue.php:42-55`
+
+- `getQuantityValueUnitsTable()` catches every `Exception` (DB, cache backend, unserialize) and returns `null`;
+  `Unit::getById()` then returns `null` for every id. During a transient DB / cache failure an object load therefore
+  takes the C-50 paths: `QuantityValue` values load as `null` (and are wiped if the object is saved in the same
+  request, e.g. by an importer), `QuantityValueRange` / `InputQuantityValue` throw a misleading "Unit … was not found".
+  `Error`s are not caught at all.
+- `Unit::save()` / `delete()` clear the shared cache **after** the DB write. A request that read the old listing just
+  before that write saves its table afterwards (`Cache::save(…, lifetime null, force true)`); the stale table (deleted
+  unit still present, changed factor not visible) stays until the next unit change or a full cache clear. The cache
+  entry has no tags either (I-82), so tag-based clears do not help.
+- In long-running processes the `RuntimeCache` copy is only refreshed if the process itself saved a unit.
+
+**Fix direction:** let infrastructure errors propagate (log and rethrow) instead of returning `null`; invalidate by
+version (store a `unitsVersion` counter / timestamp written in the same transaction as the unit, and include it in the
+cache key) or give the entry a tag plus a finite lifetime.
+
+## [ ] B-323 – Unit lookups and display: `getByAbbreviation()` picks an arbitrary unit, `__toString()` changes unit symbols
+
+**Files:** `models/DataObject/QuantityValue/Unit.php:52-74`, `:121-124`; `Unit/Dao.php:50-70`;
+`bundles/InstallBundle/dump/install.sql:699`, `:704`; caller `Data/AbstractQuantityValue.php:95-104`
+
+- `abbreviation` and `reference` have no unique index; `SELECT * … WHERE abbreviation = …` without `ORDER BY` returns
+  any matching row. Units that share a symbol (e.g. `"` for inch and for arc second, or the same abbreviation in two
+  imported unit sets) make `convertTo('<abbr>')` pick a unit of the
+  wrong group (exception "must have same base unit") or a different unit of the same group (wrong value).
+- Both lookups bypass the cached unit table: one DB query per call (`convertTo('m')` in a loop is N queries) and a
+  new instance that is not identical to `Unit::getById()`'s.
+- `__toString()` returns `ucfirst("<abbreviation> (<id>)")`; unit symbols are case-sensitive: `mW` becomes `MW`
+  (megawatt), `mm` → `Mm`, `kg` → `Kg` (checked). It is used in the converter's exception messages
+  (`DefaultConverter.php:70`) and wherever a `Unit` is cast to string. A `null` abbreviation renders as `" (5)"`.
+
+**Fix direction:** resolve both lookups from the cached table (index by abbreviation / reference), throw or log when
+an abbreviation is ambiguous (or add unique indexes after a data check); drop `ucfirst()` and fall back to the id when
+the abbreviation is empty (as in B-306).

@@ -104,6 +104,12 @@ and `EncryptedField.php` were processed in Scope 6), plus the direct consumers w
 interplay (advanced relation metadata handling in `ClassDefinition/Data/AdvancedManyToMany(Object)Relation.php`,
 `Concrete::getValueForFieldName()`, `lib/Cache/Core/CoreCacheHandler.php` marshalling, `Asset/Image/Thumbnail.php`
 config resolution)
+**(18)** `models/DataObject/QuantityValue/**` (Unit, Unit/Dao, Unit/Listing, Unit/Listing/Dao, Service, DefaultConverter,
+UnitConversionService, QuantityValueConverterInterface; listed under Scope 6 but not processed there), plus the direct
+consumers where a defect originates in the model interplay (`Data/AbstractQuantityValue.php::convertTo()`,
+`ClassDefinition/Data/AbstractQuantityValue.php::getFilterCondition()`, `ClassDefinition/Helper/UnitConverterResolver.php`,
+`bundles/CoreBundle/src/Command/Definition/Import/QuantityValueCommand.php`), the `quantityvalue_units` schema
+(`bundles/InstallBundle/dump/install.sql:695-709`) and `doc/05_Objects/01_Object_Classes/01_Data_Types/55_Number_Types.md:86-147`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -113,7 +119,8 @@ IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are f
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
-Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`).
+Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
+Scope 18: `bcac4499f6`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -122,7 +129,8 @@ Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121)
 Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files (I-129–I-134), Scope 13 in **Q** DataObject
 `Folder/Dao` (I-135), Scope 14 in **R** DataObject `Listing` / `Fieldcollection` / `Localizedfield` (I-136–I-141),
 Scope 15 in **S** DataObject `Classificationstore/**` configuration models (I-142–I-148), Scope 16 in **T**
-DataObject `ClassDefinition/**` (I-149–I-160), Scope 17 in **U** DataObject `Data/**` value objects (I-161–I-169).
+DataObject `ClassDefinition/**` (I-149–I-160), Scope 17 in **U** DataObject `Data/**` value objects (I-161–I-169),
+Scope 18 in **V** DataObject `QuantityValue/**` units and conversion (I-170–I-174).
 
 ---
 
@@ -2543,3 +2551,88 @@ the six `Listing/Dao.php`
   hand in `getDataFromResource()` → one helper (`attachOwner($value, $params)`) used by all types (see B-301).
 - PHP 8.4 asymmetric visibility (`public private(set)`) would remove most trivial getters of `CalculatedValue`,
   `GeoCoordinates`, `ExternalImage` once BC allows (next major).
+
+---
+
+## V – DataObject `QuantityValue/**` units and conversion (Scope 18)
+
+> Notes
+> - Scanned and skipped files: see the Scope 18 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-53,
+>   B-316–B-323).
+> - Missing `declare(strict_types=1)`: `Unit.php`, `Unit/Dao.php` (already listed in I-73). Cache tags for the unit
+>   table: I-82. Value-object side (`convertTo()`, container access in `__toString()`): I-163.
+
+### [ ] I-170 – `Unit` model: typing, validation hook, PHP 8.4 idioms
+
+- Declare `Stringable` for `__toString()`.
+- `setBaseunit(Unit|string|null)` silently stores `null` for an unsaved `Unit` (id `null`) → throw; `getBaseunit()`
+  re-resolves on every call → fine with the table, but document that it returns the shared cached instance (B-318).
+- `create(array $values)` passes all keys to `setValues()` without `ignoreEmptyValues`, `Service` / `Listing\Dao` pass
+  `true` → one factory used by the importer and the DAO.
+- Add a `validate()` method (B-317) and call it from `save()`; group the event dispatch (`PRE_*` / `POST_*` pairs are
+  written out four times) into one helper.
+- `$factor` / `$conversionOffset` are `?float` where `null` means `1` / `0` everywhere → expose
+  `getEffectiveFactor(): float` / `getEffectiveOffset(): float` so converters do not re-implement the defaults.
+- Next major: asymmetric visibility (`public private(set)`) or readonly value semantics for the conversion fields;
+  `Unit` is effectively configuration and should not be mutated by consumers.
+
+### [ ] I-171 – `Unit\Dao` / `Unit\Listing` / `Unit\Listing\Dao` cleanup
+
+- `getByAbbreviation()` / `getByReference()` build SQL with `quote()` concatenation → bound parameters; `SELECT *` →
+  explicit columns; both methods are identical apart from the column → one private `loadBy(string $column, string $value)`.
+- `create()` and `save()` only call `update()`, and `update()` also inserts → keep one `save()`.
+- `update()`: the `serialize()` / `(int)` bool branch is dead (no array, object or bool properties); the id query uses
+  the literal `quantityvalue_units` instead of `self::TABLE_NAME`; `getPrimaryKey()` queries the schema on every save
+  for a fixed `['id']`. Empty docblocks (`Contains all valid columns…`, blank `@throws`) → remove or type the property
+  (`/** @var list<string> */`).
+- `Listing::isValidOrderKey()` omits `reference`, `converter`, `conversionOffset` → `setOrderKey('reference')` throws
+  `InvalidArgumentException`; derive the list from the table columns. The `@method Unit|false current()` annotation is
+  stale.
+- `Listing\Dao::getTotalCount()` swallows every exception and returns `0` while `load()` lets them through → let both
+  throw; the two queries also differ in spacing before `getCondition()`.
+
+### [ ] I-172 – `QuantityValue\Service`: split responsibilities, explicit errors
+
+- One class mixes three concerns: the static unit-table cache used by models (`getQuantityValueUnitsTable()`), the
+  JSON importer and the JSON exporter. Split into an injectable `UnitRepository` (cached table, lookups by id /
+  abbreviation / reference, invalidation) and a `UnitDefinitionImporter` / `Exporter`; keep the static method as a
+  deprecated proxy (`#[\Deprecated]`) for BC.
+- Importer: `json_decode(…, JSON_THROW_ON_ERROR)`, a validated input DTO, one transaction, a result object (created /
+  updated / skipped / errors) instead of `bool`; the command can then print details and support a real dry run
+  (today `--dry-run` skips everything, including validation).
+- Exporter: no `foreach ($units as &$unit)` reference (left dangling after the loop), `JSON_THROW_ON_ERROR`, return
+  `string`; translation does not belong here (B-321).
+- Cache: the magic priority `995` and `force: true` → named constants with a comment; `Logger::error((string)$e)` →
+  `Logger::error($e->getMessage(), ['exception' => $e])` (B-322).
+
+### [ ] I-173 – Conversion API: base-unit check, converter lookup, exceptions, precision
+
+- `UnitConversionService::convert()` chooses the converter from the **target** unit's base only; the "same base unit"
+  check is left to each converter, so a custom converter (e.g. currency) is called for a length value and must repeat
+  the check. Move the check (and the `from === to` short-circuit) into the service.
+- Converter services are fetched through `UnitConverterResolver` / `ClassResolver` from the public container
+  (`@service` string) → register converters with a tag and inject a `ServiceLocator`
+  (`#[AutowireLocator('pimcore.quantity_value_converter')]`), which removes the need for public services and the
+  static resolver cache.
+- Throw domain exceptions (`UnitConversionException extends \RuntimeException`, `UnsupportedException`) instead of
+  plain `\Exception`; declare them in `QuantityValueConverterInterface::convert()` (`@throws`) and document that only
+  `QuantityValue` is supported by the default converter.
+- Promote `$defaultConverter` as `private readonly`; make `DefaultConverter` `final` (it has no extension points).
+- Precision: chained float arithmetic (`0.1 * 3`, `/ 0.0254`) produces values like `0.30000000000000004` that end up in
+  filters and in saved values when custom code persists conversion results → round to the field's `decimalPrecision`
+  where the target field is known, or offer a `bcmath` based converter (I-154 covers the filter comparison).
+- Update the conversion chapter of `55_Number_Types.md` together with B-316 (the documented formula and the °C / °F
+  example are wrong in one direction).
+
+### [ ] I-174 – Tests for Scope 18
+
+- No test covers conversion, import or export (only test helpers call `Unit::getByAbbreviation()`).
+- `DefaultConverter`: factor-only, offset-only and factor + offset units in both documented setups, same-unit
+  conversion, round trips, `null` value, factor `0` (B-316–B-318); the shared cached unit is unchanged after a
+  conversion (B-318).
+- `Unit::save()`: add vs update events with a preset id, existing id is not overwritten silently (B-319); validation
+  rejects factor `0`, self / chained base units (B-317).
+- Importer: invalid structures return an error without writing, override keeps `baseunit` of derived units outside the
+  file, a failing import leaves the table unchanged (C-53, B-320). Export → import round trip is lossless (B-321).
+- `getByAbbreviation()` with a duplicate abbreviation, `Unit::__toString()` with `mW` and with `null` abbreviation
+  (B-323); unit-table cache returns fresh data after a save (B-322).
