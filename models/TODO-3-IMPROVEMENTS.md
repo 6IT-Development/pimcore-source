@@ -152,6 +152,11 @@ Scope 6 items and are skipped), plus the direct consumers where a defect origina
 `lib/Tool/DomCrawler.php`, `lib/Templating/Renderer/EditableRenderer.php::getEditable()`,
 `lib/Document/Editable/EditableHandler.php::renderAreaFrontend()`, the `pimcore.wysiwyg_sanitizer` config in
 `bundles/CoreBundle/config/pimcore/default.yaml:62-67`)
+**(25)** the not yet processed files of `models/Document/DocType/**` (`Listing.php`, `Listing/Dao.php`; `DocType.php`
+and `DocType/Dao.php` are already named by B-155 and are skipped), plus the direct consumers where a defect originates
+in the model interplay (`lib/Model/Dao/PimcoreLocationAwareConfigDao.php`, `lib/Config/LocationAwareConfigRepository.php`
+(`loadConfigByKey()`, `fetchAllKeys()`, `fetchAllKeysByReadTargets()`), the `documents.doc_types.definitions` config
+node (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:845-870`))
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -163,7 +168,8 @@ Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`,
+Scope 25: `77fe3d674a`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -179,7 +185,8 @@ Scope 20 in **X** Document `Email` / `Folder` / `Snippet` (I-183–I-185),
 Scope 21 in **Y** Document sub-directory DAOs (I-186–I-189),
 Scope 22 in **Z** Document hardlink wrappers (I-190–I-191),
 Scope 23 in **AA** DataObject `Traits/**` (I-192–I-198),
-Scope 24 in **AB** Document `Editable/**` remaining files (I-199–I-204).
+Scope 24 in **AB** Document `Editable/**` remaining files (I-199–I-204),
+Scope 25 in **AC** Document `DocType/**` listing (I-205–I-207).
 
 ---
 
@@ -3355,3 +3362,62 @@ ManyToManyObjectRelation,StructuredTable,Multiselect,ImageTrait,Slider,Video,Tex
   state (B-350, I-201).
 - `Checkbox`: `"false"`, `"0"`, `0`, `true`, `null`; `Dao::save()` round trip for array, scalar and object data
   (I-203).
+
+---
+
+## AC – Document `DocType/**` listing (Scope 25)
+
+> Notes
+> - Scanned and skipped files are listed in the Scope 25 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md)
+>   (B-351, B-352).
+> - Not repeated: `declare(strict_types=1)` for `DocType/Dao.php` and `DocType/Listing/Dao.php` (I-73); before adding it,
+>   cast legacy numeric doc-type ids (`fetchAllKeys()` returns YAML keys like `1` as `int`) to `string` before
+>   `DocType::getById(string)`, as I-86 describes for predefined metadata.
+
+### [ ] I-205 – `DocType\Listing\Dao`: stop inheriting the single-item DAO, hydrate from one repository, count without loading
+
+**Files:** `models/Document/DocType/Listing/Dao.php`; `models/Document/DocType/Dao.php:33-44`, `:52-118`
+
+- `Listing\Dao extends DocType\Dao` → the listing DAO inherits `getById()`, `save()`, `delete()` and
+  `prepareDataStructureForYaml()`, all written for `$this->model` being a `DocType` (`@property DocType $model`
+  vs `@property Listing $model`). `$listing->save()` / `->delete()` reach them through `AbstractModel::__call()` and
+  fail with an undefined-method error on `Listing::getId()`. Extend `PimcoreLocationAwareConfigDao` and share only
+  `configure()` (trait or a protected static helper), as I-181 proposes for `SelectOptions`.
+- `loadList()` calls `DocType::getById()` per id; each call creates a new `DocType`, a new `DocType\Dao`, runs
+  `configure()` (`Config::getSystemConfiguration()`) and builds a new `LocationAwareConfigRepository`. Load the data
+  through the listing's own repository (`getDataByName()`) and hydrate with `DocType::setValues()` – one repository
+  per listing instead of one per doc type.
+- `getTotalCount()` → `count($this->loadIdListByReadTargets())` (or `count($this->model->getDocTypes())` once
+  B-351 skips missing entries) instead of a full reload.
+- `sortByPriority()` is `public static` only to be referenced as a first-class callable; make it a private
+  comparator or a small `DocTypeComparator` invokable, and remove the empty `*` docblock lines.
+- `array_filter()` keeps the keys; `usort()` re-indexes only because a sort always runs. Use `array_values()`
+  explicitly so the `list<DocType>` contract does not depend on the sort branch.
+
+### [ ] I-206 – `DocType\Listing`: typed callbacks, iteration, and a smaller public surface
+
+**File:** `models/Document/DocType/Listing.php`
+
+- Document the callback contracts: `@param null|callable(DocType): bool $filter`,
+  `@param null|callable(DocType, DocType): int $order` (on the trait methods or via `@method` overrides), and
+  `@return list<DocType>` for `getDocTypes()` / `load()`.
+- Implement `IteratorAggregate` and `Countable` (`count()` delegating to the DAO count, I-205) so templates and
+  services can iterate without knowing the `getDocTypes()` / `load()` pair; `load()` is an alias kept for the generic
+  listing API – document it as such.
+- `setDocTypes()` is public mutation of a read model used only by the DAO → `@internal` (as I-181 for
+  `SelectOptions`), and type it `list<DocType>`.
+- Shorten the `@method \Pimcore\Model\Document\DocType\Listing\Dao getDao()` FQCN to `Listing\Dao` (imported), remove
+  the empty `@internal * *` docblock.
+- Optional convenience used by every consumer of doc types: `getDocTypesByType(string $type)` (`page`, `snippet`,
+  `email`) on top of the filter, with the type as a backed enum once `DocType::$type` gets one.
+
+### [ ] I-207 – Tests for the doc-type listing
+
+**Files:** new `tests/Model/Document/DocType/ListingTest.php` (or next to the existing document tests)
+
+- Read target `symfony-config` with a leftover settings-store id, read target `settings-store` with YAML definitions,
+  read target `disabled`: no `null` entries, no exception (B-351).
+- A YAML definition without `name` / without `type` (B-351).
+- Ordering with equal priority across groups `News` / `NewsLetter` / no group, and case differences (B-352).
+- `setFilter()` / `setOrder()` after a first `getDocTypes()`; `getTotalCount()` not changing the cached list (B-352).
+- `$listing->save()` / `->delete()` not reaching the single-item DAO methods (I-205).

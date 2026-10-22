@@ -155,6 +155,11 @@ Scope 6 items and are skipped), plus the direct consumers where a defect origina
 `lib/Tool/DomCrawler.php`, `lib/Templating/Renderer/EditableRenderer.php::getEditable()`,
 `lib/Document/Editable/EditableHandler.php::renderAreaFrontend()`, the `pimcore.wysiwyg_sanitizer` config in
 `bundles/CoreBundle/config/pimcore/default.yaml:62-67`)
+**(25)** the not yet processed files of `models/Document/DocType/**` (`Listing.php`, `Listing/Dao.php`; `DocType.php`
+and `DocType/Dao.php` are already named by B-155 and are skipped), plus the direct consumers where a defect originates
+in the model interplay (`lib/Model/Dao/PimcoreLocationAwareConfigDao.php`, `lib/Config/LocationAwareConfigRepository.php`
+(`loadConfigByKey()`, `fetchAllKeys()`, `fetchAllKeysByReadTargets()`), the `documents.doc_types.definitions` config
+node (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:845-870`))
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -201,7 +206,8 @@ Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`,
+Scope 25: `77fe3d674a`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -2475,3 +2481,28 @@ sanitized" check), keep the `save()` call as a second line of defence. Optionall
 `getDataEditmode()` behind a config flag for legacy content, and provide a one-off command that re-sanitizes existing
 `documents_editables` rows of type `wysiwyg` and the serialized versions. Type handling of the setters is B-348;
 structure in I-199; tests in I-204.
+
+---
+
+# Scope 25 – Document `DocType/**` files not yet named by an item (`Listing.php`, `Listing/Dao.php`)
+
+> Notes
+> - Scanned (read in full): `Document/DocType/Listing.php`, `Document/DocType/Listing/Dao.php` (136 lines).
+> - Skipped because earlier items already name them (a class already in the TODOs is not processed again):
+>   `Document/DocType.php` and `Document/DocType/Dao.php` (B-155). They were read for context only.
+> - Not repeated: missing `declare(strict_types=1)` in the DAOs (I-73); the process-wide static
+>   `PimcoreLocationAwareConfigDao::$cache` (B-191); `DocType::create()` saving a definition without `name` / `type` and
+>   `getById()` swallowing every exception (B-155). The id-list / read-target mismatch is the same root cause as
+>   B-188 (predefined metadata) and B-206 (predefined properties); it is recorded for doc types as B-351 because the
+>   listing is a different class.
+> - Collaborators read where a defect originates in the interplay: `Document/DocType.php:30-122`;
+>   `Document/DocType/Dao.php:33-95`; `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:37-106`;
+>   `lib/Config/LocationAwareConfigRepository.php:70-105`, `:158-171`, `:263-278`;
+>   `lib/Model/Listing/Traits/FilterListingTrait.php`, `OrderListingTrait.php`;
+>   `bundles/CoreBundle/src/DependencyInjection/Configuration.php:140`, `:845-870`.
+> - No class in this repo instantiates `DocType\Listing`; its consumers (admin doc-type panel, "add document" menus)
+>   are in `pimcore/admin-ui-classic-bundle`, which is not in this repo – the admin impact was **not verified**.
+> - No Symfony 7.4 / PHP 8.4 incompatibility: no removed API, no implicit nullable parameter; `Listing.php` is strict,
+>   `Listing/Dao.php` is not (I-73). Nothing in the two files can lose data or open a security hole on its own:
+>   **no critical item**. Nothing was executed.
+> - Critical items: none. Bugs: B-351–B-352. Improvements: I-205–I-207.

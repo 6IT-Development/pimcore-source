@@ -154,6 +154,11 @@ Scope 6 items and are skipped), plus the direct consumers where a defect origina
 `lib/Tool/DomCrawler.php`, `lib/Templating/Renderer/EditableRenderer.php::getEditable()`,
 `lib/Document/Editable/EditableHandler.php::renderAreaFrontend()`, the `pimcore.wysiwyg_sanitizer` config in
 `bundles/CoreBundle/config/pimcore/default.yaml:62-67`)
+**(25)** the not yet processed files of `models/Document/DocType/**` (`Listing.php`, `Listing/Dao.php`; `DocType.php`
+and `DocType/Dao.php` are already named by B-155 and are skipped), plus the direct consumers where a defect originates
+in the model interplay (`lib/Model/Dao/PimcoreLocationAwareConfigDao.php`, `lib/Config/LocationAwareConfigRepository.php`
+(`loadConfigByKey()`, `fetchAllKeys()`, `fetchAllKeysByReadTargets()`), the `documents.doc_types.definitions` config
+node (`bundles/CoreBundle/src/DependencyInjection/Configuration.php:845-870`))
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -166,7 +171,8 @@ Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
 Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`,
 Scope 18: `bcac4499f6`, Scope 19: `87799e51e6`, Scope 20: `47897412ea`, Scope 21: `86f089cf1a`,
-Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`).
+Scope 22: `c9ae84b8cf`, Scope 23: `bad4feee5b`, Scope 24: `e3feff4d48`,
+Scope 25: `77fe3d674a`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -183,7 +189,8 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **Document translation links** B-338–B-340,
 **Document hardlink wrappers** B-341–B-342,
 **DataObject traits** B-343–B-347,
-**Document editables, remaining files** B-348–B-350.
+**Document editables, remaining files** B-348–B-350,
+**Document types listing** B-351–B-352.
 
 ---
 
@@ -5996,3 +6003,68 @@ public function getDocumentElement(...) { $document = $this->getDocument(); if (
 
 **Fix direction:** return `?Document\PageSnippet` (`$this->editable?->getDocument()`), keep the `instanceof` guard,
 make `setEditable()` / `setRequest()` fluent and consistent with the property types (I-201).
+
+---
+
+# Scope 25 – Document `DocType/**` files not yet named by an item (`Listing.php`, `Listing/Dao.php`)
+
+> Notes
+> - Scanned and skipped files, and the earlier items that are not repeated (I-73, B-155, B-188, B-191, B-206), are
+>   listed in the Scope 25 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md).
+
+## Document types listing (Scope 25)
+
+## [ ] B-351 – Doc-type listing can contain `null`s and uninitialised definitions → `TypeError` / `Error` in the default sort, the whole list fails
+
+**Files:** `models/Document/DocType/Listing/Dao.php:29-48` (`:32-34`, `:42`), `:60-67`; `models/Document/DocType.php:44`,
+`:72`, `:97-111`; `models/Document/DocType/Dao.php:52-68`; `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:76-84`;
+`lib/Config/LocationAwareConfigRepository.php:70-96`, `:263-278`;
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php:845-860`
+
+```php
+foreach ($this->loadIdList() as $id) {                  // settings-store ids + container keys, whatever the read target
+    $docTypes[] = Model\Document\DocType::getById($id);  // read-target only; NotFoundException swallowed → null
+}
+usort($docTypes, self::sortByPriority(...));            // sortByPriority(DocType $a, DocType $b) → TypeError on null
+```
+
+- Same root cause as B-188 / B-206: `loadIdList()` → `fetchAllKeys()` merges the settings-store ids **and** the
+  container-config keys, while `DocType::getById()` loads through `loadConfigByKey()`, which honours
+  `config_location.document_types.read_target`. An id that exists only in the other store (switching between
+  settings-store and symfony-config, a definition left behind after moving to YAML, read target `disabled`) yields
+  `null`, and the `null` is appended to the list.
+- Unlike B-188 / B-206 the listing always sorts: without a custom order `usort()` calls
+  `sortByPriority(DocType, DocType)` → `TypeError` → no doc type list at all (every caller of `getDocTypes()` /
+  `load()` / `getTotalCount()` fails). With a custom filter / order the user callbacks receive `null`.
+- `name` and `type` are optional in the config tree (`scalarNode('name')`, `scalarNode('type')`) but non-nullable,
+  uninitialised properties of `DocType`. A YAML definition without `name` (hand-written, or created through
+  `DocType::create()`, B-155) loads fine, then `sortByPriority()` calls `getName()` →
+  `Error: must not be accessed before initialization` → the same total failure. Callers that read `getType()` crash
+  for definitions without `type`.
+
+**Fix direction:** use `loadIdListByReadTargets()`, skip `null` results with a log entry (shared fix with B-188 /
+B-206); make `name` / `type` required in the config tree (or default them) and validate in `DocType\Dao::save()`
+(B-155); let the comparator tolerate a missing group / name. Return `list<DocType>`. Tests in I-207.
+
+## [ ] B-352 – Doc-type listing: default order interleaves groups; cached result ignores later `setFilter()` / `setOrder()`; `getTotalCount()` overwrites the cache
+
+**Files:** `models/Document/DocType/Listing/Dao.php:35-53`, `:60-67`; `models/Document/DocType/Listing.php:40-59`;
+`lib/Model/Listing/Traits/FilterListingTrait.php`, `OrderListingTrait.php`
+
+```php
+return strcasecmp($a->getGroup() . $a->getName(), $b->getGroup() . $b->getName());
+```
+
+- For equal priority the tie-breaker compares the **concatenation** of group and name. Group `News` + `Z` vs group
+  `NewsLetter` + `A`: `"NewsZ"` > `"NewsLetterA"` → the order is `News/A`, `NewsLetter/A`, `News/Z`; entries of one
+  group are split by another group whose name starts with the same text, and `null` groups (`""`) mix with groups
+  whose names sort before the doc-type names. The documented intent ("falls back to group and name") is group first,
+  then name.
+- `getDocTypes()` loads once and caches in `$docTypes`; `setFilter()` / `setOrder()` (traits) do not reset the cache,
+  so `$list->getDocTypes(); $list->setFilter(…); $list->getDocTypes()` returns the unfiltered result.
+- `getTotalCount()` (via `@method`) runs `loadList()` again, which re-hydrates every definition **and** replaces the
+  cached `$docTypes` – a count call has a side effect on the list the caller already holds.
+
+**Fix direction:** compare `[$a->getPriority(), mb_strtolower($a->getGroup() ?? ''), mb_strtolower($a->getName())]`
+with `<=>` (or `strcasecmp` on group, then on name); reset `$docTypes = null` in `setFilter()` / `setOrder()`
+overrides (or in the traits for all config listings); count without touching the cache (I-205).
