@@ -95,6 +95,15 @@ where a defect originates in the model interplay (`ClassDefinition/Data/Classifi
 `lib/Cache/RuntimeCache.php`, `lib/Model/AbstractModel.php::setValue()` (`:175-190`),
 `bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php`) and the `classificationstore_*` schema
 (`bundles/InstallBundle/dump/install.sql:617-694`)
+**(16)** the not yet processed files of `models/DataObject/ClassDefinition/**` (CustomLayout/**, Service, Helper/**,
+Layout/**, DynamicOptionsProvider/**, Data/**; details in the Scope 16 notes of TODO-1)
+**(17)** the not yet processed files of `models/DataObject/Data/**` (field value objects: quantity / range values,
+`BlockElement`, `CalculatedValue`, `Consent`, `Link`, `Hotspotimage`, `ImageGallery`, `Video`, `ExternalImage`, geo
+values, `RgbaColor`, `StructuredTable`, `ElementMetadata` / `ObjectMetadata` and the three metadata DAOs; `UrlSlug.php`
+and `EncryptedField.php` were processed in Scope 6), plus the direct consumers where a defect originates in the model
+interplay (advanced relation metadata handling in `ClassDefinition/Data/AdvancedManyToMany(Object)Relation.php`,
+`Concrete::getValueForFieldName()`, `lib/Cache/Core/CoreCacheHandler.php` marshalling, `Asset/Image/Thumbnail.php`
+config resolution)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -104,7 +113,7 @@ IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are f
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
-Scope 15: `205ed92381`).
+Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
@@ -112,7 +121,8 @@ DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92)
 Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121),
 Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files (I-129–I-134), Scope 13 in **Q** DataObject
 `Folder/Dao` (I-135), Scope 14 in **R** DataObject `Listing` / `Fieldcollection` / `Localizedfield` (I-136–I-141),
-Scope 15 in **S** DataObject `Classificationstore/**` configuration models (I-142–I-148).
+Scope 15 in **S** DataObject `Classificationstore/**` configuration models (I-142–I-148), Scope 16 in **T**
+DataObject `ClassDefinition/**` (I-149–I-160), Scope 17 in **U** DataObject `Data/**` value objects (I-161–I-169).
 
 ---
 
@@ -2400,3 +2410,136 @@ the six `Listing/Dao.php`
     rejected (B-272); `Geopoint(0, 0)` round-trips (B-295); `DECIMAL` value with 19+ digits round-trips (B-296).
   - Export a class with a `Gender` field, then call `getOptions()` in the same process (B-275); two fields `myUrl` /
     `my_url` are rejected on class save (B-280).
+
+---
+
+## U – DataObject `Data/**` field value objects (Scope 17)
+
+> Notes
+> - Scanned and skipped files: see the Scope 17 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-52,
+>   B-300–B-315).
+> - Missing `declare(strict_types=1)`: only `AbstractMetadata/Dao.php`, `ElementMetadata/Dao.php`, `ObjectMetadata/Dao.php`
+>   (already listed in I-73).
+> - Applies to every scanned value object and is not repeated per item: declare `Stringable` explicitly where
+>   `__toString()` exists, add `#[\Override]` to the overridden `AbstractModel` / interface methods, and call
+>   `markMeDirty()` only when a setter actually changes the value (today some setters compare, most do not).
+
+### [ ] I-161 – Metadata items: explicit column API instead of `__call`, dead state, duplicated DAO code
+
+- Replace the magic `get<Column>()` / `set<Column>()` dispatch with `getColumnValue()` / `setColumnValue()` (C-52); the
+  current `__call()` implementations are copy-pasted between `ObjectMetadata` and `ElementMetadata`, return `mixed|void`,
+  read `$args[0]` without a check and silently return `null` for any non-`get`/`set` method.
+- `ObjectMetadata::$object` is never written (`setObject()` stores only the id) and only exists for `__sleep()` /
+  `__unserialize()` BC → remove it together with the `__sleep()` override; use one `__serialize()` / `__unserialize()`
+  pair in both classes (the mix of `__sleep()` + `__unserialize()` is hard to reason about, I-75).
+- `setElement()` / `setObject()` call `markMeDirty()` twice; `ObjectMetadata::setElement()` exists only as an alias.
+- Constructor asymmetry: `ObjectMetadata(?string $fieldname, …)` (required) vs `ElementMetadata(?string $fieldname = null,
+  …)`; `ObjectMetadata::getFieldname(): ?string` vs `ElementMetadata::getFieldname(): string` (B-315).
+- `AbstractMetadata\Dao::save()` / `load()` throw "Needs to be implemented by child class" → make the class and the two
+  methods `abstract`. `ObjectMetadata\Dao` re-declares the `Helper\Dao` trait, `$tableDefinitions` and `getTablename()`
+  identically to its parent → remove. Both child `save()` / `load()` bodies are the same apart from the type filter → one
+  implementation in the parent with a `$destinationType` parameter.
+- `Dao::save()` does one upsert per column and item → one multi-row insert per item (the field rows are deleted before,
+  `AdvancedManyToManyObjectRelation.php:484`, `:498`). Load-side N+1 is I-82.
+
+### [ ] I-162 – `object_metadata_*` schema
+
+- `createOrUpdateTable()` only runs `CREATE TABLE IF NOT EXISTS`: nothing is ever updated → rename to `createTable()` or
+  add a column/index diff like `ClassDefinition\Dao::update()`.
+- `dest_id int(11) NOT NULL` is signed while `id` and every element id are `int(11) UNSIGNED`; `data text` (64 KB) for
+  free-text metadata; the default charset is set without collation; DDL indentation mixes tabs and spaces.
+- Seven single-column indexes (`fieldname`, `column`, `ownertype`, `ownername`, `position`, `index`, `dest_id`) next to a
+  nine-column unique key whose prefix already serves the lookups → keep `dest_id` (reverse lookups) and measure the rest.
+- The table name `'object_metadata_' . $classId` is built in three DAO places and in both advanced relation types → one
+  helper.
+
+### [ ] I-163 – Quantity and range value objects
+
+- `QuantityValue` / `InputQuantityValue` / `QuantityValueRange::__toString()` and `AbstractQuantityValue::convertTo()`
+  pull services from `Pimcore::getContainer()` (locale service, translator, `UnitConversionService`) inside value
+  objects → one formatter service (also fixes B-298, B-306, B-307) and keep `__toString()` locale-free or delegating.
+- `QuantityValueRange` creates two `NumberFormatter` instances per call; uses `ObjectVarTrait` again although the parent
+  already does; calls `markMeDirty()` twice in the constructor; its `$unit` constructor parameter has no default
+  unlike the siblings; its typed `$minimum` / `$maximum` have no default.
+- `QuantityValueRange::getValue(int $step = 1): array` returns `range()` – surprising for a "value" and the root cause of
+  C-48 → deprecate (`#[\Deprecated]`) in favour of `toArray()` / `getRange()`.
+- `NumericRange` and `QuantityValueRange` duplicate the min/max accessors, `toArray()` and `__toString()` → shared trait.
+- The resolved `Unit` object is serialized with every value (versions, cache, recycle bin) → stale abbreviation / factor
+  after a unit change; serialize `unitId` only and resolve lazily (`getUnit()` already does).
+
+### [ ] I-164 – `BlockElement`
+
+- `renewReferences()` builds a new `DeepCopy` with two closures per call; the anonymous `Matcher` ignores its
+  `$property` argument and decides per object type (`Video` / `Hotspotimage` / `ExternalImage` hard-coded) → a named
+  matcher class with typed parameters and a list of descriptor-carrying properties, or let the value objects resolve
+  their own descriptors (they already do in `__wakeup()`).
+- The `<key>_blockElementRenewed` runtime-cache markers are never removed in long-running workers; document or scope them.
+- `setLanguage()` duplicates `_setOwnerLanguage()` without marking dirty → deprecate.
+- `getData()` has a hidden side effect (deep copy on first read after unserialize); expose `renewReferences()` as an
+  explicit step called by `ClassDefinition\Data\Block` instead (see B-302).
+
+### [ ] I-165 – `Link`
+
+- `linktype` (`internal` / `direct`) and `internalType` (`document` / `asset` / `object`) are string literals → backed
+  enums or class constants (I-74 family); `setPath()` repeats the assignment block four times.
+- `getHref()` calls `getElement()` up to four times (`:349-354`) → one local variable; `getElement()` uses
+  `Concrete::getById()` for objects, so links to object folders resolve to `null` → `Service::getElementById()`.
+- `setValues()` dispatches to any `set*` method by input key (also `setPath`, `setElement`, `setObjectVar`) → an explicit
+  allowlist of link fields.
+- `getHtml()` / `__toString()` build HTML in the model → move rendering to a Twig helper (also the escaping in C-47).
+- The `__unserialize()` BC shim is marked "Remove in Pimcore 12": track it with `#[\Deprecated]`-style notice or a
+  migration that rewrites old rows.
+
+### [ ] I-166 – Media and geo value objects
+
+- `Hotspotimage::__wakeup()` / `Video::__wakeup()` resolve element descriptors eagerly: unserializing an object with a
+  50-image gallery from the cache runs 50 element lookups even if the gallery is never read → resolve lazily in the
+  getters. `Video::getData()` / `getPoster()` declare return types that exclude the `ElementDescriptor` the property may
+  hold.
+- `Hotspotimage`: the `@var array[]|null $crop` docblock is wrong (a flat `cropWidth` / `cropHeight` / `cropTop` /
+  `cropLeft` map) → a small crop value object; the `cropPercent` block is duplicated (`:162-176`) and `$mediaConfig` is
+  unused; the constructor copies arrays with loops (`array_values()`); `setCrop()` returns `void` while the sibling
+  setters return `static`.
+- `ImageGallery`: `IteratorAggregate` + `Countable` (B-313); validate `Hotspotimage|null` items in `setItems()`.
+- `GeoCoordinates::__toString()` renders `"; "` and `Geobounds::__toString()` `" - "`-less halves for empty values → `''`;
+  the constructor order (`latitude`, `longitude`) differs from the property order; consider `readonly` value semantics
+  with `with*()` methods for coordinates.
+- `ExternalImage::__toString()` → `$this->url ?? ''`.
+
+### [ ] I-167 – `RgbaColor`, `StructuredTable`, `Consent`, `CalculatedValue`
+
+- `RgbaColor`: `setHex()` / `setRgba()` / the constructor call `markMeDirty()` five times; `setHex()` throws a generic
+  `Exception` → `InvalidArgumentException`; typed `$r`/`$g`/`$b`/`$a` have no defaults; `getCssRgba()` mixes ints and a
+  float in an untyped array (document with `@return array{int,int,int,float}`).
+- `StructuredTable`: `__toString()` and `getHtmlTable()` duplicate the table rendering; `substr($name, 3, strlen($name) -
+  3)` → `substr($name, 3)`; `@return mixed|void` → `mixed` plus `BadMethodCallException` (B-314); offer explicit
+  `getCell(string $row, string $col)` / `setCell()`.
+- `Consent`: `getSummaryString()` formats with `date('r')` in the server timezone; `setConsent()` / `setNoteId()` use
+  `!=` → `!==`.
+- `CalculatedValue::setContextualData()` takes seven positional parameters (`'objectbrick'` callers pass the brick type
+  as `$index` and the field name as `$position`) → named arguments at the call sites or a context value object; document
+  the meaning of `index` / `position` per owner type.
+
+### [ ] I-168 – Tests for Scope 17
+
+- Advanced relation with metadata columns `value`, `data`, `fieldname`: save/reload keeps the values (C-52).
+- `ObjectMetadata::setObjectId()` on a loaded object is persisted (B-300); localized `Geopolygon` point edited in place
+  after a first save is persisted (B-301); a block value read after a cache write is the same instance (B-302).
+- `Consent::setNote()` round-trip (B-303); `RgbaColor` rejects `256` / `-1` / `'gg0000'` (B-304); a calculator reading
+  `getIndex()` through `getValueForFieldName()` (B-305).
+- `(string)` of quantity values with an abbreviation-less unit and with `0` (B-306, B-307); `NumericRange(null, 5)
+  ->getRange()` (B-308); failed `setUnitId()` keeps the old unit (B-309).
+- `Link`: direct ↔ internal switching, `getHref()` with existing query / fragment, `tabindex="0"`, `isEmpty()` with owner
+  (B-310, B-311); `Hotspotimage::getThumbnail()` with a shared `Config` instance (B-312); nested `foreach` over an
+  `ImageGallery` (B-313); `StructuredTable::getHtmlTable()` with reordered columns (B-314).
+
+### [ ] I-169 – `OwnerAwareFieldTrait` / `ObjectVarTrait` contracts used by all value objects
+
+- `ObjectVarTrait::getObjectVars()` removes `dao` and `_owner` but keeps `_fieldname` / `_language` (root of the `Link`
+  part of B-311) → strip all owner-trait fields, or provide a `getValueVars()` used by `isEmpty()` / comparisons.
+- `setObjectVar()` writes any declared property with no type or invariant checks (e.g. `unit` / `unitId` out of sync
+  on quantity values) → restrict to an allowlist or mark `@internal`.
+- `markMeDirty()` / the owner fields are public `@internal` API (`_setOwner()` & co.) that every type wires up by
+  hand in `getDataFromResource()` → one helper (`attachOwner($value, $params)`) used by all types (see B-301).
+- PHP 8.4 asymmetric visibility (`public private(set)`) would remove most trivial getters of `CalculatedValue`,
+  `GeoCoordinates`, `ExternalImage` once BC allows (next major).

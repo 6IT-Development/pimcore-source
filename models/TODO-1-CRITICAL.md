@@ -98,6 +98,15 @@ where a defect originates in the model interplay (`ClassDefinition/Data/Classifi
 `lib/Cache/RuntimeCache.php`, `lib/Model/AbstractModel.php::setValue()` (`:175-190`),
 `bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php`) and the `classificationstore_*` schema
 (`bundles/InstallBundle/dump/install.sql:617-694`)
+**(16)** the not yet processed files of `models/DataObject/ClassDefinition/**` (CustomLayout/**, Service, Helper/**,
+Layout/**, DynamicOptionsProvider/**, Data/**; details in the Scope 16 notes of TODO-1)
+**(17)** the not yet processed files of `models/DataObject/Data/**` (field value objects: quantity / range values,
+`BlockElement`, `CalculatedValue`, `Consent`, `Link`, `Hotspotimage`, `ImageGallery`, `Video`, `ExternalImage`, geo
+values, `RgbaColor`, `StructuredTable`, `ElementMetadata` / `ObjectMetadata` and the three metadata DAOs; `UrlSlug.php`
+and `EncryptedField.php` were processed in Scope 6), plus the direct consumers where a defect originates in the model
+interplay (advanced relation metadata handling in `ClassDefinition/Data/AdvancedManyToMany(Object)Relation.php`,
+`Concrete::getValueForFieldName()`, `lib/Cache/Core/CoreCacheHandler.php` marshalling, `Asset/Image/Thumbnail.php`
+config resolution)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -125,12 +134,14 @@ Scope 10 **admin permission checks crashing and Symfony roles silently dropped o
 Scope 11 **the email blocklist never being applied (blocklisted recipients still receive every mail)**, and in
 Scope 12 **classification store passwords saved in plain text**, and in Scope 14 **a plausible
 field-collection field name making the generated class a PHP fatal** and **`classes-rebuild` dropping field-collection
-columns (data loss) when a definition exists in both definition directories**.
+columns (data loss) when a definition exists in both definition directories**, and in Scope 17
+**advanced-relation metadata crashing or being stored under another field name when a column key matches a model
+method** (`value`, `data`, `fieldname`, …).
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
-Scope 15: `205ed92381`).
+Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1796,3 +1807,70 @@ and refuse or cascade unit deletion while the unit is referenced.
 
 **Fix direction:** when column config is active, order and pad cells by the configured keys in `getDataForResource()`;
 reject duplicate / empty column keys when the definition is saved. Add a round-trip test with a keyed, reordered row.
+
+---
+
+# Scope 17 – DataObject `Data/**` (field value objects)
+
+> Notes
+> - Scanned (22 files, read in full): `AbstractQuantityValue.php`, `QuantityValue.php`, `InputQuantityValue.php`,
+>   `QuantityValueRange.php`, `NumericRange.php`, `BlockElement.php`, `CalculatedValue.php`, `Consent.php`, `Link.php`,
+>   `Hotspotimage.php`, `ImageGallery.php`, `Video.php`, `ExternalImage.php`, `Geobounds.php`, `GeoCoordinates.php`,
+>   `RgbaColor.php`, `StructuredTable.php`, `ElementMetadata.php`, `ObjectMetadata.php`, `AbstractMetadata/Dao.php`,
+>   `ElementMetadata/Dao.php`, `ObjectMetadata/Dao.php`.
+> - Skipped because earlier scopes already process them: `UrlSlug.php` (C-31) and `EncryptedField.php` (B-184, I-75).
+>   The other files were only named in passing before (C-46/C-47 `Link` / `StructuredTable` HTML, C-48/C-50 quantity
+>   values, B-284 metadata targets, B-289/B-290 `StructuredTable`, B-291/B-292 `Hotspotimage`, B-295 `Geobounds`,
+>   B-298 `QuantityValue::__toString()`, I-73 DAO strictness, I-75 `unserialize()`, I-82 metadata N+1). Those points are
+>   not repeated.
+> - Collaborators read where a defect originates in the interplay: `ClassDefinition/Data/AdvancedManyToManyObjectRelation.php`
+>   / `AdvancedManyToManyRelation.php` (load `:135-170`, editmode `:218-282` / `:365-380`, `setColumns()`),
+>   `lib/Model/AbstractModel.php` (`setValue()` / `setValues()` / `setDao()`), `Traits/OwnerAwareFieldTrait.php`,
+>   `Traits/ObjectVarTrait.php`, `Localizedfield/Dao.php:142-149`, `Service.php:1440-1600`, `Concrete.php:312-324`,
+>   `lib/Cache/Core/CoreCacheHandler.php:486-509`, `Asset/Image/Thumbnail.php:44-49`, `:430-439`,
+>   `ClassDefinition/Data/RgbaColor.php`, `Link.php`, `Consent.php`, `ImageGallery.php`.
+> - Only the three metadata DAOs lack `declare(strict_types=1)` (already in I-73). No implicit nullable parameter and no
+>   hard Symfony 7.4 / PHP 8.4 incompatibility was found; modernisation is in TODO-3 (I-161–I-169).
+> - `vendor/` is not installed and the classic admin UI is not in this repo. Plain PHP behaviour (`range()` with `null`,
+>   `sprintf('%02x')` with out-of-range ints, typed-property assignment in `__unserialize()`, `NumberFormatter` with `0`)
+>   was checked with `php -r` on PHP 8.4.27. Nothing else was executed.
+> - Critical items: C-52. Bugs: B-300–B-315. Improvements: I-161–I-169.
+
+## [ ] C-52 – Advanced-relation metadata columns named like a real method bypass `__call`: crashes on save/load, or all metadata of the item silently stored under another field name
+
+**Files:** `models/DataObject/Data/ObjectMetadata.php:78-105` (`__call`), `:123-134`, `:57-70`, `:153-158`, `:186-205`;
+`models/DataObject/Data/ElementMetadata.php:67-94`, `:114-125`, `:130-144`, `:186-195`;
+`models/DataObject/Data/ObjectMetadata/Dao.php:33-53`, `:60-81`; `ElementMetadata/Dao.php:29-49`, `:51-76`;
+`lib/Model/AbstractModel.php:56`, `:163`, `:175`; callers `ClassDefinition/Data/AdvancedManyToManyObjectRelation.php:225-228`,
+`:272-281`, `:611-626`; `AdvancedManyToManyRelation.php:314`, `:374-380`, `:677-692`
+
+```php
+$getter = 'get' . ucfirst($column);   // Dao::save()       – a real method wins over __call()
+$setter = 'set' . ucfirst($row['column']);
+$this->model->$setter($row['data']);  // Dao::load(), and the editmode setter loop in the ClassDefinition
+```
+
+- Column values are only reachable through `__call()`. PHP calls `__call()` only when **no** method of that name
+  exists, so a column key that matches a real method of the item (or of `AbstractModel`) hits that method instead.
+  `setColumns()` accepts any `key` (no reserved-name check).
+- Crashes (the object cannot be saved from editmode or, once rows exist, cannot be loaded):
+  - `value` → `AbstractModel::setValue(string $key, mixed $value)` with one argument → `ArgumentCountError`;
+  - `values` / `data` / `columns` / `dao` → `setValues(array)` / `setData(array)` / `setColumns(array)` /
+    `setDao(?AbstractDao)` with a string → `TypeError`; on save `getData()` / `getColumns()` / `getDao()` return an
+    array / object as the column value (DBAL conversion error);
+  - `object` / `element` → `setObject(?Concrete)` / `setElement()` with a string → `TypeError`.
+- Silent corruption / data loss:
+  - `fieldname`: the editmode setter loop calls the real `setFieldname($value)`, so the **relation field name of the
+    item** becomes the user's value. `Dao::save()` then writes every column of that item with `fieldname = <value>`;
+    `load()` queries by the real field name and finds nothing → all metadata of the item is gone after the reload, and
+    the rows are never deleted (the delete statements filter by the real field name). A missing value (`?? null`) →
+    `setFieldname(null)` `TypeError`.
+  - `objectId` / `elementId` / `elementType`: the getter returns the target id / type, so that is stored instead of the
+    user's value; the editmode setter `setObjectId("text")` throws (`ClassDefinition` files are strict).
+- Same class of defect as C-44 (reserved field names); the generated class compiles, so nothing warns at class save.
+
+**Fix direction:** stop dispatching by method name: give both item classes explicit `getColumnValue(string $key)` /
+`setColumnValue(string $key, mixed $value)` methods (keep `__call()` as a BC proxy that only accepts configured
+columns) and use them in the DAOs and in the `ClassDefinition` getter/setter loops. Until then, reject column keys that
+collide with a method of `ObjectMetadata` / `ElementMetadata` (case-insensitive, `get_class_methods()`) in
+`setColumns()` / on class save. Add a round-trip test with columns `value`, `data` and `fieldname`.

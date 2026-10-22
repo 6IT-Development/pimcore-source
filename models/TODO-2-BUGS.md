@@ -97,6 +97,15 @@ where a defect originates in the model interplay (`ClassDefinition/Data/Classifi
 `lib/Cache/RuntimeCache.php`, `lib/Model/AbstractModel.php::setValue()` (`:175-190`),
 `bundles/CoreBundle/src/Command/DeleteClassificationStoreCommand.php`) and the `classificationstore_*` schema
 (`bundles/InstallBundle/dump/install.sql:617-694`)
+**(16)** the not yet processed files of `models/DataObject/ClassDefinition/**` (CustomLayout/**, Service, Helper/**,
+Layout/**, DynamicOptionsProvider/**, Data/**; details in the Scope 16 notes of TODO-1)
+**(17)** the not yet processed files of `models/DataObject/Data/**` (field value objects: quantity / range values,
+`BlockElement`, `CalculatedValue`, `Consent`, `Link`, `Hotspotimage`, `ImageGallery`, `Video`, `ExternalImage`, geo
+values, `RgbaColor`, `StructuredTable`, `ElementMetadata` / `ObjectMetadata` and the three metadata DAOs; `UrlSlug.php`
+and `EncryptedField.php` were processed in Scope 6), plus the direct consumers where a defect originates in the model
+interplay (advanced relation metadata handling in `ClassDefinition/Data/AdvancedManyToMany(Object)Relation.php`,
+`Concrete::getValueForFieldName()`, `lib/Cache/Core/CoreCacheHandler.php` marshalling, `Asset/Image/Thumbnail.php`
+config resolution)
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -107,7 +116,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
 Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`, Scope 14: `6bde85085f`,
-Scope 15: `205ed92381`).
+Scope 15: `205ed92381`, Scope 16: `765372d338`, Scope 17: `d5ca47d13d`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -116,7 +125,8 @@ Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Docum
 B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version storage / maintenance** B-222–B-225,
 **User** B-226–B-237, **Tool** B-238–B-244, **DataObject root files** B-245–B-251,
 **Field collection / listing** B-252–B-256,
-**Classification store configuration** B-257–B-265.
+**Classification store configuration** B-257–B-265, **ClassDefinition data types** B-266–B-299,
+**DataObject `Data/**` value objects** B-300–B-315.
 
 ---
 
@@ -4706,3 +4716,261 @@ decimals.
 
 **Fix direction:** normalise with `filter_var(…, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE)` / explicit maps,
 strict comparison, `''`/`false` → `null`, accept only 6/8-digit hex (`ctype_xdigit`).
+
+---
+
+# Scope 17 – DataObject `Data/**` (field value objects)
+
+> Notes
+> - Scanned and skipped files: see the Scope 17 notes in [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md) (C-52).
+> - Dirty detection is only consulted for relations, localized fields and URL slugs (`supportsDirtyDetection()`,
+>   `Concrete/Dao.php:195-196`). For value objects it matters inside localized fields: `Localizedfield\Dao::save()`
+>   skips every language that is not dirty on an update (`Localizedfield/Dao.php:142-149`), and the dirty maps are reset
+>   after each save (`Service.php:1575-1600`). A value object can only report its own changes through
+>   `OwnerAwareFieldTrait::markMeDirty()`, i.e. when `_owner` / `_fieldname` / `_language` are set.
+
+## [ ] B-300 – `ObjectMetadata::setObjectId()` does not mark the relation dirty: retargeting a metadata item is not saved
+
+**Files:** `models/DataObject/Data/ObjectMetadata.php:57-70`, `:197-205`; `ElementMetadata.php:54-59` (for comparison);
+`models/DataObject/ClassDefinition/Data/Relations/AbstractRelations.php:119-128`;
+`AdvancedManyToManyObjectRelation.php:151-169`
+
+- Relation fields support dirty detection: `save()` skips the field when it is not dirty. The loaded items have an owner
+  (`AdvancedManyToManyObjectRelation.php:151-152`), so `setObject()`, `setData()` and the magic column setters mark the
+  field dirty – `setObjectId()` does not (`ElementMetadata::setElementTypeAndId()` does).
+- `$item->setObjectId(42); $object->save();` keeps the old target in `object_relations_*` and `object_metadata_*` when no
+  other change marked the field. The in-memory object (and the cache entry written from it) shows the new target until
+  the next load.
+- `getObjectId(): int` turns a `null` id into `0` (`:197-200`), so callers cannot tell "no target" from an id.
+
+**Fix direction:** `markMeDirty()` in `setObjectId()` when the id changes; `getObjectId(): ?int`.
+
+## [ ] B-301 – In-place changes of value objects in localized fields are lost when the value has no owner
+
+**Files:** `models/DataObject/Traits/OwnerAwareFieldTrait.php:89-97`; `models/DataObject/Localizedfield/Dao.php:142-149`;
+`models/DataObject/Service.php:1575-1600`; `models/DataObject/ClassDefinition/Data.php:592-605` (generated setter);
+`ClassDefinition/Data/ImageGallery.php:166-178`; `Geopolygon.php:127`; `Geopolyline.php:132`;
+`models/DataObject/Data/ImageGallery.php:78-83`; `Hotspotimage.php:74-126`; `GeoCoordinates.php:52-78`
+
+- Owners are attached only in `getDataFromResource()` (a loaded `ImageGallery` passes its params to the items). They are
+  never attached by generated setters / `setLocalizedValue()` / `ImageGallery::setItems()`, and never to the
+  `GeoCoordinates` points of `Geopolygon` / `Geopolyline`, not even on load.
+- Sequence: `$o->setGallery($g, 'en'); $o->save();` (the language is dirty → saved; the maps are reset) →
+  `$g->getItems()[0]->setHotspots([...]); $o->save();` → `markMeDirty()` is a no-op without owner → `en` is not dirty →
+  `Localizedfield\Dao` skips the language → the change is silently not persisted, although the in-memory object and its
+  cache entry show it. Same for `$o->getArea('en')[0]->setLatitude(…)` and for any value set through a setter and
+  edited later in the same process (imports, workers).
+- Not executed: the conclusion follows from the code paths above; the admin UI always posts complete values and is not
+  affected.
+
+**Fix direction:** attach owner, field name and language in the generated setters / `setLocalizedValue()` (and
+propagate to nested items in `ImageGallery::setItems()` / the geo types), or mark the language dirty in
+`Localizedfield::getLocalizedValue()` for mutable value objects. Add a test for the two-save sequence.
+
+## [ ] B-302 – `BlockElement::marshalForCache()` mutates the live instance: after a cache write, `getData()` swaps the value for a deep copy
+
+**Files:** `models/DataObject/Data/BlockElement.php:97-105`, `:113-169`, `:210-237` (`:212`);
+`lib/Cache/Core/CoreCacheHandler.php:494-509`
+
+- `CoreCacheHandler` applies its `ReplaceFilter` to the **original** value (DeepCopy type filters run before copying),
+  so `marshalForCache()` runs on the live `BlockElement` and sets `$this->needsRenewReferences = true` on it before
+  copying itself.
+- The next `getData()` on the live object runs `renewReferences()`: `$this->data` is replaced by a deep copy. Value
+  objects (`Hotspotimage`, `Video`, `Link`, …) and elements inside the block become new instances (the matcher keeps
+  their properties but still clones the containers) → objects obtained before the cache write are detached: edits made
+  through them are no longer part of the object that is saved, and identity checks fail. For descriptors, the element is
+  also evicted from the runtime cache (`:124-129`), so two instances of the same element coexist.
+- When the save queue is flushed during a request (long-running imports, `Cache::save()` with immediate write, worker
+  processes) this happens mid-process; **not verified locally** which commands force immediate writes.
+- `setName()` / `setType()` compare with `!=` (`:78`, `:91`): `'1e1'` → `'10'` is not applied (PHP 8 numeric-string
+  comparison).
+
+**Fix direction:** set `needsRenewReferences` only on the copy (`$copy = $copier->copy($this); $copy->needsRenewReferences
+= true; return $copy;`); use `!==` in the setters.
+
+## [ ] B-303 – `Consent`: `setNote()` does not set `noteId` (the note link is not saved), `setNoteId()` keeps a stale cached note
+
+**Files:** `models/DataObject/Data/Consent.php:32`, `:59-65`, `:67-74`, `:76-80`, `:82-90`;
+`models/DataObject/ClassDefinition/Data/Consent.php:45`, `:104`, `:141`, `:320`
+
+- Persistence, editmode and normalisation read only `getNoteId()`. `setNote($note)` stores the object but leaves
+  `noteId` unchanged → `new Consent(true); $c->setNote($note); $o->save()` stores `__note = NULL`; after reload
+  `getNote()` is `null` and the consent proof is gone.
+- `setNoteId()` does not reset `$note`: after `getNote()` was called once, `getNote()` / `getSummaryString()` keep
+  returning the old note. `setNoteId(int)` cannot clear the id.
+- The `Note` object is serialized with the value (versions, cache) → frozen copy of the note.
+
+**Fix direction:** `setNote(?Note)` sets `noteId` from the note; `setNoteId(?int)` resets `$note` when the id changes;
+exclude `$note` from serialization.
+
+## [ ] B-304 – `RgbaColor` accepts components outside 0–255: corrupt hex is stored, the colour changes on reload
+
+**Files:** `models/DataObject/Data/RgbaColor.php:40-91`, `:116-128`, `:134-153`, `:155-162`;
+`models/DataObject/ClassDefinition/Data/RgbaColor.php:45-57`, `:66-68`
+
+- `setR()` … `setA()` and `setRgba()` accept any `int`. `getHex()` uses `%02x`: `300` → `12c`, `-1` →
+  `ffffffffffffffff` (checked). `getDataForResource()` stores these strings in `__rgb` / `__a`; depending on the column
+  length and SQL mode the save fails or the value is truncated, and `getDataFromResource()` (`sscanf('%02x…')`) reads a
+  different colour.
+- `setHex()` checks only the length: `'gg0000'` → `sscanf()` yields `null` components → silently `0` (black), no
+  exception. (Editmode short-hex handling is in B-299.)
+
+**Fix direction:** validate `0 ≤ x ≤ 255` in every setter (`InvalidArgumentException`), and `ctype_xdigit()` in
+`setHex()`.
+
+## [ ] B-305 – `CalculatedValue::getIndex()` throws "must not be accessed before initialization" for values built by `Concrete::getValueForFieldName()`
+
+**Files:** `models/DataObject/Data/CalculatedValue.php:33`, `:47-51`, `:58-68`, `:75-78`;
+`models/DataObject/Concrete.php:312-324` (`:320`); `models/DataObject/Service.php:1440-1451`, `:1509-1560`
+
+- `protected string|int|null $index;` has no default and is only assigned in `setContextualData()`. Every other
+  construction site calls `setContextualData()`; `Concrete::getValueForFieldName()` does not (`:320`).
+- A calculator that reads `$context->getIndex()` (a natural thing for code shared between object, field-collection and
+  brick fields) or an expression using `data.getIndex()` throws `Error` for object-level calculated fields whenever the
+  value is read through `getValueForFieldName()` (grid / export / `Service::gridObjectData()` paths), while the generated
+  getter works.
+
+**Fix direction:** default `$index = null`; call `setContextualData('object', null, null, null)` in
+`Concrete::getValueForFieldName()` like the generated getter does.
+
+## [ ] B-306 – `InputQuantityValue` / `QuantityValueRange::__toString()` throw `TypeError` for units without abbreviation
+
+**Files:** `models/DataObject/Data/InputQuantityValue.php:48-57` (`:53`); `QuantityValueRange.php:93-117` (`:113`);
+`QuantityValue.php:62-70` (guarded); `models/DataObject/QuantityValue/Unit.php:36`, `:136`;
+`lib/Translation/Translator.php:63`
+
+- `Unit::getAbbreviation()` is `?string`; Pimcore's `Translator::trans(string $id, …)` is not nullable. `QuantityValue`
+  falls back to the unit id, the two siblings pass `null` → `TypeError` in strict mode whenever the value is cast to
+  string (version preview, CSV export, Twig `{{ value }}`, `implode()`), for any unit created without abbreviation.
+
+**Fix direction:** share `QuantityValue`'s fallback (`abbreviation ?? id`) in one helper used by all three types.
+
+## [ ] B-307 – `0` is rendered as empty or infinite: `QuantityValue(0)` → `''`, range bound `0` → `-∞` / `+∞`
+
+**Files:** `models/DataObject/Data/QuantityValue.php:50-75` (`:74`); `QuantityValueRange.php:97-98`;
+`NumericRange.php:76-82` (`:78-79`)
+
+- `QuantityValue::__toString()` ends with `return $value ? (string)$value : ''` → a value `0` without unit renders as
+  `''` (checked); `NumberFormatter::format()` returning `false` becomes `''` or `' kg'`.
+- `QuantityValueRange` / `NumericRange` use `?:` for the open-bound marker: `[0, 10]` renders as `[-∞, 10]`, `[-5, 0]` as
+  `[-5, +∞]` – a different, wrong range in previews, grids and exports.
+
+**Fix direction:** `=== null` checks instead of truthiness; return `(string)$value` for numeric values.
+
+## [ ] B-308 – `NumericRange::getRange()` / `QuantityValueRange::getRange()` with an open bound: `TypeError` or a fake `[0]`
+
+**Files:** `models/DataObject/Data/NumericRange.php:63-66`; `QuantityValueRange.php:68-82`
+
+- Open bounds are a valid, stored state (C-49). `NumericRange::getRange()` calls `range($min, $max, $step)` without a
+  null check → `range(): Argument #2 ($end) must be of type string|int|float, null given` in strict mode (checked).
+  `QuantityValueRange::getRange()` returns `[0]` for any open range – a fabricated value; `getValue()` returns the same.
+- No guard on the size (C-48 for the persistence paths) and `$step = 0` → `ValueError`.
+
+**Fix direction:** return `[]` (or throw a domain exception) for open bounds, validate `$step > 0`, and cap / document
+the size; deprecate `QuantityValueRange::getValue()` returning a range (I-163).
+
+## [ ] B-309 – `AbstractQuantityValue::setUnitId()` drops the current unit before failing; unit id `"0"` is treated as "no unit"
+
+**Files:** `models/DataObject/Data/AbstractQuantityValue.php:42-56` (`:46`), `:61-74` (`:63-64`, `:71`), `:81-88`
+
+- `setUnitId('unknown')` sets `unitId` / `unit` to `null` **before** throwing `NotFoundException`; a caller that catches
+  the exception keeps a value without unit, and the next save writes `__unit = NULL`.
+- Constructor `elseif ($unit)` and `getUnit()` `!empty($this->unitId)` treat the id `"0"` as missing (ids are free
+  strings in `quantityvalue_units`).
+
+**Fix direction:** look the unit up first and assign only on success; compare with `null` / `''`.
+
+## [ ] B-310 – `Link::setPath()` leaves the previous target behind; `getElement()` ignores `linktype`
+
+**Files:** `models/DataObject/Data/Link.php:290-326`, `:328-340`, `:373-388`, `:433-444`;
+`models/DataObject/ClassDefinition/Data/Link.php:96-97`, `:141-150`
+
+- Switching to a direct URL (`setPath('https://…')`) sets `linktype = 'direct'` and `internalType = null` but keeps
+  `internal`; switching to an internal target keeps `direct`. `getElement()` checks only `internal` / `internalType`,
+  and an internal path whose type matches no element falls through to the other types.
+- With an existing internal link, `setPath('/foo')` first tries the configured `internalType`, then any document, asset
+  or object with that path, so the same string can silently retarget the link to another element type.
+- `setValues()` calls setters in input order: `['path' => '/x', 'linktype' => 'internal', 'internalType' => 'asset']`
+  resolves `path` before the type is known (`getDataFromEditmode()` passes the posted array, B-293).
+- `__unserialize()` (`:460-465`) assigns raw values to typed properties from a strict file: a legacy row with a string
+  `internal` id throws `TypeError` (checked with a reduced class); whether such rows exist from Pimcore ≤ 10 is
+  **not verified locally**.
+
+**Fix direction:** reset the fields of the other link type in `setPath()` / `setLinktype()`; `getElement()` returns
+`null` unless `linktype === 'internal'`; apply `linktype` / `internalType` before `path` in `setValues()`; cast `internal`
+in `__unserialize()`.
+
+## [ ] B-311 – `Link::getHref()` / `getHtml()` / `isEmpty()`: broken query strings, dropped `tabindex="0"`, owned empty links are not empty
+
+**Files:** `models/DataObject/Data/Link.php:346-371` (`:363-368`), `:402-423` (`:407`), `:425-428`;
+`models/DataObject/Traits/ObjectVarTrait.php:31-44`
+
+- `getHref()` appends `'?' . str_replace('?', '', $parameters)`: a direct URL that already has a query gives
+  `https://x?a=1?b=2`; a URL with a fragment gets the parameters after `#`; every `?` / `#` inside parameter values or
+  the anchor is deleted.
+- `getHtml()` emits an attribute only when it is truthy → `tabindex="0"` (the common "focusable" value) is dropped.
+- `isEmpty()` checks all object vars except `_owner`; `_fieldname` and `_language` are included → every link loaded
+  with an owner (and every localized link) is "not empty" even when all link fields are empty.
+  `ClassDefinition\Data\Link::getDataForResource()` resets the owner fields first, so persistence is fine; API callers
+  get the wrong answer.
+
+**Fix direction:** build the URL with `parse_url()` / `http_build_query()`-aware merging; test `!== ''`; let `isEmpty()`
+check the link fields explicitly.
+
+## [ ] B-312 – `Hotspotimage::getThumbnail()` mutates a caller-supplied `Thumbnail\Config`: crops accumulate across images
+
+**Files:** `models/DataObject/Data/Hotspotimage.php:141-182` (`:152`, `:157-178`); `models/Asset/Image/Thumbnail.php:44-49`,
+`:430-439`; `models/Asset/Image/Thumbnail/Config.php:160-184`, `:218-222`
+
+- Named configs are cloned by `Config::getByName()`, but a `Config` **instance** passed in is returned as-is by
+  `getByAutoDetect()`. `getThumbnail($config)` then calls `addItemAt(0, 'cropPercent', …)` (per media, too) and
+  `generateAutoName()` on the caller's object.
+- `$cfg = Config::getByName('teaser'); foreach ($gallery as $img) { echo $img->getThumbnail($cfg); }` → the second
+  image gets two crop operations (its own and the first image's), the third three, …; the caller's config is renamed.
+- A crop array without `cropWidth` / `cropHeight` / `cropTop` / `cropLeft` (API data) → "Undefined array key" warnings
+  and a `null` crop.
+
+**Fix direction:** `clone` the config before adding the crop; validate the crop keys in `setCrop()`.
+
+## [ ] B-313 – `ImageGallery`: nested iteration breaks, a gallery of broken items passes the mandatory check
+
+**Files:** `models/DataObject/Data/ImageGallery.php:42-65`, `:97-100`; `models/DataObject/ClassDefinition/Data/ImageGallery.php:330-336`
+
+- The `Iterator` uses the array's internal pointer: an inner `foreach` over the same gallery (Twig macros, nested
+  loops) exhausts the outer loop after its first item; `getItems()` callers that use `current()` / `next()` share the
+  state.
+- `hasValidImages()` counts any `Hotspotimage`, also one whose image is `null` (a deleted asset loads as `Hotspotimage` with
+  `image = null`, `ClassDefinition/Data/Hotspotimage.php:163`; `__wakeup()` does the same for cached values) → a mandatory gallery containing only empty items validates.
+
+**Fix direction:** implement `IteratorAggregate` (`new ArrayIterator($this->items)`); check `$item?->getImage()
+instanceof Asset\Image`.
+
+## [ ] B-314 – `StructuredTable`: HTML ignores the column definitions, magic setters cannot fill a new table, unknown methods return `null`
+
+**Files:** `models/DataObject/Data/StructuredTable.php:57-103`, `:118-135`, `:137-162` (`:149`, `:153`)
+
+- `getHtmlTable()` prints the cells of each row in **data** order, not in `$colDefs` order, and does not pad missing
+  cells → for rows set through `setData()` in another order, or after a column was added, values appear under the wrong
+  header. A row missing in the data → "Undefined array key" + `foreach()` over `null` warning. (Escaping: C-47.)
+- The magic setter only writes existing cells: `(new StructuredTable())->setRow1__col1(5)` throws "Requested data …
+  not available", so API code cannot fill an empty or partial table cell by cell.
+- `__call()` returns `null` for any method that does not start with `get`/`set` (typos such as `$t->isRow1__col1()`
+  silently yield `null`); `strtolower()` of the key makes mixed-case keys set through `setData()` unreachable.
+
+**Fix direction:** iterate `$colDefs` / `$rowDefs` with `?? null`; allow the setter for configured (or any) row/column
+pair; throw `BadMethodCallException` for unknown methods.
+
+## [ ] B-315 – `ObjectMetadata` / `ElementMetadata`: `__toString()` fatals for a deleted target; `ElementMetadata::getFieldname()` `TypeError`
+
+**Files:** `models/DataObject/Data/ObjectMetadata.php:192-195`; `ElementMetadata.php:37`, `:47-52`, `:122-125`, `:197-200`;
+`ElementMetadata.php:202-212`, `ObjectMetadata.php:207-221`
+
+- `__toString()` calls `getObject()->__toString()` / `getElement()->__toString()` without a null check → `Error` for an
+  item whose target was deleted (the relation row stays until the owner is saved, B-284) whenever the item is cast to
+  string (Twig `{{ item }}`, `implode()`, logs).
+- `ElementMetadata::getFieldname(): string` returns the `?string` property; `new ElementMetadata()` (all constructor
+  arguments optional) → `TypeError` on `getFieldname()` and therefore on `save()`. `ObjectMetadata` declares `?string`.
+- Both `__unserialize()` cast the id with `(int)`, so a serialized `null` id becomes `0`.
+
+**Fix direction:** `return (string)$this->getObject()?->…` / `''`; make `fieldname` required (or `getFieldname():
+?string`); cast only non-null ids.
