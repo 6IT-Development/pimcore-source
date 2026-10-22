@@ -80,6 +80,8 @@ a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering(
 model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefinition/Data/Classificationstore.php::getDataFromEditmode()`
 (`:300-350`), `ClassDefinition/Data/Password.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:52-81`) and
 `tests/Model/DataObject/DefinitionModifierTest.php`
+**(13)** `models/DataObject/Folder/Dao.php` (the only file in `models/DataObject/AbstractObject/**`, `Concrete/**` and
+`Folder/**` not already processed in Scope 6), with `config/dao-classmap.php:57`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-13, C-14, C-15 already cover WebDAV permissions/CSRF and
@@ -109,7 +111,7 @@ Scope 12 **classification store passwords saved in plain text**.
 IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`).
 
 > Notes
 > - `models/Asset.php`, `models/Asset/Dao.php`, `Asset/Listing/Dao.php`, `Asset/Image/Thumbnail.php` and both thumbnail
@@ -1503,3 +1505,13 @@ $this->items[$groupId][$keyId][$language] = $value;                   // plain t
 run `Password::getDataForResource()` for password keys (it already skips existing hashes), or add a
 `classificationstore_password` marshaller / `normalize()` that hashes. Add a migration that hashes the existing
 plain-text rows (`type = 'password'` and `password_get_info(value)['algo'] === null`), and a test (I-134).
+
+---
+
+# Scope 13 – DataObject `AbstractObject/**`, `Concrete/**`, `Folder/**`
+
+> Notes
+> - `AbstractObject/Dao.php`, `Concrete/Dao.php` and `Concrete/Dao/InheritanceHelper.php` were processed in Scope 6
+>   (C-25, C-26, B-175, B-177, B-186, B-187, I-73, I-76, I-78) and are skipped.
+> - `Folder/Dao.php` is an empty subclass of `AbstractObject\Dao` with no behaviour of its own: no critical item. Its
+>   improvement is I-135.

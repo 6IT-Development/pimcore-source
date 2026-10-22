@@ -77,6 +77,8 @@ a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering(
 model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefinition/Data/Classificationstore.php::getDataFromEditmode()`
 (`:300-350`), `ClassDefinition/Data/Password.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:52-81`) and
 `tests/Model/DataObject/DefinitionModifierTest.php`
+**(13)** `models/DataObject/Folder/Dao.php` (the only file in `models/DataObject/AbstractObject/**`, `Concrete/**` and
+`Folder/**` not already processed in Scope 6), with `config/dao-classmap.php:57`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-67 WebDAV server service, I-71 WebDAV/thumbnail security model)
@@ -85,13 +87,14 @@ Code quality, readability, logic simplification and Symfony 7.4 / PHP 8.4 modern
 IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`).
 Grouped: **A** PHP 8.4 / types / strictness, **B** Symfony 7.4 / DBAL / runtime, **C** shared logic / duplication,
 **D** per-file logic & readability, **E** tests; Scope 2 is in its own section **F** WebsiteSetting (I-32–I-40), Scope 3 in **G** Dependency (I-41–I-50),
 Scope 4 in **H** Translation (I-51–I-63), Scope 5 in **I** Site (I-64–I-72), Scope 6 in **J** Document / Element /
 DataObject (I-73–I-85), Scope 7 in **K** Metadata / Notification (I-86–I-92), Scope 8 in **L** Property / Schedule (I-93–I-100),
 Scope 9 in **M** Version (I-101–I-109), Scope 10 in **N** User (I-110–I-121),
-Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files (I-129–I-134).
+Scope 11 in **O** Tool (I-122–I-128), Scope 12 in **P** DataObject root files (I-129–I-134), Scope 13 in **Q** DataObject
+`Folder/Dao` (I-135).
 
 ---
 
@@ -1899,3 +1902,24 @@ Add model tests for:
 - `DataObject\Listing` with `setObjectTypes([OBJECT_TYPE_OBJECT])` and an `OR` condition (B-250).
 - `DefinitionModifierTest`: `insertFieldsFront()` into `localizedfields`, a field inside a `block`, and
   `getFieldDefinitions()` after `appendFields()` / `removeField()` on a class (B-251).
+
+---
+
+## Q – DataObject `AbstractObject/**`, `Concrete/**`, `Folder/**` (Scope 13)
+
+> `AbstractObject/Dao.php`, `Concrete/Dao.php` and `Concrete/Dao/InheritanceHelper.php` were processed in Scope 6
+> (I-73, I-76, I-78) and are skipped.
+
+### [ ] I-135 – `DataObject\Folder\Dao`: strictness and an empty subclass
+
+**File:** `models/DataObject/Folder/Dao.php:1-28`; `config/dao-classmap.php:57`
+
+- No `declare(strict_types=1)`, unlike `DataObject/Folder.php`. It has no code of its own, so it can be enabled right
+  away, independently of the `AbstractObject\Dao` prerequisites in I-73. Note that strictness is per file, so this
+  does not make the inherited methods strict.
+- The class exists only so the class map / `@property Folder $model` hint resolve a folder-specific DAO. It is
+  `@internal` → `final class Dao`, so no project can rely on extending it, and folder-only persistence logic (if any is
+  ever needed) has one obvious place.
+- Alternative: map `DataObject\Folder` to `AbstractObject\Dao` in `config/dao-classmap.php` and deprecate the empty
+  class. That is not worth the BC risk while `Folder::getDao()` is documented to return `Folder\Dao` (`Folder.php:24`
+  `@method Dao getDao()`), so keep the class and make it final.

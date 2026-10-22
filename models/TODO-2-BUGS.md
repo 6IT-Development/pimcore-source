@@ -79,6 +79,8 @@ a defect originates in the model interplay (`lib/Mail.php::sendWithoutRendering(
 model interplay (`models/DataObject/Classificationstore/Dao.php`, `ClassDefinition/Data/Classificationstore.php::getDataFromEditmode()`
 (`:300-350`), `ClassDefinition/Data/Password.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:52-81`) and
 `tests/Model/DataObject/DefinitionModifierTest.php`
+**(13)** `models/DataObject/Folder/Dao.php` (the only file in `models/DataObject/AbstractObject/**`, `Concrete/**` and
+`Folder/**` not already processed in Scope 6), with `config/dao-classmap.php:57`
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) (B-58 lock backends, B-65/B-69 thumbnail route – not repeated;
@@ -88,7 +90,7 @@ Functional defects: wrong results, crashes on reachable input, swallowed errors,
 IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `1b0711d927` (Scope 2:
 `7f0331cab9`, Scope 3: `2d382456c7`, Scope 4: `3e2bf1c4d8`, Scope 5: `0b659e9ce0`, Scope 6: `990568d287`,
 Scope 7: `7d51be3297`, Scope 8: `d527536468`, Scope 9: `718bf5020c`,
-Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`).
+Scope 10: `70fc218e66`, Scope 11: `a5cc6dc56a`, Scope 12: `d78291fed7`, Scope 13: `1650c79550`).
 Grouped by area, roughly ordered by impact inside each group: **Asset.php** B-01–B-19, **Dao / Listing / Service /
 Folder / WebDAV** B-20–B-36, **Image thumbnails** B-37–B-60, **Video / Document / MetaData** B-61–B-82,
 **WebsiteSetting** B-83–B-91, **Dependency** B-92–B-106, **Translation** B-107–B-125, **Site** B-126–B-137,
@@ -3735,3 +3737,13 @@ values against `DataObject::$types` in `setObjectTypes()`; add a test with an `O
 **Fix direction:** accept the owning definition (or return the modified layout) and call `setLayoutDefinitions()` at
 the end; treat every type with children (`Layout`, `Localizedfields`, `Block`) uniformly through one interface;
 validate names and nesting; `===`.
+
+---
+
+# Scope 13 – DataObject `AbstractObject/**`, `Concrete/**`, `Folder/**`
+
+> Notes
+> - `AbstractObject/Dao.php`, `Concrete/Dao.php` and `Concrete/Dao/InheritanceHelper.php` were processed in Scope 6
+>   (C-25, C-26, B-175, B-177, B-186, B-187, I-73, I-76, I-78) and are skipped.
+> - `Folder/Dao.php` is an empty subclass of `AbstractObject\Dao` with no behaviour of its own: no bug item. Its
+>   improvement is I-135.
