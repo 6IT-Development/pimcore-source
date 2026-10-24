@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Exception;
-use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
@@ -39,6 +39,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class LowQualityImagePreviewCommand extends AbstractCommand
 {
+    use AssetBatchTrait;
     use IdOptionTrait;
 
     protected function configure(): void
@@ -106,27 +107,19 @@ class LowQualityImagePreviewCommand extends AbstractCommand
 
         $list = new Asset\Listing();
         $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
-        $total = $list->getTotalCount();
-        $perLoop = 10;
-        $progressBar = new ProgressBar($this->output, $total);
+        $progressBar = new ProgressBar($this->output, $list->getTotalCount());
 
-        for ($i = 0; $i < (ceil($total / $perLoop)); $i++) {
-            $list->setLimit($perLoop);
-            $list->setOffset($i * $perLoop);
-            /** @var Asset\Image[] $images */
-            $images = $list->load();
-            foreach ($images as $image) {
-                $progressBar->advance();
-                if ($force || !$image->getLowQualityPreviewDataUri()) {
-                    try {
-                        $this->output->writeln('generating low-quality preview for image: ' . $image->getRealFullPath() . ' | ' . $image->getId());
-                        $image->generateLowQualityPreview();
-                    } catch (Exception $e) {
-                        $this->output->writeln('<error>' . $e->getMessage() . '</error>');
-                    }
+        /** @var Asset\Image $image */
+        foreach ($this->iterateAssets($conditions, $conditionVariables) as $image) {
+            $progressBar->advance();
+            if ($force || !$image->getLowQualityPreviewDataUri()) {
+                try {
+                    $this->output->writeln('generating low-quality preview for image: ' . $image->getRealFullPath() . ' | ' . $image->getId());
+                    $image->generateLowQualityPreview();
+                } catch (Exception $e) {
+                    $this->output->writeln('<error>' . $e->getMessage() . '</error>');
                 }
             }
-            Pimcore::collectGarbage();
         }
 
         $progressBar->finish();

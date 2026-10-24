@@ -39,7 +39,7 @@ then return `Command::FAILURE` if anything failed. Print "saved" after the save 
 
 ---
 
-## [ ] B-02 – OFFSET batching without `ORDER BY` (assets skipped or processed twice)
+## [x] B-02 – OFFSET batching without `ORDER BY` (assets skipped or processed twice)
 
 **Files:** `Asset/AddToUpdateTaskQueueCommand.php:105-119`, `Asset/GenerateChecksumCommand.php:94-121`,
 `LowQualityImagePreviewCommand.php:103-126` (and `RemoveCustomSettingCommand`, see C-02)

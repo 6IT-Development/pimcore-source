@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command\Asset;
 
-use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
@@ -36,6 +36,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class RemoveCustomSettingCommand extends AbstractCommand
 {
+    use AssetBatchTrait;
     use IdOptionTrait;
 
     protected function configure(): void
@@ -89,29 +90,13 @@ class RemoveCustomSettingCommand extends AbstractCommand
 
         // keyset pagination: processed assets no longer match the customSettings condition, so an OFFSET would skip
         // assets of the shrinking result set
-        $conditions[] = 'id > ?';
-        $perLoop = 10;
-        $lastId = 0;
         $count = 0;
-
-        do {
-            $list = new Asset\Listing();
-            $list->setCondition(implode(' AND ', $conditions), [...$conditionVariables, $lastId]);
-            $list->setOrderKey('id');
-            $list->setOrder('ASC');
-            $list->setLimit($perLoop);
-            $assets = $list->load();
-
-            foreach ($assets as $asset) {
-                $output->writeln($asset->getFullPath());
-                $asset->removeCustomSetting($input->getArgument('name'));
-                $asset->getDao()->updateCustomSettings();
-                $lastId = $asset->getId();
-                $count++;
-            }
-
-            Pimcore::collectGarbage();
-        } while (count($assets) === $perLoop);
+        foreach ($this->iterateAssets($conditions, $conditionVariables) as $asset) {
+            $output->writeln($asset->getFullPath());
+            $asset->removeCustomSetting($input->getArgument('name'));
+            $asset->getDao()->updateCustomSettings();
+            $count++;
+        }
 
         $output->writeln(sprintf('Removed custom setting "%s" from %d asset(s).', $input->getArgument('name'), $count));
 

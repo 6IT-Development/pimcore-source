@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command\Asset;
 
-use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
@@ -36,6 +36,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class AddToUpdateTaskQueueCommand extends AbstractCommand
 {
+    use AssetBatchTrait;
     use IdOptionTrait;
 
     protected array $types = ['image', 'video', 'document'];
@@ -106,20 +107,8 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
             );
         }
 
-        $list = new Asset\Listing();
-        $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
-        $total = $list->getTotalCount();
-        $perLoop = 10;
-
-        for ($i = 0; $i < (ceil($total / $perLoop)); $i++) {
-            $list->setLimit($perLoop);
-            $list->setOffset($i * $perLoop);
-            $assets = $list->load();
-            foreach ($assets as $asset) {
-                $asset->triggerUpdateTask();
-            }
-
-            Pimcore::collectGarbage();
+        foreach ($this->iterateAssets($conditions, $conditionVariables) as $asset) {
+            $asset->triggerUpdateTask();
         }
 
         return 0;
