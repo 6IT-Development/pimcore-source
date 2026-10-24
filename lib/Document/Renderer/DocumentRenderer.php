@@ -97,6 +97,9 @@ class DocumentRenderer implements DocumentRendererInterface
 
             $host = null;
             $url = $document->getFullPath();
+
+            // don't keep the site of a previously rendered document
+            Site::resetCurrentSite();
             if ($site = Frontend::getSiteForDocument($document)) {
                 Site::setCurrentSite($site);
                 $host = $site->getMainDomain();

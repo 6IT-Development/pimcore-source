@@ -43,9 +43,9 @@ class DocumentFallbackListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    protected array $options;
+    private const string ATTRIBUTE_FALLBACK_DOCUMENT = '_pimcore_fallback_document';
 
-    private ?Document $fallbackDocument = null;
+    protected array $options;
 
     public function __construct(
         protected RequestStack     $requestStack,
@@ -108,7 +108,7 @@ class DocumentFallbackListener implements EventSubscriberInterface
 
             $document = $this->documentService->getNearestDocumentByPath($path, false, $this->options['nearestDocumentTypes']);
             if ($document) {
-                $this->fallbackDocument = $document;
+                $request->attributes->set(self::ATTRIBUTE_FALLBACK_DOCUMENT, $document);
                 if ($document->getProperty('language')) {
                     $request->setLocale($document->getProperty('language'));
                 }
@@ -147,9 +147,11 @@ class DocumentFallbackListener implements EventSubscriberInterface
             return;
         }
 
-        if ($this->fallbackDocument && $event->isMainRequest()) {
-            $this->documentResolver->setDocument($event->getRequest(), $this->fallbackDocument);
-            $this->fallbackDocument = null;
+        $request = $event->getRequest();
+        $fallbackDocument = $request->attributes->get(self::ATTRIBUTE_FALLBACK_DOCUMENT);
+        if ($fallbackDocument instanceof Document && $event->isMainRequest()) {
+            $this->documentResolver->setDocument($request, $fallbackDocument);
+            $request->attributes->remove(self::ATTRIBUTE_FALLBACK_DOCUMENT);
         }
     }
 }

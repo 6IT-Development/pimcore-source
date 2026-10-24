@@ -21,17 +21,21 @@ use Pimcore;
 use Pimcore\Tool\Authentication;
 use Pimcore\Translation\Translator;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * @internal
  */
-readonly class TranslationDebugListener implements EventSubscriberInterface
+class TranslationDebugListener implements EventSubscriberInterface, ResetInterface
 {
+    private bool $translationsDisabled = false;
+
     public function __construct(
-        private Translator $translator,
-        private string     $parameterName
+        private readonly Translator $translator,
+        private readonly string     $parameterName
     )
     {
     }
@@ -40,6 +44,7 @@ readonly class TranslationDebugListener implements EventSubscriberInterface
     {
         return [
             KernelEvents::REQUEST => 'onKernelRequest',
+            KernelEvents::FINISH_REQUEST => 'onKernelFinishRequest',
         ];
     }
 
@@ -56,7 +61,26 @@ readonly class TranslationDebugListener implements EventSubscriberInterface
         if ($event->getRequest()->query->get($this->parameterName)) {
             if (Pimcore::inDebugMode() || Authentication::authenticateSession($event->getRequest())) {
                 $this->translator->setDisableTranslations(true);
+                $this->translationsDisabled = true;
             }
+        }
+    }
+
+    public function onKernelFinishRequest(FinishRequestEvent $event): void
+    {
+        if ($event->isMainRequest()) {
+            $this->reset();
+        }
+    }
+
+    /**
+     * The translator is shared, so translations must only be disabled for the current request
+     */
+    public function reset(): void
+    {
+        if ($this->translationsDisabled) {
+            $this->translator->setDisableTranslations(false);
+            $this->translationsDisabled = false;
         }
     }
 }

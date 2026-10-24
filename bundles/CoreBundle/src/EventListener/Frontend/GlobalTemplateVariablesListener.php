@@ -28,12 +28,13 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Contracts\Service\ResetInterface;
 use Twig\Environment;
 
 /**
  * @internal
  */
-class GlobalTemplateVariablesListener implements EventSubscriberInterface, LoggerAwareInterface
+class GlobalTemplateVariablesListener implements EventSubscriberInterface, LoggerAwareInterface, ResetInterface
 {
     use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
@@ -83,11 +84,28 @@ class GlobalTemplateVariablesListener implements EventSubscriberInterface, Logge
         }
 
         if (count($this->globalsStack)) {
-            $globals = array_pop($this->globalsStack);
-            if ($globals !== false) {
-                $this->twig->addGlobal('document', $globals['document'] ?? null);
-                $this->twig->addGlobal('editmode', $globals['editmode'] ?? false);
-            }
+            $this->restoreGlobals(array_pop($this->globalsStack));
+        }
+    }
+
+    /**
+     * Restores the globals from before the first request if a request ended without kernel.response (e.g. an
+     * exception), so the document of that request is not used by the next one
+     */
+    public function reset(): void
+    {
+        if (count($this->globalsStack)) {
+            $this->restoreGlobals($this->globalsStack[0]);
+        }
+
+        $this->globalsStack = [];
+    }
+
+    private function restoreGlobals(array|false $globals): void
+    {
+        if ($globals !== false) {
+            $this->twig->addGlobal('document', $globals['document'] ?? null);
+            $this->twig->addGlobal('editmode', $globals['editmode'] ?? false);
         }
     }
 }

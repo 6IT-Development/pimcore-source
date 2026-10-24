@@ -41,8 +41,9 @@ use Symfony\Component\HttpKernel\Event\KernelEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Symfony\Contracts\Service\ResetInterface;
 
-class FullPageCacheListener
+class FullPageCacheListener implements ResetInterface
 {
     use PimcoreContextAwareTrait;
     use StaticPageContextAwareTrait;
@@ -65,6 +66,21 @@ class FullPageCacheListener
         protected Config                   $config
     )
     {
+    }
+
+    /**
+     * All state is per request, reset it before the next request (worker runtimes): otherwise one cache hit stops the
+     * response propagation of every following request, one POST disables the cache for good and the cache key of the
+     * previous request can be reused.
+     */
+    public function reset(): void
+    {
+        $this->enabled = true;
+        $this->stopResponsePropagation = false;
+        $this->lifetime = null;
+        $this->addExpireHeader = true;
+        $this->disableReason = null;
+        $this->defaultCacheKey = null;
     }
 
     public function disable(?string $reason = null): bool
@@ -117,15 +133,19 @@ class FullPageCacheListener
 
     public function onKernelRequest(RequestEvent $event): void
     {
+        if (!$event->isMainRequest()) {
+            return;
+        }
+
+        // in case the kernel.reset was not triggered since the last main request
+        $this->stopResponsePropagation = false;
+        $this->defaultCacheKey = null;
+
         if (!$this->isEnabled()) {
             return;
         }
 
         $request = $event->getRequest();
-
-        if (!$event->isMainRequest()) {
-            return;
-        }
 
         if (!$this->matchesPimcoreContext($request, PimcoreContextResolver::CONTEXT_DEFAULT)) {
             return;

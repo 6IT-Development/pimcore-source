@@ -46,6 +46,9 @@ readonly class ResponseStackListener implements EventSubscriberInterface
 
         if ($this->responseStack->hasResponses()) {
             $event->setResponse($this->responseStack->getLastResponse());
+
+            // all responses on the stack belong to this request, they must not be sent for the next one
+            $this->responseStack->reset();
         }
     }
 }

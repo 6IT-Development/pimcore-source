@@ -239,7 +239,7 @@ foreach ($container->findTaggedServiceIds('cache.pool') as $id => $arguments) {
 
 ---
 
-## [ ] C-08 – Request state lives on shared services and is never reset (worker runtimes: stale responses, broken sessions, disabled cache)
+## [x] C-08 – Request state lives on shared services and is never reset (worker runtimes: stale responses, broken sessions, disabled cache)
 
 **Files:**
 - `src/EventListener/Frontend/FullPageCacheListener.php:50-60, 70-91, 279, 283-288`

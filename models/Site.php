@@ -192,6 +192,16 @@ final class Site extends AbstractModel
         self::$currentSite = $site;
     }
 
+    /**
+     * Unregister the current site, e.g. at the start of a new request in a long-running process
+     *
+     * @internal
+     */
+    public static function resetCurrentSite(): void
+    {
+        self::$currentSite = null;
+    }
+
     public function getId(): ?int
     {
         return $this->id;

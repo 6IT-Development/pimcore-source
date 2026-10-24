@@ -66,6 +66,9 @@ class RoutingListener implements EventSubscriberInterface
             return;
         }
 
+        // the current site is static, don't keep the one of a previous request (worker runtimes)
+        Site::resetCurrentSite();
+
         $request = $event->getRequest();
 
         // handle main domain redirect in admin context

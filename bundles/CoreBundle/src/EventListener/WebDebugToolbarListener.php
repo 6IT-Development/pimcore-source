@@ -23,17 +23,24 @@ use Symfony\Bundle\WebProfilerBundle\EventListener\WebDebugToolbarListener as Sy
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\ChainRequestMatcher;
+use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Disables the web debug toolbar for frontend requests by admins (iframes inside admin interface)
  *
  * @internal
  */
-class WebDebugToolbarListener implements EventSubscriberInterface
+class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterface
 {
     protected ?array $excludeMatchers = null;
+
+    /**
+     * Mode of the Symfony toolbar listener before it was disabled for the current request
+     */
+    private ?int $previousMode = null;
 
     public function __construct(
         protected RequestHelper                   $requestHelper,
@@ -49,6 +56,7 @@ class WebDebugToolbarListener implements EventSubscriberInterface
     {
         return [
             KernelEvents::REQUEST => ['onKernelResponse', -118],
+            KernelEvents::FINISH_REQUEST => 'onKernelFinishRequest',
         ];
     }
 
@@ -75,6 +83,25 @@ class WebDebugToolbarListener implements EventSubscriberInterface
         }
     }
 
+    public function onKernelFinishRequest(FinishRequestEvent $event): void
+    {
+        if ($event->isMainRequest()) {
+            $this->reset();
+        }
+    }
+
+    /**
+     * Re-enables the toolbar for the next request
+     */
+    public function reset(): void
+    {
+        if ($this->debugToolbarListener && null !== $this->previousMode) {
+            $this->debugToolbarListener->setMode($this->previousMode);
+        }
+
+        $this->previousMode = null;
+    }
+
     protected function getExcludeMatchers(): array
     {
         if (null === $this->excludeMatchers) {
@@ -86,8 +113,13 @@ class WebDebugToolbarListener implements EventSubscriberInterface
 
     protected function disableWebDebugToolbar(): void
     {
-        if ($this->debugToolbarListener) {
-            $this->eventDispatcher->removeSubscriber($this->debugToolbarListener);
+        // only for the current request: removing the subscriber would disable the toolbar for all following requests
+        // handled by this process (worker runtimes)
+        if ($this->debugToolbarListener && null === $this->previousMode) {
+            $this->previousMode = $this->debugToolbarListener->isEnabled()
+                ? SymfonyWebDebugToolbarListener::ENABLED
+                : SymfonyWebDebugToolbarListener::DISABLED;
+            $this->debugToolbarListener->setMode(SymfonyWebDebugToolbarListener::DISABLED);
         }
     }
 }

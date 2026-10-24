@@ -31,6 +31,11 @@ class LocaleListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
+    private const string ATTRIBUTE_CONTENT_LANGUAGE = '_pimcore_content_language';
+
+    /**
+     * Locale last passed to setlocale(), which is process-wide
+     */
     protected ?string $lastLocale = null;
 
     public static function getSubscribedEvents(): array
@@ -46,6 +51,11 @@ class LocaleListener implements EventSubscriberInterface
         $request = $event->getRequest();
 
         $locale = $request->getLocale();
+
+        if ($locale && $event->isMainRequest()) {
+            // per request: $lastLocale may come from a previous request (worker runtimes) or a sub-request
+            $request->attributes->set(self::ATTRIBUTE_CONTENT_LANGUAGE, $locale);
+        }
 
         if ($locale && $locale != $this->lastLocale) {
             $this->lastLocale = $locale;
@@ -75,9 +85,14 @@ class LocaleListener implements EventSubscriberInterface
 
     public function onKernelResponse(ResponseEvent $event): void
     {
-        if ($this->lastLocale && $event->isMainRequest()) {
+        if (!$event->isMainRequest()) {
+            return;
+        }
+
+        $locale = $event->getRequest()->attributes->get(self::ATTRIBUTE_CONTENT_LANGUAGE);
+        if ($locale) {
             $response = $event->getResponse();
-            $response->headers->set('Content-Language', strtolower(str_replace('_', '-', $this->lastLocale)));
+            $response->headers->set('Content-Language', strtolower(str_replace('_', '-', $locale)));
         }
     }
 }

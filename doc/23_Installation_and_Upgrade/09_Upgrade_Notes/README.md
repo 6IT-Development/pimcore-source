@@ -9,6 +9,13 @@
   `cache:pool:clear` of one pool cleared all of them. Each pool now gets its own namespace and lifetime, as in a
   plain Symfony app. Existing items of these pools are not found anymore after the update (one-time cache miss);
   run `bin/console pimcore:cache:clear` to remove the old entries from `pimcore.cache.pool`.
+#### [Worker runtimes]
+- Fixed request state leaking between requests when one process handles many requests (FrankenPHP worker mode,
+  RoadRunner, Swoole via `symfony/runtime`): `ResponseStack`, `FullPageCacheListener`, `TranslationDebugListener`,
+  `WebDebugToolbarListener` and `GlobalTemplateVariablesListener` implement `ResetInterface` (`kernel.reset`), the
+  fallback document and the `Content-Language` locale are stored as request attributes, and the current site is reset
+  at the start of each main request (`Site::resetCurrentSite()`). The web debug toolbar is no longer disabled by
+  removing its subscriber but via `WebDebugToolbarListener::setMode()` for the current request only.
 #### [Configuration]
 - Fixed: if `PIMCORE_PRIVATE_VAR` or `PIMCORE_CONFIGURATION_DIRECTORY` is located outside the project root (e.g.
   `/mnt/shared/var`), the default `config_location` directories were prefixed with the project root

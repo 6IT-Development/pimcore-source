@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Http;
 
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\Service\ResetInterface;
 use UnderflowException;
 
 /**
@@ -30,7 +31,7 @@ use UnderflowException;
  *
  * @internal
  */
-class ResponseStack
+class ResponseStack implements ResetInterface
 {
     /**
      * @var Response[]
@@ -71,5 +72,10 @@ class ResponseStack
         }
 
         return end($this->responses);
+    }
+
+    public function reset(): void
+    {
+        $this->responses = [];
     }
 }
