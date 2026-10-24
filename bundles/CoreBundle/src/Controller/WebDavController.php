@@ -23,8 +23,10 @@ use Pimcore\Controller\Controller;
 use Pimcore\Db;
 use Pimcore\Logger;
 use Pimcore\Model\Asset;
+use Pimcore\Tool\Admin;
 use Sabre\DAV\Browser\Plugin;
 use Sabre\DAV\Server;
+use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 /**
  * @internal
@@ -33,6 +35,11 @@ class WebDavController extends Controller
 {
     public function webdavAction(): void
     {
+        // fail closed when the project has no (working) `pimcore_webdav` firewall
+        if (!Admin::getCurrentUser()) {
+            throw new UnauthorizedHttpException('Basic realm="Pimcore WebDAV"', 'Authentication required');
+        }
+
         $homeDir = Asset::getById(1);
 
         try {
@@ -50,8 +57,9 @@ class WebDavController extends Controller
             $lockPlugin = new \Sabre\DAV\Locks\Plugin($lockBackend);
             $server->addPlugin($lockPlugin);
 
-            // browser plugin
-            $server->addPlugin(new Plugin());
+            // browser plugin, read-only: its HTML forms (mkcol, upload) have no CSRF protection and browsers
+            // re-send cached HTTP Basic credentials on cross-site POSTs
+            $server->addPlugin(new Plugin(false));
 
             $server->start();
         } catch (Exception $e) {

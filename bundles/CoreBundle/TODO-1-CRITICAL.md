@@ -514,7 +514,7 @@ table or the TmpStore. Add a functional test per write verb (I-72).
 
 ---
 
-## [ ] C-14 – WebDAV endpoint relies entirely on the project firewall, and the Sabre browser plugin accepts cross-site POSTs (CSRF with cached Basic credentials)
+## [x] C-14 – WebDAV endpoint relies entirely on the project firewall, and the Sabre browser plugin accepts cross-site POSTs (CSRF with cached Basic credentials)
 
 **Files:** `src/Controller/WebDavController.php:34-61` (esp. `:54`), `config/routing.yaml:35-39`,
 `.github/ci/files/config/packages/security.yaml:11-15`, `doc/04_Assets/05_Accessing_Assets_via_WebDAV.md`
