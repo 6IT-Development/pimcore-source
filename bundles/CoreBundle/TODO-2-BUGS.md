@@ -598,7 +598,7 @@ priority table see the note at the top of Scope 3 in TODO-1.
 
 ---
 
-## [ ] B-35 – `ElementListener`: `?v=` / `pimcore_version` load any version without an ownership check; preview has no permission check
+## [x] B-35 – `ElementListener`: `?v=` / `pimcore_version` load any version without an ownership check; preview has no permission check
 
 **File:** `src/EventListener/Frontend/ElementListener.php:110-132, 134-186, 218-233`
 

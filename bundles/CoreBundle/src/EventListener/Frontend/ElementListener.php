@@ -92,10 +92,19 @@ class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
                 throw new AccessDeniedHttpException(sprintf('Access denied for %s', $document->getFullPath()));
             }
 
+            // unpublished documents, editmode, previews and versions are only available with view permission
+            if ($document && $user && !$document->isAllowed('view', $user)) {
+                $this->logger->warning(
+                    "Denying access to document {$document->getFullPath()} as user {$user->getName()} has no view permission."
+                );
+
+                throw new AccessDeniedHttpException(sprintf('Access denied for %s', $document->getFullPath()));
+            }
+
             // editmode, pimcore_preview & pimcore_version
             if ($user) {
                 $document = $this->handleAdminUserDocumentParams($request, $document, $user);
-                $this->handleObjectParams($request);
+                $this->handleObjectParams($request, $user);
             }
 
             if ($document) {
@@ -111,15 +120,15 @@ class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
     {
         $v = $request->query->getInt('v');
         if ($v) {
-            if ($version = Version::getById($v)) {
-                if ($version->getPublic()) {
-                    $this->logger->info('Setting version to {version} for document {document}', [
-                        'version' => $version->getId(),
-                        'document' => $document->getFullPath(),
-                    ]);
+            $version = Version::getById($v);
+            $versionDocument = $version?->getPublic() ? $this->getDocumentFromVersion($version, $document) : null;
+            if ($versionDocument) {
+                $this->logger->info('Setting version to {version} for document {document}', [
+                    'version' => $version->getId(),
+                    'document' => $document->getFullPath(),
+                ]);
 
-                    $document = $version->getData();
-                }
+                $document = $versionDocument;
             } else {
                 $this->logger->notice('Failed to load {version} for document {document}', [
                     'version' => $v,
@@ -164,7 +173,10 @@ class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
             $versionId = $request->query->getInt('pimcore_version');
             // TODO there was a check with a registry flag here - check if the main request handling is sufficient
             $version = Version::getById($versionId);
-            if ($documentVersion = $version?->getData()) {
+            $documentVersion = $version && $document->isAllowed('versions', $user)
+                ? $this->getDocumentFromVersion($version, $document)
+                : null;
+            if ($documentVersion) {
                 $document = $documentVersion;
                 $this->logger->debug('Loading version {version} for document {document} from pimcore_version parameter', [
                     'version' => $version->getId(),
@@ -183,6 +195,20 @@ class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
         }
 
         return $document;
+    }
+
+    /**
+     * Returns the version's document, but only if the version belongs to the given document.
+     */
+    private function getDocumentFromVersion(Version $version, Document $document): ?Document
+    {
+        if ($version->getCtype() !== 'document' || $version->getCid() !== $document->getId()) {
+            return null;
+        }
+
+        $data = $version->getData();
+
+        return $data instanceof Document ? $data : null;
     }
 
     protected function handleEditmode(Document $document, User $user, SessionInterface $session): Document
@@ -215,11 +241,21 @@ class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
         return $document;
     }
 
-    protected function handleObjectParams(Request $request): void
+    protected function handleObjectParams(Request $request, User $user): void
     {
         // object preview
         if ($objectId = $request->query->getInt('pimcore_object_preview')) {
-            if ($object = Service::getElementFromSession('object', $objectId, $request->getSession()->getId())) {
+            $object = Service::getElementFromSession('object', $objectId, $request->getSession()->getId());
+            if ($object && !$object->isAllowed('view', $user)) {
+                $this->logger->warning('Denying object preview of {object} as user {user} has no view permission.', [
+                    'object' => $object->getFullPath(),
+                    'user' => $user->getName(),
+                ]);
+
+                throw new AccessDeniedHttpException(sprintf('Access denied for %s', $object->getFullPath()));
+            }
+
+            if ($object) {
                 $this->logger->debug('Loading object {object} ({objectId}) from session', [
                     'object' => $object->getFullPath(),
                     'objectId' => $object->getId(),
