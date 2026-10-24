@@ -301,7 +301,7 @@ gets the stale response / no session cookie.
 
 ---
 
-## [ ] C-09 – `StaticPageGeneratorListener` persists any response as a public static file and serves it ahead of maintenance mode and the firewall
+## [x] C-09 – `StaticPageGeneratorListener` persists any response as a public static file and serves it ahead of maintenance mode and the firewall
 
 **Files:** `src/EventListener/Frontend/StaticPageGeneratorListener.php:66-67, 71-123, 125-153, 177-187`
 

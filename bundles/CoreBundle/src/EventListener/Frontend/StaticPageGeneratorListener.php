@@ -21,6 +21,7 @@ use DateTimeInterface;
 use Exception;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\StaticPageContextAwareTrait;
+use Pimcore\Cache\FullPage\SessionStatus;
 use Pimcore\Config;
 use Pimcore\Document\StaticPageGenerator;
 use Pimcore\Event\DocumentEvents;
@@ -34,11 +35,14 @@ use Pimcore\Model\Document\PageSnippet;
 use Pimcore\Model\Site;
 use Pimcore\Tool\Storage;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 /**
  * @internal
@@ -52,7 +56,9 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
         protected StaticPageGenerator $staticPageGenerator,
         protected DocumentResolver    $documentResolver,
         protected RequestHelper       $requestHelper,
-        private readonly Config       $config
+        private readonly Config       $config,
+        private readonly SessionStatus $sessionStatus,
+        private readonly ?TokenStorageInterface $tokenStorage = null
     )
     {
     }
@@ -63,7 +69,9 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
             DocumentEvents::POST_ADD => 'onPostAddUpdateDeleteDocument',
             DocumentEvents::POST_DELETE => 'onPostAddUpdateDeleteDocument',
             DocumentEvents::POST_UPDATE => 'onPostAddUpdateDeleteDocument',
-            KernelEvents::REQUEST => ['onKernelRequest', 510], //this must run before targeting listener
+            // this must run after the firewall (8) so access_control applies, and after the maintenance page
+            // listener (126), but before the targeting listener
+            KernelEvents::REQUEST => ['onKernelRequest', 7],
             KernelEvents::RESPONSE => ['onKernelResponse', -120], //this must run after code injection listeners
         ];
     }
@@ -75,7 +83,8 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
         }
 
         $request = $event->getRequest();
-        if (!$this->checkValidRequest($request)) {
+        if (!$this->checkValidRequest($request)
+            || !$this->matchesPimcoreContext($request, PimcoreContextResolver::CONTEXT_DEFAULT)) {
             return;
         }
 
@@ -146,10 +155,42 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
 
         $document = $this->documentResolver->getDocument();
 
-        if ($document instanceof Page && $document->getStaticGeneratorEnabled()) {
+        if ($document instanceof Page && $document->getStaticGeneratorEnabled()
+            && $this->responseCanBeStored($request, $event->getResponse())) {
             $response = $event->getResponse()->getContent();
             $this->staticPageGenerator->generate($document, ['response' => $response]);
         }
+    }
+
+    /**
+     * The stored file is served to every visitor, so only store responses that contain no visitor specific
+     * content: no errors (the error page would be stored for the requested document), no cookies, no session
+     * data, no authenticated user and no query parameters (e.g. output timestamp override or preview).
+     */
+    private function responseCanBeStored(Request $request, Response $response): bool
+    {
+        if ($response->getStatusCode() !== Response::HTTP_OK
+            || $response instanceof StreamedResponse
+            || $response instanceof BinaryFileResponse
+            || $response->getContent() === false
+            || $response->headers->hasCacheControlDirective('no-store')
+            || $response->headers->getCookies()) {
+            return false;
+        }
+
+        if ($request->query->count() > 0) {
+            return false;
+        }
+
+        if ($this->sessionStatus->isDisabledBySession($request)) {
+            return false;
+        }
+
+        if ($this->tokenStorage?->getToken()?->getUser()) {
+            return false;
+        }
+
+        return true;
     }
 
     public function onPostAddUpdateDeleteDocument(DocumentEvent $e): void

@@ -58,6 +58,15 @@ Once the static generator option is enabled, Pimcore generates static pages on f
  - First request to the page, after updating and saving the document in admin.
  - Maintenance job
  - CLI command
+
+The static file is served to every visitor, so it is only written on the first request if the response is public:
+status `200`, no `Set-Cookie` header, no `Cache-Control: no-store`, no query parameters, no session data and no
+authenticated user. Otherwise the page is rendered normally and the static file is created by the next request
+that qualifies, the maintenance job or the CLI command.
+
+> Static pages contain the same content for every visitor. Do not enable the static generator for pages behind
+> `access_control` or with user-specific content: files in the default storage (`public/var/tmp/pages`) are
+> delivered by the web server without passing Symfony security or maintenance mode.
  
 In background, maintenance job takes care of generating static pages for documents on regular intervals. However, you can also use CLI command to generate static pages on demand:
   `php bin/console pimcore:documents:generate-static-pages`
@@ -126,6 +135,9 @@ pimcore:
 |----------------|---------------------------------------------------------------|
 | enabled        | Set it true to enable Static Page Router                      |
 | route_pattern  | Regular expression to match routes for static page rendering  |
+
+The static page router runs after the security firewall and the maintenance page listener (request listener priority
+`7`), so `access_control` rules and maintenance mode apply to static pages served by it.
 
 
 ## Use Static Page HTML files with mainDomain instead path

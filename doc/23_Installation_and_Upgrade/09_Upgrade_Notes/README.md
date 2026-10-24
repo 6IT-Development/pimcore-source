@@ -14,6 +14,15 @@
 #### [Routing]
 - Removed the legacy `/app.php/...` → `/...` redirect from `RoutingListener` (open redirect via `/app.php/%5Cexample.com`).
   `app.php` is the Symfony 3 front controller; add a web server rewrite if old URLs must still be redirected.
+#### [Static Page Generator]
+- On a regular page request a static page is only written if the response is public (status `200`, no `Set-Cookie`,
+  no `no-store`, no query parameters, no session data, no authenticated user). Before, error pages and visitor
+  specific content (logged-in user, CSRF tokens, flash messages, output timestamp override) could be stored and served
+  to everyone.
+- The static page router (`documents.static_page_router`) request listener priority changed from `510` to `7`. It now
+  runs after routing, the SEO redirects, the maintenance page listener and the security firewall, so redirects,
+  maintenance mode and `access_control` apply to static pages served by it. It only serves requests in the `default`
+  Pimcore context.
 #### [Thumbnails]
 - On-the-fly thumbnail generation via the public thumbnail URL only generates known variants: high-resolution factors
   must be listed in the new `pimcore.assets.image.thumbnails.high_resolution_factors` option (default
