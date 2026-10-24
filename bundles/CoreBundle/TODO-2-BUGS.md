@@ -92,7 +92,7 @@ column is JSON.
 
 ---
 
-## [ ] B-05 – `pimcore:bundle:install` / `uninstall` hide installer output and turn real failures into exit 0
+## [x] B-05 – `pimcore:bundle:install` / `uninstall` hide installer output and turn real failures into exit 0
 
 **Files:** `src/Command/Bundle/AbstractBundleCommand.php:73-84,113-121`, `Bundle/InstallCommand.php:59-68`,
 `Bundle/UninstallCommand.php:52-61`

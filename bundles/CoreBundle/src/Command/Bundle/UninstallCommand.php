@@ -17,9 +17,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
 
-use Exception;
 use Pimcore\Bundle\CoreBundle\Command\Bundle\Helper\PostStateChange;
 use Pimcore\Extension\Bundle\PimcoreBundleManager;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -49,22 +49,32 @@ class UninstallCommand extends AbstractBundleCommand
     {
         $bundle = $this->getBundle();
 
-        // sets up installer with console output writer
-        $this->setupInstaller($bundle);
+        $installer = $this->bundleManager->getInstaller($bundle);
 
+        if (null !== $installer && !$installer->isInstalled()) {
+            $this->io->success(sprintf('Bundle "%s" is not installed', $bundle->getName()));
+
+            return Command::SUCCESS;
+        }
+
+        if (!$this->bundleManager->canBeUninstalled($bundle)) {
+            return $this->handlePrerequisiteError(sprintf('Bundle "%s" can not be uninstalled', $bundle->getName()));
+        }
+
+        // errors from the installer itself are not a prerequisite problem, let them fail the command
         try {
             $this->bundleManager->uninstall($bundle);
-
-            $this->io->success(sprintf('Bundle "%s" was successfully uninstalled', $bundle->getName()));
-        } catch (Exception $e) {
-            return $this->handlePrerequisiteError($e->getMessage());
+        } finally {
+            $this->writeInstallerOutput($installer);
         }
+
+        $this->io->success(sprintf('Bundle "%s" was successfully uninstalled', $bundle->getName()));
 
         $this->postStateChangeHelper->runPostStateChangeCommands(
             $this->io,
             $this->getApplication()->getKernel()->getEnvironment()
         );
 
-        return 0;
+        return Command::SUCCESS;
     }
 }

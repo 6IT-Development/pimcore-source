@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
 
-use Exception;
 use Pimcore\Bundle\CoreBundle\Command\Bundle\Helper\PostStateChange;
 use Pimcore\Extension\Bundle\PimcoreBundleManager;
 use Symfony\Component\Console\Command\Command;
@@ -56,16 +55,20 @@ class InstallCommand extends AbstractBundleCommand
             return Command::SUCCESS;
         }
 
-        // sets up installer with console output writer
-        $this->setupInstaller($bundle);
+        if (!$this->bundleManager->canBeInstalled($bundle)) {
+            return $this->handlePrerequisiteError(sprintf('Bundle "%s" can not be installed', $bundle->getName()));
+        }
 
+        $installer = $this->bundleManager->getInstaller($bundle);
+
+        // errors from the installer itself are not a prerequisite problem, let them fail the command
         try {
             $this->bundleManager->install($bundle);
-
-            $this->io->success(sprintf('Bundle "%s" was successfully installed', $bundle->getName()));
-        } catch (Exception $e) {
-            return $this->handlePrerequisiteError($e->getMessage());
+        } finally {
+            $this->writeInstallerOutput($installer);
         }
+
+        $this->io->success(sprintf('Bundle "%s" was successfully installed', $bundle->getName()));
 
         $this->postStateChangeHelper->runPostStateChangeCommands(
             $this->io,

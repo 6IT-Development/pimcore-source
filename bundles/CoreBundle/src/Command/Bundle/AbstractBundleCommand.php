@@ -23,6 +23,7 @@ use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleManager;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 /**
  * @internal
@@ -110,14 +111,20 @@ abstract class AbstractBundleCommand extends AbstractCommand
         return $bundle;
     }
 
-    protected function setupInstaller(PimcoreBundleInterface $bundle): ?InstallerInterface
+    /**
+     * Writes the messages the installer collected in its buffered output to the console
+     */
+    protected function writeInstallerOutput(?InstallerInterface $installer): void
     {
-        $installer = $this->bundleManager->getInstaller($bundle);
-        if (null === $installer) {
-            return null;
+        $output = $installer?->getOutput();
+        if (!$output instanceof BufferedOutput) {
+            return;
         }
 
-        return $installer;
+        $messages = $output->fetch();
+        if ('' !== $messages) {
+            $this->io->write($messages);
+        }
     }
 
     protected function normalizeBundleIdentifier(string $bundleIdentifier): string
