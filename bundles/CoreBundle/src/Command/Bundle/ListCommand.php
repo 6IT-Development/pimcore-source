@@ -17,12 +17,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
 
+use InvalidArgumentException;
 use Pimcore\Extension\Bundle\Exception\BundleNotFoundException;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use const JSON_PRETTY_PRINT;
+use const JSON_THROW_ON_ERROR;
 
 /**
  * @internal
@@ -52,13 +54,14 @@ class ListCommand extends AbstractBundleCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $details = $input->getOption('details');
+        $json = $input->getOption('json');
         $returnData = [
             'headers' => [
                 'Bundle',
                 'Enabled',
                 'Installed',
-                $input->hasOption('json') ? 'Installable' : 'I?',
-                $input->hasOption('json') ? 'Uninstallable' : 'UI?',
+                $json ? 'Installable' : 'I?',
+                $json ? 'Uninstallable' : 'UI?',
                 'Priority',
             ],
             'rows' => [],
@@ -75,14 +78,20 @@ class ListCommand extends AbstractBundleCommand
             try {
                 $bundle = $this->bundleManager->getActiveBundle($bundleClass, false);
                 if ($details) {
-                    $row[] = substr($bundle->getDescription(), 0, 30) . (strlen($bundle->getDescription()) > 30 ? '...' : '');
+                    $row[] = mb_strimwidth($bundle->getDescription(), 0, 33, '...');
                     $row[] = $bundle->getVersion();
                 }
                 $row[] = true;
                 $row[] = $this->bundleManager->isInstalled($bundle);
                 $row[] = $this->bundleManager->canBeInstalled($bundle);
                 $row[] = $this->bundleManager->canBeUninstalled($bundle);
-                $row[] = $this->bundleManager->getManuallyRegisteredBundleState($bundleClass)['priority'];
+
+                try {
+                    $row[] = $this->bundleManager->getManuallyRegisteredBundleState($bundleClass)['priority'];
+                } catch (InvalidArgumentException) {
+                    // active, but not registered through the bundle collection (e.g. Kernel::registerBundles())
+                    $row[] = null;
+                }
             } catch (BundleNotFoundException) {
                 if ($details) {
                     $row[] = '';
@@ -95,9 +104,9 @@ class ListCommand extends AbstractBundleCommand
             $returnData['rows'][] = $row;
         }
 
-        if ($input->getOption('json')) {
+        if ($json) {
             $jsonData = array_map(fn($row) => array_combine($returnData['headers'], $row), $returnData['rows']);
-            $output->write(json_encode($jsonData, JSON_PRETTY_PRINT));
+            $output->write(json_encode($jsonData, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         } else {
             $table = new Table($output);
 
@@ -107,6 +116,8 @@ class ListCommand extends AbstractBundleCommand
                 foreach ($row as $idx => $column) {
                     if (is_bool($column)) {
                         $row[$idx] = $this->formatBool($column);
+                    } elseif (null === $column) {
+                        $row[$idx] = 'n/a';
                     }
                 }
 
@@ -122,7 +133,6 @@ class ListCommand extends AbstractBundleCommand
                 'Legend:',
                 '<comment>I?</comment>: Can be installed?',
                 '<comment>UI?</comment>: Can be uninstalled?',
-                '<comment>UP?</comment>: Can be updated?',
             ]));
         }
 

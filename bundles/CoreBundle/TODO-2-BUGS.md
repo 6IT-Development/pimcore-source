@@ -124,7 +124,7 @@ least print `$io->error()` with the exit code.
 
 ---
 
-## [ ] B-07 – `pimcore:bundle:list`: wrong headers/legend, multibyte truncation, possible crash
+## [x] B-07 – `pimcore:bundle:list`: wrong headers/legend, multibyte truncation, possible crash
 
 **File:** `src/Command/Bundle/ListCommand.php:60-61,78,85,121-126`
 
