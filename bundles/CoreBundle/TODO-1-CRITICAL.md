@@ -62,7 +62,7 @@ Do it once in the shared filter helper (see I-11). In `ThumbnailsVideoCommand` a
 
 ---
 
-## [ ] C-02 – `RemoveCustomSettingCommand` skips assets (OFFSET pagination over a shrinking result set)
+## [x] C-02 – `RemoveCustomSettingCommand` skips assets (OFFSET pagination over a shrinking result set)
 
 **File:** `src/Command/Asset/RemoveCustomSettingCommand.php:64-102`
 

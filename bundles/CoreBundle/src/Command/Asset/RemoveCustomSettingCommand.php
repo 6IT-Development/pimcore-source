@@ -84,23 +84,33 @@ class RemoveCustomSettingCommand extends AbstractCommand
             $conditionVariables[] = $regex;
         }
 
-        $list = new Asset\Listing();
-        $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
-        $total = $list->getTotalCount();
+        // keyset pagination: processed assets no longer match the customSettings condition, so an OFFSET would skip
+        // assets of the shrinking result set
+        $conditions[] = 'id > ?';
         $perLoop = 10;
+        $lastId = 0;
+        $count = 0;
 
-        for ($i = 0; $i < (ceil($total / $perLoop)); $i++) {
+        do {
+            $list = new Asset\Listing();
+            $list->setCondition(implode(' AND ', $conditions), [...$conditionVariables, $lastId]);
+            $list->setOrderKey('id');
+            $list->setOrder('ASC');
             $list->setLimit($perLoop);
-            $list->setOffset($i * $perLoop);
             $assets = $list->load();
+
             foreach ($assets as $asset) {
                 $output->writeln($asset->getFullPath());
                 $asset->removeCustomSetting($input->getArgument('name'));
                 $asset->getDao()->updateCustomSettings();
+                $lastId = $asset->getId();
+                $count++;
             }
 
             Pimcore::collectGarbage();
-        }
+        } while (count($assets) === $perLoop);
+
+        $output->writeln(sprintf('Removed custom setting "%s" from %d asset(s).', $input->getArgument('name'), $count));
 
         return 0;
     }
