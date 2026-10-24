@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle;
 
+use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\AreabrickAutoloadPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\AreabrickPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\CacheFallbackPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\HtmlSanitizerPass;
@@ -52,6 +53,8 @@ class PimcoreCoreBundle extends Bundle
 
     public function build(ContainerBuilder $container): void
     {
+        // before the autoconfiguration passes (100), so the autoloaded bricks are autoconfigured
+        $container->addCompilerPass(new AreabrickAutoloadPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 101);
         $container->addCompilerPass(new AreabrickPass());
         $container->addCompilerPass(new NavigationRendererPass());
         $container->addCompilerPass(new ServiceControllersPass());

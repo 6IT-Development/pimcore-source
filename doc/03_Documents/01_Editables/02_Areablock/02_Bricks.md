@@ -36,6 +36,11 @@ class Iframe implements AreabrickInterface
 }
 ```
 
+Auto-created brick services are autowired and autoconfigured (e.g. `_instanceof` rules, `ResetInterface`,
+`EventSubscriberInterface`, `#[AsEventListener]`). Bindings from the `_defaults` section of your service config
+(`bind`) don't apply to them, as they are not defined in that file: define the service yourself if the brick needs
+bound (e.g. scalar) constructor arguments.
+
 If you need more control over the brick instance (e.g. because your brick has dependencies on other services, or you
 want to specify the brick ID manually), you can add the service definition yourself and tag the service with the DI
 tag `pimcore.area.brick`. Bricks defined manually will be excluded from the auto-registration, even if they're

@@ -27,6 +27,11 @@
   was registered twice, so every editmode/areablock render failed with "Areabrick … is already registered" (or the brick
   appeared twice with different IDs). It is now registered once. Different IDs in the tag and the attribute, and the
   same brick ID used by two services, are reported when the container is built instead of at runtime.
+- Fixed: auto-loaded bricks (`Document\Areabrick` namespace) were marked as autoconfigured, but registered after the
+  autoconfiguration passes, so `_instanceof` rules, `ResetInterface` (`kernel.reset`), event subscribers/listeners
+  etc. were not applied to them. They are now registered by `AreabrickAutoloadPass` before autoconfiguration and tagged
+  with `pimcore.area.brick` (service and brick IDs are unchanged). Tagged brick services whose class is a parameter or
+  inherited from a parent definition are now supported; a tagged service without a class gives a clear error.
 #### [Workflows]
 - Fixed: Pimcore's `WorkflowPass` ran after MonologBundle's and FrameworkBundle's compiler passes. The workflow
   audit trail (`audit_trail.enabled`) logged to the `app` channel instead of `workflow`, and the check that the security

@@ -517,7 +517,7 @@ compile time instead of at runtime.
 
 ---
 
-## [ ] B-31 – `AreabrickPass`: autoloaded bricks are not autoconfigured; tagged services with no/param class crash
+## [x] B-31 – `AreabrickPass`: autoloaded bricks are not autoconfigured; tagged services with no/param class crash
 
 **File:** `src/DependencyInjection/Compiler/AreabrickPass.php:62-66`, `105-150`
 
