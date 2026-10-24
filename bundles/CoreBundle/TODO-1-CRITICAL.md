@@ -120,7 +120,7 @@ redundant because of `ON DELETE CASCADE` FKs (see I-17).
 
 ---
 
-## [ ] C-05 – `pimcore:documents:cleanup` corrupts the document tree
+## [x] C-05 – `pimcore:documents:cleanup` corrupts the document tree
 
 **File:** `src/Command/Document/CleanupCommand.php:53-100`
 
