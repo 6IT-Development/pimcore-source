@@ -23,6 +23,7 @@ use Pimcore\Db;
 use Pimcore\Model\Document;
 use Pimcore\Tool;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -74,8 +75,8 @@ class GeneratePagePreviews extends AbstractCommand
             if ($parent instanceof Document) {
                 $conditions[] = '`path` LIKE ' . $db->quote($parent->getRealFullPath() . '%');
             } else {
-                $this->writeError($parentIdOrPath . ' is not a valid id or path!');
-                exit(1);
+                // no exit(): it would skip the console TERMINATE event (e.g. --maintenance-mode would stay active)
+                throw new InvalidArgumentException($parentIdOrPath . ' is not a valid id or path!');
             }
         }
 

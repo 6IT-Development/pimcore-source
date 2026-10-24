@@ -67,7 +67,7 @@ class ResetPasswordCommand extends AbstractCommand
 
         if (!$user) {
             $this->writeError('User with name/ID ' . $userArgument . ' could not be found. Exiting');
-            exit;
+            return self::INVALID;
         }
 
         if ($input->getOption('password')) {

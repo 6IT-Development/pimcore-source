@@ -138,7 +138,7 @@ confirmation, and return a proper exit code.
 
 ---
 
-## [ ] C-06 – Error paths call `exit` (exit code 0, skipped TERMINATE events, maintenance mode left on)
+## [x] C-06 – Error paths call `exit` (exit code 0, skipped TERMINATE events, maintenance mode left on)
 
 **Files:**
 - `exit;` (exit code **0**): `Asset/GenerateChecksumCommand.php:81`, `Asset/RemoveCustomSettingCommand.php:73`,

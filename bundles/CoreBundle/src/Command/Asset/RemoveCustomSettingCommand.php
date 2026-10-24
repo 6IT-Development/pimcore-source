@@ -71,7 +71,7 @@ class RemoveCustomSettingCommand extends AbstractCommand
                 $conditionVariables[] = Helper::escapeLike($parent->getRealFullPath()) . '/%';
             } else {
                 $this->writeError($input->getOption('parent') . ' is not a valid asset folder ID!');
-                exit;
+                return self::INVALID;
             }
         }
 

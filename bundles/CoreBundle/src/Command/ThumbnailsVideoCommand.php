@@ -24,6 +24,7 @@ use Pimcore\Logger;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Version;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -79,8 +80,8 @@ class ThumbnailsVideoCommand extends AbstractCommand
                 $conditions[] = 'path LIKE ?';
                 $conditionVariables[] = $list->escapeLike($parent->getRealFullPath()) . '/%';
             } else {
-                $this->writeError($input->getOption('parent') . ' is not a valid asset folder ID!');
-                exit(1);
+                // no exit(): it would skip the console TERMINATE event (e.g. --maintenance-mode would stay active)
+                throw new InvalidArgumentException($input->getOption('parent') . ' is not a valid asset folder ID!');
             }
         }
 

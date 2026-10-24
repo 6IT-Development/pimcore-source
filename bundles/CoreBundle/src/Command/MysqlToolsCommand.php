@@ -52,7 +52,7 @@ class MysqlToolsCommand extends AbstractCommand
         // display error message
         if (!$input->getOption('mode')) {
             $this->writeError('Please specify the mode!');
-            exit;
+            return self::INVALID;
         }
 
         $db = Db::get();
