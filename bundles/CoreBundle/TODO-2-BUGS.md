@@ -496,7 +496,7 @@ Document the reason (see I-35). Optionally assert in a test that the listener de
 
 ---
 
-## [ ] B-30 – `AreabrickPass`: the same brick is registered twice when it has both a YAML tag and `#[AsAreabrick]`
+## [x] B-30 – `AreabrickPass`: the same brick is registered twice when it has both a YAML tag and `#[AsAreabrick]`
 
 **Files:** `src/DependencyInjection/Compiler/AreabrickPass.php:62-83`,
 `src/DependencyInjection/PimcoreCoreExtension.php:142-147`, `lib/Extension/Document/Areabrick/AreabrickManager.php:68-85`

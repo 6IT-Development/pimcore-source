@@ -24,6 +24,7 @@ use Pimcore\Extension\Document\Areabrick\AreabrickManager;
 use Pimcore\Extension\Document\Areabrick\Attribute\AsAreabrick;
 use Pimcore\Templating\Renderer\EditableRenderer;
 use ReflectionClass;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -65,11 +66,8 @@ final class AreabrickPass implements CompilerPassInterface
             $reflector = new ReflectionClass($class);
             $taggedAreas[] = $class;
 
-            foreach ($tags as $tag) {
-                // tags may define the id which will be used to register the brick
-                // e.g. { name: pimcore.area.brick, id: blockquote }
-                // if they don't, it will be auto-generated from the class name
-                $brickId = $tag['id'] ?? $this->generateBrickId($reflector);
+            foreach ($this->resolveBrickIds($id, $tags, $reflector) as $brickId) {
+                $this->assertBrickIdIsUnique($brickId, $id, $locatorMapping);
 
                 // add the service to the locator
                 $locatorMapping[$brickId] = new Reference($id);
@@ -123,6 +121,8 @@ final class AreabrickPass implements CompilerPassInterface
                 /** @var ReflectionClass $reflector */
                 $reflector = $bundleArea['reflector'];
 
+                $this->assertBrickIdIsUnique($bundleArea['brickId'], $bundleArea['serviceId'], $locatorMapping);
+
                 $definition = new Definition($reflector->getName());
                 $definition
                     ->setPublic(false)
@@ -147,6 +147,51 @@ final class AreabrickPass implements CompilerPassInterface
         }
 
         return $locatorMapping;
+    }
+
+    /**
+     * A service can have several pimcore.area.brick tags, e.g. one from the service config and one added by
+     * autoconfiguration for the #[AsAreabrick] attribute. Each brick ID is only registered once.
+     *
+     * @return string[]
+     */
+    private function resolveBrickIds(string $serviceId, array $tags, ReflectionClass $reflector): array
+    {
+        $brickIds = [];
+        foreach ($tags as $tag) {
+            // tags may define the id which will be used to register the brick
+            // e.g. { name: pimcore.area.brick, id: blockquote }
+            // if they don't, it will be read from the #[AsAreabrick] attribute or auto-generated from the class name
+            $brickIds[] = $tag['id'] ?? $this->generateBrickId($reflector);
+        }
+
+        $brickIds = array_values(array_unique($brickIds));
+
+        if (count($brickIds) > 1 && $reflector->getAttributes(AsAreabrick::class)) {
+            throw new InvalidConfigurationException(sprintf(
+                'Areabrick service "%s" (%s) has the #[AsAreabrick] attribute and a pimcore.area.brick tag with different IDs (%s). Define the ID in one place only, e.g. remove the tag from the service config.',
+                $serviceId,
+                $reflector->getName(),
+                implode(', ', $brickIds)
+            ));
+        }
+
+        return $brickIds;
+    }
+
+    /**
+     * @param array<string, Reference> $locatorMapping brick ID => service, of the bricks registered so far
+     */
+    private function assertBrickIdIsUnique(string $brickId, string $serviceId, array $locatorMapping): void
+    {
+        if (isset($locatorMapping[$brickId])) {
+            throw new InvalidConfigurationException(sprintf(
+                'Areabrick ID "%s" of service "%s" is already used by service "%s".',
+                $brickId,
+                $serviceId,
+                (string) $locatorMapping[$brickId]
+            ));
+        }
     }
 
     private function handleEditableRendererCall(Definition $definition, ReflectionClass $reflector): void

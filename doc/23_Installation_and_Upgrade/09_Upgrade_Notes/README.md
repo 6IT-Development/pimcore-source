@@ -22,6 +22,11 @@
   fallback document and the `Content-Language` locale are stored as request attributes, and the current site is reset
   at the start of each main request (`Site::resetCurrentSite()`). The web debug toolbar is no longer disabled by
   removing its subscriber but via `WebDebugToolbarListener::setMode()` for the current request only.
+#### [Areabricks]
+- Fixed: an areabrick with both a `pimcore.area.brick` tag in the service config and the `#[AsAreabrick]` attribute
+  was registered twice, so every editmode/areablock render failed with "Areabrick … is already registered" (or the brick
+  appeared twice with different IDs). It is now registered once. Different IDs in the tag and the attribute, and the
+  same brick ID used by two services, are reported when the container is built instead of at runtime.
 #### [Workflows]
 - Fixed: Pimcore's `WorkflowPass` ran after MonologBundle's and FrameworkBundle's compiler passes. The workflow
   audit trail (`audit_trail.enabled`) logged to the `app` channel instead of `workflow`, and the check that the security
