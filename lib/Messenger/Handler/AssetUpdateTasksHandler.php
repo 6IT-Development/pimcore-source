@@ -23,7 +23,6 @@ use Pimcore\Messenger\AssetUpdateTasksMessage;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Version;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Lock\LockFactory;
 use function sprintf;
 
 /**
@@ -33,8 +32,7 @@ class AssetUpdateTasksHandler
 {
     public function __construct(
         protected LoggerInterface   $logger,
-        protected LongRunningHelper $longRunningHelper,
-        protected LockFactory       $lockFactory
+        protected LongRunningHelper $longRunningHelper
     )
     {
     }
@@ -60,7 +58,6 @@ class AssetUpdateTasksHandler
         }
 
         $this->longRunningHelper->deleteTemporaryFiles();
-        $this->lockFactory->createLock($asset->getUpdateQueueLockId())->release();
     }
 
     private function saveAsset(Asset $asset, array $saveParams = []): void

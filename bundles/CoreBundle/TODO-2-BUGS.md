@@ -1078,7 +1078,7 @@ closures with `->ifArray()` instead of `->always()`.
 
 ---
 
-## [ ] B-58 – Two lock backends: `services.yaml` overrides `LockFactory` with a DBAL store and ignores `framework.lock`; `AssetUpdateTasksHandler` releases in the other store
+## [x] B-58 – Two lock backends: `services.yaml` overrides `LockFactory` with a DBAL store and ignores `framework.lock`; `AssetUpdateTasksHandler` releases in the other store
 
 **Files:** `config/services.yaml:120-128`, `config/message_handler.yaml:9-16`,
 `lib/Messenger/Handler/AssetUpdateTasksHandler.php:37,63`, `models/Asset.php:1829-1840`,

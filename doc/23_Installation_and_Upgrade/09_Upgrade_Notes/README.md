@@ -22,6 +22,13 @@
   fallback document and the `Content-Language` locale are stored as request attributes, and the current site is reset
   at the start of each main request (`Site::resetCurrentSite()`). The web debug toolbar is no longer disabled by
   removing its subscriber but via `WebDebugToolbarListener::setMode()` for the current request only.
+#### [Lock]
+- Pimcore no longer defines its own `Symfony\Component\Lock\LockFactory` service (DBAL store), which replaced the
+  FrameworkBundle autowiring alias and ignored `framework.lock`, while some services used `lock.factory` (FrameworkBundle
+  default: `flock` / `semaphore`), so locks were split between two stores. `Symfony\Component\Lock\LockFactory` is now a
+  public alias of `lock.factory`, and Pimcore sets `framework.lock: 'doctrine.dbal.default_connection'` as default, so
+  locks are still stored in the database unless you configure `framework.lock` yourself (e.g. Redis). Use a store that
+  is shared by all processes and nodes; `framework.lock: false` is not supported anymore.
 #### [Configuration]
 - Fixed: if `PIMCORE_PRIVATE_VAR` or `PIMCORE_CONFIGURATION_DIRECTORY` is located outside the project root (e.g.
   `/mnt/shared/var`), the default `config_location` directories were prefixed with the project root

@@ -117,16 +117,11 @@ services:
         tags:
             - { name: controller.argument_value_resolver, priority: 101}
 
-    Symfony\Component\Lock\PersistingStoreInterface:
-        class: Symfony\Component\Lock\Store\DoctrineDbalStore
-        arguments:
-            - '@doctrine.dbal.default_connection'
-
+    # the lock store is configured via framework.lock (default: DBAL, see config/pimcore/default.yaml)
+    # public because it's fetched via Pimcore::getContainer()->get(LockFactory::class)
     Symfony\Component\Lock\LockFactory:
+        alias: lock.factory
         public: true
-        class: Symfony\Component\Lock\LockFactory
-        arguments:
-            - '@Symfony\Component\Lock\PersistingStoreInterface'
 
     Pimcore\Model\Paginator\EventSubscriber\PaginateListingSubscriber: ~
 
