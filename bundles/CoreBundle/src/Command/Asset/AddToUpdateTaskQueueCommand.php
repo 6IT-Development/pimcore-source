@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command\Asset;
 
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
 use Pimcore\Model\Asset;
@@ -35,6 +36,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class AddToUpdateTaskQueueCommand extends AbstractCommand
 {
+    use IdOptionTrait;
+
     protected array $types = ['image', 'video', 'document'];
 
     protected function configure(): void
@@ -87,8 +90,8 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
             }
         }
 
-        if ($ids = $input->getOption('id')) {
-            $conditions[] = sprintf('id in (%s)', implode(',', $ids));
+        if ($ids = $this->getIdOptionValues($input)) {
+            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
         }
 
         if ($regex = $input->getOption('path-pattern')) {

@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command\Asset;
 
 use Exception;
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
 use Pimcore\Model\Asset;
@@ -36,6 +37,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class GenerateChecksumCommand extends AbstractCommand
 {
+    use IdOptionTrait;
+
     protected function configure(): void
     {
         $this
@@ -83,8 +86,8 @@ class GenerateChecksumCommand extends AbstractCommand
             }
         }
 
-        if ($ids = $input->getOption('id')) {
-            $conditions[] = sprintf('id in (%s)', implode(',', $ids));
+        if ($ids = $this->getIdOptionValues($input)) {
+            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
         }
 
         if ($regex = $input->getOption('path-pattern')) {

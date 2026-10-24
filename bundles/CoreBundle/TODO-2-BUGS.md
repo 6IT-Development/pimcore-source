@@ -53,7 +53,7 @@ helper (I-11).
 
 ---
 
-## [ ] B-03 – `--id` option values concatenated into SQL unvalidated
+## [x] B-03 – `--id` option values concatenated into SQL unvalidated
 
 **Files:** `Asset/AddToUpdateTaskQueueCommand.php:90`, `Asset/GenerateChecksumCommand.php:86`,
 `Asset/RemoveCustomSettingCommand.php:78`, `LowQualityImagePreviewCommand.php:93`, `ThumbnailsImageCommand.php:153`

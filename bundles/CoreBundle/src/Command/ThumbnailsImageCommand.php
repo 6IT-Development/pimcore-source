@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use DateTime;
+use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\Parallelization;
 use Pimcore\Model\Asset;
@@ -38,6 +39,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class ThumbnailsImageCommand extends AbstractCommand
 {
+    use IdOptionTrait;
     use Parallelization;
 
     private const string DATE_FORMAT = 'Y-m-d H:i:s';
@@ -151,8 +153,8 @@ class ThumbnailsImageCommand extends AbstractCommand
             $conditionVariables[] = $regex;
         }
 
-        if ($ids = $input->getOption('id')) {
-            $conditions[] = sprintf('id in (%s)', implode(',', $ids));
+        if ($ids = $this->getIdOptionValues($input)) {
+            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
         }
 
         $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
