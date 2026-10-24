@@ -377,7 +377,7 @@ or newline. Use 308/302.
 
 ---
 
-## [ ] C-11 – `ConfigurationHelper` prefixes the project root to an absolute config directory (admin-saved configuration written to the wrong place)
+## [x] C-11 – `ConfigurationHelper` prefixes the project root to an absolute config directory (admin-saved configuration written to the wrong place)
 
 **Files:** `src/DependencyInjection/ConfigurationHelper.php:44-49`, `src/DependencyInjection/Configuration.php:137-160`,
 `lib/Bootstrap.php:183-201,219`, `lib/Kernel.php:87-131`, `lib/Config/LocationAwareConfigRepository.php:238`

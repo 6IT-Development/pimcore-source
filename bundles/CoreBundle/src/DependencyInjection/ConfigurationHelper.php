@@ -22,6 +22,7 @@ use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\Filesystem\Path;
 use Symfony\Component\Finder\Finder;
 
 final class ConfigurationHelper
@@ -43,10 +44,7 @@ final class ConfigurationHelper
 
     public static function addConfigLocationTargetNode(NodeBuilder $node, string $name, string $folder, array $additionalNodes = []): void
     {
-        //BC reasons: Remove this check in Pimcore 12
-        if (!str_starts_with($folder, PIMCORE_PROJECT_ROOT)) {
-            $folder = PIMCORE_PROJECT_ROOT . $folder;
-        }
+        $folder = self::resolveConfigDirectory($folder);
 
         if (in_array(LocationAwareConfigRepository::READ_TARGET, $additionalNodes)) {
             $node
@@ -98,6 +96,31 @@ final class ConfigurationHelper
                 ->end()
                 ->end();
         }
+    }
+
+    /**
+     * Resolves a config directory against the project root, unless it is an absolute path inside the project root,
+     * PIMCORE_PRIVATE_VAR or PIMCORE_CONFIGURATION_DIRECTORY (which may be located outside the project root).
+     *
+     * @param string[]|null $absoluteBaseDirectories
+     *
+     * @internal
+     */
+    public static function resolveConfigDirectory(string $folder, ?string $projectRoot = null, ?array $absoluteBaseDirectories = null): string
+    {
+        $projectRoot ??= PIMCORE_PROJECT_ROOT;
+        $absoluteBaseDirectories ??= [$projectRoot, PIMCORE_PRIVATE_VAR, PIMCORE_CONFIGURATION_DIRECTORY];
+
+        if (Path::isAbsolute($folder)) {
+            foreach ($absoluteBaseDirectories as $baseDirectory) {
+                if (Path::isBasePath($baseDirectory, $folder)) {
+                    return $folder;
+                }
+            }
+        }
+
+        // relative paths, and for BC reasons project relative paths with a leading slash (e.g. "/var/config/foo")
+        return Path::join($projectRoot, $folder);
     }
 
     public static function getSymfonyConfigFiles(string $configPath, array $params = []): array

@@ -9,6 +9,14 @@
   `cache:pool:clear` of one pool cleared all of them. Each pool now gets its own namespace and lifetime, as in a
   plain Symfony app. Existing items of these pools are not found anymore after the update (one-time cache miss);
   run `bin/console pimcore:cache:clear` to remove the old entries from `pimcore.cache.pool`.
+#### [Configuration]
+- Fixed: if `PIMCORE_PRIVATE_VAR` or `PIMCORE_CONFIGURATION_DIRECTORY` is located outside the project root (e.g.
+  `/mnt/shared/var`), the default `config_location` directories were prefixed with the project root
+  (`<project>/mnt/shared/var/config/...`), so configuration saved in the admin UI (thumbnails, document types,
+  predefined properties, perspectives, custom views/layouts, select options, system settings, custom reports, static
+  routes) ended up in the code directory. These directories are now used as configured. If you are affected, move the
+  YAML files from `<project root><PIMCORE_CONFIGURATION_DIRECTORY>/` to `PIMCORE_CONFIGURATION_DIRECTORY` before
+  deploying the update, otherwise these settings are not found anymore.
 
 ### Security
 #### [Twig]
