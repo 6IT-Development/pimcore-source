@@ -70,11 +70,11 @@ class InstallCommand extends AbstractBundleCommand
 
         $this->io->success(sprintf('Bundle "%s" was successfully installed', $bundle->getName()));
 
-        $this->postStateChangeHelper->runPostStateChangeCommands(
+        $postStateChangeSuccessful = $this->postStateChangeHelper->runPostStateChangeCommands(
             $this->io,
             $this->getApplication()->getKernel()->getEnvironment()
         );
 
-        return Command::SUCCESS;
+        return $postStateChangeSuccessful ? Command::SUCCESS : Command::FAILURE;
     }
 }

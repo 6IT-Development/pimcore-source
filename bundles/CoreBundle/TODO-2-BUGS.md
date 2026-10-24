@@ -111,7 +111,7 @@ column is JSON.
 
 ---
 
-## [ ] B-06 – `PostStateChange` swallows failed `assets:install` / `cache:clear`
+## [x] B-06 – `PostStateChange` swallows failed `assets:install` / `cache:clear`
 
 **File:** `src/Command/Bundle/Helper/PostStateChange.php:91-118`
 

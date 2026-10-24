@@ -63,20 +63,25 @@ readonly class PostStateChange
         );
     }
 
-    public function runPostStateChangeCommands(PimcoreStyle $io, string $environment): void
+    /**
+     * Returns false if any of the post state change commands failed
+     */
+    public function runPostStateChangeCommands(PimcoreStyle $io, string $environment): bool
     {
         $input = $io->getInput();
 
         if ($input->getOption('no-post-change-commands')) {
-            return;
+            return true;
         }
 
         $runAssetsInstall = !$input->getOption('no-assets-install');
         $runCacheClear = !$input->getOption('no-cache-clear');
 
         if (!$runAssetsInstall && !$runCacheClear) {
-            return;
+            return true;
         }
+
+        $success = true;
 
         $runCallback = function ($type, $buffer) use ($io) {
             $io->write($buffer);
@@ -94,8 +99,10 @@ readonly class PostStateChange
                     'env' => $environment,
                     'ansi' => $io->isDecorated(),
                 ]);
-            } catch (ProcessFailedException) {
-                // noop - output should be enough
+            } catch (ProcessFailedException $e) {
+                // the process output was already written by the run callback
+                $io->error(sprintf('assets:install failed with exit code %d', $e->getProcess()->getExitCode()));
+                $success = false;
             }
         }
 
@@ -112,9 +119,13 @@ readonly class PostStateChange
                 $this->cacheClearer->clear($environment, [
                     'ansi' => $io->isDecorated(),
                 ]);
-            } catch (ProcessFailedException) {
-                // noop - output should be enough
+            } catch (ProcessFailedException $e) {
+                // the process output was already written by the run callback
+                $io->error(sprintf('cache:clear failed with exit code %d', $e->getProcess()->getExitCode()));
+                $success = false;
             }
         }
+
+        return $success;
     }
 }
