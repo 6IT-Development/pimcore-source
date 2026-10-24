@@ -101,7 +101,7 @@ protected function initialize(InputInterface $input, OutputInterface $output): v
 
 ---
 
-## [ ] C-04 – `DeleteClassificationStoreCommand`: irreversible mass delete with no confirmation, no existence check and no transaction
+## [x] C-04 – `DeleteClassificationStoreCommand`: irreversible mass delete with no confirmation, no existence check and no transaction
 
 **File:** `src/Command/DeleteClassificationStoreCommand.php:45-90`
 
