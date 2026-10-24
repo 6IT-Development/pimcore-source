@@ -540,7 +540,7 @@ autoloaded bricks are only autowired, not autoconfigured). Resolve the class wit
 
 ---
 
-## [ ] B-32 – `CacheFallbackPass` overwrites a user-defined `pimcore.cache.pool` **alias**
+## [x] B-32 – `CacheFallbackPass` overwrites a user-defined `pimcore.cache.pool` **alias**
 
 **File:** `src/DependencyInjection/Compiler/CacheFallbackPass.php:32-35`
 

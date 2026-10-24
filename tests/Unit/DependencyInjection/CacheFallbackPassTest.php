@@ -74,6 +74,28 @@ class CacheFallbackPassTest extends TestCase
         $this->assertSame('cache.adapter.array', $container->getDefinition('cache.app')->getParent());
     }
 
+    public function testPimcoreCachePoolAliasIsKept(): void
+    {
+        $container = $this->createContainer();
+        $container->removeDefinition('pimcore.cache.pool');
+        $container->setDefinition('app.redis_pool', new Definition(ArrayAdapter::class));
+        $container->setAlias('pimcore.cache.pool', 'app.redis_pool');
+
+        new CacheFallbackPass()->process($container);
+
+        $this->assertSame('app.redis_pool', (string) $container->getAlias('pimcore.cache.pool'));
+    }
+
+    public function testPimcoreCachePoolFallsBackToDoctrineDbal(): void
+    {
+        $container = $this->createContainer();
+        $container->removeDefinition('pimcore.cache.pool');
+
+        new CacheFallbackPass()->process($container);
+
+        $this->assertSame('pimcore.cache.adapter.doctrine_dbal_tag_aware', (string) $container->getAlias('pimcore.cache.pool'));
+    }
+
     private function createContainer(): ContainerBuilder
     {
         $container = new ContainerBuilder();
