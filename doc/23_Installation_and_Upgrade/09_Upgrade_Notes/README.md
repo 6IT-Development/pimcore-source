@@ -1,5 +1,17 @@
 # Upgrade Notes
 
+## Unreleased
+### Security
+#### [Twig]
+- The `container` Twig global was removed from the default configuration. Templates using `container.get(...)` or
+  `container.getParameter(...)` must use a dedicated Twig function/extension instead (or re-add the global in the project
+  config, which is not recommended).
+- The Twig sandbox (email subject/body, dynamic text layout) now restricts method and property access: only getters
+  (`get*`, `is*`, `has*`), `__toString` and public properties are allowed. Other methods must be allowed per class via
+  `pimcore.templating_engine.twig.sandbox_security_policy.methods`. Objects that give access to services, the database,
+  the request or the session (container, kernel, `app` global, DBAL connection, DAOs, storages, …) and the password/2FA
+  getters of `Pimcore\Model\User` can no longer be used in sandboxed templates.
+
 ## Pimcore 11.5.9
 ### Security
 #### [Twig]

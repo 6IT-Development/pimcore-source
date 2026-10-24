@@ -17,13 +17,29 @@ declare(strict_types=1);
 
 namespace Pimcore\Twig\Sandbox;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\Persistence\ObjectManager;
+use League\Flysystem\FilesystemOperator;
+use Pimcore\Model\Dao\DaoInterface;
+use Pimcore\Model\User;
+use Psr\Container\ContainerInterface;
+use Symfony\Bridge\Twig\AppVariable;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpKernel\KernelInterface;
+use Twig\Environment;
 use Twig\Sandbox\SecurityNotAllowedFilterError;
 use Twig\Sandbox\SecurityNotAllowedFunctionError;
+use Twig\Sandbox\SecurityNotAllowedMethodError;
+use Twig\Sandbox\SecurityNotAllowedPropertyError;
 use Twig\Sandbox\SecurityNotAllowedTagError;
 use Twig\Sandbox\SecurityPolicyInterface;
 
 /**
- * Note: Reused to disable checks on object methods and properties.
+ * Note: Reused with relaxed checks on object methods and properties: getters (get*, is*, has*), __toString and
+ * public properties are allowed on every object that is not an instance of one of the DENIED_CLASSES. Further
+ * methods can be allowed per class via $allowedMethods.
  *
  * Represents a security policy which need to be enforced when sandbox mode is enabled.
  *
@@ -31,17 +47,51 @@ use Twig\Sandbox\SecurityPolicyInterface;
  */
 final class SecurityPolicy implements SecurityPolicyInterface
 {
+    /**
+     * No method or property may be accessed on instances of these classes, as they give access to services,
+     * the database, the request/session or credentials. This also applies to methods allowed via $allowedMethods.
+     */
+    private const array DENIED_CLASSES = [
+        ContainerInterface::class,
+        KernelInterface::class,
+        AppVariable::class,
+        Request::class,
+        RequestStack::class,
+        SessionInterface::class,
+        Environment::class,
+        Connection::class,
+        ObjectManager::class,
+        FilesystemOperator::class,
+        DaoInterface::class,
+    ];
+
+    /**
+     * Methods that are never allowed, even though they are getters (lowercased).
+     */
+    private const array DENIED_METHODS = [
+        User::class => ['getpassword', 'getpasswordrecoverytoken', 'gettwofactorauthentication'],
+    ];
+
     private array $allowedTags;
 
     private array $allowedFilters;
 
     private array $allowedFunctions;
 
-    public function __construct(array $allowedTags = [], array $allowedFilters = [], array $allowedFunctions = [])
+    /**
+     * @var array<string, string[]> class name => lowercased method names
+     */
+    private array $allowedMethods;
+
+    /**
+     * @param array<string, string[]> $allowedMethods class name => method names
+     */
+    public function __construct(array $allowedTags = [], array $allowedFilters = [], array $allowedFunctions = [], array $allowedMethods = [])
     {
         $this->allowedTags = $allowedTags;
         $this->allowedFilters = $allowedFilters;
         $this->allowedFunctions = $allowedFunctions;
+        $this->setAllowedMethods($allowedMethods);
     }
 
     public function setAllowedTags(array $tags): void
@@ -57,6 +107,17 @@ final class SecurityPolicy implements SecurityPolicyInterface
     public function setAllowedFunctions(array $functions): void
     {
         $this->allowedFunctions = $functions;
+    }
+
+    /**
+     * @param array<string, string[]> $methods class name => method names
+     */
+    public function setAllowedMethods(array $methods): void
+    {
+        $this->allowedMethods = [];
+        foreach ($methods as $class => $classMethods) {
+            $this->allowedMethods[$class] = array_map(strtolower(...), (array) $classMethods);
+        }
     }
 
     /**
@@ -92,7 +153,27 @@ final class SecurityPolicy implements SecurityPolicyInterface
      */
     public function checkMethodAllowed($obj, $method): void
     {
-        //do not perform any checks
+        $this->checkClassAllowed($obj, $method, true);
+
+        $lcMethod = strtolower($method);
+
+        foreach (self::DENIED_METHODS as $class => $methods) {
+            if ($obj instanceof $class && in_array($lcMethod, $methods, true)) {
+                throw $this->createMethodError($obj, $method);
+            }
+        }
+
+        if ($lcMethod === '__tostring' || preg_match('/^(get|is|has)/', $lcMethod)) {
+            return;
+        }
+
+        foreach ($this->allowedMethods as $class => $methods) {
+            if ($obj instanceof $class && in_array($lcMethod, $methods, true)) {
+                return;
+            }
+        }
+
+        throw $this->createMethodError($obj, $method);
     }
 
     /**
@@ -101,6 +182,22 @@ final class SecurityPolicy implements SecurityPolicyInterface
      */
     public function checkPropertyAllowed($obj, $property): void
     {
-        //do not perform any checks
+        $this->checkClassAllowed($obj, $property, false);
+    }
+
+    private function checkClassAllowed(object $obj, string $member, bool $isMethod): void
+    {
+        foreach (self::DENIED_CLASSES as $class) {
+            if ($obj instanceof $class) {
+                throw $isMethod
+                    ? $this->createMethodError($obj, $member)
+                    : new SecurityNotAllowedPropertyError(sprintf('Calling "%s" property on a "%s" object is not allowed.', $member, $obj::class), $obj::class, $member);
+            }
+        }
+    }
+
+    private function createMethodError(object $obj, string $method): SecurityNotAllowedMethodError
+    {
+        return new SecurityNotAllowedMethodError(sprintf('Calling "%s" method on a "%s" object is not allowed.', $method, $obj::class), $obj::class, $method);
     }
 }

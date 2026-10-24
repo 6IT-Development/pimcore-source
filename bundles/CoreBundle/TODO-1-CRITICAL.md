@@ -415,7 +415,7 @@ have data under the wrongly prefixed directory must move it. Cover the helper wi
 
 ---
 
-## [ ] C-12 – Twig sandbox allows every method/property, and `default.yaml` exposes the service container to all templates (sandbox escape from an email subject)
+## [x] C-12 – Twig sandbox allows every method/property, and `default.yaml` exposes the service container to all templates (sandbox escape from an email subject)
 
 **Files:** `lib/Twig/Sandbox/SecurityPolicy.php:93-105`, `config/pimcore/default.yaml:125-131` (`twig.globals.container`),
 `config/templating_twig.yaml:75-83`, `src/DependencyInjection/Configuration.php:1973-2001`,

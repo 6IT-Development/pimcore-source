@@ -67,7 +67,7 @@ Here is an example of Twig content in htmleditor source edit mode:
 
 ### Sandbox Restrictions
 Dynamic Text renders user controlled twig templates in a sandbox with restrictive
-security policies for tags, filters & functions. Please use following configuration to allow more in template rendering:
+security policies for tags, filters, functions & methods. Please use following configuration to allow more in template rendering:
 
 ```yaml
     pimcore:
@@ -77,4 +77,11 @@ security policies for tags, filters & functions. Please use following configurat
                   tags: ['if']
                   filters: ['upper']
                   functions: ['include', 'path']
+                  methods:
+                    # in addition to getters (get*, is*, has*) and __toString, which are always allowed
+                    App\Model\Product\Car: ['format', 'translate']
 ```
+
+Getters, `__toString` and public properties are allowed on any object, other methods only when listed under `methods`.
+Objects that give access to services, the database, the request or the session (container, kernel, the `app` global,
+DBAL connection, DAOs, storages, …) cannot be used at all, and the password/2FA getters of users are blocked.

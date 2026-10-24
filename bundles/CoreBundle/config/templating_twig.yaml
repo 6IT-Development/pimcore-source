@@ -77,6 +77,7 @@ services:
             $allowedTags: '%pimcore.templating.twig.sandbox_security_policy.tags%'
             $allowedFilters: '%pimcore.templating.twig.sandbox_security_policy.filters%'
             $allowedFunctions: '%pimcore.templating.twig.sandbox_security_policy.functions%'
+            $allowedMethods: '%pimcore.templating.twig.sandbox_security_policy.methods%'
 
     Twig\Extension\SandboxExtension:
         arguments:

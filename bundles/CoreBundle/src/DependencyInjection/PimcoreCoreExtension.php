@@ -78,6 +78,7 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
         $container->setParameter('pimcore.templating.twig.sandbox_security_policy.tags', $config['templating_engine']['twig']['sandbox_security_policy']['tags']);
         $container->setParameter('pimcore.templating.twig.sandbox_security_policy.filters', $config['templating_engine']['twig']['sandbox_security_policy']['filters']);
         $container->setParameter('pimcore.templating.twig.sandbox_security_policy.functions', $config['templating_engine']['twig']['sandbox_security_policy']['functions']);
+        $container->setParameter('pimcore.templating.twig.sandbox_security_policy.methods', $config['templating_engine']['twig']['sandbox_security_policy']['methods']);
 
         // register pimcore config on container
         // TODO is this bad practice?
