@@ -72,8 +72,10 @@ final class WorkflowPass implements CompilerPassInterface
 
             $transitions = [];
             foreach ($workflowConfig['transitions'] as $transitionName => $transitionConfig) {
+                // the definitions of this transition only (state machines get one per from/to combination)
+                $currentTransitions = [];
                 if ('workflow' === $type) {
-                    $transitions[] = new Definition(
+                    $currentTransitions[] = new Definition(
                         Transition::class,
                         [
                             $transitionName,
@@ -85,7 +87,7 @@ final class WorkflowPass implements CompilerPassInterface
                 } elseif ('state_machine' === $type) {
                     foreach ($transitionConfig['from'] as $from) {
                         foreach ($transitionConfig['to'] as $to) {
-                            $transitions[] = new Definition(
+                            $currentTransitions[] = new Definition(
                                 Transition::class,
                                 [$transitionName, $from, $to, $transitionConfig['options']]
                             );
@@ -96,13 +98,15 @@ final class WorkflowPass implements CompilerPassInterface
                 if (isset($transitionConfig['options']['notes']['customHtml'])) {
                     $customHtmlServiceName = $transitionConfig['options']['notes']['customHtml']['service'];
                     $position = $transitionConfig['options']['notes']['customHtml']['position'];
-                    foreach ($transitions as $transition) {
+                    foreach ($currentTransitions as $transition) {
                         $customHtmlServiceDefinition = new Definition($customHtmlServiceName, [$transitionName, false, $position]);
                         $customHtmlServiceDefinition->setPublic(false);
                         $customHtmlServiceDefinition->setAutowired(true);
                         $transition->addMethodCall('setCustomHtmlService', [$customHtmlServiceDefinition]);
                     }
                 }
+
+                array_push($transitions, ...$currentTransitions);
             }
 
             $places = [];

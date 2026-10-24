@@ -457,7 +457,7 @@ impact. For the implicit pass ordering behind B-29 / B-31 see the note at the to
 
 ---
 
-## [ ] B-28 – `WorkflowPass`: a transition's `customHtml` service is applied to all earlier transitions
+## [x] B-28 – `WorkflowPass`: a transition's `customHtml` service is applied to all earlier transitions
 
 **File:** `src/DependencyInjection/Compiler/WorkflowPass.php:73-106`
 
