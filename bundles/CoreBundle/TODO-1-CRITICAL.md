@@ -542,7 +542,7 @@ table or the TmpStore. Add a functional test per write verb (I-72).
 
 ---
 
-## [ ] C-15 – Public thumbnail route lets anonymous clients generate and store unbounded thumbnail variants (disk / CPU exhaustion)
+## [x] C-15 – Public thumbnail route lets anonymous clients generate and store unbounded thumbnail variants (disk / CPU exhaustion)
 
 **Files:** `src/Controller/PublicServicesController.php:38-64`, `config/routing.yaml:17-25`,
 `models/Asset/Service.php:359-469,562-594`, `models/Asset/Image/Thumbnail/Processor.php:162-163`

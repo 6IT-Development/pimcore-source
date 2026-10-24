@@ -309,6 +309,11 @@ process).
 
 Of course this works only with predefined (named) thumbnail configurations and not with dynamic configurations.
 
+As this URL is public, only variants Pimcore can produce itself are generated: the file extension must be a known
+image format (or the extension of the asset), high-resolution factors must be allowed (see
+[High-Resolution Support](#high-resolution-support)), media queries must exist in the thumbnail configuration, and
+video frames / document pages must be within the duration / page count of the asset.
+
 > **WARNING**
 > This feature is delivered through PublicServicesController and may not work if the controller is unreachable (e.g. during Maintenance mode).
 > When requesting an image without providing a hash, the content cannot be Browser cached like regular Nginx-served files, as the file without hash doesn’t exist physically.
@@ -413,6 +418,17 @@ Using float is possible too:
 ```
 
 Pimcore will then dynamically generate the thumbnails accordingly.
+
+Every factor results in a separate thumbnail file, so only the factors listed in `high_resolution_factors` (default
+`[1.5, 2, 3, 4, 5]`) and the factor of the thumbnail definition itself can be requested via the URL. Other factors
+are not generated. To use e.g. `@3.2x`, add it to the list:
+```yaml
+pimcore:
+    assets:
+        image:
+            thumbnails:
+                high_resolution_factors: [1.5, 2, 3, 3.2, 4, 5]
+```
 
 ## Media Queries in Thumbnail Configuration
 

@@ -50,6 +50,17 @@ class Service extends Model\Element\Service
     public const array GRID_SYSTEM_COLUMNS = ['preview', 'id', 'type', 'fullpath', 'filename', 'creationDate', 'modificationDate', 'size'];
 
     /**
+     * File extensions an image thumbnail may be requested with via the public thumbnail URL
+     * (besides the extension of the asset itself)
+     */
+    private const array IMAGE_THUMBNAIL_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'tif', 'tiff', 'svg'];
+
+    /**
+     * File extensions a video thumbnail may be requested with via the public thumbnail URL
+     */
+    private const array VIDEO_THUMBNAIL_EXTENSIONS = ['mp4', 'webm', 'mpd'];
+
+    /**
      * @internal
      */
     protected ?Model\User $_user;
@@ -399,6 +410,15 @@ class Service extends Model\Element\Service
                 return null;
             }
 
+            // the requested extension ends up in the stored file name (format override / copy with the requested
+            // extension, see getStreamedResponseFromImageThumbnail()), so only allow known formats
+            $allowedExtensions = $config['type'] === 'video'
+                ? self::VIDEO_THUMBNAIL_EXTENSIONS
+                : [...self::IMAGE_THUMBNAIL_EXTENSIONS, strtolower(pathinfo($asset->getFilename(), PATHINFO_EXTENSION))];
+            if (!in_array($config['file_extension'], $allowedExtensions, true)) {
+                return null;
+            }
+
             if ($config['type'] === 'image' && strcasecmp($thumbnailConfig->getFormat(), 'SOURCE') === 0) {
                 $formatOverride = $config['file_extension'];
                 if (in_array($config['file_extension'], ['jpg', 'jpeg'])) {
@@ -415,6 +435,12 @@ class Service extends Model\Element\Service
                     $time = 1;
                     if (preg_match('|~\-~time\-(\d+)\.|', $config['filename'], $matchesThumbs)) {
                         $time = (int)$matchesThumbs[1];
+
+                        // every time offset is a separate ffmpeg run and file
+                        $duration = $asset->getDuration();
+                        if ($duration === null || $time > ceil($duration)) {
+                            return null;
+                        }
                     }
 
                     return $asset->getImageThumbnail($thumbnailConfig, $time);
@@ -423,6 +449,11 @@ class Service extends Model\Element\Service
                 $page = 1;
                 if (preg_match('|~\-~page\-(\d+)(@[0-9.]+x)?\.|', $config['filename'], $matchesThumbs)) {
                     $page = (int)$matchesThumbs[1];
+                }
+
+                // every page is a separate Ghostscript/LibreOffice run and file
+                if ($page < 1 || $page > ($asset->getPageCount() ?? 1)) {
+                    return null;
                 }
 
                 $thumbnailConfig->setName(preg_replace('/\-[\d]+/', '', $thumbnailConfig->getName()));
@@ -457,12 +488,17 @@ class Service extends Model\Element\Service
 
                 if (array_key_exists(2, $matches) && $matches[2]) {
                     $highResFactor = (float)str_replace(['@', 'x'], '', $matches[2]);
+                    // every factor results in a separate file, so only allow configured factors
+                    if (!self::isAllowedHighResolutionFactor($highResFactor, $thumbnailConfig->getHighResolution())) {
+                        return null;
+                    }
                     $thumbnailConfig->setHighResolution($highResFactor);
                 }
 
                 // check if a media query thumbnail was requested
-                if (preg_match('#~\-~media\-\-(.*)\-\-query#', $matches[1], $mediaQueryResult)) {
-                    $thumbnailConfig->selectMedia($mediaQueryResult[1]);
+                if (preg_match('#~\-~media\-\-(.*)\-\-query#', $matches[1], $mediaQueryResult)
+                    && !$thumbnailConfig->selectMedia($mediaQueryResult[1])) {
+                    return null;
                 }
 
                 return $asset->getThumbnail($thumbnailConfig);
@@ -470,6 +506,22 @@ class Service extends Model\Element\Service
         }
 
         return null;
+    }
+
+    private static function isAllowedHighResolutionFactor(float $factor, ?float $configuredFactor): bool
+    {
+        $allowedFactors = Config::getSystemConfiguration('assets')['image']['thumbnails']['high_resolution_factors'];
+        if ($configuredFactor) {
+            $allowedFactors[] = $configuredFactor;
+        }
+
+        foreach ($allowedFactors as $allowedFactor) {
+            if (abs($factor - (float)$allowedFactor) < 0.0001) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

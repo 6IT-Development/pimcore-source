@@ -14,6 +14,13 @@
 #### [Routing]
 - Removed the legacy `/app.php/...` → `/...` redirect from `RoutingListener` (open redirect via `/app.php/%5Cexample.com`).
   `app.php` is the Symfony 3 front controller; add a web server rewrite if old URLs must still be redirected.
+#### [Thumbnails]
+- On-the-fly thumbnail generation via the public thumbnail URL only generates known variants: high-resolution factors
+  must be listed in the new `pimcore.assets.image.thumbnails.high_resolution_factors` option (default
+  `[1.5, 2, 3, 4, 5]`) or be the factor of the thumbnail definition, the extension must be a known image format
+  (`jpg`, `jpeg`, `png`, `gif`, `webp`, `avif`, `tif`, `tiff`, `svg` or the extension of the asset) or video format
+  (`mp4`, `webm`, `mpd`), media queries must exist in the thumbnail definition, video frame times must be within the
+  video duration and document pages within the page count. Other requests are no longer generated.
 #### [WebDAV]
 - The WebDAV browser view (`/asset/webdav` in a browser) is read-only now, creating folders and uploading files via its
   HTML forms is no longer possible (no CSRF protection). Use a WebDAV client instead.
