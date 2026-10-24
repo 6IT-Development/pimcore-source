@@ -19,6 +19,7 @@ namespace Pimcore\Console;
 
 use Doctrine\Migrations\Tools\Console\Command\DoctrineCommand;
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\MaintenanceModeCommand;
 use Pimcore\Event\System\ConsoleEvent;
 use Pimcore\Event\SystemEvents;
 use Pimcore\Migrations\FilteredMigrationsRepository;
@@ -70,7 +71,9 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
             $input = $event->getInput();
 
             // skip if maintenance mode is on and the flag is not set
-            if (($maintenanceModeHelper->isActive() || Admin::isInMaintenanceMode()) && !$this->getInputOption($input, 'ignore-maintenance-mode')) {
+            if (($maintenanceModeHelper->isActive() || Admin::isInMaintenanceMode())
+                && !$this->getInputOption($input, 'ignore-maintenance-mode')
+                && !$this->isMaintenanceModeCommand($event->getCommand())) {
                 throw new RuntimeException('In maintenance mode - set the flag --ignore-maintenance-mode to force execution!');
             }
 
@@ -121,6 +124,18 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
         }
 
         return $input->getOption($name);
+    }
+
+    /**
+     * The maintenance mode command must run while maintenance mode is active, otherwise it can't be disabled
+     */
+    private function isMaintenanceModeCommand(?Command $command): bool
+    {
+        if ($command instanceof LazyCommand) {
+            $command = $command->getCommand();
+        }
+
+        return $command instanceof MaintenanceModeCommand;
     }
 
     private function isDoctrineCommand(Command $command): bool

@@ -47,12 +47,6 @@ class MaintenanceModeCommand extends AbstractCommand
             ->addOption('disable', null, InputOption::VALUE_NONE, 'Disable maintenance mode');
     }
 
-    protected function initialize(InputInterface $input, OutputInterface $output): void
-    {
-        $input->setOption('ignore-maintenance-mode', true);
-        parent::initialize($input, $output);
-    }
-
     /**
      *
      *

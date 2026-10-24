@@ -78,7 +78,7 @@ condition still matches. Add a final count/summary.
 
 ---
 
-## [ ] C-03 – `pimcore:maintenance-mode --disable` cannot run while maintenance mode is active
+## [x] C-03 – `pimcore:maintenance-mode --disable` cannot run while maintenance mode is active
 
 **File:** `src/Command/MaintenanceModeCommand.php:50-54`, related `lib/Console/Application.php:69-75`
 
