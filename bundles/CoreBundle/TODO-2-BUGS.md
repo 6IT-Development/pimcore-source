@@ -71,7 +71,7 @@ $conditions[] = sprintf('id in (%s)', implode(',', $ids));
 
 ---
 
-## [ ] B-04 – `RemoveCustomSettingCommand`: argument mode uses an `InputOption` constant
+## [x] B-04 – `RemoveCustomSettingCommand`: argument mode uses an `InputOption` constant
 
 **File:** `src/Command/Asset/RemoveCustomSettingCommand.php:41`
 

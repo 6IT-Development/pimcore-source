@@ -23,6 +23,7 @@ use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
 use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -42,7 +43,7 @@ class RemoveCustomSettingCommand extends AbstractCommand
     protected function configure(): void
     {
         $this
-            ->addArgument('name', InputOption::VALUE_REQUIRED, 'Name of the custom setting to remove')
+            ->addArgument('name', InputArgument::REQUIRED, 'Name of the custom setting to remove')
             ->addOption(
                 'id',
                 null,
@@ -65,8 +66,14 @@ class RemoveCustomSettingCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $name = $input->getArgument('name');
+
+        // customSettings holds a serialized array: match the serialized key, so `_`/`%` in the name aren't wildcards
+        // and a name that is only a prefix/suffix of another key doesn't match (it can still match a value)
+        $key = array_key_first([$name => true]);
+        $serializedKey = is_int($key) ? 'i:' . $key . ';' : 's:' . strlen($key) . ':"' . $key . '";';
         $conditions = ['customSettings LIKE ?'];
-        $conditionVariables = ['%"' . $input->getArgument('name') . '"%'];
+        $conditionVariables = ['%' . Helper::escapeLike(str_replace('\\', '\\\\', $serializedKey)) . '%'];
 
         if ($input->getOption('parent')) {
             $parent = Asset::getById((int)$input->getOption('parent'));
@@ -92,13 +99,13 @@ class RemoveCustomSettingCommand extends AbstractCommand
         // assets of the shrinking result set
         $count = 0;
         foreach ($this->iterateAssets($conditions, $conditionVariables) as $asset) {
-            $output->writeln($asset->getFullPath());
-            $asset->removeCustomSetting($input->getArgument('name'));
+            $output->writeln($asset->getRealFullPath());
+            $asset->removeCustomSetting($name);
             $asset->getDao()->updateCustomSettings();
             $count++;
         }
 
-        $output->writeln(sprintf('Removed custom setting "%s" from %d asset(s).', $input->getArgument('name'), $count));
+        $output->writeln(sprintf('Removed custom setting "%s" from %d asset(s).', $name, $count));
 
         return 0;
     }
