@@ -23,7 +23,7 @@ Items are roughly ordered by impact, highest first.
 
 ---
 
-## [ ] B-01 – `ClassesRebuildCommand` swallows object brick save errors and returns 0 (deployment)
+## [x] B-01 – `ClassesRebuildCommand` swallows object brick save errors and returns 0 (deployment)
 
 **File:** `src/Command/ClassesRebuildCommand.php:137-178`
 

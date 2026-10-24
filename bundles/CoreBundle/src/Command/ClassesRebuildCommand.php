@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
-use Exception;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -27,6 +26,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Contracts\Service\Attribute\Required;
+use Throwable;
 
 /**
  * @internal
@@ -134,17 +134,15 @@ class ClassesRebuildCommand extends AbstractCommand
             $output->writeln('---------------------');
             $output->writeln('Saving all object bricks');
         }
+        // a failing definition doesn't stop the others, but the command fails, so deployments don't continue with a
+        // broken DB schema
+        $failed = false;
+
         $list = new DataObject\Objectbrick\Definition\Listing();
         $list = $list->load();
         foreach ($list as $brickDefinition) {
-            if ($output->isVerbose()) {
-                $output->writeln(sprintf('%s saved', $brickDefinition->getKey()));
-            }
-
-            try {
-                $brickDefinition->save(false);
-            } catch (Exception $e) {
-                $output->write((string)$e);
+            if (!$this->saveDefinition('Object brick', $brickDefinition->getKey(), fn () => $brickDefinition->save(false), $output)) {
+                $failed = true;
             }
         }
 
@@ -155,11 +153,9 @@ class ClassesRebuildCommand extends AbstractCommand
         $list = new DataObject\Fieldcollection\Definition\Listing();
         $list = $list->load();
         foreach ($list as $fc) {
-            if ($output->isVerbose()) {
-                $output->writeln(sprintf('%s saved', $fc->getKey()));
+            if (!$this->saveDefinition('Field collection', $fc->getKey(), fn () => $fc->save(false), $output)) {
+                $failed = true;
             }
-
-            $fc->save(false);
         }
 
         if ($output->isVerbose()) {
@@ -168,13 +164,37 @@ class ClassesRebuildCommand extends AbstractCommand
         }
         $selectOptionConfigurations = new DataObject\SelectOptions\Config\Listing();
         foreach ($selectOptionConfigurations as $selectOptionConfiguration) {
-            if ($output->isVerbose()) {
-                $output->writeln(sprintf('%s saved', $selectOptionConfiguration->getId()));
+            if (!$this->saveDefinition('Select options', $selectOptionConfiguration->getId(), fn () => $selectOptionConfiguration->generateEnumFiles(), $output)) {
+                $failed = true;
             }
-
-            $selectOptionConfiguration->generateEnumFiles();
         }
 
-        return 0;
+        if ($failed) {
+            $this->io->error('Not all definitions could be saved, see the errors above.');
+
+            return self::FAILURE;
+        }
+
+        return self::SUCCESS;
+    }
+
+    private function saveDefinition(string $type, ?string $name, callable $save, OutputInterface $output): bool
+    {
+        try {
+            $save();
+        } catch (Throwable $e) {
+            $this->io->error(sprintf('%s "%s" could not be saved: %s', $type, $name, $e->getMessage()));
+            if ($output->isVeryVerbose()) {
+                $output->writeln((string)$e);
+            }
+
+            return false;
+        }
+
+        if ($output->isVerbose()) {
+            $output->writeln(sprintf('%s saved', $name));
+        }
+
+        return true;
     }
 }
