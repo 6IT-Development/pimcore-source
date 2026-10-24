@@ -45,6 +45,14 @@ pimcore:
 | Disable Cookie | You can define an additional cookie-name which disables the cache. The cookie "pimcore_admin_sid" (used for the Pimcore admin UI) ALWAYS disables the output-cache to make editor's life easier ;-) 
 
 
+A cached response is served to every visitor, so the following responses are never stored:
+- responses with a `Set-Cookie` header (e.g. a CSRF, A/B testing or tracking cookie): they would send the first
+  visitor's cookies to everyone,
+- responses with a `Vary` header other than `Accept-Encoding` and `X-Requested-With` (e.g. `Vary: Accept-Language`):
+  the cache key only contains the hostname, request URI, request method and device, so content negotiated for one
+  client would be served to all,
+- responses with `Cache-Control: no-store`, streamed responses and binary file responses.
+
 ## Disable the Full Page Cache in your Code
 Sometimes it is more useful to deactivate the full page cache directly in the code, for example when
 it's not possible to define an exclude-regex, or for similar reasons.
@@ -56,6 +64,9 @@ middleware and browser caching:
 <?php
 $response->headers->addCacheControlDirective('no-store');
 ```
+
+`Cache-Control: private` does not disable the full page cache: Symfony sends `Cache-Control: no-cache, private` for
+every response without explicit cache headers, so it can't be used as an opt-out.
 
 ### Disable the full page cache via an event listener
 The full page cache can be disabled via an event listener on `FullPageCacheEvents::CACHE_RESPONSE`:

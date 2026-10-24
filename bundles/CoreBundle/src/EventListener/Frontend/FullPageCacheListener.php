@@ -48,6 +48,12 @@ class FullPageCacheListener implements ResetInterface
     use PimcoreContextAwareTrait;
     use StaticPageContextAwareTrait;
 
+    /**
+     * Vary headers that don't change the cached content: the body is stored uncompressed and XHR requests have their
+     * own cache key.
+     */
+    private const array IGNORED_VARY_HEADERS = ['accept-encoding', 'x-requested-with'];
+
     protected bool $enabled = true;
 
     protected bool $stopResponsePropagation = false;
@@ -391,6 +397,18 @@ class FullPageCacheListener implements ResetInterface
         // do not cache when the application indicated the 'no-store' directives in the response Cache-Control header
         if ($response->headers->hasCacheControlDirective('no-store')) {
             $cache = false;
+        }
+
+        // the cached response is replayed to every visitor, so it must not set cookies (session, CSRF, tracking, ...)
+        if ($response->headers->getCookies()) {
+            $cache = false;
+        }
+
+        // the cache key doesn't contain the request headers the content depends on (Accept-Language, Cookie, ...)
+        foreach ($response->getVary() as $header) {
+            if (!in_array(strtolower(trim($header)), self::IGNORED_VARY_HEADERS, true)) {
+                $cache = false;
+            }
         }
 
         // do not cache common responses

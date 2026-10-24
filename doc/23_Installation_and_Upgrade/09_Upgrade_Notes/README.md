@@ -9,6 +9,12 @@
   `cache:pool:clear` of one pool cleared all of them. Each pool now gets its own namespace and lifetime, as in a
   plain Symfony app. Existing items of these pools are not found anymore after the update (one-time cache miss);
   run `bin/console pimcore:cache:clear` to remove the old entries from `pimcore.cache.pool`.
+- Fixed: the full page cache stored responses with `Set-Cookie` headers and replayed the first visitor's cookies
+  (CSRF, A/B testing, tracking IDs) to everyone, and ignored the `Vary` header, so content negotiated for one client
+  (e.g. `Vary: Accept-Language`) was served to all. Responses with a `Set-Cookie` header or a `Vary` header other than
+  `Accept-Encoding` / `X-Requested-With` are no longer cached. Pages that set a cookie on every request are therefore
+  not served from the full page cache anymore. Run `bin/console pimcore:cache:clear --tags=output,output_lifetime`
+  after the update to remove entries that were stored with cookies.
 #### [Worker runtimes]
 - Fixed request state leaking between requests when one process handles many requests (FrankenPHP worker mode,
   RoadRunner, Swoole via `symfony/runtime`): `ResponseStack`, `FullPageCacheListener`, `TranslationDebugListener`,

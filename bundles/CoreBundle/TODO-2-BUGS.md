@@ -619,7 +619,7 @@ Check the object permission in `handleObjectParams()`.
 
 ---
 
-## [ ] B-36 – `FullPageCacheListener` caches and replays `Set-Cookie` headers, ignores `Vary`
+## [x] B-36 – `FullPageCacheListener` caches and replays `Set-Cookie` headers, ignores `Vary`
 
 **File:** `src/EventListener/Frontend/FullPageCacheListener.php:311-354, 367-390`
 
