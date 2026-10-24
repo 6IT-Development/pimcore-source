@@ -17,17 +17,31 @@ declare(strict_types=1);
 
 namespace Pimcore\Messenger;
 
+use Symfony\Component\Lock\Key;
+
 /**
  * @internal
  */
 class AssetUpdateTasksMessage
 {
-    public function __construct(protected int $id)
+    /**
+     * Key of the update queue lock acquired by Asset::triggerUpdateTask(), released by the handler.
+     * Not a promoted property: messages queued before it existed must unserialize to null.
+     */
+    protected ?Key $lockKey = null;
+
+    public function __construct(protected int $id, ?Key $lockKey = null)
     {
+        $this->lockKey = $lockKey;
     }
 
     public function getId(): int
     {
         return $this->id;
+    }
+
+    public function getLockKey(): ?Key
+    {
+        return $this->lockKey;
     }
 }

@@ -59,8 +59,9 @@ use Pimcore\Tool\Storage;
 use stdClass;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Lock\Exception\UnserializableKeyException;
+use Symfony\Component\Lock\Key;
 use Symfony\Component\Lock\LockFactory;
-use Symfony\Component\Lock\LockInterface;
 use Symfony\Component\Mime\MimeTypes;
 use Throwable;
 
@@ -1828,14 +1829,24 @@ class Asset extends Element\AbstractElement
      */
     public function triggerUpdateTask(): void
     {
-        /** @var LockInterface $lock */
-        $lock = Pimcore::getContainer()->get(LockFactory::class)->createLock($this->getUpdateQueueLockId());
-        if ($lock->acquire()) {
-            $bus = Pimcore::getContainer()->get('messenger.bus.pimcore-core');
-            $message = new AssetUpdateTasksMessage($this->getId());
-
-            $bus->dispatch($message);
+        // the lock is held until the handler picks up the message (or the TTL expires), so saving the asset again
+        // while the message is queued doesn't enqueue another one
+        $key = new Key($this->getUpdateQueueLockId());
+        $lock = Pimcore::getContainer()->get(LockFactory::class)->createLockFromKey($key, autoRelease: false);
+        if (!$lock->acquire()) {
+            return;
         }
+
+        try {
+            serialize($key);
+        } catch (UnserializableKeyException) {
+            // process-local store (flock, semaphore): the handler can't release the lock in another process
+            $lock->release();
+            $key = null;
+        }
+
+        $bus = Pimcore::getContainer()->get('messenger.bus.pimcore-core');
+        $bus->dispatch(new AssetUpdateTasksMessage($this->getId(), $key));
     }
 
     /**

@@ -23,6 +23,8 @@ use Pimcore\Messenger\AssetUpdateTasksMessage;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Version;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Lock\Exception\LockReleasingException;
+use Symfony\Component\Lock\LockFactory;
 use function sprintf;
 
 /**
@@ -32,13 +34,18 @@ class AssetUpdateTasksHandler
 {
     public function __construct(
         protected LoggerInterface   $logger,
-        protected LongRunningHelper $longRunningHelper
+        protected LongRunningHelper $longRunningHelper,
+        protected LockFactory       $lockFactory
     )
     {
     }
 
     public function __invoke(AssetUpdateTasksMessage $message): void
     {
+        // release the update queue lock before processing: saving the asset while it is processed must enqueue a new
+        // message, otherwise the changes of that save are never processed
+        $this->releaseUpdateQueueLock($message);
+
         $asset = Asset::getById($message->getId());
         if (!$asset) {
             $this->logger->debug(sprintf('Asset with ID %s not found', $message->getId()));
@@ -58,6 +65,19 @@ class AssetUpdateTasksHandler
         }
 
         $this->longRunningHelper->deleteTemporaryFiles();
+    }
+
+    private function releaseUpdateQueueLock(AssetUpdateTasksMessage $message): void
+    {
+        if (!$key = $message->getLockKey()) {
+            return;
+        }
+
+        try {
+            $this->lockFactory->createLockFromKey($key, autoRelease: false)->release();
+        } catch (LockReleasingException $e) {
+            $this->logger->warning(sprintf('Failed to release update queue lock of asset with ID %s: %s', $message->getId(), $e->getMessage()));
+        }
     }
 
     private function saveAsset(Asset $asset, array $saveParams = []): void

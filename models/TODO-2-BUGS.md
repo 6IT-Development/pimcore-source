@@ -196,7 +196,7 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 
 ## Asset.php
 
-## [ ] B-01 – Update-task lock is released immediately: every save enqueues another `AssetUpdateTasksMessage`
+## [x] B-01 – Update-task lock is released immediately: every save enqueues another `AssetUpdateTasksMessage`
 
 **File:** `models/Asset.php:1828-1840`; `lib/Messenger/Handler/AssetUpdateTasksHandler.php:63`
 
