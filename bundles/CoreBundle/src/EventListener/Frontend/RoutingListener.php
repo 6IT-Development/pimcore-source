@@ -84,12 +84,6 @@ class RoutingListener implements EventSubscriberInterface
         // resolve current site from request
         $this->resolveSite($request, $path);
 
-        // check for app.php in URL and remove it for SEO puroposes
-        $this->handleFrontControllerRedirect($event, $path);
-        if ($event->hasResponse()) {
-            return;
-        }
-
         // redirect to the main domain if specified
         $this->handleMainDomainRedirect($event);
     }
@@ -125,21 +119,6 @@ class RoutingListener implements EventSubscriberInterface
         }
 
         return $path;
-    }
-
-    protected function handleFrontControllerRedirect(RequestEvent $event, string $path): void
-    {
-        $request = $event->getRequest();
-
-        // do not allow requests including /app.php/ => SEO
-        // this is after the first redirect check, to allow redirects in app.php?xxx
-        if (preg_match('@^/app\.php(.*)@', $path, $matches) && $request->getMethod() === 'GET') {
-            $redirectUrl = $matches[1];
-            $redirectUrl = ltrim($redirectUrl, '/');
-            $redirectUrl = '/' . $redirectUrl;
-
-            $event->setResponse(new RedirectResponse($redirectUrl, Response::HTTP_MOVED_PERMANENTLY));
-        }
     }
 
     /**

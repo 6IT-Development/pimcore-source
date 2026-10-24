@@ -334,7 +334,7 @@ Serving (`onKernelRequest`, REQUEST **510**):
 
 ---
 
-## [ ] C-10 – `RoutingListener` legacy `/app.php` redirect is an open redirect
+## [x] C-10 – `RoutingListener` legacy `/app.php` redirect is an open redirect
 
 **File:** `src/EventListener/Frontend/RoutingListener.php:82, 130-143`
 
