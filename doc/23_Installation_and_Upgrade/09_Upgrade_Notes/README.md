@@ -22,6 +22,12 @@
   fallback document and the `Content-Language` locale are stored as request attributes, and the current site is reset
   at the start of each main request (`Site::resetCurrentSite()`). The web debug toolbar is no longer disabled by
   removing its subscriber but via `WebDebugToolbarListener::setMode()` for the current request only.
+#### [Workflows]
+- Fixed: Pimcore's `WorkflowPass` ran after MonologBundle's and FrameworkBundle's compiler passes. The workflow
+  audit trail (`audit_trail.enabled`) logged to the `app` channel instead of `workflow`, and the check that the security
+  services exist for workflow `guard` expressions was skipped. Audit trail entries are now logged to the `workflow`
+  channel: adjust Monolog handlers that rely on them being in `app` (e.g. `channels: ['!workflow']` now excludes them).
+  A `guard` without the SecurityBundle now fails at container build with a clear error.
 #### [Lock]
 - Pimcore no longer defines its own `Symfony\Component\Lock\LockFactory` service (DBAL store), which replaced the
   FrameworkBundle autowiring alias and ignored `framework.lock`, while some services used `lock.factory` (FrameworkBundle

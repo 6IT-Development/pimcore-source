@@ -474,7 +474,7 @@ to `$current` only, then `array_push($transitions, ...$current)`.
 
 ---
 
-## [ ] B-29 – `WorkflowPass` runs after Monolog's and Symfony's workflow passes: audit trail on wrong channel, guard check skipped
+## [x] B-29 – `WorkflowPass` runs after Monolog's and Symfony's workflow passes: audit trail on wrong channel, guard check skipped
 
 **Files:** `src/DependencyInjection/Compiler/WorkflowPass.php:222-281`, `src/PimcoreCoreBundle.php:60`
 

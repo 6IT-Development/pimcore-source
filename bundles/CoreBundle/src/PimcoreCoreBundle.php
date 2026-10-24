@@ -58,7 +58,9 @@ class PimcoreCoreBundle extends Bundle
         $container->addCompilerPass(new MonologPublicLoggerPass());
         $container->addCompilerPass(new MonologPsrLogMessageProcessorPass());
         $container->addCompilerPass(new LongRunningHelperPass());
-        $container->addCompilerPass(new WorkflowPass());
+        // before Monolog's LoggerChannelPass and FrameworkBundle's WorkflowGuardListenerPass (both 0): they process the
+        // monolog.logger tag of the audit trail listener and the workflow.has_guard_listeners parameter set by this pass
+        $container->addCompilerPass(new WorkflowPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 1);
         $container->addCompilerPass(new RegisterImageOptimizersPass());
         $container->addCompilerPass(new RegisterMaintenanceTaskPass());
         $container->addCompilerPass(new RoutingLoaderPass());
