@@ -69,19 +69,22 @@ class ThumbnailsVideoCommand extends AbstractCommand
     {
         $list = new Asset\Listing();
 
+        $conditionVariables = [];
+
         // get only videos
         $conditions = ["type = 'video'"];
         if ($parentId = $input->getOption('parent')) {
             $parent = Asset::getById((int)$parentId);
             if ($parent instanceof Asset\Folder) {
-                $conditions[] = "path LIKE '" . $list->escapeLike($parent->getRealFullPath()) . "/%'";
+                $conditions[] = 'path LIKE ?';
+                $conditionVariables[] = $list->escapeLike($parent->getRealFullPath()) . '/%';
             } else {
                 $this->writeError($input->getOption('parent') . ' is not a valid asset folder ID!');
                 exit(1);
             }
         }
 
-        $list->setCondition(implode(' AND ', $conditions));
+        $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
         $assetIdsList = $list->loadIdList();
 
         // get all thumbnails

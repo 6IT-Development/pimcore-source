@@ -129,7 +129,8 @@ class ThumbnailsImageCommand extends AbstractCommand
             foreach ($parentIds as $parentId) {
                 $parent = Asset::getById((int)$parentId);
                 if ($parent instanceof Asset\Folder) {
-                    $parentConditions[] = "path LIKE '" . $list->escapeLike($parent->getRealFullPath()) . "/%'";
+                    $parentConditions[] = 'path LIKE ?';
+                    $conditionVariables[] = $list->escapeLike($parent->getRealFullPath()) . '/%';
                 } else {
                     $this->writeError($input->getOption('parent') . ' is not a valid asset folder ID!');
                     exit(1);

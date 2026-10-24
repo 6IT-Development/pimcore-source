@@ -33,7 +33,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – Asset folder path concatenated into raw SQL (stored SQL injection / SQL error)
+## [x] C-01 – Asset folder path concatenated into raw SQL (stored SQL injection / SQL error)
 
 **Files:**
 - `src/Command/Asset/AddToUpdateTaskQueueCommand.php:81`
