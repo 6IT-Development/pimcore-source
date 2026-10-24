@@ -23,6 +23,9 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
+ * Must run before Symfony's CachePoolPass (priority 32), which sets the namespace and default_lifetime of each pool
+ * based on the parent chain set here.
+ *
  * @internal
  */
 final class CacheFallbackPass implements CompilerPassInterface
@@ -50,7 +53,7 @@ final class CacheFallbackPass implements CompilerPassInterface
 
     private function replaceCacheDefinition(ChildDefinition $cacheDef): void
     {
-        // we need to reset the arguments, so that the change of the parent works properly
+        // arguments of the previous parent don't match the ProxyAdapter, CachePoolPass sets them afterwards
         $cacheDef->setArguments([]);
         $cacheDef->setParent('pimcore.cache.pool.app');
     }

@@ -174,7 +174,7 @@ handle it. Add a grep/PHPStan rule that bans `exit`/`die` in `src/Command`.
 
 ---
 
-## [ ] C-07 – `CacheFallbackPass` drops namespace and `default_lifetime` of every pool derived from `cache.app`
+## [x] C-07 – `CacheFallbackPass` drops namespace and `default_lifetime` of every pool derived from `cache.app`
 
 **Files:** `src/DependencyInjection/Compiler/CacheFallbackPass.php:37-56`, `config/cache.yaml:31-35`,
 `src/PimcoreCoreBundle.php:65`

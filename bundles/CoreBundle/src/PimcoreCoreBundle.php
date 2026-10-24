@@ -35,6 +35,7 @@ use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\ServiceControllersPas
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\TranslationSanitizerPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\WorkflowPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\PimcoreCoreExtension;
+use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
@@ -62,7 +63,8 @@ class PimcoreCoreBundle extends Bundle
         $container->addCompilerPass(new RegisterMaintenanceTaskPass());
         $container->addCompilerPass(new RoutingLoaderPass());
         $container->addCompilerPass(new ProfilerAliasPass());
-        $container->addCompilerPass(new CacheFallbackPass());
+        // before CachePoolPass (32), see CacheFallbackPass
+        $container->addCompilerPass(new CacheFallbackPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 33);
         $container->addCompilerPass(new MessageBusPublicPass());
         $container->addCompilerPass(new HtmlSanitizerPass());
         $container->addCompilerPass(new TranslationSanitizerPass());

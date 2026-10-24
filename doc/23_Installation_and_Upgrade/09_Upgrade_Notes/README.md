@@ -1,6 +1,15 @@
 # Upgrade Notes
 
 ## Unreleased
+### General
+#### [Cache]
+- Fixed: if `cache.app` uses the default filesystem adapter, Pimcore stores it in `pimcore.cache.pool`. Every pool
+  derived from `cache.app` (`framework.cache.pools.*` with the default adapter, Symfony's own child pools) used to
+  share the namespace `app` and ignored its `default_lifetime`, so pools read and overwrote each other's items and
+  `cache:pool:clear` of one pool cleared all of them. Each pool now gets its own namespace and lifetime, as in a
+  plain Symfony app. Existing items of these pools are not found anymore after the update (one-time cache miss);
+  run `bin/console pimcore:cache:clear` to remove the old entries from `pimcore.cache.pool`.
+
 ### Security
 #### [Twig]
 - The `container` Twig global was removed from the default configuration. Templates using `container.get(...)` or

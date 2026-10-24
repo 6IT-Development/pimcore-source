@@ -28,11 +28,17 @@ services:
 
     pimcore.cache.adapter.redis_tag_aware: '@cache.adapter.redis_tag_aware'
 
+    # parent of cache.app and its child pools if cache.app uses the default filesystem adapter (see CacheFallbackPass)
+    # modelled like cache.adapter.psr6: CachePoolPass sets the namespace and default_lifetime of each pool
     pimcore.cache.pool.app:
         class: Symfony\Component\Cache\Adapter\ProxyAdapter
+        abstract: true
         arguments:
             - '@pimcore.cache.pool'
-            - 'app'
+            - ''
+            - 0
+        tags:
+            - { name: cache.pool, provider: pimcore.cache.pool, clearer: cache.default_clearer, reset: reset }
 
     #
     # PIMCORE CACHE
