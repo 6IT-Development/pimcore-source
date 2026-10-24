@@ -18,39 +18,46 @@ declare(strict_types=1);
 namespace Pimcore\Model\Asset\WebDAV;
 
 use Pimcore\Model\Asset;
-use Symfony\Component\Filesystem\Filesystem;
+use Pimcore\Model\Tool\TmpStore;
+use Pimcore\Tool\Serialize;
 
 /**
  * @internal
  */
 class Service
 {
-    public static function getDeleteLogFile(): string
+    private const string DELETE_LOG_PREFIX = 'webdav-delete-';
+
+    private const string DELETE_LOG_TAG = 'webdav-delete';
+
+    /**
+     * Seconds a deleted asset can be restored by a following MOVE onto its path
+     */
+    private const int DELETE_LOG_LIFETIME = 30;
+
+    public static function addToDeleteLog(Asset $asset): void
     {
-        return PIMCORE_SYSTEM_TEMP_DIRECTORY . '/webdav-delete.dat';
+        $asset->setInDumpState(true);
+        $data = Serialize::serialize($asset);
+        $asset->setInDumpState(false);
+
+        TmpStore::set(self::getDeleteLogId($asset->getRealFullPath()), $data, self::DELETE_LOG_TAG, self::DELETE_LOG_LIFETIME);
     }
 
-    public static function getDeleteLog(): array
+    public static function getFromDeleteLog(string $path): ?Asset
     {
-        if (file_exists(self::getDeleteLogFile())) {
-            $log = unserialize(file_get_contents(self::getDeleteLogFile()));
-            if (!is_array($log)) {
-                return [];
-            } else {
-                // clean up old entries
-                // remove 30 seconds old entries
-                return array_filter($log, fn($data) => $data['timestamp'] > (time() - 30));
-            }
+        $item = TmpStore::get(self::getDeleteLogId($path));
+        if (!$item) {
+            return null;
         }
 
-        return [];
+        $asset = Serialize::unserialize($item->getData());
+
+        return $asset instanceof Asset ? $asset : null;
     }
 
-    public static function saveDeleteLog(array $log): void
+    private static function getDeleteLogId(string $path): string
     {
-        // clean up old entries
-        // remove 30 seconds old entries
-
-        new Filesystem()->dumpFile(Asset\WebDAV\Service::getDeleteLogFile(), serialize(array_filter($log, fn($data) => $data['timestamp'] > (time() - 30))));
+        return self::DELETE_LOG_PREFIX . md5($path);
     }
 }

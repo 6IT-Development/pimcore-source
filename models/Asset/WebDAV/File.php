@@ -22,7 +22,6 @@ use Pimcore\File as FileHelper;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element;
 use Pimcore\Tool\Admin as AdminTool;
-use Pimcore\Tool\Serialize;
 use Sabre\DAV;
 
 /**
@@ -77,18 +76,7 @@ class File extends DAV\File
 
             // add the asset to the delete history, this is used so come over problems with programs like photoshop (delete, create instead of replace => move)
             // for details see Asset\WebDAV\Tree::move()
-            $log = Asset\WebDAV\Service::getDeleteLog();
-
-            $this->asset->setInDumpState(true);
-            $log[$this->asset->getRealFullPath()] = [
-                'id' => $this->asset->getId(),
-                'timestamp' => time(),
-                'data' => Serialize::serialize($this->asset),
-            ];
-
-            $this->asset->setInDumpState(false);
-
-            Asset\WebDAV\Service::saveDeleteLog($log);
+            Asset\WebDAV\Service::addToDeleteLog($this->asset);
         } else {
             throw new DAV\Exception\Forbidden();
         }

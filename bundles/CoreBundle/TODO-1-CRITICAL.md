@@ -480,7 +480,7 @@ twig:
 
 ---
 
-## [ ] C-13 – WebDAV `MOVE` renames, moves, overwrites and deletes assets without any permission check
+## [x] C-13 – WebDAV `MOVE` renames, moves, overwrites and deletes assets without any permission check
 
 **Files:** `src/Controller/WebDavController.php:39-40` (wires the tree), `models/Asset/WebDAV/Tree.php:39-91`,
 `models/Asset/WebDAV/Folder.php:69-95`

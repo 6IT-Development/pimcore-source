@@ -83,7 +83,7 @@ class Folder extends DAV\Collection
             $asset = $name;
         }
 
-        if ($asset instanceof Asset) {
+        if ($asset instanceof Asset && $asset->isAllowed('view')) {
             if ($asset instanceof Asset\Folder) {
                 return new Asset\WebDAV\Folder($asset);
             }
