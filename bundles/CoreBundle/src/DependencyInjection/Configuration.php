@@ -208,9 +208,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('redirect_to_maindomain')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -222,7 +220,7 @@ final class Configuration implements ConfigurationInterface
             ->info('String or array format are supported.')
             ->beforeNormalization()
             ->ifString()
-            ->then(fn($v) => explode(',', $v))
+            ->then(fn($v) => self::normalizeCsvString($v))
             ->end()
             ->defaultValue(['en', 'de', 'fr'])
             ->prototype('scalar')->end()
@@ -231,7 +229,7 @@ final class Configuration implements ConfigurationInterface
             ->info('String or array format are supported.')
             ->beforeNormalization()
             ->ifString()
-            ->then(fn($v) => explode(',', $v))
+            ->then(fn($v) => self::normalizeCsvString($v))
             ->end()
             ->prototype('scalar')->end()
             ->end()
@@ -252,9 +250,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('disable_usage_statistics')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -262,9 +258,7 @@ final class Configuration implements ConfigurationInterface
             ->info('Debug Admin-Translations (text in UI will be displayed wrapped in +)')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -324,9 +318,7 @@ final class Configuration implements ConfigurationInterface
             ->info('Send log summary via email')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -479,9 +471,7 @@ final class Configuration implements ConfigurationInterface
             ->info('Try to detect and use clipping paths and masks in images when generating thumbnails.')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultTrue()
             ->end()
@@ -520,9 +510,7 @@ final class Configuration implements ConfigurationInterface
             ->info('Automatically delete all image thumbnail files any time an image or its metadata is updated.')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultTrue()
             ->end()
@@ -625,18 +613,14 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('use_hardlinks')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultTrue()
             ->end()
             ->booleanNode('disable_stack_trace')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -687,9 +671,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('inheritable')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->end()
             ->integerNode('creationDate')->end()
@@ -731,9 +713,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('ignore_localized_query_fallback')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -750,9 +730,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('disable_stack_trace')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -866,9 +844,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('staticGeneratorEnabled')
             ->beforeNormalization()
             ->always()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => is_string($v) ? self::normalizeBoolString($v) : (bool)$v)
             ->end()
             ->defaultFalse()
             ->end()
@@ -888,9 +864,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('disable_stack_trace')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -923,9 +897,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('generate_preview')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultFalse()
             ->end()
@@ -953,9 +925,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('autoload')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->defaultTrue()
             ->end()
@@ -1865,9 +1835,7 @@ final class Configuration implements ConfigurationInterface
             ->booleanNode('inheritable')
             ->beforeNormalization()
             ->ifString()
-            ->then(function ($v) {
-                return (bool)$v;
-            })
+            ->then(fn($v) => self::normalizeBoolString($v))
             ->end()
             ->end()
             ->integerNode('creationDate')->end()
@@ -2060,5 +2028,34 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->end()
             ->end();
+    }
+
+    /**
+     * Converts boolean strings ("true"/"false", "1"/"0", "yes"/"no", "on"/"off", "") to bool. Any other string is
+     * returned unchanged: env placeholders (`%env(bool:X)%`) are only resolved by Symfony after the normalization
+     * closures, and invalid values are rejected by the boolean node.
+     */
+    private static function normalizeBoolString(string $value): bool|string
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $value;
+    }
+
+    /**
+     * Splits a comma-separated string into a list of trimmed values.
+     *
+     * Env placeholders are only resolved by Symfony after the normalization closures: placeholders of the array
+     * processors (`%env(csv:X)%`, `%env(json:X)%`) are returned unchanged, other placeholders (`%env(X)%`) are kept as
+     * a single value.
+     *
+     * @return string|string[]
+     */
+    private static function normalizeCsvString(string $value): string|array
+    {
+        // placeholder format: env_<unique prefix>_<env with ":" replaced by "_">_<hash>, see EnvPlaceholderParameterBag
+        if (preg_match('/^env_[0-9a-f]{16}_(\w+)_[0-9a-f]{32}$/', $value, $matches)) {
+            return preg_match('/(?:^|_)(?:csv|json)_/', $matches[1]) ? $value : [$value];
+        }
+
+        return array_values(array_filter(array_map('trim', explode(',', $value)), fn($v) => $v !== ''));
     }
 }

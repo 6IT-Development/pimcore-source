@@ -948,7 +948,7 @@ TODO-1. Related critical items: C-11 (config directory prefix), C-12 (Twig sandb
 
 ---
 
-## [ ] B-54 – `beforeNormalization()` casts break env placeholders: `'%env(bool:X)%'` and `"false"` both become `true`
+## [x] B-54 – `beforeNormalization()` casts break env placeholders: `'%env(bool:X)%'` and `"false"` both become `true`
 
 **File:** `src/DependencyInjection/Configuration.php`. Nodes with `->beforeNormalization()->ifString()->then(fn => (bool)$v)`:
 `general.redirect_to_maindomain` (208-216), `general.disable_usage_statistics` (252-260),

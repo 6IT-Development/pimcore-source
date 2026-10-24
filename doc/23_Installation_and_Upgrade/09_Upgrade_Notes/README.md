@@ -30,6 +30,15 @@
   routes) ended up in the code directory. These directories are now used as configured. If you are affected, move the
   YAML files from `<project root><PIMCORE_CONFIGURATION_DIRECTORY>/` to `PIMCORE_CONFIGURATION_DIRECTORY` before
   deploying the update, otherwise these settings are not found anymore.
+- Fixed: boolean `pimcore` options that are given as a string (e.g. `general.redirect_to_maindomain`,
+  `documents.areas.autoload`, `documents.generate_preview`, `assets.versions.use_hardlinks`) were cast with PHP
+  truthiness, so `"false"`, `"no"` or `"off"` became `true`, and an env placeholder like `'%env(bool:REDIRECT)%'` was
+  always `true` without reading the env var. Boolean strings (`true`/`false`, `1`/`0`, `yes`/`no`, `on`/`off`, `''`)
+  are now converted correctly, env placeholders are resolved, and other strings are rejected with a configuration
+  error instead of being treated as `true`.
+- `general.valid_languages` / `general.required_languages` given as a string are now trimmed (`"en, de"` gives `de`
+  instead of ` de`). To set them from an env var, use `'%env(csv:LANGUAGES)%'`. A plain `'%env(LANGUAGES)%'` is used
+  as one single language.
 
 ### Security
 #### [Twig]
