@@ -63,9 +63,95 @@ the direct consumers where a defect originates in the interplay (`lib/Migrations
 `SystemConfig`, `TemporaryFileHelperTrait`, `StopMessengerWorkersTrait`, `SymfonyExpression/*`), plus the direct consumers where a
 defect originates in the interplay (`lib/File.php::getLocalTempFilePath()`, `lib/SystemSettingsConfig.php:72`,
 `lib/Messenger/Middleware/CollectGarbageMiddleware.php`, `bundles/GenericExecutionEngineBundle/src/Extractor/JobRunExtractor.php`)
-**(15, partial)** `lib/Http/**` – scanned so far: `RequestHelper`, `Response/CodeInjector`, `Request/Resolver/EditmodeResolver`.
-**Not yet scanned:** `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`, `Context/PimcoreContextGuesser`,
-`Exception/ResponseException`, `Request/Resolver/{Abstract,Document,OutputTimestamp,PimcoreContext,ResponseHeader,Site,StaticPage,Template}Resolver`
+**(15)** `lib/Http/**` (`RequestHelper`, `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`,
+`Response/CodeInjector`, `Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Request/Resolver/*`), plus the direct
+consumers where a defect originates in the interplay (`bundles/CoreBundle/src/EventListener/ResponseStackListener.php`,
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php::addRoutesChild()` (`:1217-1237`),
+`bundles/CoreBundle/src/DependencyInjection/PimcoreCoreExtension.php:254-261`)
+**(16)** `lib/HttpKernel/**` (`BundleCollection/*`, `Bundle/DependentBundleInterface`, `BundleLocator/*`, `CacheWarmer/*`,
+`WebPathResolver`), plus the direct consumers where a defect originates in the interplay (`lib/Kernel.php::registerBundles()`
+(`:186-206`), `lib/Document/Editable/EditableHandler.php:124-139`, `:288`, `bundles/CoreBundle/config/services.yaml:28-34`,
+`bundles/CoreBundle/config/extensions.yaml:23-27`, `bundles/SeoBundle/src/PimcoreSeoBundle.php:61`,
+`doc/20_Extending_Pimcore/13_Bundle_Developers_Guide/04_Bundle_Collection.md`,
+`doc/23_Installation_and_Upgrade/03_System_Setup_and_Hosting/09_Performance_Guide.md:105-118`) and `tests/Unit/HttpKernel/*`
+**(17)** `lib/Image/**` (`Adapter`, `AdapterInterface`, `Adapter/GD`, `Adapter/Imagick`, `HtmlToImage`, `Chromium`, `Optimizer`,
+`ImageOptimizerInterface`, `Optimizer/OptimizerInterface`, `Optimizer/SpatieImageOptimizer`, `icc-profiles/*`) and the `lib/Image.php`
+facade, plus the direct consumers where a defect originates in the interplay (`models/Asset/Image/Thumbnail/Processor.php:102-124`,
+`:239`, `:336-345`, `models/Document/Service.php:553-557`, `lib/File.php::getLocalTempFilePath()`,
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php:478-491`)
+**(18)** `lib/Loader/**` (`ImplementationLoader/ImplementationLoader`, `AbstractClassNameLoader`, `ClassMapLoader`, `PrefixLoader`,
+`LoaderInterface`, `ClassNameLoaderInterface`, `Exception/*`), plus the direct consumers where a defect originates in the interplay
+(`lib/Model/Factory.php`, `lib/Model/Factory/FallbackBuilder.php`, `lib/Model/Document/Editable/Loader/*`,
+`bundles/CoreBundle/src/DependencyInjection/PimcoreCoreExtension.php:148-212`, `bundles/CoreBundle/config/implementation_factories.yaml:34-45`,
+`bundles/CoreBundle/config/pimcore/default.yaml:185-192`, `:277-284`, `:320-321`, `lib/Tool.php::classExists()` (`:524-580`))
+**(19)** `lib/Localization/**` (`LocaleService`, `LocaleServiceInterface`, `IntlFormatter`), plus the direct consumers where a
+defect originates in the interplay (`bundles/CoreBundle/config/l10n.yaml`, `bundles/CoreBundle/config/aliases.yaml:21-33`,
+`bundles/CoreBundle/src/EventListener/Frontend/LocaleListener.php`, `lib/Document/Renderer/DocumentRenderer.php:118-132`,
+`lib/Tool.php::getSupportedLocales()` / `getSupportedJSLocales()` (`:178-235`), `lib/SystemSettingsConfig.php:165`,
+`lib/Tool/Admin.php:64`, `models/DataObject/ClassDefinition/DynamicOptionsProvider/CountryOptionsProvider.php`)
+**(20)** `lib/Mail/**` (`Mailer`, `Plugins/RedirectingPlugin`) and `lib/Mail.php`, plus the direct consumers where a defect
+originates in the interplay (`bundles/CoreBundle/config/services.yaml:96-104`, `bundles/CoreBundle/config/pimcore/default.yaml:27-30`,
+`lib/Helper/Mail.php` (`getDebugInformation()`, `formatDebugReceivers()`), `lib/Templating/TwigDefaultDelegatingEngine.php:70-90`,
+`lib/Workflow/Notification/NotificationEmailService.php:124-154`, `lib/Tool.php::getMail()` (`:457-470`), `tests/Unit/Mail/MailTest.php`)
+**(21)** `lib/Maintenance/**` (`Executor`, `ExecutorInterface`, `TaskInterface`, `Tasks/*`, `Tasks/DataObject/*`), plus the
+direct consumers where a defect originates in the interplay (`bundles/CoreBundle/config/maintenance.yaml`,
+`bundles/CoreBundle/src/DependencyInjection/Compiler/RegisterMaintenanceTaskPass.php`, `bundles/CoreBundle/src/Command/MaintenanceCommand.php`,
+`lib/Messenger/Handler/MaintenanceTaskHandler.php`, `ScheduledTaskHandler.php`, `bundles/CoreBundle/config/services.yaml:120-129` (lock store),
+`bundles/CoreBundle/config/pimcore/default.yaml:49-50`, `lib/helper-functions.php::gzcompressfile()` (`:30-58`), `models/Asset/Image.php:139-160`,
+`lib/Document/StaticPageGenerator.php:142-152`, `models/DataObject/Fieldcollection/Definition.php:308`)
+**(22)** `lib/Marshaller/**` (`MarshallerInterface` – the only file), checked against its implementations and callers
+(`lib/DataObject/BlockDataMarshaller/*`, `lib/DataObject/ClassificationstoreDataMarshaller/*`,
+`lib/DataObject/FielddefinitionMarshaller/Traits/RgbaColorTrait.php`, `lib/Element/MarshallerService.php`,
+`models/DataObject/ClassDefinition/Data/Block.php:124-205`, `models/DataObject/Classificationstore/Dao.php:139`, `:255`,
+`models/DataObject/ClassDefinition/Data/BeforeEncryptionMarshallerInterface.php`, `bundles/CoreBundle/config/marshaller.yaml`)
+**(23)** `lib/Messenger/**` (11 message classes, `Handler/*` incl. `HandlerHelperTrait`, `Middleware/CollectGarbageMiddleware`),
+plus the direct consumers where a defect originates in the interplay (`bundles/CoreBundle/config/message_handler.yaml`,
+`bundles/CoreBundle/config/pimcore/default.yaml:31-54` (transports / routing / bus), `bundles/GenericExecutionEngineBundle/config/pimcore/config.yaml:8-21`,
+`bundles/CoreBundle/src/EventListener/MessengerClearRuntimeCacheListener.php`, `lib/Helper/LongRunningHelper.php::cleanUp()` (`:62-130`),
+`models/Asset.php:1819-1847`, `models/Asset/Folder.php:150-160`, `doc/01_Getting_Started/02_Advanced_Installation_Topics/01_Symfony_Messenger.md`)
+**(24)** `lib/Migrations/**` (`BundleAwareMigration`, `DirectoryAwareVersionComparator`, `FilteredMigrationsRepository`,
+`FilteredTableMetadataStorage`), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/pimcore/doctrine_migrations.yaml`, `bundles/CoreBundle/config/migrations.yaml`, `lib/Console/Application.php:94-98`,
+`lib/Extension/Bundle/Installer/SettingsStoreAwareInstaller.php:73-118`, `bundles/CoreBundle/src/Command/InternalMigrationHelpersCommand.php`,
+`bundles/InstallBundle/src/Installer.php:552-562`)
+**(25)** `lib/Model/**` (`AbstractModel`, `ModelInterface`, `Factory`, `FactoryInterface`, `Factory/FallbackBuilder`, `Dao/*`
+(`AbstractDao`, `DaoInterface`, `DaoTrait`, `PimcoreLocationAwareConfigDao`), `Listing/*` (`AbstractListing`, `Dao/AbstractDao`,
+`Dao/QueryBuilderHelperTrait`, `Traits/*`, `Callable*ListingInterface`), `Paginator/*`, `DataObject/ClassDefinition/ClassDefinitionManager`,
+`DataObject/ClassDefinition/Loader/*`, `Asset/Metadata/Loader/*`, `Document/Editable/Loader/*`), plus the direct consumers where a defect
+originates in the interplay (`models/Asset.php`, `models/Document.php`, `models/DataObject/AbstractObject.php`, `models/DataObject/Concrete.php`,
+`models/User/AbstractUser.php` and their `Dao.php` (`update()` / `updateChildPaths()` / `saveChildData()`), `models/Asset/Image/Thumbnail/Config.php:191-215`,
+the nine `PimcoreLocationAwareConfigDao` subclasses, `models/DataObject/Traits/LocateFileTrait.php`, `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:75-110`,
+`tests/Model/DataObject/ListingTest.php`)
+**(26)** `lib/Navigation/**` (`Builder`, `Container`, `Page`, `Page/Url`, `Page/Document`, `Iterator/PrefixRecursiveFilterIterator`,
+`Renderer/AbstractRenderer`, `Renderer/Menu`, `Renderer/Breadcrumbs`, `Renderer/RendererInterface`), plus the direct consumers where a defect
+originates in the interplay (`lib/helper-functions.php::closureHash()` (`:414-429`), `doc/03_Documents/03_Navigation.md`,
+`models/Document/Link.php`, `models/Document/Hardlink/Service.php`)
+**(27)** `lib/Normalizer/**` (`NormalizerInterface` – the only file), checked against its 44 implementations (`models/DataObject/ClassDefinition/Data/*`,
+`models/Asset/MetaData/ClassDefinition/Data/Data.php`, `models/DataObject/Traits/SimpleNormalizerTrait.php`) and its callers
+(`models/DataObject/ClassDefinition/Data/Block.php:120-215`, `:995-1035`, `Localizedfields.php:965-1025`, `Objectbricks.php:820-865`,
+`Classificationstore.php:1040-1090`, `EncryptedField.php:385-405`, `models/DataObject/Classificationstore/Dao.php:120-150`, `:240-268`)
+**(28)** `lib/Request/**` (`Attribute/DataObjectParam` – the only file), plus its consumer
+`bundles/CoreBundle/src/Request/ParamResolver/DataObjectParamResolver.php` and `doc/02_MVC/04_Routing_and_URLs/02_Custom_Routes.md:95-103`
+**(29)** `lib/Resolver/**` (`ResolverInterface`, `ClassResolver`), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/class_resolvers.yaml`, `bundles/CoreBundle/src/DependencyInjection/PimcoreCoreExtension.php:215-219`, `:278-291`,
+`models/Document.php:219-234`, `models/Asset.php:281-296`, `:392-399`, `:775-783`, `models/DataObject/ClassDefinition/Data/Extension/Relation.php:36-70`, `:145-155`)
+**(30)** `lib/Routing/**` (`DynamicRouteProvider`, `DocumentRoute`, `DataObjectRoute`, `RouteReference(Interface)`, `Dynamic/*`
+(`DocumentRouteHandler`, `DataObjectRouteHandler`, `DynamicRequestContext`, `DynamicRouteHandlerInterface`), `Element/Router`,
+`Loader/AttributeRouteControllerLoader`, `Loader/BundleRoutingLoader`), plus the direct consumers where a defect originates in the interplay
+(`models/Element/Service.php::getValidKey()` (`:938-970`), `models/Asset.php::getFullPath()` / `getFrontendFullPath()` (`:892-925`),
+`lib/Document/Renderer/DocumentRenderer.php:91`, `doc/05_Objects/01_Object_Classes/05_Class_Settings/30_Link_Generator.md`)
+**(31)** `lib/SearchClient/**` (`SearchClientInterface`, `Exception/ClientException`) – no implementation or consumer exists in this repository
+(the interface is implemented by the external search-client packages, e.g. the OpenSearch / Elasticsearch clients; `composer.json:164`
+only suggests `elasticsearch/elasticsearch`)
+**(32)** `lib/Security/**` (`SecurityHelper`, `Exception/*`, `Hasher/*` (`AbstractUserAwarePasswordHasher`, `PasswordFieldHasher`,
+`PimcoreUserPasswordHasher`, `PasswordHasherFactory`, `Factory/*`, interfaces), `User/*` (`User`, `UserProvider`, `ObjectUserProvider`,
+`UserChecker`, `UserLoader`, `TokenStorageUserResolver`, `Exception/*`)), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/pimcore/security.yaml`, `bundles/CoreBundle/config/services.yaml:17-20`, `:169`,
+`models/DataObject/ClassDefinition/Data/Password.php:135-318`, `lib/Http/RequestHelper.php:141-160`, `lib/Http/Request/Resolver/EditmodeResolver.php:75-99`,
+`bundles/CoreBundle/src/EventListener/Frontend/ElementListener.php:76-100`, `doc/19_Development_Tools_and_Details/10_Security_Authentication/01_Authenticate_Pimcore_Objects.md`)
+**(33)** `lib/Serializer/**` (`Serializer`, `Normalizer/ReferenceLoopNormalizer`), plus the direct consumers where a defect originates in the
+interplay (`bundles/CoreBundle/config/serializer.yaml`, `bundles/CoreBundle/src/DependencyInjection/Compiler/SerializerPass.php`,
+`lib/Tool/Serialize.php::removeReferenceLoops()` (`:61-101`), `lib/Controller/Traits/JsonHelperTrait.php`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
@@ -79,7 +165,7 @@ fix is tracked there, not repeated),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-09 static page generator / session check – not repeated)
 
 Errors that cause data corruption, stale data that is never invalidated, or a whole subsystem silently not working.
-IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`).
+IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–33: `033aa183ef`).
 Grouped by area: **Core cache handler / write lock** C-01–C-03, **Composer** – (no critical findings),
 **Config** C-04–C-05, **Console** – (no critical findings),
 **Controller** – (no critical findings),
@@ -90,7 +176,25 @@ Grouped by area: **Core cache handler / write lock** C-01–C-03, **Composer** �
 **Exception** – (no critical findings),
 **Extension** – (no critical findings),
 **Helper** – (no critical findings),
-**Http** C-09 (partial scope).
+**Http** C-09,
+**HttpKernel** – (no critical findings),
+**Image** – (no critical findings),
+**Loader** – (no critical findings),
+**Localization** – (no critical findings),
+**Mail** C-10,
+**Maintenance** – (no critical findings),
+**Marshaller** – (no critical findings),
+**Messenger** – (no critical findings),
+**Migrations** – (no critical findings),
+**Model** – (no critical findings),
+**Navigation** – (no critical findings),
+**Normalizer** – (no critical findings),
+**Request** – (no critical findings),
+**Resolver** – (no critical findings),
+**Routing** – (no critical findings),
+**SearchClient** – (no critical findings),
+**Security** C-11,
+**Serializer** – (no critical findings).
 
 ---
 
@@ -419,7 +523,7 @@ local-path behaviour of `TemporaryFileHelperTrait` by C-08 (not repeated).
 
 ---
 
-## Http (partial – see scope note)
+## Http
 
 ## [ ] C-09 – `CodeInjector::injectIntoDomSelector()` runs `html_entity_decode()` over the whole page: escaped content becomes live HTML
 
@@ -434,7 +538,253 @@ local-path behaviour of `TemporaryFileHelperTrait` by C-08 (not repeated).
   and pages with legitimate entities (`&amp;` in URLs, `&lt;` in code samples) render wrong.
 - `$charset` is accepted but unused; the DOM round trip and `trim()` also reformat the whole response.
 - Verify which features call `inject()` with a custom selector (code snippets / tag manager configs) to size the impact.
+- `ResponseHelper::isHtmlResponse()` decides when injection runs; it sniffs the body (B-94).
 
 **Fix direction:** never decode the whole document. Parse the code as a fragment (`DOMDocument::createDocumentFragment()`
 + `appendXML()` / HTML5 parser) and insert the nodes before / after / instead of the target's children, then serialize
 without entity decoding.
+
+---
+
+## HttpKernel
+
+No critical findings in Scope 16 (`lib/HttpKernel/**`). The most severe item is B-95: with OPcache preloading set up as the
+Performance Guide describes, the cache warmer preloads the generated DataObject classes, so class changes made in the admin
+are not picked up by PHP-FPM until a restart. It depends on that setup, so it is listed as a bug. See
+[TODO-2-BUGS.md](TODO-2-BUGS.md) B-95–B-101 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-81–I-87.
+No hard Symfony 7.4 / PHP 8.4 incompatibility was found in the 13 files (`CacheWarmerInterface::warmUp(string, ?string): array`
+matches 7.4, typed interface constants are already used, no implicit nullable parameters). `vendor/` is not installed, so
+statements about Symfony internals (`Preloader`, `cache:clear` running optional warmers) are **not verified locally**.
+
+---
+
+## Image
+
+No critical findings in Scope 17 (`lib/Image/**`, `lib/Image.php`). The most severe items are B-102 (the pixel-by-pixel
+alpha scan can block a thumbnail request for seconds to minutes) and B-106 (several `TypeError` / `ValueError` crashes in
+the GD adapter). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-102–B-113 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
+I-88–I-95. No hard Symfony 7.4 / PHP 8.4 incompatibility was found (`HtmlToImage.php:64` already uses the PHP 8.4
+`new Foo()->bar()` syntax). `imagedestroy()` is a no-op since PHP 8.0 and is deprecated in PHP 8.5 (I-91).
+
+---
+
+## Loader
+
+No critical findings in Scope 18 (`lib/Loader/**`). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-114–B-116 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-96–I-99. No Symfony 7.4 / PHP 8.4 incompatibility was found in the 8 files.
+
+---
+
+## Localization
+
+No critical findings in Scope 19 (`lib/Localization/**`). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-117–B-122 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-100–I-104. The closest to security-relevant is B-119 (the locale is
+put into an `include` path without validation); with Symfony's default route requirement (`[^/]+`) a `/` cannot reach it,
+so it is filed as a bug/hardening item, not as critical. No Symfony 7.4 / PHP 8.4 incompatibility was found in the 3 files.
+
+---
+
+## Mail
+
+> Scope 20 notes: `vendor/` is not installed. Symfony Mime / Mailer behaviour was checked against **symfony/mime 6.4.18**
+> and Twig **3.20 / 3.22** from other local projects (same code paths as in 7.4 / current Twig, but the 7.4 versions are
+> **not verified locally**). Not repeated: [models TODO-1](../models/TODO-1-CRITICAL.md) C-42 (the blocklist is never
+> applied, `Mail::filterLogAddresses()`), [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) C-12 (the Twig
+> sandbox allows every method and exposes `container`).
+
+## [ ] C-10 – `Pimcore\Mail` runs its own rendered output through Twig a second time: user data passed as a param is executed as a template
+
+**Files:** `lib/Mail.php:427-451` (`send()`), `:593-625` (`renderParams()`), `:654-679` (`getBodyHtmlRendered()`),
+`:688-721` (`getBodyTextRendered()`); `lib/Workflow/Notification/NotificationEmailService.php:141-153`
+
+```php
+$bodyHtmlRendered = $this->getBodyHtmlRendered();   // pass 1: Twig(html) with params
+$this->html($bodyHtmlRendered);                      // rendered output becomes the html body
+$bodyTextRendered = $this->getBodyTextRendered();    // no text body → calls getBodyHtmlRendered() again
+                                                     // → getHtmlBody() is now the rendered html → pass 2: Twig(rendered html)
+```
+
+- Passing user input as a **param** is the documented safe way (`$mail->setParams(['name' => $form['name']])`), and
+  the html body uses `{{ name }}`. Pass 1 inserts the value. Because no text body was set, `getBodyTextRendered()`
+  calls `getBodyHtmlRendered()` again. That method reads the html body that `send()` has just replaced with the rendered
+  output and passes it to `renderParams()` again. A value such as `{{ 7*7 }}` is evaluated in pass 2, and the result is
+  in the text part of the mail.
+- Pass 2 also runs on mails without a document (`html()` set in code), and it re-runs CSS inlining and the absolute-path
+  rewriting on the already-processed html.
+- Every string set with `html()`, `text()` or `subject()` is treated as a Twig template too (`:633-646`, `:688-695`),
+  although these are Symfony `Email` methods for literal content. Code that builds the body or subject itself is affected,
+  for example `NotificationEmailService::sendTemplateMail()`: the subject contains the element's full path and the body
+  is a rendered Twig template (`:141-153`). Code such as `->html('<p>' . htmlspecialchars($message) . '</p>')` is also
+  affected, because `htmlspecialchars()` does not escape `{{`.
+- The rendering uses the sandboxed Twig environment. As long as CoreBundle C-12 is open, the sandbox allows every
+  method call and exposes `container`. A public contact form that sends a confirmation mail to the submitter, with the
+  name passed as a param, would then return `{{ container.getParameter('kernel.secret') }}` to the attacker in the text
+  part. Without C-12 the sandbox still allows the configured tags, filters and functions, and a stray `{{` or `{%` in
+  user text makes the text part empty: the `Twig\Error\SyntaxError` is caught at `:714-717`.
+- Each distinct rendered body is a new string-template source, so Twig compiles and caches a new template class per
+  mail (`createTemplate()` names it `pimcore_email_body (string template <hash>)`). The Twig cache grows with every
+  personalised mail. Whether the compiled string templates are written to the file cache is **not verified locally**.
+- The end-to-end exploit was **not run locally** (no installed app). The double-render path follows from the code above.
+  The template naming was checked in Twig 3.20 / 3.22.
+
+**Verify:** `MailTest::testHtmlBodyRenderedWithParams()` with a param value `{{ 7*7 }}` and no text body; call `send()`
+with a `null://` transport; the text part contains `49`.
+
+**Fix direction:**
+- Render once. `send()` renders html and subject once and marks the mail as rendered. The text part is derived from the
+  rendered html with html-to-text only, without `renderParams()`. `getBodyTextRendered()` must not call
+  `getBodyHtmlRendered()` again.
+- Separate literal content from templates. Keep `html()`, `text()` and `subject()` literal, and add explicit
+  `htmlTemplate()`, `textTemplate()` and `subjectTemplate()` methods, or a `setRenderContentAsTemplate(bool)` switch
+  with a deprecation period. Document content stays a template.
+- Escape params for the html context (Twig auto-escape already does this) and never feed rendered output back into Twig.
+- Fix CoreBundle C-12 as well.
+
+---
+
+## Maintenance
+
+> Scope 21 notes: all 21 files in `lib/Maintenance/**` were read, plus the consumers listed in the scope header. No Symfony 7.4 /
+> PHP 8.4 incompatibility was found (typed class constants and `readonly` classes need PHP 8.3 / 8.2, fine for the target).
+> `vendor/` is not installed; Symfony Lock / DependencyInjection behaviour was checked against the 6.4 sources of another
+> local project (same logic in 7.4, **not verified locally**). Not repeated: [models TODO-1](../models/TODO-1-CRITICAL.md)
+> C-36 / C-37 and [models TODO-2](../models/TODO-2-BUGS.md) B-210–B-214 (`ScheduledTasksTask`: stalled queue, deleted-user
+> permissions, `publish-version` of another element, order, double execution), models B-223 / I-107
+> (`VersionsCleanupTask`: stalled cleanup, unbounded `NOT IN`, auto-save `null` crash), models B-238 / B-239 / I-124 TmpStore
+> (`TmpStoreCleanupTask`, `Executor::get/setLastExecution()` type loss), CoreBundle TODO-3 I-26 and the
+> `RegisterMaintenanceTaskPass` item (`$tags[0]` only, typo, attribute).
+
+No critical findings in Scope 21. The most severe items are B-132 (the broken-views cleanup also drops views that are only
+inaccessible, including the `object_<classId>` views that DataObject listings query) and B-133 (the "once per night" lock of
+the LQIP task never blocks a re-run). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-132–B-138 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-111–I-116.
+
+---
+
+## Marshaller
+
+No critical findings in Scope 22 (`lib/Marshaller/MarshallerInterface.php`). The implementations were scanned in Scope 6
+(`lib/DataObject/**`) and the locator service in Scope 10 (`lib/Element/MarshallerService.php`); their items are not repeated.
+See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-139 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-117–I-118. No Symfony 7.4 /
+PHP 8.4 incompatibility was found.
+
+---
+
+## Messenger
+
+No critical findings in Scope 23 (`lib/Messenger/**`). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-140–B-143 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-119–I-122. No Symfony 7.4 / PHP 8.4 incompatibility was found.
+
+---
+
+## Migrations
+
+No critical findings in Scope 24 (`lib/Migrations/**`). The most severe item is B-144 (`doctrine:migrations:rollup --prefix=…`
+deletes the executed-migration records of **all** bundles); it needs a manual command, so it is listed as a bug. See
+[TODO-2-BUGS.md](TODO-2-BUGS.md) B-144–B-147 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-123–I-124.
+
+---
+
+## Model
+
+No critical findings in Scope 25 (`lib/Model/**`). The most severe item is B-148 (the `__call()` guard in `AbstractModel` does
+not work, so `$asset->update()` / `$document->update()` / `$user->update()` from outside run the DAO's raw `update()`); its impact
+depends on who can call model methods (project code, and Twig templates – see CoreBundle C-12), so it is listed as a bug. See
+[TODO-2-BUGS.md](TODO-2-BUGS.md) B-148–B-154 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-125–I-129.
+
+---
+
+## Navigation
+
+No critical findings in Scope 26 (`lib/Navigation/**`). Labels and attribute values are HTML-escaped by the renderers. The most
+severe items are B-155 (a navigation loaded from the cache – the default – has stale page keys, so `onlyActiveBranch` /
+`expandSiblingNodesOfActiveBranch` menus and `hasPage()` / `removePage()` / `addPage()` misbehave) and B-156 (cache key collisions
+between different callbacks). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-155–B-160 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
+I-130–I-133.
+
+---
+
+## Normalizer
+
+No critical findings in Scope 27 (`lib/Normalizer/NormalizerInterface.php`). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-161 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-134–I-135. No Symfony 7.4 / PHP 8.4 incompatibility was found.
+
+---
+
+## Request
+
+No critical findings in Scope 28 (`lib/Request/Attribute/DataObjectParam.php`). See [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-136.
+
+---
+
+## Resolver
+
+No critical findings in Scope 29 (`lib/Resolver/**`). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-162 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
+I-137. No Symfony 7.4 / PHP 8.4 incompatibility was found.
+
+---
+
+## Routing
+
+No critical findings in Scope 30 (`lib/Routing/**`). The most severe item is B-163 (a document key or URL slug containing `{…}` makes
+Symfony's route compiler throw – a 500 for that page – or breaks URL generation); it needs an editor to create such a key, so it is
+listed as a bug. See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-163–B-166 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-138–I-139.
+
+---
+
+## SearchClient
+
+No critical findings in Scope 31 (`lib/SearchClient/**`). See [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-140.
+
+---
+
+## Security
+
+> Scope 32 notes: all 18 files in `lib/Security/**` were read, plus the consumers listed in the scope header. Symfony behaviour was checked
+> with **symfony/password-hasher 6.4** from another local project (same `PlaintextPasswordHasher` in 7.4, **not verified locally**). Not
+> repeated: admin session refresh / `isEqualTo()` / deleted admin user in `UserProvider::refreshUser()` ([models TODO-1](../models/TODO-1-CRITICAL.md)
+> C-41), role-id cache poisoning (models C-40), last-login throttling and user instance mismatch (models B-235), 2FA config wipe (models B-232),
+> the other worker-runtime state (CoreBundle C-08).
+
+## [ ] C-11 – `UserLoader` caches the admin user on a shared service: in worker runtimes anonymous visitors get admin preview / version / unpublished access
+
+**Files:** `lib/Security/User/UserLoader.php:27-72`; `bundles/CoreBundle/config/services.yaml:169`; `lib/Http/RequestHelper.php:141-160`;
+`bundles/CoreBundle/src/EventListener/Frontend/ElementListener.php:76-100`; `lib/Http/Request/Resolver/EditmodeResolver.php:75-99`;
+`bundles/CoreBundle/src/EventListener/Frontend/EditmodeListener.php:56`
+
+```php
+public function getUser(): ?UserModel
+{
+    if (null === $this->user) {
+        $user = $this->loadUser();          // token storage or Authentication::authenticateSession()
+        if ($user) { $this->user = $user; } // kept for the lifetime of the service
+    }
+    return $this->user;
+}
+```
+
+- `UserLoader` is a shared service without `ResetInterface` / `kernel.reset`. The first request in which an admin is found (an editor
+  previewing a page) stores that `Pimcore\Model\User` in `$this->user` for the rest of the process.
+- Under classic PHP-FPM the container lives for one request, so this is harmless. Under a worker runtime (FrankenPHP worker mode, RoadRunner,
+  Swoole – `symfony/runtime ^7.4` is required) the same object answers every later request of that worker (see CoreBundle C-08 for the
+  general problem).
+- `RequestHelper::isFrontendRequestByAdmin()` is `true` for **any** request that carries `pimcore_preview`, `pimcore_editmode`,
+  `pimcore_version`, `pimcore_admin` or `pimcore_object_preview` as a query / body parameter (`:145-153`) – anyone can add them.
+  `ElementListener` then only asks `$this->userLoader->getUser()` (`:82-84`): with the cached admin, an anonymous visitor gets unpublished
+  documents (`:87`) and `handleAdminUserDocumentParams()` (preview, any `pimcore_version`, editmode parameters); `EditmodeResolver` uses the same
+  user (`:93`).
+- The path follows from the code; an end-to-end worker run was **not done locally**.
+
+**Verify:** two requests through one kernel (`$kernel->handle()` twice): first an authenticated admin preview, then an anonymous request with
+`?pimcore_preview=1` to an unpublished document. Expected 403; per code the second request renders the document.
+
+**Fix direction:** do not cache across requests – keep the user in a request attribute (`$request->attributes->set('_pimcore_admin_user', …)`)
+or implement `ResetInterface` (autoconfigured `kernel.reset`) and clear `$user` there; never treat the query parameters alone as an admin
+signal before the session check succeeded.
+
+---
+
+## Serializer
+
+No critical findings in Scope 33 (`lib/Serializer/**`). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-171 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
+I-143. No Symfony 7.4 / PHP 8.4 incompatibility was found.

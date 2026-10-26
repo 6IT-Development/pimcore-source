@@ -62,12 +62,100 @@ the direct consumers where a defect originates in the interplay (`lib/Migrations
 `SystemConfig`, `TemporaryFileHelperTrait`, `StopMessengerWorkersTrait`, `SymfonyExpression/*`), plus the direct consumers where a
 defect originates in the interplay (`lib/File.php::getLocalTempFilePath()`, `lib/SystemSettingsConfig.php:72`,
 `lib/Messenger/Middleware/CollectGarbageMiddleware.php`, `bundles/GenericExecutionEngineBundle/src/Extractor/JobRunExtractor.php`)
-**(15, partial)** `lib/Http/**` – scanned so far: `RequestHelper`, `Response/CodeInjector`, `Request/Resolver/EditmodeResolver`.
-**Not yet scanned:** `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`, `Context/PimcoreContextGuesser`,
-`Exception/ResponseException`, `Request/Resolver/{Abstract,Document,OutputTimestamp,PimcoreContext,ResponseHeader,Site,StaticPage,Template}Resolver`
+**(15)** `lib/Http/**` (`RequestHelper`, `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`,
+`Response/CodeInjector`, `Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Request/Resolver/*`), plus the direct
+consumers where a defect originates in the interplay (`bundles/CoreBundle/src/EventListener/ResponseStackListener.php`,
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php::addRoutesChild()` (`:1217-1237`),
+`bundles/CoreBundle/src/DependencyInjection/PimcoreCoreExtension.php:254-261`)
+**(16)** `lib/HttpKernel/**` (`BundleCollection/*`, `Bundle/DependentBundleInterface`, `BundleLocator/*`, `CacheWarmer/*`,
+`WebPathResolver`), plus the direct consumers where a defect originates in the interplay (`lib/Kernel.php::registerBundles()`
+(`:186-206`), `lib/Document/Editable/EditableHandler.php:124-139`, `:288`, `bundles/CoreBundle/config/services.yaml:28-34`,
+`bundles/CoreBundle/config/extensions.yaml:23-27`, `bundles/SeoBundle/src/PimcoreSeoBundle.php:61`,
+`doc/20_Extending_Pimcore/13_Bundle_Developers_Guide/04_Bundle_Collection.md`,
+`doc/23_Installation_and_Upgrade/03_System_Setup_and_Hosting/09_Performance_Guide.md:105-118`) and `tests/Unit/HttpKernel/*`
+**(17)** `lib/Image/**` (`Adapter`, `AdapterInterface`, `Adapter/GD`, `Adapter/Imagick`, `HtmlToImage`, `Chromium`, `Optimizer`,
+`ImageOptimizerInterface`, `Optimizer/OptimizerInterface`, `Optimizer/SpatieImageOptimizer`, `icc-profiles/*`) and the `lib/Image.php`
+facade, plus the direct consumers where a defect originates in the interplay (`models/Asset/Image/Thumbnail/Processor.php:102-124`,
+`:239`, `:336-345`, `models/Document/Service.php:553-557`, `lib/File.php::getLocalTempFilePath()`,
+`bundles/CoreBundle/src/DependencyInjection/Configuration.php:478-491`)
+**(18)** `lib/Loader/**` (`ImplementationLoader/ImplementationLoader`, `AbstractClassNameLoader`, `ClassMapLoader`, `PrefixLoader`,
+`LoaderInterface`, `ClassNameLoaderInterface`, `Exception/*`), plus the direct consumers where a defect originates in the interplay
+(`lib/Model/Factory.php`, `lib/Model/Factory/FallbackBuilder.php`, `lib/Model/Document/Editable/Loader/*`,
+`bundles/CoreBundle/src/DependencyInjection/PimcoreCoreExtension.php:148-212`, `bundles/CoreBundle/config/implementation_factories.yaml:34-45`,
+`bundles/CoreBundle/config/pimcore/default.yaml:185-192`, `:277-284`, `:320-321`, `lib/Tool.php::classExists()` (`:524-580`))
+**(19)** `lib/Localization/**` (`LocaleService`, `LocaleServiceInterface`, `IntlFormatter`), plus the direct consumers where a
+defect originates in the interplay (`bundles/CoreBundle/config/l10n.yaml`, `bundles/CoreBundle/config/aliases.yaml:21-33`,
+`bundles/CoreBundle/src/EventListener/Frontend/LocaleListener.php`, `lib/Document/Renderer/DocumentRenderer.php:118-132`,
+`lib/Tool.php::getSupportedLocales()` / `getSupportedJSLocales()` (`:178-235`), `lib/SystemSettingsConfig.php:165`,
+`lib/Tool/Admin.php:64`, `models/DataObject/ClassDefinition/DynamicOptionsProvider/CountryOptionsProvider.php`)
+**(20)** `lib/Mail/**` (`Mailer`, `Plugins/RedirectingPlugin`) and `lib/Mail.php`, plus the direct consumers where a defect
+originates in the interplay (`bundles/CoreBundle/config/services.yaml:96-104`, `bundles/CoreBundle/config/pimcore/default.yaml:27-30`,
+`lib/Helper/Mail.php` (`getDebugInformation()`, `formatDebugReceivers()`), `lib/Templating/TwigDefaultDelegatingEngine.php:70-90`,
+`lib/Workflow/Notification/NotificationEmailService.php:124-154`, `lib/Tool.php::getMail()` (`:457-470`), `tests/Unit/Mail/MailTest.php`)
+**(21)** `lib/Maintenance/**` (`Executor`, `ExecutorInterface`, `TaskInterface`, `Tasks/*`, `Tasks/DataObject/*`), plus the
+direct consumers where a defect originates in the interplay (`bundles/CoreBundle/config/maintenance.yaml`,
+`bundles/CoreBundle/src/DependencyInjection/Compiler/RegisterMaintenanceTaskPass.php`, `bundles/CoreBundle/src/Command/MaintenanceCommand.php`,
+`lib/Messenger/Handler/MaintenanceTaskHandler.php`, `ScheduledTaskHandler.php`, `bundles/CoreBundle/config/services.yaml:120-129` (lock store),
+`bundles/CoreBundle/config/pimcore/default.yaml:49-50`, `lib/helper-functions.php::gzcompressfile()` (`:30-58`), `models/Asset/Image.php:139-160`,
+`lib/Document/StaticPageGenerator.php:142-152`, `models/DataObject/Fieldcollection/Definition.php:308`)
+**(22)** `lib/Marshaller/**` (`MarshallerInterface` – the only file), checked against its implementations and callers
+(`lib/DataObject/BlockDataMarshaller/*`, `lib/DataObject/ClassificationstoreDataMarshaller/*`,
+`lib/DataObject/FielddefinitionMarshaller/Traits/RgbaColorTrait.php`, `lib/Element/MarshallerService.php`,
+`models/DataObject/ClassDefinition/Data/Block.php:124-205`, `models/DataObject/Classificationstore/Dao.php:139`, `:255`,
+`models/DataObject/ClassDefinition/Data/BeforeEncryptionMarshallerInterface.php`, `bundles/CoreBundle/config/marshaller.yaml`)
+**(23)** `lib/Messenger/**` (11 message classes, `Handler/*` incl. `HandlerHelperTrait`, `Middleware/CollectGarbageMiddleware`),
+plus the direct consumers where a defect originates in the interplay (`bundles/CoreBundle/config/message_handler.yaml`,
+`bundles/CoreBundle/config/pimcore/default.yaml:31-54` (transports / routing / bus), `bundles/GenericExecutionEngineBundle/config/pimcore/config.yaml:8-21`,
+`bundles/CoreBundle/src/EventListener/MessengerClearRuntimeCacheListener.php`, `lib/Helper/LongRunningHelper.php::cleanUp()` (`:62-130`),
+`models/Asset.php:1819-1847`, `models/Asset/Folder.php:150-160`, `doc/01_Getting_Started/02_Advanced_Installation_Topics/01_Symfony_Messenger.md`)
+**(24)** `lib/Migrations/**` (`BundleAwareMigration`, `DirectoryAwareVersionComparator`, `FilteredMigrationsRepository`,
+`FilteredTableMetadataStorage`), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/pimcore/doctrine_migrations.yaml`, `bundles/CoreBundle/config/migrations.yaml`, `lib/Console/Application.php:94-98`,
+`lib/Extension/Bundle/Installer/SettingsStoreAwareInstaller.php:73-118`, `bundles/CoreBundle/src/Command/InternalMigrationHelpersCommand.php`,
+`bundles/InstallBundle/src/Installer.php:552-562`)
+**(25)** `lib/Model/**` (`AbstractModel`, `ModelInterface`, `Factory`, `FactoryInterface`, `Factory/FallbackBuilder`, `Dao/*`
+(`AbstractDao`, `DaoInterface`, `DaoTrait`, `PimcoreLocationAwareConfigDao`), `Listing/*` (`AbstractListing`, `Dao/AbstractDao`,
+`Dao/QueryBuilderHelperTrait`, `Traits/*`, `Callable*ListingInterface`), `Paginator/*`, `DataObject/ClassDefinition/ClassDefinitionManager`,
+`DataObject/ClassDefinition/Loader/*`, `Asset/Metadata/Loader/*`, `Document/Editable/Loader/*`), plus the direct consumers where a defect
+originates in the interplay (`models/Asset.php`, `models/Document.php`, `models/DataObject/AbstractObject.php`, `models/DataObject/Concrete.php`,
+`models/User/AbstractUser.php` and their `Dao.php` (`update()` / `updateChildPaths()` / `saveChildData()`), `models/Asset/Image/Thumbnail/Config.php:191-215`,
+the nine `PimcoreLocationAwareConfigDao` subclasses, `models/DataObject/Traits/LocateFileTrait.php`, `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:75-110`,
+`tests/Model/DataObject/ListingTest.php`)
+**(26)** `lib/Navigation/**` (`Builder`, `Container`, `Page`, `Page/Url`, `Page/Document`, `Iterator/PrefixRecursiveFilterIterator`,
+`Renderer/AbstractRenderer`, `Renderer/Menu`, `Renderer/Breadcrumbs`, `Renderer/RendererInterface`), plus the direct consumers where a defect
+originates in the interplay (`lib/helper-functions.php::closureHash()` (`:414-429`), `doc/03_Documents/03_Navigation.md`,
+`models/Document/Link.php`, `models/Document/Hardlink/Service.php`)
+**(27)** `lib/Normalizer/**` (`NormalizerInterface` – the only file), checked against its 44 implementations (`models/DataObject/ClassDefinition/Data/*`,
+`models/Asset/MetaData/ClassDefinition/Data/Data.php`, `models/DataObject/Traits/SimpleNormalizerTrait.php`) and its callers
+(`models/DataObject/ClassDefinition/Data/Block.php:120-215`, `:995-1035`, `Localizedfields.php:965-1025`, `Objectbricks.php:820-865`,
+`Classificationstore.php:1040-1090`, `EncryptedField.php:385-405`, `models/DataObject/Classificationstore/Dao.php:120-150`, `:240-268`)
+**(28)** `lib/Request/**` (`Attribute/DataObjectParam` – the only file), plus its consumer
+`bundles/CoreBundle/src/Request/ParamResolver/DataObjectParamResolver.php` and `doc/02_MVC/04_Routing_and_URLs/02_Custom_Routes.md:95-103`
+**(29)** `lib/Resolver/**` (`ResolverInterface`, `ClassResolver`), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/class_resolvers.yaml`, `bundles/CoreBundle/src/DependencyInjection/PimcoreCoreExtension.php:215-219`, `:278-291`,
+`models/Document.php:219-234`, `models/Asset.php:281-296`, `:392-399`, `:775-783`, `models/DataObject/ClassDefinition/Data/Extension/Relation.php:36-70`, `:145-155`)
+**(30)** `lib/Routing/**` (`DynamicRouteProvider`, `DocumentRoute`, `DataObjectRoute`, `RouteReference(Interface)`, `Dynamic/*`
+(`DocumentRouteHandler`, `DataObjectRouteHandler`, `DynamicRequestContext`, `DynamicRouteHandlerInterface`), `Element/Router`,
+`Loader/AttributeRouteControllerLoader`, `Loader/BundleRoutingLoader`), plus the direct consumers where a defect originates in the interplay
+(`models/Element/Service.php::getValidKey()` (`:938-970`), `models/Asset.php::getFullPath()` / `getFrontendFullPath()` (`:892-925`),
+`lib/Document/Renderer/DocumentRenderer.php:91`, `doc/05_Objects/01_Object_Classes/05_Class_Settings/30_Link_Generator.md`)
+**(31)** `lib/SearchClient/**` (`SearchClientInterface`, `Exception/ClientException`) – no implementation or consumer exists in this repository
+(the interface is implemented by the external search-client packages, e.g. the OpenSearch / Elasticsearch clients; `composer.json:164`
+only suggests `elasticsearch/elasticsearch`)
+**(32)** `lib/Security/**` (`SecurityHelper`, `Exception/*`, `Hasher/*` (`AbstractUserAwarePasswordHasher`, `PasswordFieldHasher`,
+`PimcoreUserPasswordHasher`, `PasswordHasherFactory`, `Factory/*`, interfaces), `User/*` (`User`, `UserProvider`, `ObjectUserProvider`,
+`UserChecker`, `UserLoader`, `TokenStorageUserResolver`, `Exception/*`)), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/pimcore/security.yaml`, `bundles/CoreBundle/config/services.yaml:17-20`, `:169`,
+`models/DataObject/ClassDefinition/Data/Password.php:135-318`, `lib/Http/RequestHelper.php:141-160`, `lib/Http/Request/Resolver/EditmodeResolver.php:75-99`,
+`bundles/CoreBundle/src/EventListener/Frontend/ElementListener.php:76-100`, `doc/19_Development_Tools_and_Details/10_Security_Authentication/01_Authenticate_Pimcore_Objects.md`)
+**(33)** `lib/Serializer/**` (`Serializer`, `Normalizer/ReferenceLoopNormalizer`), plus the direct consumers where a defect originates in the
+interplay (`bundles/CoreBundle/config/serializer.yaml`, `bundles/CoreBundle/src/DependencyInjection/Compiler/SerializerPass.php`,
+`lib/Tool/Serialize.php::removeReferenceLoops()` (`:61-101`), `lib/Controller/Traits/JsonHelperTrait.php`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
+[CoreBundle TODO-1/2](../bundles/CoreBundle/TODO-1-CRITICAL.md) (Scope 15: C-08 `ResponseStack` / `OutputTimestampResolver` never reset,
+B-50 empty matcher in the debug-toolbar exclusions, I-49 per-request work – not repeated),
 [CoreBundle TODO-2](../bundles/CoreBundle/TODO-2-BUGS.md) / [SeoBundle TODO-3](../bundles/SeoBundle/TODO-3-IMPROVEMENTS.md)
 (Scope 13: CoreBundle B-30 duplicate areabrick registration, SeoBundle I-16 `isInstalled()` query cost – not repeated),
 [models TODO-1](../models/TODO-1-CRITICAL.md) (Scope 6: C-32 unvalidated class / field / select-option identifiers in generated
@@ -81,7 +169,7 @@ repeated),
 state reset – not repeated)
 
 Code quality, readability, modernization (Symfony 7.4 / PHP 8.4) and logic simplifications. No behaviour change unless
-stated. IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`).
+stated. IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–33: `033aa183ef`).
 Grouped by area: **Core cache handler** I-01–I-08, **RuntimeCache** I-09, **Warming** I-10,
 **CacheClearer / SessionStatus** I-11, **Tests** I-12,
 **Composer** I-13–I-15, **Config** I-16–I-22, **Console** I-23–I-29,
@@ -90,7 +178,25 @@ Grouped by area: **Core cache handler** I-01–I-08, **RuntimeCache** I-09, **Wa
 **Element** I-58–I-59, **Event** I-60–I-64,
 **Exception** I-65, **Extension** I-66–I-71,
 **Helper** I-72–I-77,
-**Http** I-78 (partial scope).
+**Http** I-78–I-80,
+**HttpKernel** I-81–I-87,
+**Image** I-88–I-95,
+**Loader** I-96–I-99,
+**Localization** I-100–I-104,
+**Mail** I-105–I-110,
+**Maintenance** I-111–I-116,
+**Marshaller** I-117–I-118,
+**Messenger** I-119–I-122,
+**Migrations** I-123–I-124,
+**Model** I-125–I-129,
+**Navigation** I-130–I-133,
+**Normalizer** I-134–I-135,
+**Request** I-136,
+**Resolver** I-137,
+**Routing** I-138–I-139,
+**SearchClient** I-140,
+**Security** I-141–I-142,
+**Serializer** I-143.
 
 ---
 
@@ -1380,9 +1486,9 @@ caught in `lib/Image/Optimizer.php:53`, documented in `lib/Image/Optimizer/Optim
 
 ---
 
-## Http (partial – see scope note)
+## Http
 
-### [ ] I-78 – `RequestHelper` / `CodeInjector` / `EditmodeResolver` cleanup (partial scope)
+### [ ] I-78 – `RequestHelper` / `CodeInjector` / `EditmodeResolver` cleanup
 
 **File:** `lib/Http/RequestHelper.php`, `lib/Http/Response/CodeInjector.php`, `lib/Http/Request/Resolver/EditmodeResolver.php`
 
@@ -1392,4 +1498,1072 @@ caught in `lib/Image/Optimizer.php:53`, documented in `lib/Image/Optimizer/Optim
   admin bundle's route config.
 - `CodeInjector::injectIntoPresetSelector()` uses regex on HTML; `<body` inside a script or comment can match. With the
   C-09 fix, use one DOM-based path for all selectors.
-- Remaining `lib/Http` files are not reviewed yet; continue Scope 15 in the next session.
+
+
+### [ ] I-79 – Remaining `lib/Http` classes: modern HTTP client, Symfony 7.4 request matchers, resettable state
+
+**File:** `lib/Http/ClientFactory.php`, `RequestMatcherFactory.php`, `ResponseHelper.php`, `ResponseStack.php`,
+`Context/PimcoreContextGuesser.php`, `Exception/ResponseException.php`, `Request/Resolver/*.php`
+
+- `ClientFactory` builds Guzzle clients. Symfony 7.4 ships `symfony/http-client` (scoped clients, retry, timeouts,
+  proxy and CA config in `framework.http_client`) and PSR-18 adapters. Offer a scoped HttpClient (`pimcore.http_client`)
+  configured from the same settings, and keep the Guzzle factory for BC.
+- `RequestMatcherFactory`: the `TODO add support for IPs, attributes and schemes` (`:51`) is easy with Symfony 7.x:
+  `IpsRequestMatcher`, `SchemeRequestMatcher`, `PortRequestMatcher`, `ExpressionRequestMatcher`,
+  `AttributesRequestMatcher`. Return a ready `ChainRequestMatcher` per entry instead of an array.
+- `PimcoreContextGuesser::guess()` builds a new `ChainRequestMatcher` for every entry on every request (`:58`). Build
+  them once in `getMatchers()`.
+- `ResponseHelper::disableCache()` adds `no-transform` twice (`:38`, `:47`) and the IE-era `post-check` / `pre-check`
+  directives. `no-store` alone is enough for modern clients. `Pragma` / `Expires` can stay for HTTP/1.0 proxies.
+- `ResponseStack` and `OutputTimestampResolver::$timestampWasQueried` keep request state on shared services. Implement
+  `ResetInterface` (CoreBundle C-08, not repeated), and let `ResponseStackListener` `pop()` the response it uses.
+- `ResponseException`: empty message, and `?Exception $previous` instead of `?\Throwable` (`:27`). Pass a message
+  (`'Response returned via exception'`) and widen the type.
+- Resolvers: constructor promotion; mark them `final` where not extended; `SiteResolver::isSiteRequest()` checks
+  `null !== $site && $site instanceof Site` (the second test suffices); the attribute getters return untyped request
+  attributes. Cast or validate (`ResponseHeaderResolver::getResponseHeaders()` assumes an array).
+- `AbstractRequestResolver::getCurrentRequest()` / `getMainRequest()` call the stack twice. Use a local variable.
+
+### [ ] I-80 – Tests
+
+**Files:** new `tests/Unit/Http/*`
+
+- Only `CodeInjector` has a unit test, and it sits in `tests/Unit/HttpKernel/Response/` (move it, see I-87).
+- `CodeInjector` with a custom selector keeps `&lt;script&gt;` escaped in the rest of the page (C-09).
+- `RequestHelper`:
+  - `createRequestWithContext()` does not change the shared context (B-88);
+  - IPv6 anonymization (B-89);
+  - `/administration` is a frontend request (B-90).
+- `EditmodeResolver` force flag is reset (B-91).
+- `ClientFactory` with a proxy password containing `@:` (B-92).
+- `PimcoreContextGuesser` with an empty route entry does not match everything (B-93).
+- `ResponseHelper::isHtmlResponse()` for JSON containing `<html`, and for `<HTML>` with `text/html` (B-94).
+
+---
+
+## HttpKernel
+
+### [ ] I-81 – `BundleCollection` items: PHP 8.4 cleanup, fix the constant typo, drop the interface cache
+
+**File:** `lib/HttpKernel/BundleCollection/AbstractItem.php`, `Item.php`, `LazyLoadedItem.php`, `ItemInterface.php`,
+`BundleCollection.php`
+
+- Constructor promotion with `private readonly` in `AbstractItem` (`:22-39`), `Item` (`:26-38`), `LazyLoadedItem`
+  (`:27-51`; `$bundle` stays mutable for the lazy instance). Remove the empty doc block `LazyLoadedItem constructor.`
+  (`:33-36`) and the odd column alignment in the constructor parameters.
+- `SOURCE_PROGRAMATICALLY` is misspelled (`ItemInterface.php:24`). Add `SOURCE_PROGRAMMATICALLY` with the same value and
+  deprecate the old name. Deprecate `SOURCE_EXTENSION_MANAGER_CONFIG` (`:26`, no producer left; see I-66).
+- `LazyLoadedItem::implementsInterface()` with its static `class_implements()` cache and non-strict `in_array()`
+  (`:88-95`) is `is_a($this->className, $interface, true)` / `is_subclass_of()`. No cache needed.
+- `get_class($this->bundle)` → `$this->bundle::class` (`Item.php:42`).
+- Type the environments as `list<string>` in PHPDoc on the constructors and `ItemInterface::getEnvironments()`.
+- `BundleCollection::getItems()` filters and sorts on every call (`:83-94`). It is cheap, but `PimcoreBundleManager`
+  calls it per request. Sort once when the collection is frozen (after `registerBundles()`), or memoize until `add()`.
+- The `@return $this` + `: static` doc blocks and `@throws` blocks with blank lines (`:122-128`) can go.
+- `BundleCollection` is a mutable object that is kept after boot (`Kernel::getBundleCollection()`). Consider exposing a
+  read-only view (only `getItems()` / `hasItem()`) to consumers like `PimcoreBundleManager`.
+
+### [ ] I-82 – Dependent bundles: let dependencies inherit the parent's environments
+
+**File:** `lib/HttpKernel/Bundle/DependentBundleInterface.php:28-36`; `BundleCollection.php:50-53`;
+`bundles/SeoBundle/src/PimcoreSeoBundle.php:61-64`; bundle collection docs
+
+- `registerDependentBundles()` is static and gets only the collection. It cannot know the priority or environments the
+  parent was registered with, so a parent restricted to `['dev']` still loads its dependencies everywhere. The interface
+  doc and the docs warn about it, but every bundle author has to work around it.
+- Option: a second interface (`DependentBundleWithContextInterface::registerDependentBundles(BundleCollection, ItemInterface $parent)`),
+  or have `BundleCollection::add()` apply the parent's environments to items added during `registerDependencies()` when
+  they were added without environments. Keep the current interface for BC.
+- Combine with B-97 (track items that came from a dependency).
+
+### [ ] I-83 – `BundleLocator`: precomputed namespace map, cleanup
+
+**File:** `lib/HttpKernel/BundleLocator/BundleLocator.php`, `BundleLocatorInterface.php`, `InvalidArgumentException.php`
+
+- Constructor promotion (`private readonly KernelInterface $kernel`), `$class::class` instead of `get_class()` (`:51-53`).
+- Build a namespace → bundle map once, sorted by namespace length (longest first), instead of looping over all bundles per
+  class (`:69-81`). Fixes the order part of B-100.
+- `BundleLocator\InvalidArgumentException` is not used anywhere (grep over the repo). Deprecate it.
+- The interface docs still use the Symfony 3 example `AppBundle\Controller\FooController` → `src/AppBundle` and have empty
+  lines (`:24-41`). In Symfony 7 the `App\` code is not a bundle at all, so `getBundle()` throws for it. Say so in the docs.
+- The comment `see TemplateGuesser from SensioFrameworkExtraBundle` (`:67`) refers to an abandoned bundle. Remove it.
+
+### [ ] I-84 – `WebPathResolver`: use the Asset component, share the public-dir logic
+
+**File:** `lib/HttpKernel/WebPathResolver.php`; `lib/Document/Editable/EditableHandler.php:131-136`
+
+- `getPrefix()` returns a root-relative `/bundles/<name>` (`:50-53`). It ignores the request base path, the
+  `framework.assets` base URLs (CDN) and the version strategy. Build the URL with
+  `Symfony\Component\Asset\Packages::getUrl('bundles/…')`.
+- `EditableHandler` repeats the "`Resources/public` or `public`" check (`:132`) to test that the icon exists. Add
+  `WebPathResolver::getPublicDir(BundleInterface): ?string` and use it in both places.
+- `$type` and `$resource` are put into the URL without encoding (`:69`). Use `rawurlencode()` per path segment.
+- The exception message mentions only `Resources/public` (`:45`), while `public` is accepted too.
+- The Stack Overflow `@see` link (`:26`) and the doc blocks that only repeat the signature (`:32-40`, `:56-64`) can go.
+
+### [ ] I-85 – `PimcoreCoreCacheWarmer`: build the preload list from Composer's class map
+
+**File:** `lib/HttpKernel/CacheWarmer/PimcoreCoreCacheWarmer.php`
+
+- The exclude patterns contain 10 paths that no longer exist: `lib/Sitemap`, `lib/Translation/Import`,
+  `lib/Translation/Export`, `lib/DataObject/GridColumnConfig`, `lib/DataObject/Import`, `lib/Tool/Transliteration`,
+  `models/GridConfig`, `models/ImportConfig`, `models/Tool/CustomReport`, `models/Workflow` (checked with `ls`;
+  `lib/Tool/Transliteration.php` still matches the prefix by accident). Clean them up.
+- Guessing class names from file paths (`:67-85`, with the `/[_.-]/` filter and `rscandir()` over non-PHP files such as the
+  TODO markdowns) is fragile (B-96). Use `Composer\ClassMapGenerator\ClassMapGenerator::createMap()` (or Composer's
+  generated class map) for `lib/` and `models/`, and filter by namespace.
+- Consider whether a hand-made list is still needed at all: Symfony already preloads container services and classes tagged
+  `container.preload`. A smaller, explicit list (hot-path classes: `Model\Element`, `Document`, `Asset`, `DataObject\Concrete`,
+  cache, routing) is easier to reason about than "everything except some folders".
+- Generated DataObject classes: see B-95. The brick / collection names come from `new …\Listing()->loadNames()`; inject the
+  listings or a definition provider instead of `new` to make the warmer testable.
+- Add `@return list<class-string>` and return `array_values(array_unique(...))`.
+
+### [ ] I-86 – `MkdirCacheWarmer`: inject the directories
+
+**File:** `lib/HttpKernel/CacheWarmer/MkdirCacheWarmer.php`; `bundles/CoreBundle/config/services.yaml:28-30`
+
+- Constructor promotion (`private readonly int $mode = 0775`).
+- Inject the directory list (and the writable flag) as container parameters instead of reading constants and `$_SERVER`
+  inside `warmUp()` (`:44-55`). That makes the B-101 decision visible in config and the class testable.
+- `Filesystem::mkdir()` already skips existing directories; the `exists()` check (`:59`) is redundant.
+- Directories that must exist at runtime (logs, tmp) are better created where they are used (or once in the install /
+  deploy step), because warmers only run on a container rebuild.
+
+### [ ] I-87 – Tests
+
+**Files:** `tests/Unit/HttpKernel/*`
+
+- Existing: `BundleCollectionTest`, `ItemTest`, `LazyLoadedItemTest` (30 tests). Missing:
+  - override of a dependency with a lower priority / narrower environments, and the `config/bundles.php` → dependency
+    order from `Kernel::registerBundles()` (B-97);
+  - `addBundle('\Foo\BarBundle')` next to `new BarBundle()`, and a non-bundle class (B-98);
+  - `['all']` environment (B-99).
+- New: `BundleLocatorTest` (unknown class, nested namespaces, root namespace, parent fallback – B-100),
+  `WebPathResolverTest` (`Resources/public` vs `public`, missing folder), `PimcoreCoreCacheWarmerTest` (lowercase class name,
+  stray PHP file in `var/classes`, writable vs read-only definitions – B-95, B-96), `MkdirCacheWarmerTest` (B-101).
+- `tests/Unit/HttpKernel/Response/CodeInjectorTest.php` tests `Pimcore\Http\Response\CodeInjector`. Move it to
+  `tests/Unit/Http/Response/` (I-80 says no test covers `lib/Http`; this one does). It also types a property with the
+  PHPUnit 5 class `PHPUnit_Framework_MockObject_MockObject` (does not exist; use `MockObject`), and the helper
+  `private function testInject()` is named like a test method. Rename it (`assertInjection()`).
+
+---
+
+## Image
+
+### [ ] I-88 – Adapter API: one real contract instead of interface + abstract class
+
+**File:** `lib/Image/AdapterInterface.php`, `lib/Image/Adapter.php`, `lib/Image.php`; consumers
+`models/Asset/Image.php:200-213`, `models/Asset/Image/Thumbnail/Processor.php`
+
+- `AdapterInterface` is what the container alias exposes, but the processor and `Asset\Image::getImageTransformInstance()`
+  require the abstract `Adapter` (they call `setPreserveColor()`, `setColorspace()`, `setForceProcessICCProfiles()`,
+  `preModify()`, …). A custom adapter that only implements the interface is rejected at runtime.
+- The abstract methods in `Adapter` carry `@deprecated Provided by AdapterInterface::…` (`:309-331`). They are not
+  deprecated in any useful sense (the class must declare them abstract or implement them). Remove the tags.
+- Move the option setters into the interface (or a second `ConfigurableAdapterInterface`), type the processor against it,
+  and drop the `instanceof Adapter` check.
+- The `@return $this` doc blocks on `static` return types (`AdapterInterface.php`, 30×) and `@return $this|false` can go;
+  `load(): static|false` would be clearer as `static` + exception.
+- `getResource(): mixed` → a generic `@template TResource` (GD: `GdImage`, Imagick: `\Imagick`).
+- `Pimcore\Image::getInstance()` is a static container lookup. Inject an `ImageAdapterFactory` service (it can still return
+  a non-shared adapter per call; see CoreBundle B-33).
+- Overlay / background / mask path resolution (asset path → project path → web root) is implemented differently in each
+  method and adapter (`GD.php:236-237` web root, `:293-294` project root; `Imagick.php:690-691`, `:736-749`, `:783-795`,
+  `:809-810`). Put it in one protected method of the base class (fixes B-107).
+
+### [ ] I-89 – `preModify()` writes and re-reads a full PNG for every transformation after the first
+
+**File:** `lib/Image/Adapter.php:333-362`
+
+- Every transformation calls `preModify()`; once the image is modified, `reinitializeImage()` saves it as `png32` (or the
+  original format) to a temp file, destroys the resource and loads the file again. A thumbnail with five steps does four
+  full encode / decode / disk round trips, and with Imagick the load also re-runs colour-profile handling checks.
+- The temp file name uses `uniqid()` (`:347`) instead of `File::getLocalTempFilePath()`, and stays until the adapter is
+  destroyed.
+- Find out which operation actually needed the reset (historically: page geometry after crop, colour space after
+  composite) and do that in memory (`$imagick->setImagePage(0, 0, 0, 0)`, `clone`), or keep the round trip only for the
+  cases that need it.
+
+### [ ] I-90 – `Imagick` adapter cleanup
+
+**File:** `lib/Image/Adapter/Imagick.php`
+
+- Commented-out code (`:136-137`, `:146`, `:392-410`) and the HHVM comment (`:203`) can go.
+- The vector format list exists twice with different content (`:903-922` vs `:949`, which contains `'EPT'` twice). Use
+  one `private const array VECTOR_FORMATS`.
+- `defined('Imagick::ALPHACHANNEL_REMOVE')` (`:212-215`) has been true since imagick 3.2; use the constant.
+- `Config::getSystemConfiguration()` is read inside `load()` (`:131`) and the profile getters (`:430`, `:460`). Inject the
+  settings (constructor / setter from the service definition) and drop the static profile cache (B-108).
+- Static properties `$RGBColorProfile` / `$CMYKColorProfile` → camelCase.
+- `load()`: `unset($this->resource); $this->resource = null;` (`:65-68`) without `clear()`; use `destroy()`.
+  `$i->setColorspace()` after `readImage()` (`:93`) only affects later reads and has no effect here.
+- `supportsFormat()` stores the result in the shared cache with no lifetime (`:993`). A delegate installed later stays
+  "unsupported" until a cache clear. Use a TTL. `checkFormatSupport()` leaves a `tmpfile()` open (`:1040`).
+- `Logger::err()` / `Logger::warn()` / `Logger::info()` static calls → injected PSR logger.
+- Throw a dedicated exception (`ImageWriteException`) instead of `\Exception` in `save()` (`:275`).
+- `isVectorGraphic(?string $imagePath)` widens the interface method with a parameter; make it a private helper
+  `isVectorPath()` and keep `isVectorGraphic()` parameterless.
+
+### [ ] I-91 – `GD` adapter cleanup and PHP 8.5 readiness
+
+**File:** `lib/Image/Adapter/GD.php`
+
+- `imagedestroy()` (`:133`) does nothing since PHP 8.0 (`GdImage` objects) and is deprecated in PHP 8.5. Remove it
+  (set `$this->resource = null`).
+- `getimagesize($this->path)` (`:40`) re-reads the file; use `imagesx()` / `imagesy()` on the loaded image.
+- `supportsFormat()` has no `avif` mapping although `imageavif()` exists since PHP 8.1 (`AVIF Support` in `gd_info()`).
+- `save()`: the format → function mapping (`:70-104`) is clearer as a `match` that returns a closure per format; unknown
+  formats should throw instead of silently writing PNG (`:91-93`).
+- Log (once) when a transformation is not supported by GD instead of silently returning `$this` (B-107).
+- `@var resource|GdImage|false|null` (`:27-29`): resources are gone since PHP 8.0 → `?GdImage`.
+
+### [ ] I-92 – `Adapter` base class: PHP 8.4 cleanup
+
+**File:** `lib/Image/Adapter.php`
+
+- Add `declare(strict_types=1)` (it is the only PHP file in `lib/Image` without it), after fixing the float paths (B-110).
+- `cover()`: the ten-branch `if/elseif` on orientation strings (`:157-199`) → a backed enum `CoverPosition` with a method
+  that returns the crop offset, or at least a `match`.
+- `colorhex2colorarray()` → a small validated parser (accept `#rgb`, `#rrggbb`, `#rrggbbaa`), and a value object instead of
+  an array with mixed int / string keys.
+- `removeTmpFiles()` (`:80-93`): the `@todo duplication` with `Document\Adapter` still holds; use
+  `TemporaryFileHelperTrait` or `File::getLocalTempFilePath()` and reset the array after cleanup.
+- `getVectorRasterDimensions()` → `array{width: int, height: int}` shape and `(int) round()`.
+- Typed property `$tmpFiles` → `/** @var list<string> */`.
+
+### [ ] I-93 – `HtmlToImage`: service instead of static class, remove the deprecated Chromium path in 12.x
+
+**File:** `lib/Image/HtmlToImage.php`, `lib/Image/Chromium.php`
+
+- Static class with static state (`$supportedAdapter`). Make it a service with the Gotenberg / Chromium settings injected and
+  implement `ResetInterface` (or no cache at all, see B-113).
+- `convert()` forwards with `...func_get_args()` (`:100`, `:102`). Pass the named parameters explicitly.
+- `new Connection($chromiumUri)->connect()` (`:64`) opens a socket only to test it and never closes it.
+- `convertChromium()` closes the page but not a browser it started itself (`:154-159`, `:188-190`). Call `$browser->close()`
+  in `finally` when it was created locally (**not verified locally** whether the library kills the process on destruct).
+- The Chromium path and the `Chromium` alias file are deprecated since 11.2 (`:138`, `Chromium.php:20`); remove both in 12.x,
+  together with the `chromium` config node (CoreBundle I-57) and `getChromiumBinary()`.
+- `$windowSize` as `'1280,1024'` string → two `int` parameters.
+
+### [ ] I-94 – Image optimizers: tagged services, streams, configurable chain
+
+**File:** `lib/Image/Optimizer.php`, `ImageOptimizerInterface.php`, `Optimizer/SpatieImageOptimizer.php`, `Optimizer/OptimizerInterface.php`
+
+- Register optimizers via `!tagged_iterator pimcore.image.optimizer` (CoreBundle I-34) and drop `registerOptimizer()`
+  with its non-strict object `in_array()` (`:80`).
+- `$storage->read()` / `file_get_contents()` load the whole image into memory (`:39`, `:69`). Use `readStream()` /
+  `writeStream()`.
+- `$storage->mimeType($path)` is called once per optimizer (`:42`). Read it once.
+- The hand-written `usort()` comparator (`:59-65`) → `usort(..., fn ($a, $b) => $a['filesize'] <=> $b['filesize'])`, or
+  just track the smallest result in the loop.
+- `SpatieImageOptimizer` builds the chain on every call; build it once in the constructor, make the options configurable
+  (B-112), and consider `Gifsicle` / `Avifenc` for GIF and AVIF thumbnails (`supports()` covers only JPEG / PNG / WebP).
+  Remove the leftover IDE comment `//  Implement supports() method.` (`:54`).
+- `OptimizerInterface`: empty doc-block lines (`:24-28`).
+
+### [ ] I-95 – Tests
+
+**Files:** new `tests/Unit/Image/*` (no test covers `lib/Image` today)
+
+- Adapters (run for GD and Imagick with small generated images):
+  - `getContentOptimizedFormat()` on an opaque RGBA image finishes quickly (B-102);
+  - animated GIF keeps its frame count (B-103) and stays animated with `SOURCE` (B-104);
+  - `cover()` on a smaller image and `cropPercent()` over the edge report the real size (B-105);
+  - GD: JPEG save without quality, centred overlay, crop at the edge (B-106); uppercase `.PNG` keeps alpha (B-107);
+  - invalid composite name falls back (B-108); `grayscale()` on IM7 (B-109); size 0 / `#fff` (B-110).
+- `Optimizer`: a failing optimizer is logged, a larger result is not written (B-111).
+- `HtmlToImage`: detection is retried after a failure (B-113), with a fake Gotenberg client.
+
+---
+
+## Loader
+
+### [ ] I-96 – `ImplementationLoader` family: PHP 8.4 cleanup and typed results
+
+**File:** `lib/Loader/ImplementationLoader/*.php`; subclasses `lib/Model/Factory.php`, `lib/Model/Document/Editable/Loader/EditableLoader.php`,
+`lib/Model/DataObject/ClassDefinition/Loader/*`, `lib/Model/Asset/Metadata/Loader/DataLoader.php`
+
+- Add `@template T` to `LoaderInterface` (`build(): T`) and to `ImplementationLoader`. The subclasses then only declare the
+  type in PHPDoc and can drop their one-line `build()` overrides that exist only to narrow the return type.
+- `get_class($loader)` → `$loader::class` (`ImplementationLoader.php:117`, `:126`).
+- `array_reverse($this->loaders, true)` on every uncached lookup (`:70`): store the loaders in lookup order (prepend in
+  `addLoader()`), or replace "last added wins" with explicit priorities (I-97).
+- `protected array $loaders` is read directly by `Model\Factory::getClassMap()` (`Factory.php:31`). Make it private and give
+  `Factory` a method, or let `ClassMapLoader` maps be merged at container build time.
+- `supportsClassName()` / `getClassNameFor()` repeat the lookup and the "not a `ClassNameLoaderInterface`" checks
+  (`:96-131`). Merge into one private helper.
+- `AbstractClassNameLoader::build()` calls `array_values($params)` (`:35`), so string keys are dropped and the values are
+  passed by position. Since PHP 8.1 `new $class(...$params)` supports named arguments; keep the keys (or document that
+  params are positional only).
+- Empty doc-block lines in `LoaderInterface` (`:25-36`), `@var LoaderInterface $loader` inside the loop (`:69`).
+- Constructor promotion / `private readonly` in `ClassMapLoader` and `PrefixLoader` (the arrays are only set in the
+  constructor).
+- `Exception\InvalidArgumentException` is only used by `PrefixLoader`; keep it but mark the exceptions `final`.
+
+### [ ] I-97 – Loader wiring: explicit priorities, drop the Pimcore 4 prefixes
+
+**File:** `bundles/CoreBundle/src/DependencyInjection/PimcoreCoreExtension.php:148-212`;
+`bundles/CoreBundle/config/implementation_factories.yaml:34-45`; `bundles/CoreBundle/config/pimcore/default.yaml:277-284`
+
+- Precedence is defined by registration order (class-map loader added after the prefix loader, `FallbackBuilder` added in
+  YAML before the class-map loader from the extension). Use a priority argument (or tagged loaders with `priority`)
+  so the order is visible.
+- `\Object_Class_Data_` and `\Object_Class_Layout_` are Pimcore 4 class prefixes (`default.yaml:279`, `:284`). No such
+  classes exist; every unknown name costs one more autoload attempt. Remove them (deprecation note for projects that
+  still define such classes).
+- User-configured `prefixes` are appended after the defaults (array prototype merging), so a user prefix cannot replace a
+  built-in type with the same name; only `map` can. Document this next to the config node.
+- `setPublic(false)` on the new definitions is the default (`:155`, `:194`, `:204`; also listed in CoreBundle I-61).
+
+### [ ] I-98 – `PrefixLoader`: validation and simpler class lookup
+
+**File:** `lib/Loader/ImplementationLoader/PrefixLoader.php`; `lib/Tool.php:524-580`
+
+- Validate prefixes once: non-empty, ends with `\`, normalise the leading `\` (B-116). `gettype()` in the error message
+  (`:53`) → `get_debug_type()`.
+- Accept `list<string>` and use `array_values(array_unique(...))` (`:59` keeps gaps in the keys).
+- `Tool::classExists()` installs a custom error handler around `class_exists()` to hide old `include_once` warnings
+  (`Tool.php:568-575`). Composer's autoloader does not warn for missing classes; plain `class_exists()` is enough here.
+- Cache misses too (`$this->cache[$name] = null` with `array_key_exists()`), so repeated unknown names do not walk all
+  prefixes again.
+- Build the `Inflector` once and share it (static factory or injected service) instead of per loader instance (`:40`).
+
+### [ ] I-99 – Tests
+
+**Files:** new `tests/Unit/Loader/ImplementationLoader/*` (no test covers `lib/Loader` today)
+
+- `ImplementationLoader`: last-added loader wins; `addLoader()` after a lookup takes effect (B-115); `getClassNameFor()` with
+  a loader that is not a `ClassNameLoaderInterface`.
+- `PrefixLoader`: abstract class, name with `\`, wrong base type → `UnsupportedException` (B-114); several prefixes; empty
+  prefix list throws.
+- `ClassMapLoader`: leading `\` and case of keys (B-116).
+- `AbstractClassNameLoader::build()` with positional and named params (I-96).
+
+---
+
+## Localization
+
+### [ ] I-100 – PHP 8.4 cleanup of `LocaleService` / `IntlFormatter`
+
+**Files:** `lib/Localization/LocaleService.php`, `lib/Localization/IntlFormatter.php`, `lib/Localization/LocaleServiceInterface.php`
+
+- Constructor property promotion with `readonly` for `$requestStack`, `$translator` (`LocaleService.php:27-37`) and
+  `$localeService` (`IntlFormatter.php:50`, `:71-74`; the parameter is named `$locale` but is the service – rename).
+- The nine `DATE_*` / `DATETIME_*` / `TIME_*` string constants (`IntlFormatter.php:30-46`) + the 50-line `match`
+  (`:110-160`) → a backed enum `DateTimeFormat: string` with `dateType()` / `timeType()` methods; keep the constants as
+  deprecated aliases. The `match` collapses to one `new IntlDateFormatter($locale, $f->dateType(), $f->timeType())`.
+- Return types: `bool|string` → `string` (with B-121/B-122); empty and stale docblocks (`:105-108`, `:186-190`) removed.
+- `LocaleServiceInterface`: add `@return list<string>` for `getLocaleList()` and `@return array<string, string>` for
+  `getDisplayRegions()`; document what `findLocale()` returns when nothing is known (`''` today, `:56`).
+- `isLocale()` builds `array_flip()` over ~786 ICU locales on every call (`:39-43`); `SystemSettingsConfig.php:165` and
+  `Tool/Admin.php:64` call it in loops. Memoise the flipped list in a property.
+- `getLocaleList()` returns `ResourceBundle::getLocales('')` (`:74`), which is `array|false`; handle `false`. The list
+  depends on the ICU version (e.g. includes `en_US_POSIX`), so the admin language list and the cached
+  `system_supported_locales_*` entries (`Tool.php:178-235`) change with ICU upgrades; consider filtering or documenting it.
+- Depend on `Symfony\Contracts\Translation\LocaleAwareInterface` instead of the concrete `Pimcore\Translation\Translator`
+  (`:21`, `:31`).
+
+### [ ] I-101 – Use Symfony's `LocaleSwitcher` for `setLocale()` and save/restore
+
+**Files:** `lib/Localization/LocaleService.php:102-117`; `lib/Document/Renderer/DocumentRenderer.php:118-132`;
+`tests/Support/Util/TestHelper.php:285-300`
+
+- Symfony 7.4 ships `Symfony\Component\Translation\LocaleSwitcher` (`translation.locale_switcher`): `setLocale()` updates
+  `\Locale::setDefault()`, the router request context and every `LocaleAwareInterface` service; `runWithLocale($locale, fn)`
+  restores everything in `finally`.
+- `LocaleService::setLocale()` updates only the main/current request and the Pimcore translator, so the router context
+  (generated URLs with `{_locale}`), Twig's intl filters (`\Locale::getDefault()`) and other locale-aware services keep the
+  old locale.
+- Delegate to the switcher and add `runWithLocale()` to the interface; replace the manual save/restore in `DocumentRenderer`
+  and `TestHelper` (fixes the restore part of B-118).
+
+### [ ] I-102 – Country names from `symfony/intl` instead of `umpirsky/country-list`
+
+**Files:** `lib/Localization/LocaleService.php:77-91`; `composer.json:130`
+
+- `symfony/intl` (`Countries::getNames($locale)`) has the same CLDR data, handles the locale fallback chain itself and needs no
+  file `include` (removes B-119). It would replace a data-only dependency. Whether `symfony/intl` is already installed as a
+  transitive dependency is **not verified locally** (`vendor/` missing; it is not in the root `composer.json`).
+- Check the output keys first: `CountryOptionsProvider` keeps only 2-letter keys of the umpirsky list (whether that list has
+  other keys is **not verified locally**) with
+  `strlen($short) === 2` (`CountryOptionsProvider.php:49`); `Countries::getNames()` returns ISO 3166-1 alpha-2 only, so the
+  filter becomes unnecessary.
+
+### [ ] I-103 – `IntlFormatter` API: timezone, precision, money
+
+**File:** `lib/Localization/IntlFormatter.php`
+
+- Optional `?DateTimeZone $timezone` and an optional custom ICU pattern for `formatDateTime()` (B-121).
+- `formatNumber()` uses `NumberFormatter::DECIMAL` defaults: at most 3 fraction digits, so `1.23456` prints `1,235`
+  (verified). Add `?int $minFractionDigits`, `?int $maxFractionDigits`.
+- `formatCurrency()`: accept `int|float|string` (or a minor-unit `int` / Brick Money style object) to avoid float rounding.
+- Reuse: Twig already has `format_currency` / `format_date` in `twig/intl-extra`; document when to use which, or expose
+  `IntlFormatter` as a Twig extension so templates and PHP use the same locale source.
+
+### [ ] I-104 – Tests
+
+**Files:** new `tests/Unit/Localization/*` (no test covers `lib/Localization` today)
+
+- `LocaleService`: request locale vs. default language (B-118); `getLocale()` after the request locale changes and after
+  `reset()` (B-117); `setLocale(null)` restore; `isLocale('de_AT')` true, `isLocale('de-AT')` false; `getDisplayRegions()`
+  with `../`, an unknown locale and a regional locale (B-119).
+- `IntlFormatter`: locale change on the service (B-120); `DateTimeImmutable` in a non-default zone, numeric and non-numeric
+  strings, unknown language `zz` (B-121); `setCurrencyFormat()` after first use, invalid pattern, missing
+  `getCurrencyFormat()` key (B-122).
+
+---
+
+## Mail
+
+### [ ] I-105 – PHP 8.4 cleanup of `Mail`, `Mailer`, `RedirectingPlugin`
+
+**Files:** `lib/Mail.php`, `lib/Mail/Mailer.php`, `lib/Mail/Plugins/RedirectingPlugin.php`
+
+- Constructor property promotion with `readonly` (`Mailer.php:29-37`). Make `Mailer` `final` or `@internal` (it is
+  only a decorator). `RedirectingPlugin` is already `final`.
+- `#[\Override]` on `Mailer::send()` and on `Mail::addTo()` / `addCc()` / `addBcc()` / `addFrom()` / `addReplyTo()`
+  (`:867-920`), so a renamed parent method is caught.
+- Type the constructor's first parameter (`$headers`, `:129`) as `array|Headers|null`, and describe the options array with
+  an `array{subject?: string, document?: …, params?: array, hostUrl?: string}` shape.
+- Docblock noise: empty ` *` lines, `@return $this` next to native `static`, `@return void Provides fluent interface`
+  on a `void` method (`:377`), "Create a new RedirectingPlugin." Remove the dead commented-out code (`:464-468`).
+- The dynamic getters `$this->$getterName()` (`:474-475`, `:484`, `:573`) → a `match` or an explicit
+  `['To' => $this->getTo(), …]` map that static analysis can follow.
+- `setDocumentSettings()` has two consecutive `if ($document instanceof Model\Document\Email)` blocks (`:383`, `:407`);
+  merge them. (The four parse-and-add loops are models I-183, not repeated.)
+- `throw new Exception(...)` (`:615`, `:744`, `RedirectingPlugin.php:79`) → specific exceptions
+  (`MailRenderingException`, `InvalidArgumentException`, `DebugRecipientsMissingException`).
+- `private static bool $forceDebugMode` (`:40`) is global mutable state across a worker's lifetime → move it to a
+  service or config flag.
+
+### [ ] I-106 – Replace the decorator + plugin with a Symfony Mailer `MessageEvent` listener (or `framework.mailer.envelope.recipients`)
+
+**Files:** `lib/Mail/Mailer.php`, `lib/Mail/Plugins/RedirectingPlugin.php`, `bundles/CoreBundle/config/services.yaml:96-104`
+
+- Symfony Mailer dispatches `Symfony\Component\Mailer\Event\MessageEvent` right before the transport sends, with access
+  to a **copy** of the message and the final envelope (`$event->getEnvelope()`, `setEnvelope()`, `setMessage()`). A
+  listener there covers explicit envelopes, every mailer and async workers, and never changes the caller's object.
+  This fixes B-123 and B-124.
+- For a plain "send everything to these addresses" in dev, Symfony already has `framework.mailer.envelope.recipients`.
+  Pimcore could map the debug addresses to it, and keep only the debug block and subject prefix in the listener.
+- Read the debug addresses and the debug flag lazily (not in the constructor), and implement `ResetInterface`.
+- The `X-Transport: main` default (`Mailer.php:45-47`) only works while a transport named `main` exists. Pimcore's
+  `default.yaml:30` defines it, and Symfony names a single `framework.mailer.dsn` `main` as well. Document it next to the
+  config, or use `X-Transport` only when the project configured several transports.
+
+### [ ] I-107 – Separate rendering from the `Mail` data object
+
+**File:** `lib/Mail.php:167-180`, `:427-451`, `:492`, `:593-721`
+
+- `Mail` pulls services from the static container (`Pimcore::getContainer()->get(...)` at `:492`, `:595`), reads the system
+  config in its constructor (`:158`, `:170`), renders documents, inlines CSS and converts html to text. Move this into a
+  `MailRenderer` service (Twig environment, `DocumentRenderer`, `Helper\Mail`) with explicit dependencies. Then `Mail`
+  is a plain `Email` with params and a document id, and `send()` delegates to it. This is also the natural place for the
+  C-10 "render once" flag.
+- Default sender and reply-to: Symfony 7.4 supports global headers via `framework.mailer.headers` (e.g. `From`). Pimcore
+  could map `pimcore.email.sender` / `return` to it instead of `init()` on every `new Mail()`. The exact option name and
+  version should be checked against the 7.4 docs; **not verified locally**.
+- Twig's `twig/twig-bridge` `BodyRenderer` / `TemplatedEmail` already render a template with a context and generate the
+  text part. Consider building on `TemplatedEmail` for non-document mails.
+
+### [ ] I-108 – Logging and result reporting
+
+**Files:** `lib/Mail.php:503-537`; `lib/Helper/Mail.php::logEmail()`
+
+- Log from Symfony's `SentMessageEvent` / `FailedMessageEvent`, which are dispatched where the mail is actually sent,
+  also in a Messenger worker. Store the transport's `Message-ID` and the `SentMessage::getDebug()` output on failure (B-127).
+- Return a result object (`sent` / `queued` / `suppressed` / `failed`) or at least make `getLastLogEntry(): ?Log`
+  (B-129). The "all recipients blocklisted" case from models C-42 needs the `suppressed` status.
+- Keep the `PRE_SEND` / `PRE_LOG` events but make "cancel sending" an explicit API (`$event->cancel()`) instead of
+  removing the `mailer` argument.
+
+### [ ] I-109 – Plain-text part: use Symfony's html-to-text converter
+
+**File:** `lib/Mail.php:71-73`, `:222-237`, `:688-721`, `:794-809`
+
+- `html2Text()` uses `league/html-to-markdown`, so the "plain text" part is Markdown (`# Heading`, `**bold**`,
+  `[link](url)`). The option names `html2textOptions` / `setHtml2TextOptions()` are legacy from the old `html2text`
+  library.
+- Symfony Mime has `HtmlToTextConverterInterface` with `DefaultHtmlToTextConverter` and `LeagueHtmlToMarkdownConverter`
+  (Symfony 6.1+). Inject a converter, so projects can choose, and drop the hand-made `DomCrawler` `<style>` stripping (B-131).
+- A new `HtmlConverter` is created per mail; one shared instance is enough.
+
+### [ ] I-110 – Tests
+
+**Files:** `tests/Unit/Mail/MailTest.php` (covers construction, init, recipients, param rendering; no send, no debug redirect)
+
+- Send with a `null://` transport (or an in-memory `MailerInterface` spy):
+  - a param containing `{{ 7*7 }}` with no text body must not be evaluated (C-10);
+  - debug redirect with an explicit `Envelope`, with a custom mailer, and with `setForceDebugMode(true)` (B-123);
+  - the object is unchanged after a debug send, also after a transport exception, and a resend with
+    `preventDebugInformationAppending()` does not throw (B-124);
+  - a debug block with `$1` in a display name and html without `</body>` (B-125).
+- `addTo('a@x', 'b@x')` gives two recipients (B-126). `serialize()` / `unserialize()` keeps params and the document id
+  (B-127). `setContentType()` results in exactly one `Content-Type` header (B-128).
+- `setDocument()` with an unknown id or path throws, and calling it twice does not duplicate recipients (B-130).
+  `getLastLogEntry()` works before send and with logging disabled (B-129).
+
+---
+
+## Maintenance
+
+### [ ] I-111 – PHP 8.4 cleanup of `lib/Maintenance`
+
+**Files:** `lib/Maintenance/**`; `bundles/CoreBundle/config/maintenance.yaml`
+
+- Constructor property promotion with `readonly` (`Executor.php:32-46`, `DbCleanupBrokenViewsTask`, `LowQualityImagePreviewTask`,
+  `HousekeepingTask`, `ScheduledTasksTask`, `CleanupClassificationstoreTablesTask`, `TmpStoreCleanupTask`,
+  `StaticPagesGenerationTask`); `final` where nothing extends them (all are `@internal`).
+- `Executor::$tasks` is an array of arrays; `getTasks()` is documented as `TaskInterface[]` (`:106-112`) but returns
+  `array{taskClass: TaskInterface, messengerMessageClass: ?string}[]` → a small `readonly` value object; validate
+  `messengerMessageClass` (`class_exists`, constructor takes the name) at registration instead of `new $className($name)`.
+- `ExecutorInterface::getTaskNames(): array` → `@return list<string>`; `getLastExecution()` / `setLastExecution()` belong to a separate
+  status service (I-112).
+- `throw new Exception(...)` (`Executor.php:51`) → a specific exception; `strpos(...)` used as boolean
+  (`HousekeepingTask.php:54`) → `str_contains()`; `preg_match('/\.gz$/')` / `preg_replace('/\.log$/')` → `str_ends_with()` /
+  `substr()` (`LogCleanupTask.php:46`, `:68`); `reset()/current()/next()` over a row (`DbCleanupBrokenViewsTask.php:44-46`) →
+  `[$name, $type] = array_values($table)`.
+- Log messages built by concatenation → PSR-3 placeholders with context (`VersionsCleanupTask`, `CleanupClassificationstoreTablesTask`,
+  `DataObjectTaskHelper`).
+- `Db::get()` static access (`CleanupClassificationstoreTablesTask.php:39`, `VersionsCleanupStackTraceDbTask.php:30`) → inject
+  `Connection` like the other tasks. `maintenance.yaml` passes `@logger` to `VersionsCleanupStackTraceDbTask`, which has no
+  constructor (dead argument; Symfony ignores positional args there).
+- `TmpStoreCleanupTask` uses `executeQuery()` for a `DELETE` (`:37`) → `executeStatement()`.
+- Tag `type` names mix styles (`cleanupBrickTables`, `VersionsCleanupStackTraceDb`, `low_quality_image_preview`,
+  `documents_static_page_generate`); they are user-facing (`--job`). Document them or add normalised aliases.
+- `CleanupBrickTablesTask` and `CleanupFieldcollectionTablesTask` are identical apart from the injected helper → one generic task
+  class configured twice.
+
+### [ ] I-112 – Scheduling on Symfony 7.4: deduplication, per-task schedules, real status
+
+**Files:** `lib/Maintenance/Executor.php`; `bundles/CoreBundle/src/Command/MaintenanceCommand.php`; `lib/Messenger/Handler/*TaskHandler.php`
+
+- Symfony Messenger 7.3+ has `DeduplicateStamp` (lock-backed): dispatch each task with `new DeduplicateStamp('pimcore-maintenance-' . $name)`
+  so a task is queued at most once (B-137).
+- Symfony Scheduler (`RecurringMessage::every()/cron()`, `#[AsPeriodicTask]` / `#[AsCronTask]`) can replace "cron runs everything every
+  5 minutes": LQIP nightly, version cleanup hourly, log rotation daily, static pages per lifetime. Keep `pimcore:maintenance` as a manual
+  trigger.
+- Store per-task `lastStart`, `lastSuccess`, `lastError`, `duration` when the handler runs, and expose them in a health check instead of
+  the single "dispatched at" timestamp.
+- (`#[AsMaintenanceTask]` attribute registration is in CoreBundle TODO-3, not repeated.)
+
+### [ ] I-113 – Batch processing in the scanning tasks
+
+**Files:** `lib/Maintenance/Tasks/LowQualityImagePreviewTask.php:54-80`; `lib/Maintenance/Tasks/StaticPagesGenerationTask.php:45-82`
+
+- `OFFSET` paging over a changing table is O(n²) and skips/duplicates rows when items are added or deleted during the run → keyset
+  paging (`id < :lastId ORDER BY id DESC LIMIT n`).
+- Push the filters into SQL (`staticGeneratorEnabled = 1`; an "LQIP missing" flag for images) so unchanged items are not loaded at all.
+- Page size 10 with `collectGarbage()` per page is very small for listings that only need ids; load ids in bigger chunks and hydrate per
+  item.
+
+### [ ] I-114 – Log rotation and retention
+
+**File:** `lib/Maintenance/Tasks/LogCleanupTask.php`; `lib/Maintenance/Tasks/VersionsCleanupStackTraceDbTask.php:30-33`
+
+- Retention is hard-coded: 7 days for log archives (`LogCleanupTask.php:39`, `:50`, `:66`) and 7 days for version stack traces
+  (`VersionsCleanupStackTraceDbTask.php:32`) → configuration (`pimcore.maintenance.log_retention_days`, …).
+- Recommend (and document) logrotate or Monolog's `RotatingFileHandler` / `max_files` for `var/log`; keep `LogCleanupTask` as a
+  pruning-only fallback, skipping files modified in the last minutes (B-135).
+- `VersionsCleanupStackTraceDbTask` updates all matching rows in one statement; on large `versions` tables batch it (`LIMIT` loop) to
+  avoid long locks.
+
+### [ ] I-115 – Safer destructive cleanups
+
+**Files:** `lib/Maintenance/Tasks/DbCleanupBrokenViewsTask.php`; `lib/Maintenance/Tasks/CleanupClassificationstoreTablesTask.php`;
+`lib/Maintenance/Tasks/DataObject/*`
+
+- These tasks delete data or drop schema objects every run, based on string parsing and current class definitions. Add a dry-run /
+  report mode (console command `pimcore:maintenance:cleanup-tables --dry-run`), log at `warning` with table, fieldname and row count
+  before deleting, and allow disabling them via config.
+- Share one table-name parser for bricks, field collections and classification stores (B-136) and one quoting helper.
+- Consider a grace period: only delete fieldnames that have been missing from the class definition for N runs/days, so a temporarily
+  inconsistent deployment (definition files and DB from different releases) does not remove data.
+
+### [ ] I-116 – Tests
+
+**Files:** new `tests/Unit/Maintenance/*` / `tests/Model/Maintenance/*` (no test covers `lib/Maintenance` today)
+
+- `Executor`: unknown task name, `Error` from a task, `validJobs` / `excludedJobs` filtering and unknown names, custom message class
+  (B-137).
+- `LogCleanupTask` with a temp `PIMCORE_LOG_DIRECTORY`: rotation once per day, compression failure keeps the source, `glob()` false
+  (B-135).
+- Table-name parsing for keys and class ids with `_` (B-136); `DbCleanupBrokenViewsTask` keeps views whose error is not 1356 or that
+  are not Pimcore-owned (B-132).
+- `LowQualityImagePreviewTask` runs at most once per window across two `execute()` calls on the same instance (B-133);
+  `StaticPagesGenerationTask` without lifetime does not regenerate an existing file (B-134); `HousekeepingTask` honours the tmp option
+  or the option is removed (B-138).
+
+---
+
+## Marshaller
+
+### [ ] I-117 – `MarshallerInterface`: document and type the contract (PHP 8.4)
+
+**File:** `lib/Marshaller/MarshallerInterface.php`
+
+- The doc blocks are empty except for `@throws Exception` (`:24-28`, `:31-35`, with a double space in `@throws  Exception`). State the
+  rule from I-42 here, where implementers look: `marshal()` = normalized value → storage value, `unmarshal()` = storage value →
+  normalized value; `null` in → `null` out; `unmarshal()` must accept legacy / partial storage values (B-52).
+- Add generics so static analysis can check the implementations and callers:
+  `@template TNormalized`, `@template TStored`, `@param TNormalized|null $value` / `@return TStored|null`, and the `$params` shape (B-139).
+- Replace the generic `@throws Exception` with a dedicated `MarshallingException` (or document that invalid input returns `null`),
+  so callers in `Block` / `Classificationstore\Dao` can catch one type.
+- Implementations: add `#[\Override]` to `marshal()` / `unmarshal()` in all 20 classes and `RgbaColorTrait` so signature drift is caught
+  by PHP 8.3+.
+- The interface is the public extension point for project marshallers (registered by tag key); mark that explicitly in the doc block
+  (it is not `@internal`, unlike the implementations) and point to the tag name `pimcore.dataobject.fielddefinition.marshaller` and the
+  key format `<format>_<fieldtype>` (I-59). Symfony 7.4: `#[AutoconfigureTag('pimcore.dataobject.fielddefinition.marshaller')]` on the
+  interface only works together with an index attribute per class (see I-59).
+- Naming: three unrelated "marshaller" contracts exist – `Pimcore\Marshaller\MarshallerInterface` (storage format),
+  `Pimcore\Cache\Core\CacheMarshallerInterface` (cache, I-08) and `ClassDefinition\Data\BeforeEncryptionMarshallerInterface` /
+  `AfterDecryptionUnmarshallerInterface` (encryption). Cross-reference them in the doc blocks, or rename the data one to
+  `FieldDataMarshallerInterface` with a BC alias in a major release.
+
+### [ ] I-118 – One contract test for all registered marshallers
+
+**Files:** new `tests/Unit/Marshaller/MarshallerContractTest.php` (complements I-45)
+
+- A data-provider test that loads every service tagged `pimcore.dataobject.fielddefinition.marshaller` and checks the interface rules:
+  `marshal(null) === null`, `unmarshal(null) === null`, `unmarshal(marshal($sample))` equals `$sample` for a sample normalized value
+  per type, and the result of `marshal()` survives `Serialize::serialize()` / `unserialize()` with `allowed_classes => false` once I-42
+  is done.
+- Run the encrypted-field marshallers with a delegate marshaller spy and assert that `object` is forwarded (B-139).
+
+---
+
+## Messenger
+
+### [ ] I-119 – Message classes: `final readonly`, enums for type strings, routing via `#[AsMessage]`
+
+**Files:** `lib/Messenger/*Message.php`; `bundles/CoreBundle/config/pimcore/default.yaml:41-51`
+
+- All 11 messages are mutable classes with `protected` promoted properties and getters; `VideoConvertMessage` mixes `protected` and
+  `private readonly`. → `final readonly class` (they are `@internal` DTOs).
+- **BC note:** messages in the doctrine transport are stored with `PhpSerializer`. Changing property visibility or names changes the
+  serialized property keys (`\0*\0id` → `\0Class\0id`) and breaks messages that are still queued. Keep `protected` names or drain
+  the queues / add `__unserialize()` during the switch.
+- String "type" fields (`'image'|'video'` in `CleanupThumbnailsMessage`, element types in `ElementDependenciesMessage`,
+  `SanityCheckMessage`, `VersionDeleteMessage`) → backed enums; `CleanupThumbnailsHandler` builds a class name from it
+  (`'Pimcore\Model\Asset\\' . ucfirst($type) . '\Thumbnail\Config'`, `:49`) → a `match`.
+- Symfony 7.2+ `#[AsMessage(transport: 'pimcore_core')]` on each message keeps routing next to the class; YAML routing still overrides
+  it for projects.
+- `MaintenanceTaskMessage` and `ScheduledTaskMessage` are identical (only the routing differs) – keep both for routing, but share one
+  handler (I-120).
+
+### [ ] I-120 – Handlers: one registration style, typed batch jobs, shared helpers
+
+**Files:** `lib/Messenger/Handler/*`; `bundles/CoreBundle/config/message_handler.yaml`
+
+- Registration: YAML tags for all handlers, plus an `#[AsMessageHandler]` on `ElementDependenciesHandler` that is ignored (no
+  `autoconfigure` in that file). Pick one: attributes with `autoconfigure: true`, or remove the attribute.
+- `final` + constructor promotion with `readonly` (`AssetPreviewImageHandler`, `AssetUpdateTasksHandler`, `OptimizeImageHandler`,
+  `GeneratePagePreviewHandler`, `ElementDependenciesHandler` use `protected` promoted properties).
+- Replace `// @phpstan-ignore-next-line` on `process()` / `shouldFlush()` with `@param list<array{0: XMessage, 1: Acknowledger}> $jobs`.
+  `HandlerHelperTrait::filterUnique(array $jobs, callable $callback)` → `Closure(object): string`, mark it `@internal`, and use it in
+  `AssetPreviewImageHandler` (B-143) and `OptimizeImageHandler` (the same path can be queued twice).
+- Batch sizes (5 / 100) are hard-coded → `BatchHandlerTrait::getBatchSize()` style constant or config. With the doctrine transport
+  a batch of 100 keeps 100 messages delivered-but-unacked; document that `redeliver_timeout` must exceed the batch duration.
+- Static service access inside handlers (`Storage::get('thumbnail')` per job, `Logger::err()`, `Asset\Image\Thumbnail\Config::getPreviewConfig()`)
+  → injected dependencies.
+- `MaintenanceTaskHandler` and `ScheduledTaskHandler` are identical → one handler with `#[AsMessageHandler]` methods for both
+  messages.
+
+### [ ] I-121 – Bus configuration for Symfony 7.4
+
+**Files:** `bundles/CoreBundle/config/pimcore/default.yaml:31-54`; `lib/Messenger/Middleware/CollectGarbageMiddleware.php`;
+`bundles/CoreBundle/src/EventListener/MessengerClearRuntimeCacheListener.php`
+
+- One worker-cleanup mechanism for all Pimcore buses: a receive-side middleware or `WorkerMessageHandledEvent` listener that clears
+  `RuntimeCache`, deletes registered temp files (B-79) and resets the core cache handler (B-02), replacing both `MessengerClearRuntimeCacheListener` and `CollectGarbageMiddleware` (B-140). Keep the middleware class for
+  BC and move its service definition from the GEE bundle into core.
+- Default `failure_transport` and explicit `retry_strategy` per Pimcore transport (B-141).
+- `DeduplicateStamp` (Symfony 7.3+) for `AssetUpdateTasksMessage` (instead of the DB lock of models B-01), `AssetPreviewImageMessage`,
+  `GeneratePagePreviewMessage`, `ElementDependenciesMessage`.
+- Messages dispatched while the caller holds a DB transaction are inserted in the same transaction with the doctrine transport, but
+  with the recommended RabbitMQ transport a worker can receive them before the commit. Dispatch after commit
+  (models B-17 for `VersionDeleteMessage`) or document it for project code that wraps saves in transactions.
+
+### [ ] I-122 – Tests
+
+**Files:** new `tests/Unit/Messenger/*` (no test references `Pimcore\Messenger` today)
+
+- `CollectGarbageMiddleware`: no cleanup on dispatch, cleanup after handling on receive (B-140).
+- Batch handlers with an in-memory `Acknowledger`: duplicates are acked once and processed once; a throwing job is nacked and the
+  others are acked (B-143).
+- `AssetUpdateTasksHandler`: document with stored `PROCESSING_FAILED` and page count disabled → flag removed in DB (B-142).
+- Message serialization round trip through `PhpSerializer` for every message class, so a visibility change (I-119) is caught.
+
+---
+
+## Migrations
+
+### [ ] I-123 – PHP 8.4 / Doctrine Migrations 3.x cleanup
+
+**Files:** `lib/Migrations/**`; `bundles/CoreBundle/config/migrations.yaml`; `bundles/CoreBundle/config/pimcore/doctrine_migrations.yaml`
+
+- `FilteredTableMetadataStorage` and `FilteredMigrationsRepository` are both a factory (`__invoke(DependencyFactory)`) and the product.
+  Split them: a small factory service returns a decorator built with constructor-injected inner services (`readonly` promotion), so
+  there is no uninitialised typed property and no setter-based state (B-146).
+- `@return $this` on `__invoke()` with a concrete return type (`FilteredTableMetadataStorage.php:35-38`) → `static`;
+  `get_class($migration->getMigration())` → `$migration->getMigration()::class` (`FilteredMigrationsRepository.php:79`).
+- The filtering loops (`FilteredMigrationsRepository.php:77-84`, `FilteredTableMetadataStorage.php:74-81`) → `array_filter()` with one
+  shared `matchesPrefix()` helper (and the separator fix of B-146).
+- `DirectoryAwareVersionComparator` doc block says "@throws ErrorException if the migration file is not found" – Composer's autoloader
+  does not throw; only Symfony's `DebugClassLoader` / error handler can turn a stale classmap include warning into it. Remove the
+  reflection altogether (B-145).
+- `BundleAwareMigration` is public API for bundle authors: add a doc block with an example, mark `getBundleName()` as returning the
+  kernel bundle name (`PimcoreXyzBundle`), and use the kernel from the migration's container instead of `Pimcore::getKernel()`.
+- `all_or_nothing: false` and `check_database_platform: false` (`doctrine_migrations.yaml`) are deliberate; document why next to them
+  (Pimcore migrations contain DDL, which MySQL cannot roll back).
+- `migration_versions.version` has length 1024 – fine for FQCNs; the Doctrine 3 default table name differs, so mention the custom
+  table in the upgrade notes for projects that run `doctrine:migrations:*` with their own config.
+
+### [ ] I-124 – Tests
+
+**Files:** new `tests/Unit/Migrations/*` (no test covers `lib/Migrations` today)
+
+- Comparator: ordering by registration, unknown namespace, missing class – result is the same for every input permutation (B-145).
+- Filtered storage: `getExecutedMigrations()` and `reset()` with and without prefix, using an in-memory SQLite connection (B-144).
+- Filtered repository: prefix with and without trailing `\`, `hasMigration()` honours the prefix (B-146).
+- `BundleAwareMigration` with an unregistered bundle, a bundle without installer, and a not-installed bundle (B-147).
+
+---
+
+## Model
+
+### [ ] I-125 – `AbstractModel` / `ModelInterface`: PHP 8.4 cleanup and an explicit DAO delegation API
+
+**Files:** `lib/Model/AbstractModel.php`, `lib/Model/ModelInterface.php`
+
+- `__call()` magic delegation to the DAO (`:206-220`) is the reason for B-148 and for the long `@method` blocks on every model. Long
+  term: explicit, typed proxy methods (or a `getDao()->…` call at the call site) and an allowlist for the remaining magic.
+- `get_class($this)` → `$this::class` (`:68`, `:210`, `:219`); `call_user_func_array([$dao, $method], $args)` → `$dao->$method(...$args)`;
+  `str_contains($key, '\\') !== false` → `str_contains()` (`:87`); `strpos($class, '\\')` as boolean → `str_contains()` (`:123`).
+- Legacy lookups: the `_` delimiter (Pimcore 4 class names), the `…_Resource` / `…\Resource` DAO suffix and `forbiddenClassNames`
+  (`:86-91`, `:116-150`) and the `o_` compatibility (B-149) can go with a deprecation period.
+- `include(__DIR__ . '/../../config/dao-classmap.php')` (`:75`) is retried on every `initDao()` if the file is missing (warning each
+  time); load it once and fall back to `[]`.
+- `setDao(?AbstractDao)` / `ModelInterface::setDao(Dao\AbstractDao)` do not accept `PimcoreLocationAwareConfigDao` (a `DaoInterface`
+  only) → type against `DaoInterface`. `ModelInterface::setValues(array $data = [])` lacks the `$ignoreEmptyValues` parameter that
+  `AbstractModel` and `DaoTrait` rely on.
+- `__sleep()` → `__serialize()` / `__unserialize()` (fixes B-150; `__sleep` is soft-deprecated in the PHP 8.5 direction, see models
+  I-07 for `Asset::__sleep()`).
+- `getModelFactory()` and the DAO's `Db::get()` pull services from the static container; keep them, but document them as BC and inject
+  where models are built by services.
+
+### [ ] I-126 – DAO base classes: typed model, no `func_get_arg()`, resettable caches
+
+**Files:** `lib/Model/Dao/AbstractDao.php`, `lib/Model/Dao/DaoTrait.php`, `lib/Model/Dao/PimcoreLocationAwareConfigDao.php`
+
+- `DaoTrait::$model` is untyped (`/** @var AbstractModel */ protected $model`) and every DAO re-declares it with a narrower doc type →
+  `@template TModel of AbstractModel` on the trait / base class and `@extends AbstractDao<Asset>` in subclasses.
+- `AbstractDao::$db` is a `public` property (`:31`) → `protected` with a getter; it is assigned in `configure()` via `Db::get()`.
+- `PimcoreLocationAwareConfigDao::configure()` reads its options with `func_get_arg(0)` (`:39`) although `DaoInterface::configure()`
+  has no parameter; called without arguments it throws `ArgumentCountError`. → an explicit `configureLocationAware(array $params)`
+  method or constructor arguments.
+- The static config cache → resettable service (B-154). The column cache → one helper with `Cache::remove()` per table (B-153).
+- `getForeignKeyName()` (`:107-115`) is a pure helper → `Db\Helper`.
+
+### [ ] I-127 – Listings: one query builder path, safe iteration, clear count semantics
+
+**Files:** `lib/Model/Listing/AbstractListing.php`, `lib/Model/Listing/Dao/AbstractDao.php`, `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php`,
+`lib/Model/Listing/Traits/*`, `lib/Model/Listing/Callable*ListingInterface.php`
+
+- ORDER BY / LIMIT / GROUP BY are built twice: as strings in `Listing\Dao\AbstractDao` and on a `QueryBuilder` in
+  `QueryBuilderHelperTrait` (`isset($order[$c])` vs `!empty($order[$c])`, B-152). Move the remaining string-built listings to the
+  QueryBuilder helper.
+- `Iterator` on the listing itself uses the internal pointer of `$this->data`: nested `foreach` over the same listing or a `foreach`
+  inside a `current()` call breaks. → `IteratorAggregate` with `yield from $this->getData()` (keep `Iterator` methods deprecated).
+- `count()` returns `getTotalCount()` (a separate `COUNT(*)` ignoring limit/offset) while `foreach` yields only the loaded page. This
+  is what the paginator needs, but it surprises callers; document it and add `getLoadedCount()`.
+- `isValidOrderKey()` returns `true` for everything (`:78-81`) and `setOrderKey($key, false)` passes raw SQL. Default to the table's
+  columns (`getValidTableColumns()`) and document the raw variant as "trusted input only".
+- `setGroupBy(string $groupBy, bool $qoute = true)` – parameter typo (`$qoute`, `:324`).
+- `OrderListingTrait::$order` (a callable) shares its name with `AbstractListing::$order` (an array) – the two "order" APIs are
+  unrelated; rename to `$orderCallback`. `callable` properties → `?Closure` (`FilterListingTrait`, `OrderListingTrait`,
+  `QueryBuilderHelperTrait::$onCreateQueryBuilderCallback`).
+- `quote(mixed $value, ?int $type)` / `quoteIdentifier()` call `Db::get()` per call; keep, but prefer bound parameters in docs.
+  (DBAL 4 `quote(string)` change: models I-58.)
+
+### [ ] I-128 – `ClassDefinitionManager` and the paginator subscriber
+
+**Files:** `lib/Model/DataObject/ClassDefinition/ClassDefinitionManager.php`; `lib/Model/Paginator/EventSubscriber/PaginateListingSubscriber.php`
+
+- `ClassDefinitionManager`: `glob()` can return `false` (`:83`); the result tuples `list<array{string, string, string}>` → a small
+  `readonly` value object plus an enum for `SAVED` / `CREATED` / `SKIPPED` / `DELETED`; inject the connection instead of `Db::get()`.
+- `saveClass()` compares `definitionModificationDate` from `fetchOne()` with `getModificationDate()` using `!==` (`:128`). It works
+  because `pdo_mysql` on PHP 8.1+ returns native ints; with another driver or `ATTR_STRINGIFY_FETCHES` every class is re-saved on
+  every rebuild. Cast both sides to `int`.
+- `cleanUpDeletedClassDefinitions()` deletes every object of a class whose definition file is missing (`ClassDefinition::delete()`
+  iterates all objects). The command asks for confirmation; add a dry-run listing and a check that the definition directory itself is
+  readable (an unmounted volume would otherwise look like "all classes deleted").
+- `PaginateListingSubscriber` throws when the target is not a `PaginateListingInterface` at priority `-5` (`:38-41`); subscribers
+  registered with a lower priority for custom targets never run. Only set items for Pimcore listings and let KNP report unsupported
+  targets. `@internal` on `getSubscribedEvents()` is misplaced.
+
+### [ ] I-129 – Tests
+
+**Files:** `tests/Model/DataObject/ListingTest.php` (covers `setCondition()` / `addConditionParam()` happy paths); new `tests/Unit/Model/*`
+
+- `AbstractModel`: calling a protected model method from outside throws (B-148); `setValue('o_id', …)` (B-149); private subclass
+  property survives `serialize()` (B-150).
+- Listing: two identical `addConditionParam()` conditions with different values; `setCondition()` with and then without variables;
+  float array parameter (B-151); `setLimit(0)` / offset-only on a string-built and a QueryBuilder listing (B-152); nested `foreach`
+  (I-127).
+- `AbstractDao::getValidTableColumns($t, false)` after an `ALTER TABLE` (B-153); config DAO cache reset between two simulated worker
+  messages (B-154).
+
+---
+
+## Navigation
+
+### [ ] I-130 – PHP 8.4 cleanup of the ZF1 port
+
+**Files:** `lib/Navigation/**`
+
+- ZF1 naming: `_`-prefixed properties (`$_pages`, `$_index`, `$_dirtyIndex`, `$_label`, `$_uri`, `$_accesskey`, …) and `_sort()`,
+  `_htmlAttribs()`, `_normalizeId()`, `_getWhitespace()` → normal names (keep `protected` BC where subclasses exist).
+- Magic `__get()` / `__set()` / `__isset()` / `__unset()` on `Page` and the finder `__call()` on `Container` (`findByLabel()` …) → keep
+  for BC but add explicit methods; static analysis cannot see the magic.
+- Long ZF1 doc blocks with `@return $this fluent interface, returns self` next to native `static`, and the copied Zend license header in
+  `Page/Url.php` – shorten.
+- `Page::$_defaultPageType` is `@deprecated` for Pimcore 12 – remove with the major.
+- `setOrder(int|string|null)` accepts numeric strings; with typed callers `?int` is enough.
+- Constructor promotion / `readonly` where applicable (`Builder::$requestHelper`, `PrefixRecursiveFilterIterator::$property` / `$value`,
+  `AbstractRenderer::$templatingEngine`); `get_class($this)` → `$this::class`.
+
+### [ ] I-131 – `Builder`: options object, explicit cache key, cache plain data
+
+**File:** `lib/Navigation/Builder.php`
+
+- Replace the array options + `OptionsResolver` with a `NavigationOptions` value object (named arguments in PHP 8.4), so the cache key can be
+  derived from all fields (B-156).
+- Cache a plain array (`Container::toArray()` / a DTO tree) and rebuild the objects on load: no serialized object graph, no stale keys
+  (B-155), smaller cache entries, and no `force` write needed to avoid caching the active state (`:174-178`).
+- A build context object for level, tags and id prefix instead of instance state (B-158).
+- `getChildren()` is documented as an extension point; document `getChildren(true)` semantics for unpublished documents and make the
+  hardlink branch (`:332-334`) explicit (`Hardlink::getChildren()` returns a listing whose `getData()` is already loaded).
+
+### [ ] I-132 – Renderers: Twig templates as the default, safer attribute escaping
+
+**Files:** `lib/Navigation/Renderer/*`
+
+- The string-concatenation renderers (`Menu::_renderMenu()` is ~140 lines of nested state, `renderDeepestMenu()`, breadcrumbs) duplicate
+  what a Twig partial does more readably; `renderTemplate()` / `renderPartial()` already exist. Ship default Twig partials for menu and
+  breadcrumbs and keep the PHP renderers as fallback.
+- `_htmlAttribs()` uses `ENT_COMPAT` and switches to single quotes when a value contains `"` – after escaping that can only happen for
+  `on*` attributes. Use `ENT_QUOTES | ENT_SUBSTITUTE` and always double quotes; reject `on*` keys from page data instead of special-casing
+  them.
+- The constructor depends on the concrete `TwigDefaultDelegatingEngine` (`AbstractRenderer.php:88`) → depend on `Twig\Environment`.
+- `RendererInterface` has no generics / return documentation for `render()` options; document the options per renderer.
+
+### [ ] I-133 – Tests
+
+**Files:** new `tests/Unit/Navigation/*` (no test covers `lib/Navigation` today)
+
+- Container cache round trip: `hasPage()`, `removePage()`, `addPage()` and an `onlyActiveBranch` menu render after `unserialize()` (B-155).
+- `closureHash()` with captured objects / invalid UTF-8; two `rootCallback`s on the same root (B-156).
+- Active detection below a folder and below a page with parameters, with and without `active` (B-157).
+- Renderers: `tabindex` / `rel` output, breadcrumb with a label-less page, `javascript:` href (B-159); `Url::getHref()` with fragment and
+  `null` URI, regex finder on `null` properties (B-160).
+
+---
+
+## Normalizer
+
+### [ ] I-134 – `NormalizerInterface`: correct doc, typed contract, no name clash with Symfony's serializer
+
+**File:** `lib/Normalizer/NormalizerInterface.php`; `models/DataObject/Traits/SimpleNormalizerTrait.php`
+
+- The doc block calls it a "Marker interface" (`:21`) although it declares two methods. Describe the contract instead: `normalize()` turns
+  the field's runtime value into a plain, JSON-/serialize-safe structure (scalars and arrays, no objects), `denormalize()` reverses it;
+  `null` in → `null` out; `denormalize(normalize($v))` must equal `$v`.
+- Document `$params` as an array shape (`@param array{object?: ?Concrete, fieldDefinition?: Data, …} $params`) and make all callers pass
+  the same keys (B-161).
+- Generics for static analysis: `@template TValue`, `@template TNormalized`, `@param TValue|null $value` / `@return TNormalized|null`, and the
+  reverse for `denormalize()`.
+- `Pimcore\Normalizer\NormalizerInterface` has the same short name as Symfony's `Symfony\Component\Serializer\Normalizer\NormalizerInterface`
+  (different signature: `normalize(mixed $data, ?string $format, array $context)`). Files that need both must alias one of them, and
+  autocompletion picks the wrong one easily. Consider a clearer name (`FieldValueNormalizerInterface`) with a BC alias in a major release.
+- `#[\Override]` on the 44 implementations (PHP 8.3+) so signature drift is caught; `SimpleNormalizerTrait` could become the documented
+  default for scalar field types.
+- Asset metadata types (`models/Asset/MetaData/ClassDefinition/Data/Data.php`) implement the same interface with different semantics
+  (`Date` calls `normalize()` from its own getter, `Date.php:27`); document the two use cases or split the interface.
+
+### [ ] I-135 – One round-trip contract test for all field types
+
+**Files:** new `tests/Unit/Normalizer/FieldTypeNormalizerContractTest.php`
+
+- A data-provider test over every core field type: `normalize(null)` / `denormalize(null)` return `null`, `denormalize(normalize($sample))`
+  equals `$sample` (per type sample values: dates, ranges, relations as element references, quantity values, geo types, tables, links,
+  image galleries, block / localized / brick containers), and the normalized value contains no objects (`json_encode()` succeeds).
+- A custom field type without the interface inside a block / localized field / classification store must either throw at definition
+  save or round-trip (B-161).
+
+---
+
+## Request
+
+### [ ] I-136 – `DataObjectParam`: immutable attribute, explicit options, documented semantics
+
+**File:** `lib/Request/Attribute/DataObjectParam.php`; `doc/02_MVC/04_Routing_and_URLs/02_Custom_Routes.md:95-103`
+
+- `final readonly class` (attribute instances are value objects; today the promoted properties are public and mutable).
+- `?bool $unpublished = null` is a tri-state where `null` behaves like `false` → `bool $unpublished = false`.
+- `?array $options` ("options for the loader") is never read (CoreBundle B-63). Either remove it with a deprecation, or replace it with
+  explicit, typed options that the resolver passes to `getById()` (`bool $force = false`), so users get an error for unknown keys.
+- `class` → `@param class-string<\Pimcore\Model\DataObject\AbstractObject>|null $class`, so static analysis catches typos (the resolver
+  silently skips unknown classes, CoreBundle B-63).
+- Missing options that Symfony's `#[MapEntity]` offers and users ask for: the route parameter name when it differs from the argument
+  (`id: 'newsId'`), and `nullIfNotFound` for nullable arguments (the current behaviour – 404 for an unknown id even on a nullable argument –
+  is undocumented).
+- Symfony 6.3+ / 7.4: let the attribute extend `Symfony\Component\HttpKernel\Attribute\ValueResolver` (pointing at the Pimcore resolver)
+  so that an annotated argument is always handled by it, independent of resolver priorities (complements CoreBundle I-66).
+- Document the security meaning of `unpublished: true` on the attribute and in `02_Custom_Routes.md`: it serves unpublished objects to
+  **every** visitor, not only to admins (admins already see unpublished objects via `Tool::isElementRequestByAdmin()` without it). The current
+  doc sentence ("working with unpublished objects") does not say so.
+- Tests: covered by the resolver tests planned in CoreBundle TODO-3 (`DataObjectParamResolver` unit tests); add cases for `id` mapping and
+  `nullIfNotFound` once introduced.
+
+---
+
+## Resolver
+
+### [ ] I-137 – `ClassResolver`: typed map, explicit failure mode, injected instead of fetched from the container
+
+**Files:** `lib/Resolver/ClassResolver.php`, `lib/Resolver/ResolverInterface.php`; `bundles/CoreBundle/config/class_resolvers.yaml`;
+callers in `models/Document.php`, `models/Asset.php`, `models/DataObject/ClassDefinition/Data/Extension/Relation.php`
+
+- `final readonly class ClassResolver` with `@param array<string, class-string> $map` (today `protected array $map`, untyped content).
+  The interface doc says "Returns FQCN of class" but the method returns `null` for unknown names – document it (`@return class-string|null`).
+- Add `resolveOrFail(string $name): string` (throws a dedicated exception) next to `resolve()`, and use it where the result is passed to the
+  factory (B-162); keep `resolve()` for callers that want to skip unknown types (relations).
+- Validate the configured classes at container build time (`class_exists()` / subclass of `Document` / `Asset` in
+  `PimcoreCoreExtension::configureClassResolvers()`), so a typo in a project's `type_definitions` fails on `cache:clear` instead of at
+  runtime.
+- The map values keep the leading `\` from the YAML (`\Pimcore\Model\Document\Folder`); `Relation.php:48-50`, `:67-69` add one when it
+  is missing. Normalise once in `flattenConfigurationForClassResolver()` (`ltrim($class, '\\')`).
+- Callers fetch the two resolvers from the container (`Pimcore::getContainer()->get('pimcore.class.resolver.document')`, five places);
+  inject them where the caller is a service, and register typed aliases (`#[Autowire(service: 'pimcore.class.resolver.asset')]`) for
+  project code.
+- Tests: unit test for `resolve()` / `resolveOrFail()`; model test that loads an element whose type is not configured (B-162).
+
+---
+
+## Routing
+
+### [ ] I-138 – PHP 8.4 / Symfony 7.4 cleanup of the routing classes
+
+**Files:** `lib/Routing/**`
+
+- Constructor property promotion with `readonly` (`DocumentRouteHandler`, `DataObjectRouteHandler`, `DynamicRouteProvider`, `RouteReference`,
+  `Element\Router`); `protected` properties in `final` classes → `private` (`DynamicRouteProvider`, `RouteReference`, `DocumentRoute`,
+  `DataObjectRoute`).
+- `RouteReference` → `final readonly class`; `DynamicRequestContext` has setters only used for the site pretty-URL case (`:131`) – make it
+  immutable with a `withPath()` method.
+- Controller strings `'Symfony\Bundle\FrameworkBundle\Controller\RedirectController::urlRedirectAction'` (twice) → `RedirectController::class
+  . '::urlRedirectAction'`.
+- `DocumentRouteHandler` reads the documents config twice in different ways: `Config::getSystemConfiguration('documents')` (`:81`) and
+  `$this->config['documents']` (`:282`) → one injected source; `in_array()` without `strict` (`:325`); `setForceHandleUnpublishedDocuments()`
+  is mutable state on a shared service (maintenance scripts set it and never reset it) → pass it per call or reset it in `finally`.
+- `DynamicRouteProvider::getRoutesByNames(null)` returns `[]` with two TODO comments (`:97-98`); the CMF contract says "all routes" for `null`
+  – document the deliberate deviation (there is no finite list of document routes).
+- `DynamicRouteProvider::getRouteCollectionForRequest()` builds a `DynamicRequestContext` per handler; build it once (site path resolution
+  is the same).
+- `Element\Router` implements `RouterInterface` only to satisfy the chain router; `match()` / `matchRequest()` always throw and
+  `getRouteCollection()` is empty – document it as a generator-only router (CMF `VersatileGeneratorInterface`), and type the `element`
+  parameter (`ElementInterface`) in the docs of `pimcore_element`.
+- `AttributeRouteControllerLoader` exists only for the admin bundle's route names (`pimcore_admin_admin_` → `pimcore_admin_`); keep, but
+  document it and use `str_replace()` with a single pair instead of the replacement map.
+
+### [ ] I-139 – Tests
+
+**Files:** new `tests/Unit/Routing/*` (no test covers `lib/Routing` today)
+
+- Document routes: key with `{2024}` / `{name}` matches and generates (B-163); unpublished link document → no route for anonymous requests
+  (B-164); `getRouteByName('document_<id>')` for an unpublished document throws `RouteNotFoundException` (B-165).
+- Redirect rules: pretty URL, trailing slash (`allow_trailing_slash: no`), case correction, non-GET requests not redirected, query string
+  kept by `urlRedirectAction` for relative targets.
+- `Element\Router::generate()` with a CDN-prefixed asset path including query string and port (B-166); object route generated by name for
+  another site keeps that site.
+
+---
+
+## SearchClient
+
+### [ ] I-140 – `SearchClientInterface`: document the contract, allow an exception hierarchy, avoid name clashes
+
+**Files:** `lib/SearchClient/SearchClientInterface.php`, `lib/SearchClient/Exception/ClientException.php`
+
+- Every method takes and returns an untyped `array $params` that mirrors the raw Elasticsearch / OpenSearch request body. Document the
+  expected shape per method (`@param array{index: string, id?: string|int, body?: array<string, mixed>} $params`, `@return array<string, mixed>`),
+  or at least link to the corresponding client API, so implementations for both engines behave the same.
+- `ClientException` is `final` and has no structure: callers cannot tell "index not found" from "conflict" or "connection failed" without
+  parsing messages. Make it non-final (or add `NotFoundException`, `ConflictException`, `ConnectionException` subclasses) and carry the HTTP
+  status / engine error type.
+- `count(array $params): array` has the same name as `Countable::count(): int`; a class implementing both interfaces is impossible. Prefer
+  `countDocuments()` in a future major (keep `count()` deprecated).
+- Inconsistent defaults: `refreshIndex()` / `flushIndex()` accept `$params = []`, all others require it; `exists*()` return `bool` while the
+  rest return the raw response – document that `exists*()` must not throw for "not found".
+- Missing operations used by typical reindex flows are only reachable through `updateIndexAliases()` (put/remove alias) and `reIndex()`; document
+  the alias-swap pattern or add `putIndexAlias()`.
+- The interface is public API without a stability marker: adding methods breaks every external implementation. Mark it `@api` and add new
+  operations via separate, optional interfaces (or default methods in an abstract base class).
+- Tests: none possible here without an implementation; provide a shared contract test (abstract PHPUnit test case) that the client packages
+  can extend.
+
+---
+
+## Security
+
+### [ ] I-141 – Modernise the security layer for Symfony 7.4 / PHP 8.4
+
+**Files:** `lib/Security/**`
+
+- Stateless hashers: replace the "one hasher per user" design (`setUser()` / `getUser()`, `UserAwarePasswordHasherFactory`) with a hasher that
+  receives everything it needs through `hash()` / `verify()` (B-167). Remove the legacy encoder API (`hashPassword()`, `isPasswordValid()`,
+  `$updateHash` flag) from `PasswordFieldHasher` and stop extending `PlaintextPasswordHasher` (B-168).
+- Mark plaintext password parameters with `#[\SensitiveParameter]` (PHP 8.2+), as Symfony does, so they do not appear in stack traces:
+  `PasswordFieldHasher::hashPassword()` / `isPasswordValid()` / `verify()`, `PimcoreUserPasswordHasher::hash()` / `verify()`.
+- Constructor property promotion with `readonly` (`UserLoader`, `TokenStorageUserResolver`, `User`, `ObjectUserProvider`, `AbstractHasherFactory`);
+  `final` where nothing extends; `call_user_func_array([$this->className, $getter], …)` → `$this->className::$getter(…)`.
+- `UserChecker` extends `InMemoryUserChecker` (meant for in-memory users) → implement `UserCheckerInterface` directly.
+- `User::getRoles()` loads every role with `Role::getById()` on each call (`:46-50`); it is called several times per request by the security
+  component → compute once per request / cache on the proxy. `eraseCredentials()` (deprecated in Symfony 7.3, marked `#[\Deprecated]`) with two
+  TODO comments → remove the TODOs.
+- Duplicate interfaces: `PasswordHasherFactoryAwareUserInterface` is identical to `PasswordHasherFactoryAwareInterface` and unused → deprecate
+  and remove.
+- `SecurityHelper` (static `htmlspecialchars()` helpers) is `@internal` but escaping is the template engine's job; check the callers and move
+  them to Twig escaping or `Symfony\Component\HtmlSanitizer`.
+- `AbstractHasherFactory::$arguments` is typed `mixed` with a `@var array` doc → `array`.
+
+### [ ] I-142 – Tests
+
+**Files:** new `tests/Unit/Security/*` (no test covers `lib/Security` today)
+
+- `UserLoader` reset between two requests through one kernel (C-11).
+- Hasher: password change between two verifications in one process; re-hash does not save a stale object; two classes with the same
+  identifier (B-167); `hash()` never returns the plaintext, long plaintext rejected (B-168).
+- `ObjectUserProvider`: deleted / unpublished user on refresh, subclass support, duplicate usernames (B-169).
+
+---
+
+## Serializer
+
+### [ ] I-143 – Pimcore serializer: named service instead of an empty subclass, cacheable normalizer support
+
+**Files:** `lib/Serializer/Serializer.php`, `lib/Serializer/Normalizer/ReferenceLoopNormalizer.php`; `bundles/CoreBundle/config/serializer.yaml`
+
+- `Pimcore\Serializer\Serializer` is an empty subclass of Symfony's `Serializer` that only exists to get a separate autowiring type. Symfony 7.4
+  offers named serializers (`framework.serializer.named_serializers`, 7.2+) and `#[Autowire(service: 'pimcore.serializer')]` / `#[Target]`; a
+  named `pimcore` serializer with its own normalizers would remove the subclass, the custom compiler pass and the `'@?'` placeholders.
+- `getSupportedTypes()` returns `['*' => false]` (not cacheable), although `supportsNormalization()` only depends on the format → `['*' => true]`
+  lets Symfony cache the decision (performance; Symfony docs: `true` = depends on type and format only).
+- `supportsNormalization()` accepts every value for JSON, so the normalizer also runs for scalars and arrays; `final` class; remove the identity
+  `array_map()`.
+- Document what the Pimcore serializer is for (admin-style JSON with loop protection) and that models need `JsonSerializable` / normalizers to be
+  serialized with their data (B-171).
+- Tests: none exist for `lib/Serializer` – add cases for nested cycles, `JsonSerializable` returning a cycle, protected properties and an asset
+  with pending stream data (B-171).
