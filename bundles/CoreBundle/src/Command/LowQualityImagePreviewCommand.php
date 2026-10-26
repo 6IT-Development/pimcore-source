@@ -24,7 +24,6 @@ use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
 use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -74,7 +73,7 @@ class LowQualityImagePreviewCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if ($input->hasOption('generator')) {
+        if (null !== $input->getOption('generator')) {
             trigger_deprecation('pimcore/pimcore', '11.2.0', 'Using the "generator" option is deprecated and will be removed in Pimcore 12.');
         }
 
@@ -107,23 +106,44 @@ class LowQualityImagePreviewCommand extends AbstractCommand
 
         $list = new Asset\Listing();
         $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
-        $progressBar = new ProgressBar($this->output, $list->getTotalCount());
+        $progressBar = $this->io->createProgressBar($list->getTotalCount());
+
+        $generated = 0;
+        $errors = 0;
 
         /** @var Asset\Image $image */
         foreach ($this->iterateAssets($conditions, $conditionVariables) as $image) {
-            $progressBar->advance();
             if ($force || !$image->getLowQualityPreviewDataUri()) {
                 try {
-                    $this->output->writeln('generating low-quality preview for image: ' . $image->getRealFullPath() . ' | ' . $image->getId());
+                    if ($this->output->isVerbose()) {
+                        // clear the bar before writing, otherwise the line is printed over it
+                        $progressBar->clear();
+                        $this->output->writeln('generating low-quality preview for image: ' . $image->getRealFullPath() . ' | ' . $image->getId());
+                        $progressBar->display();
+                    }
                     $image->generateLowQualityPreview();
+                    $generated++;
                 } catch (Exception $e) {
-                    $this->output->writeln('<error>' . $e->getMessage() . '</error>');
+                    $errors++;
+                    $progressBar->clear();
+                    $this->writeError($image->getRealFullPath() . ' | ' . $image->getId() . ': ' . $e->getMessage());
+                    $progressBar->display();
                 }
             }
+            $progressBar->advance();
         }
 
         $progressBar->finish();
+        $this->io->newLine(2);
 
-        return 0;
+        if ($errors) {
+            $this->io->error(sprintf('Generated %d low-quality previews, %d failed.', $generated, $errors));
+
+            return self::FAILURE;
+        }
+
+        $this->io->success(sprintf('Generated %d low-quality previews.', $generated));
+
+        return self::SUCCESS;
     }
 }

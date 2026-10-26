@@ -368,7 +368,7 @@ error summary.
 
 ---
 
-## [ ] B-22 – `LowQualityImagePreviewCommand`: deprecation always triggered, output corrupts the progress bar
+## [x] B-22 – `LowQualityImagePreviewCommand`: deprecation always triggered, output corrupts the progress bar
 
 **File:** `src/Command/LowQualityImagePreviewCommand.php:73-75,107-128`
 
