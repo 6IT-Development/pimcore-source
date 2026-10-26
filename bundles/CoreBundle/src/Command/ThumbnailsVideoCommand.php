@@ -41,6 +41,10 @@ class ThumbnailsVideoCommand extends AbstractCommand
 {
     use Parallelization;
 
+    private const DEFAULT_MAX_WAIT = 1800;
+
+    private const MAX_POLL_INTERVAL = 30;
+
     protected function configure(): void
     {
         parent::configure();
@@ -63,11 +67,30 @@ class ThumbnailsVideoCommand extends AbstractCommand
                 's',
                 InputOption::VALUE_NONE,
                 'create system thumbnails (used for tree-preview, ...)'
+            )->addOption(
+                'max-wait',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'maximum time in seconds to wait for a single thumbnail to be finished',
+                (string)self::DEFAULT_MAX_WAIT
             );
+    }
+
+    private function getMaxWait(InputInterface $input): int
+    {
+        $maxWait = (string)$input->getOption('max-wait');
+        if (!ctype_digit($maxWait) || (int)$maxWait < 1) {
+            throw new InvalidArgumentException('--max-wait must be a positive number of seconds, "' . $maxWait . '" given.');
+        }
+
+        return (int)$maxWait;
     }
 
     protected function fetchItems(InputInterface $input, OutputInterface $output): array
     {
+        // validate early in the main process instead of failing in every child process
+        $this->getMaxWait($input);
+
         $list = new Asset\Listing();
 
         $conditionVariables = [];
@@ -111,9 +134,21 @@ class ThumbnailsVideoCommand extends AbstractCommand
 
     protected function runSingleCommand(string $item, InputInterface $input, OutputInterface $output): void
     {
-        // disable versioning
+        // not in runBeforeFirstCommand(): that only runs in the main process, not in the child processes
+        $versioningEnabled = Version::isEnabled();
         Version::disable();
 
+        try {
+            $this->generateThumbnails($item, $input, $output);
+        } finally {
+            if ($versioningEnabled) {
+                Version::enable();
+            }
+        }
+    }
+
+    private function generateThumbnails(string $item, InputInterface $input, OutputInterface $output): void
+    {
         [$assetId, $thumbnailConfigName] = explode('~~~', $item, 2);
 
         $video = Asset\Video::getById((int)$assetId);
@@ -123,13 +158,18 @@ class ThumbnailsVideoCommand extends AbstractCommand
             return;
         }
 
-        $thumbnail = Asset\Video\Thumbnail\Config::getByName($thumbnailConfigName);
+        $maxWait = $this->getMaxWait($input);
 
-        if ($output->isVerbose()) {
-            $this->output->writeln(' generating thumbnail for video: ' . $video->getRealFullPath() . ' | ' . $video->getId() . ' | Thumbnail: ' . $thumbnailConfigName . ' : ' . formatBytes(memory_get_usage()));
+        $thumbnail = Asset\Video\Thumbnail\Config::getByName($thumbnailConfigName);
+        if (!$thumbnail) {
+            $this->writeError('Video thumbnail config "' . $thumbnailConfigName . '" not found. Has it been deleted?');
+        } else {
+            if ($output->isVerbose()) {
+                $this->output->writeln(' generating thumbnail for video: ' . $video->getRealFullPath() . ' | ' . $video->getId() . ' | Thumbnail: ' . $thumbnailConfigName . ' : ' . formatBytes(memory_get_usage()));
+            }
+            $video->getThumbnail($thumbnail);
+            $this->waitTillFinished($video->getId(), $thumbnail, $maxWait);
         }
-        $video->getThumbnail($thumbnail);
-        $this->waitTillFinished($video->getId(), $thumbnail);
 
         if ($input->getOption('system')) {
             if ($output->isVerbose()) {
@@ -137,56 +177,68 @@ class ThumbnailsVideoCommand extends AbstractCommand
             }
             $thumbnail = Asset\Video\Thumbnail\Config::getPreviewConfig();
             $video->getThumbnail($thumbnail);
-            $this->waitTillFinished($video->getId(), $thumbnail);
+            $this->waitTillFinished($video->getId(), $thumbnail, $maxWait);
         }
     }
 
-    protected function waitTillFinished(int $videoId, string|Asset\Video\Thumbnail\Config $thumbnail): void
+    /**
+     * Polls the thumbnail status with exponential backoff (1s, 2s, 4s, ... up to MAX_POLL_INTERVAL) until it is no
+     * longer "inprogress" or $maxWait seconds have passed.
+     */
+    protected function waitTillFinished(int $videoId, string|Asset\Video\Thumbnail\Config $thumbnail, int $maxWait = self::DEFAULT_MAX_WAIT): void
     {
-        $finished = false;
+        $thumbnailName = is_string($thumbnail) ? $thumbnail : $thumbnail->getName();
+        $deadline = time() + $maxWait;
+        $interval = 1;
 
-        // initial delay
-        $video = Asset\Video::getById($videoId);
-
-        if (!$video instanceof Asset\Video) {
-            $message = 'video [' . $videoId . '] could not be found. Skipping ...';
-            Logger::error($message);
-
-            return;
-        }
-
-        $thumb = $video->getThumbnail($thumbnail);
-        if ($thumb !== null && $thumb['status'] !== 'finished') {
-            sleep(20);
-        }
-
-        while (!$finished) {
+        while (true) {
             Pimcore::collectGarbage();
 
-            $video = Asset\Video::getById($videoId);
+            // force: the status is written by the messenger worker, the cached asset would never change
+            $video = Asset\Video::getById($videoId, ['force' => true]);
+            if (!$video instanceof Asset\Video) {
+                $message = 'video [' . $videoId . '] could not be found. Skipping ...';
+                Logger::error($message);
+                $this->writeError($message);
+
+                return;
+            }
 
             $thumb = $video->getThumbnail($thumbnail);
 
             if ($thumb === null) {
-                $message = 'video [' . $videoId . '] with thumbnail [' . (is_string($thumbnail) ? $thumbnail : $thumbnail->getName()) . '] is invalid. Skipping ...';
+                $message = 'video [' . $videoId . '] with thumbnail [' . $thumbnailName . '] is invalid. Skipping ...';
                 Logger::error($message);
                 $this->output->writeln($message);
 
-                break;
+                return;
             }
 
             if ($thumb['status'] === 'finished') {
-                $finished = true;
-                Logger::debug('video [' . $video->getId() . '] FINISHED');
-            } elseif ($thumb['status'] === 'inprogress') {
-                Logger::debug('video [' . $video->getId() . '] in progress ...');
-                sleep(5);
-            } else {
-                // error
-                Logger::debug('video [' . $video->getId() . "] has status: ['" . $thumb['status'] . "'] -> skipping ...");
+                Logger::debug('video [' . $videoId . '] FINISHED');
 
-                break;
+                return;
             }
+
+            if ($thumb['status'] !== 'inprogress') {
+                // error
+                Logger::debug('video [' . $videoId . "] has status: ['" . $thumb['status'] . "'] -> skipping ...");
+
+                return;
+            }
+
+            $remaining = $deadline - time();
+            if ($remaining <= 0) {
+                $message = 'video [' . $videoId . '] with thumbnail [' . $thumbnailName . '] is still in progress after ' . $maxWait . 's. Is a messenger worker running? Skipping ...';
+                Logger::warning($message);
+                $this->writeError($message);
+
+                return;
+            }
+
+            Logger::debug('video [' . $videoId . '] in progress ...');
+            sleep(min($interval, $remaining));
+            $interval = min($interval * 2, self::MAX_POLL_INTERVAL);
         }
     }
 

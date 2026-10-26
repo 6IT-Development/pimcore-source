@@ -249,7 +249,7 @@ with failure count, and return `FAILURE` if any page failed.
 
 ---
 
-## [ ] B-15 – `ThumbnailsVideoCommand::waitTillFinished()` can hang forever
+## [x] B-15 – `ThumbnailsVideoCommand::waitTillFinished()` can hang forever
 
 **File:** `src/Command/ThumbnailsVideoCommand.php:140-187`
 
