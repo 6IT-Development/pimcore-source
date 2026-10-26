@@ -136,7 +136,7 @@ class ThumbnailsImageCommand extends AbstractCommand
                     $conditionVariables[] = $list->escapeLike($parent->getRealFullPath()) . '/%';
                 } else {
                     // no exit(): it would skip the console TERMINATE event (e.g. --maintenance-mode would stay active)
-                    throw new InvalidArgumentException($input->getOption('parent') . ' is not a valid asset folder ID!');
+                    throw new InvalidArgumentException(trim($parentId) . ' is not a valid asset folder ID!');
                 }
             }
             $conditions[] = '(' . implode(' OR ', $parentConditions) . ')';
@@ -144,6 +144,10 @@ class ThumbnailsImageCommand extends AbstractCommand
 
         if ($lastModifiedSince = $input->getOption('last-modified-since')) {
             $lastModifiedSinceDate = DateTime::createFromFormat(self::DATE_FORMAT, $lastModifiedSince);
+            // getLastErrors() also catches overflowing values like "2024-13-45 25:00:00", which createFromFormat() accepts
+            if (!$lastModifiedSinceDate || DateTime::getLastErrors()) {
+                throw new InvalidArgumentException('--last-modified-since must be a date in the format ' . self::DATE_FORMAT . ', "' . $lastModifiedSince . '" given.');
+            }
             $conditions[] = 'modificationDate >= ?';
             $conditionVariables[] = $lastModifiedSinceDate->getTimestamp();
         }
@@ -169,7 +173,13 @@ class ThumbnailsImageCommand extends AbstractCommand
 
         $allowedThumbs = [];
         if ($input->getOption('thumbnails')) {
-            $allowedThumbs = explode(',', $input->getOption('thumbnails'));
+            $allowedThumbs = array_map('trim', explode(',', $input->getOption('thumbnails')));
+
+            $availableThumbs = array_map(static fn (Image\Thumbnail\Config $config) => $config->getName(), $thumbnailList);
+            $unknownThumbs = array_diff($allowedThumbs, $availableThumbs);
+            if ($unknownThumbs) {
+                $this->writeComment('Unknown thumbnail config(s), skipping: ' . implode(', ', $unknownThumbs));
+            }
         }
 
         $items = [];
@@ -197,6 +207,11 @@ class ThumbnailsImageCommand extends AbstractCommand
         }
 
         $thumbnailsToGenerate = $this->fetchThumbnailConfigs($input, $thumbnailConfigName);
+        if (!$thumbnailsToGenerate) {
+            $this->writeError('Thumbnail config "' . $thumbnailConfigName . '" not found. Has it been deleted or renamed?');
+
+            return;
+        }
 
         if ($input->getOption('force')) {
             $image->clearThumbnail($thumbnailConfigName);
@@ -222,12 +237,15 @@ class ThumbnailsImageCommand extends AbstractCommand
     }
 
     /**
-     * @return Asset\Image\Thumbnail\Config[]
+     * @return Asset\Image\Thumbnail\Config[] empty if the config does not exist (anymore)
      */
     private function fetchThumbnailConfigs(InputInterface $input, string $thumbnailConfigName): array
     {
-        /** @var Image\Thumbnail\Config $thumbnailConfig */
         $thumbnailConfig = Image\Thumbnail\Config::getByName($thumbnailConfigName);
+        if (!$thumbnailConfig) {
+            return [];
+        }
+
         $thumbnailsToGenerate = [$thumbnailConfig];
 
         $medias = array_merge(['default' => 'defaultMedia'], $thumbnailConfig->getMedias() ?: []);

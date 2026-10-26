@@ -268,7 +268,7 @@ instead of a fixed `sleep(20)`, null checks, and `Version::disable()` once in `r
 
 ---
 
-## [ ] B-16 – `ThumbnailsImageCommand`: invalid `--last-modified-since` and missing configs cause fatal errors
+## [x] B-16 – `ThumbnailsImageCommand`: invalid `--last-modified-since` and missing configs cause fatal errors
 
 **File:** `src/Command/ThumbnailsImageCommand.php:141-145,134,226-229`
 
