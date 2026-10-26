@@ -22,7 +22,9 @@ use Pimcore\Logger;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\CustomLayout;
 use Pimcore\Model\ModelInterface;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * @internal
@@ -39,6 +41,27 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
             InputOption::VALUE_REQUIRED,
             'Object class name which is used for custom definition'
         );
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $className = $input->getOption('class-name');
+        if ($className) {
+            if (!DataObject\ClassDefinition::getByName($className)) {
+                $this->writeError(sprintf('Class "%s" does not exist', $className));
+
+                return self::INVALID;
+            }
+        } else {
+            $name = $this->getDefinitionName(basename($input->getArgument('path')));
+            if (null !== $name && null === $this->loadDefinition($name)) {
+                $this->writeError('--class-name is required to create a new custom layout');
+
+                return self::INVALID;
+            }
+        }
+
+        return parent::execute($input, $output);
     }
 
     /**

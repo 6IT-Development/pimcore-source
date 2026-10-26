@@ -90,6 +90,11 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
             } else {
                 $this->output->writeln(sprintf('Creating %s', $logName));
                 $definition = $this->createDefinition($name);
+                if (null === $definition) {
+                    $this->writeError(sprintf('Could not create %s', $logName));
+
+                    return self::INVALID;
+                }
             }
         }
 

@@ -142,7 +142,7 @@ least print `$io->error()` with the exit code.
 
 ---
 
-## [ ] B-08 – Definition import: `createDefinition()` returning `null` causes a `TypeError`
+## [x] B-08 – Definition import: `createDefinition()` returning `null` causes a `TypeError`
 
 **Files:** `src/Command/Definition/Import/AbstractStructureImportCommand.php:85-102`, `CustomLayoutCommand.php:80-96`
 
