@@ -302,7 +302,7 @@ the argument `REQUIRED | IS_ARRAY` (or default to all `pimcore.*.storage.source`
 
 ---
 
-## [ ] B-18 – `EmailLogsCleanupCommand` / `RecyclebinCleanupCommand`: unsafe day parsing, unusable shortcut
+## [x] B-18 – `EmailLogsCleanupCommand` / `RecyclebinCleanupCommand`: unsafe day parsing, unusable shortcut
 
 **Files:** `src/Command/EmailLogsCleanupCommand.php:42-71`, `src/Command/RecyclebinCleanupCommand.php:41-77`
 

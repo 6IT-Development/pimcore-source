@@ -36,6 +36,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class RecyclebinCleanupCommand extends AbstractCommand
 {
+    private const BATCH_SIZE = 500;
+
     protected function configure(): void
     {
         $this
@@ -49,31 +51,52 @@ class RecyclebinCleanupCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $daysAgo = $input->getOption('older-than-days');
+        $daysAgo = filter_var(
+            $input->getOption('older-than-days'),
+            FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 1]]
+        );
 
-        if (!isset($daysAgo)) {
-            throw new Exception('Missing option "--older-than-days"');
-        } elseif (!is_numeric($daysAgo)) {
-            throw new Exception('The "--older-than-days" option value should be numeric');
+        if ($daysAgo === false) {
+            $this->writeError('The "--older-than-days" option is required and must be a positive integer');
+
+            return self::INVALID;
         }
 
         $date = new DateTime("-$daysAgo days");
         $dateTimestamp = $date->getTimestamp();
-        $recyclebinItems = new Recyclebin\Item\Listing();
-        $recyclebinItems->setCondition("date < $dateTimestamp");
 
-        foreach ($recyclebinItems->load() as $recyclebinItem) {
-            try {
-                $recyclebinItem->delete();
-            } catch (Exception $e) {
-                $msg = "Could not delete {$recyclebinItem->getPath()} ({$recyclebinItem->getId()}) because of: {$e->getMessage()}";
-                Logger::error($msg);
-                $this->output->writeln($msg);
+        // delete in batches, keyed by ID, so big tables do not have to be loaded into memory at once
+        // and items that failed to delete are not fetched again
+        $lastId = 0;
+        do {
+            $recyclebinItems = new Recyclebin\Item\Listing();
+            $recyclebinItems->setCondition('date < ? AND id > ?', [$dateTimestamp, $lastId]);
+            $recyclebinItems->setOrderKey('id');
+            $recyclebinItems->setOrder('ASC');
+            $recyclebinItems->setLimit(self::BATCH_SIZE);
+            $batch = $recyclebinItems->load();
+
+            foreach ($batch as $recyclebinItem) {
+                // the row may have been deleted since the IDs were fetched
+                if (!$recyclebinItem) {
+                    continue;
+                }
+
+                $lastId = $recyclebinItem->getId();
+
+                try {
+                    $recyclebinItem->delete();
+                } catch (Exception $e) {
+                    $msg = "Could not delete {$recyclebinItem->getPath()} ({$recyclebinItem->getId()}) because of: {$e->getMessage()}";
+                    Logger::error($msg);
+                    $this->output->writeln($msg);
+                }
             }
-        }
+        } while (count($batch) === self::BATCH_SIZE);
 
         $this->output->writeln('Recyclebin cleanup done!');
 
-        return 0;
+        return self::SUCCESS;
     }
 }

@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use DateTime;
-use Exception;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\Tool\Email;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -36,12 +35,14 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class EmailLogsCleanupCommand extends AbstractCommand
 {
+    private const BATCH_SIZE = 500;
+
     protected function configure(): void
     {
         $this
             ->addOption(
                 'older-than-days',
-                'days',
+                'd',
                 InputOption::VALUE_REQUIRED,
                 'Older than X Days to delete email logs'
             );
@@ -49,25 +50,44 @@ class EmailLogsCleanupCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $daysAgo = $input->getOption('older-than-days');
+        $daysAgo = filter_var(
+            $input->getOption('older-than-days'),
+            FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 1]]
+        );
 
-        if (!isset($daysAgo)) {
-            throw new Exception('Missing option "--older-than-days"');
-        } elseif (!is_numeric($daysAgo)) {
-            throw new Exception('The "--older-than-days" option value should be numeric');
+        if ($daysAgo === false) {
+            $this->writeError('The "--older-than-days" option is required and must be a positive integer');
+
+            return self::INVALID;
         }
 
         $date = new DateTime("-$daysAgo days");
         $dateTimestamp = $date->getTimestamp();
-        $emailLogs = new Email\Log\Listing();
-        $emailLogs->setCondition("sentDate < $dateTimestamp");
 
-        foreach ($emailLogs->load() as $emailLog) {
-            $emailLog->delete();
-        }
+        // delete in batches, keyed by ID, so big tables do not have to be loaded into memory at once
+        $lastId = 0;
+        do {
+            $emailLogs = new Email\Log\Listing();
+            $emailLogs->setCondition('sentDate < ? AND id > ?', [$dateTimestamp, $lastId]);
+            $emailLogs->setOrderKey('id');
+            $emailLogs->setOrder('ASC');
+            $emailLogs->setLimit(self::BATCH_SIZE);
+            $batch = $emailLogs->load();
+
+            foreach ($batch as $emailLog) {
+                // the row may have been deleted since the IDs were fetched
+                if (!$emailLog) {
+                    continue;
+                }
+
+                $lastId = $emailLog->getId();
+                $emailLog->delete();
+            }
+        } while (count($batch) === self::BATCH_SIZE);
 
         $this->output->writeln('Email logs cleanup done!');
 
-        return 0;
+        return self::SUCCESS;
     }
 }
