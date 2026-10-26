@@ -219,7 +219,7 @@ valid language list is empty, ask for confirmation (see I-16).
 
 ---
 
-## [ ] B-13 – `GeneratePagePreviews`: parent filter matches sibling trees, errors give exit 0
+## [x] B-13 – `GeneratePagePreviews`: parent filter matches sibling trees, errors give exit 0
 
 **File:** `src/Command/Document/GeneratePagePreviews.php:66-93,111-122`
 

@@ -18,8 +18,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command\Document;
 
 use Exception;
+use Pimcore;
 use Pimcore\Console\AbstractCommand;
-use Pimcore\Db;
+use Pimcore\Db\Helper;
 use Pimcore\Model\Document;
 use Pimcore\Tool;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -60,10 +61,15 @@ class GeneratePagePreviews extends AbstractCommand
             );
     }
 
-    protected function fetchItems(InputInterface $input): Document\Listing
+    /**
+     * Iterates the pages matching the options in batches, ordered by ID (keyset pagination, see AssetBatchTrait).
+     *
+     * @return iterable<Document\Page>
+     */
+    protected function fetchItems(InputInterface $input, int $batchSize = 10): iterable
     {
-        $docs = new Document\Listing();
-        $db = Db::get();
+        $conditions = ["type = 'page'"];
+        $conditionVariables = [];
 
         $parentIdOrPath = $input->getOption('parent');
         if ($parentIdOrPath) {
@@ -73,7 +79,10 @@ class GeneratePagePreviews extends AbstractCommand
                 $parent = Document::getByPath($parentIdOrPath);
             }
             if ($parent instanceof Document) {
-                $conditions[] = '`path` LIKE ' . $db->quote($parent->getRealFullPath() . '%');
+                // trailing "/" so that e.g. /en does not match the sibling trees /en-gb and /enterprise
+                $conditions[] = '(`path` LIKE ? OR id = ?)';
+                $conditionVariables[] = Helper::escapeLike(rtrim($parent->getRealFullPath(), '/')) . '/%';
+                $conditionVariables[] = $parent->getId();
             } else {
                 // no exit(): it would skip the console TERMINATE event (e.g. --maintenance-mode would stay active)
                 throw new InvalidArgumentException($parentIdOrPath . ' is not a valid id or path!');
@@ -82,17 +91,30 @@ class GeneratePagePreviews extends AbstractCommand
 
         $regex = $input->getOption('exclude-patterns');
         if ($regex) {
-            $conditions[] = '`path` NOT REGEXP ' . $db->quote($regex);
+            $conditions[] = '`path` NOT REGEXP ?';
+            $conditionVariables[] = $regex;
         }
 
-        $filter = "type = 'page'";
-        if (isset($conditions)) {
-            $filter = $filter . ' AND ' . implode(' AND ', $conditions);
-        }
-        $docs->setCondition($filter);
-        $docs->load();
+        $conditions[] = 'id > ?';
+        $condition = implode(' AND ', $conditions);
+        $lastId = 0;
 
-        return $docs;
+        do {
+            $docs = new Document\Listing();
+            $docs->setCondition($condition, [...$conditionVariables, $lastId]);
+            $docs->setOrderKey('id');
+            $docs->setOrder('ASC');
+            $docs->setLimit($batchSize);
+            $pages = $docs->load();
+
+            foreach ($pages as $page) {
+                $lastId = $page->getId();
+
+                yield $page;
+            }
+
+            Pimcore::collectGarbage();
+        } while (count($pages) === $batchSize);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -108,18 +130,22 @@ class GeneratePagePreviews extends AbstractCommand
             return 1;
         }
 
-        $docs = $this->fetchItems($input);
-        foreach ($docs as $doc) {
-            /**
-             * @var Document\Page $doc
-             */
+        $failed = 0;
+        foreach ($this->fetchItems($input) as $doc) {
             try {
                 Document\Service::generatePagePreview($doc->getId(), null, $hostUrl);
             } catch (Exception $e) {
-                $this->io->error($e->getMessage());
+                $failed++;
+                $this->io->error($doc->getRealFullPath() . ' (ID ' . $doc->getId() . '): ' . $e->getMessage());
             }
         }
 
-        return 0;
+        if ($failed > 0) {
+            $this->io->error(sprintf('Failed to generate %d page preview(s).', $failed));
+
+            return self::FAILURE;
+        }
+
+        return self::SUCCESS;
     }
 }
