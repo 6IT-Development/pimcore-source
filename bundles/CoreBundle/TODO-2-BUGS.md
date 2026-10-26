@@ -338,7 +338,7 @@ as the admin UI.
 
 ---
 
-## [ ] B-20 – `RunScriptCommand`: output buffer not cleaned up on exceptions
+## [x] B-20 – `RunScriptCommand`: output buffer not cleaned up on exceptions
 
 **File:** `src/Command/RunScriptCommand.php:66-73`
 

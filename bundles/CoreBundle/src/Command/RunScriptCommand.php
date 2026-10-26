@@ -62,23 +62,40 @@ class RunScriptCommand extends AbstractCommand
 
         $output->writeln($this->dryRunMessage(sprintf('Running script <info>%s</info>', $script)));
 
-        $scriptOutput = '';
-        if (!$this->isDryRun()) {
-            ob_start();
+        if ($this->isDryRun()) {
+            $output->writeln($this->dryRunMessage('Done'));
 
-            include($script);
-            $scriptOutput = ob_get_contents();
-
-            ob_end_clean();
+            return self::SUCCESS;
         }
 
-        $scriptOutput = trim($scriptOutput);
-        if (!empty($scriptOutput)) {
-            $output->writeln("\n" . $scriptOutput . "\n");
+        $obLevelBeforeScript = ob_get_level();
+        ob_start();
+
+        try {
+            $result = include $script;
+        } finally {
+            // collect the output from buffers the script opened and left open as well
+            $scriptOutput = '';
+            while (ob_get_level() > $obLevelBeforeScript) {
+                $scriptOutput = ob_get_clean() . $scriptOutput;
+            }
+
+            $scriptOutput = trim($scriptOutput);
+            if ($scriptOutput !== '') {
+                $output->writeln("\n" . $scriptOutput . "\n");
+            }
         }
 
-        $output->writeln($this->dryRunMessage('Done'));
+        $output->writeln('Done');
 
-        return 0;
+        // include returns 1 when the script has no return statement, so 1 can't be told apart from success
+        if (false === $result) {
+            return self::FAILURE;
+        }
+        if (is_int($result) && $result !== 1 && $result >= 0 && $result <= 255) {
+            return $result;
+        }
+
+        return self::SUCCESS;
     }
 }
