@@ -21,12 +21,10 @@ use InvalidArgumentException;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\DryRun;
 use Pimcore\Model\ModelInterface;
-use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 /**
  * @internal
@@ -77,10 +75,14 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
         if (null !== $definition) {
             if ($force) {
                 $this->output->writeln(sprintf('%s already exists', $logName));
-            } else {
-                if (!$this->askConfirmation($name)) {
-                    return 0;
-                }
+            } elseif (!$this->input->isInteractive()) {
+                $this->writeError(sprintf('%s already exists, use --force to overwrite it', $logName));
+
+                return self::FAILURE;
+            } elseif (!$this->askConfirmation($name)) {
+                $this->output->writeln(sprintf('Skipping import of %s', $logName));
+
+                return 0;
             }
         } else {
             $this->output->writeln(sprintf('%s was not found', $logName));
@@ -153,18 +155,10 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
      */
     protected function askConfirmation(string $name): bool
     {
-        /** @var QuestionHelper $helper */
-        $helper = $this->getHelper('question');
-        $question = new ConfirmationQuestion(
-            sprintf('(%s) <comment>%s</comment> already exists. Overwrite? [y/N] ', $this->getType(), $name),
+        return $this->io->confirm(
+            sprintf('(%s) <comment>%s</comment> already exists. Overwrite?', $this->getType(), $name),
             false
         );
-
-        if ($helper->ask($this->input, $this->output, $question)) {
-            return true;
-        }
-
-        return false;
     }
 
     /**

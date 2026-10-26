@@ -155,7 +155,7 @@ create a new custom layout"), and return `Command::INVALID`. Validate `--class-n
 
 ---
 
-## [ ] B-09 – Definition import: non-interactive run without `--force` silently skips and returns 0
+## [x] B-09 – Definition import: non-interactive run without `--force` silently skips and returns 0
 
 **File:** `src/Command/Definition/Import/AbstractStructureImportCommand.php:77-84,149-163`
 
