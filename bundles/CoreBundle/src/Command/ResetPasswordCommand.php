@@ -17,17 +17,15 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
-use Exception;
+use InvalidArgumentException;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\User;
 use Pimcore\Tool\Authentication;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\Question;
 
 /**
  * @internal
@@ -39,6 +37,10 @@ use Symfony\Component\Console\Question\Question;
 )]
 class ResetPasswordCommand extends AbstractCommand
 {
+    private const MIN_PASSWORD_LENGTH = 10;
+
+    private const MAX_PASSWORD_LENGTH = 4096;
+
     protected function configure(): void
     {
         $this
@@ -51,7 +53,7 @@ class ResetPasswordCommand extends AbstractCommand
                 'password',
                 'p',
                 InputOption::VALUE_OPTIONAL,
-                'Plaintext password - if not set, script will prompt for the new password (recommended)'
+                'Plaintext password - if not set, script will prompt for the new password (recommended, as passwords passed as option end up in the shell history and the process list)'
             );
     }
 
@@ -67,13 +69,32 @@ class ResetPasswordCommand extends AbstractCommand
 
         if (!$user) {
             $this->writeError('User with name/ID ' . $userArgument . ' could not be found. Exiting');
+
             return self::INVALID;
         }
 
-        if ($input->getOption('password')) {
-            $plainPassword = $input->getOption('password');
+        $plainPassword = $input->getOption('password');
+
+        if (is_string($plainPassword) && $plainPassword !== '') {
+            $this->io->warning('Passing the password as option exposes it in the shell history and the process list. Omit --password to be prompted for it instead.');
+
+            if ($error = $this->validatePassword($plainPassword)) {
+                $this->writeError($error);
+
+                return self::INVALID;
+            }
+        } elseif (!$input->isInteractive()) {
+            $this->writeError('No password given. Pass --password or run the command interactively to be prompted for it.');
+
+            return self::INVALID;
         } else {
-            $plainPassword = $this->askForPassword($input, $output);
+            $plainPassword = $this->askForPassword();
+
+            if ($plainPassword === null) {
+                $this->writeError('The passwords do not match. Password was not changed.');
+
+                return self::FAILURE;
+            }
         }
 
         $password = Authentication::getPasswordHash($user->getName(), $plainPassword);
@@ -82,25 +103,41 @@ class ResetPasswordCommand extends AbstractCommand
 
         $this->output->writeln('Password for user ' . $user->getName() . ' reset successfully.');
 
-        return 0;
+        return self::SUCCESS;
     }
 
-    protected function askForPassword(InputInterface $input, OutputInterface $output): mixed
+    /**
+     * Prompts for the new password twice, returns null if the inputs do not match.
+     */
+    protected function askForPassword(): ?string
     {
-        /** @var QuestionHelper $helper */
-        $helper = $this->getHelper('question');
-
-        $question = new Question('Please enter the new password: ');
-        $question->setValidator(function ($value) {
-            if (empty(trim($value))) {
-                throw new Exception('The password cannot be empty');
+        $password = $this->io->askHidden('Please enter the new password', function (?string $value): string {
+            if ($error = $this->validatePassword((string)$value)) {
+                throw new InvalidArgumentException($error);
             }
 
             return $value;
         });
 
-        $question->setHidden(true);
+        $repeated = $this->io->askHidden('Please repeat the new password', fn (?string $value): string => (string)$value);
 
-        return $helper->ask($input, $output, $question);
+        return hash_equals($password, $repeated) ? $password : null;
+    }
+
+    private function validatePassword(string $password): ?string
+    {
+        if (trim($password) === '') {
+            return 'The password cannot be empty';
+        }
+
+        if (mb_strlen($password) < self::MIN_PASSWORD_LENGTH) {
+            return sprintf('The password must be at least %d characters long', self::MIN_PASSWORD_LENGTH);
+        }
+
+        if (strlen($password) > self::MAX_PASSWORD_LENGTH) {
+            return sprintf('The password must not exceed %d characters', self::MAX_PASSWORD_LENGTH);
+        }
+
+        return null;
     }
 }

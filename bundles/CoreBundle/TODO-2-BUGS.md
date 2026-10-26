@@ -319,7 +319,7 @@ batched deletion (see I-12).
 
 ---
 
-## [ ] B-19 – `ResetPasswordCommand`: crashes in non-interactive mode, password leaks to shell history
+## [x] B-19 – `ResetPasswordCommand`: crashes in non-interactive mode, password leaks to shell history
 
 **File:** `src/Command/ResetPasswordCommand.php:73-105`
 
