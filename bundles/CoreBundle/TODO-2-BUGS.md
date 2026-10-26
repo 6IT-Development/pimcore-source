@@ -185,7 +185,7 @@ message to the console.
 
 ---
 
-## [ ] B-11 – `ClassesDefinitionsBuildCommand`: includes every `*.php` file and does not restore the cache state on errors
+## [x] B-11 – `ClassesDefinitionsBuildCommand`: includes every `*.php` file and does not restore the cache state on errors
 
 **File:** `src/Command/ClassesDefinitionsBuildCommand.php:55-104`
 

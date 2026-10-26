@@ -55,50 +55,61 @@ class ClassesDefinitionsBuildCommand extends AbstractCommand
         $cacheStatus = Cache::isEnabled();
         Cache::disable();
 
-        $objectClassesFolders = array_filter(array_unique(array_map('realpath', [
-            PIMCORE_CLASS_DEFINITION_DIRECTORY,
-            PIMCORE_CUSTOM_CONFIGURATION_CLASS_DEFINITION_DIRECTORY,
-        ])));
+        try {
+            $objectClassesFolders = array_filter(array_unique(array_map('realpath', [
+                PIMCORE_CLASS_DEFINITION_DIRECTORY,
+                PIMCORE_CUSTOM_CONFIGURATION_CLASS_DEFINITION_DIRECTORY,
+            ])));
 
-        $includedFiles = [];
+            $includedFiles = [];
 
-        foreach ($objectClassesFolders as $objectClassesFolder) {
-            $files = glob($objectClassesFolder . '/*.php');
+            foreach ($objectClassesFolders as $objectClassesFolder) {
+                $files = glob($objectClassesFolder . '/definition_*.php') ?: [];
 
-            foreach ($files as $file) {
-                $realFile = realpath($file);
+                foreach ($files as $file) {
+                    $realFile = realpath($file);
 
-                if (isset($includedFiles[$realFile])) {
-                    continue;
+                    if (isset($includedFiles[$realFile])) {
+                        continue;
+                    }
+
+                    $includedFiles[$realFile] = true;
+                    $class = include $file;
+
+                    if (!$class instanceof DataObject\ClassDefinition) {
+                        $output->writeln(sprintf(
+                            '<comment>Skipping %s: it does not return a class definition</comment>',
+                            $file
+                        ));
+
+                        continue;
+                    }
+
+                    $this->classDumper->dumpPHPClasses($class);
                 }
-
-                $includedFiles[$realFile] = true;
-                $class = include $file;
-
-                $this->classDumper->dumpPHPClasses($class);
             }
-        }
 
-        $list = new DataObject\Objectbrick\Definition\Listing();
-        $list = $list->load();
-        foreach ($list as $brickDefinition) {
-            $this->brickClassDumper->dumpPHPClasses($brickDefinition);
-            $this->brickContainerClassDumper->dumpContainerClasses($brickDefinition);
-        }
+            $list = new DataObject\Objectbrick\Definition\Listing();
+            $list = $list->load();
+            foreach ($list as $brickDefinition) {
+                $this->brickClassDumper->dumpPHPClasses($brickDefinition);
+                $this->brickContainerClassDumper->dumpContainerClasses($brickDefinition);
+            }
 
-        $list = new DataObject\Fieldcollection\Definition\Listing();
-        $list = $list->load();
-        foreach ($list as $fcDefinition) {
-            $this->collectionClassDumper->dumpPHPClass($fcDefinition);
-        }
+            $list = new DataObject\Fieldcollection\Definition\Listing();
+            $list = $list->load();
+            foreach ($list as $fcDefinition) {
+                $this->collectionClassDumper->dumpPHPClass($fcDefinition);
+            }
 
-        $selectOptionConfigurations = new DataObject\SelectOptions\Config\Listing();
-        foreach ($selectOptionConfigurations as $selectOptionConfiguration) {
-            $this->selectOptionsEnumDumper->dumpPHPEnum($selectOptionConfiguration);
-        }
-
-        if ($cacheStatus) {
-            Cache::enable();
+            $selectOptionConfigurations = new DataObject\SelectOptions\Config\Listing();
+            foreach ($selectOptionConfigurations as $selectOptionConfiguration) {
+                $this->selectOptionsEnumDumper->dumpPHPEnum($selectOptionConfiguration);
+            }
+        } finally {
+            if ($cacheStatus) {
+                Cache::enable();
+            }
         }
 
         return 0;
