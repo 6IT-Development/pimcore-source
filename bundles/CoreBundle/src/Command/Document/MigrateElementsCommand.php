@@ -17,14 +17,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command\Document;
 
+use Pimcore;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db;
 use Pimcore\Model\Version;
+use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Throwable;
 
 #[AsCommand(
     name: 'pimcore:documents:migrate-elements',
@@ -42,23 +45,53 @@ class MigrateElementsCommand extends AbstractCommand
         }
 
         $db = Db::get();
-        $versionsRaw = $db->fetchAllAssociative("SELECT v.id AS vId, d.id as dId, d.key as `dKey` FROM versions v, documents d WHERE ctype = 'document' AND v.cid = d.`id` AND (d.`type`  = 'snippet' OR d.`type` = 'page')");
+        $versionsRaw = $db->iterateAssociative("SELECT v.id AS vId, d.id as dId, d.key as `dKey` FROM versions v, documents d WHERE ctype = 'document' AND v.cid = d.`id` AND (d.`type`  = 'snippet' OR d.`type` = 'page')");
+
+        $migrated = 0;
+        $failed = 0;
 
         foreach ($versionsRaw as $versionRaw) {
-            $this->processVersionRow($versionRaw);
+            try {
+                $this->processVersionRow($versionRaw);
+                $migrated++;
+            } catch (Throwable $e) {
+                $failed++;
+                $this->writeError(sprintf('version %d, document id: %d: %s', $versionRaw['vId'], $versionRaw['dId'], $e->getMessage()));
+            }
+
+            if (($migrated + $failed) % 100 === 0) {
+                Pimcore::collectGarbage();
+            }
         }
 
-        return 0;
+        $this->io->newLine();
+
+        if ($failed) {
+            $this->io->error(sprintf('Migrated %d versions, %d failed.', $migrated, $failed));
+
+            return self::FAILURE;
+        }
+
+        $this->io->success(sprintf('Migrated %d versions.', $migrated));
+
+        return self::SUCCESS;
     }
 
     private function processVersionRow(array $row): void
     {
-        $vId = $row['vId'];
+        $vId = (int) $row['vId'];
         $documentId = $row['dId'];
         $dKey = $row['dKey'];
         $this->output->writeln(sprintf('processing version %d, document id: %d, document key: %s', $vId, $documentId, $dKey));
         $version = Version::getById($vId);
-        $version->loadData();
+        if (!$version) {
+            throw new RuntimeException('version not found');
+        }
+        // loadData() returns null instead of throwing when the stored data is missing or unreadable;
+        // saving in that case would overwrite the version with empty data
+        if (null === $version->loadData()) {
+            throw new RuntimeException('version data cannot be loaded');
+        }
         $version->save();
         $this->output->writeln(sprintf('saved version %d, document id: %d, document key: %s', $vId, $documentId, $dKey));
     }

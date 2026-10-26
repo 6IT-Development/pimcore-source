@@ -382,7 +382,7 @@ error summary.
 
 ---
 
-## [ ] B-23 – `MigrateElementsCommand`: `null` version crashes, one broken version aborts the run
+## [x] B-23 – `MigrateElementsCommand`: `null` version crashes, one broken version aborts the run
 
 **File:** `src/Command/Document/MigrateElementsCommand.php:44-63`
 
