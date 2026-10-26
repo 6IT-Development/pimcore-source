@@ -97,6 +97,13 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
      */
     protected function loadDefinition(string $name): ?ModelInterface
     {
+        $className = $this->input->getOption('class-name');
+        if ($className) {
+            $class = DataObject\ClassDefinition::getByName($className);
+
+            return $class ? CustomLayout::getByNameAndClassId($name, $class->getId()) : null;
+        }
+
         return CustomLayout::getByName($name);
     }
 
@@ -118,19 +125,29 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
         return null;
     }
 
-    protected function import(ModelInterface $definition, ?string $json = null): bool
+    protected function import(ModelInterface $definition, string $json): bool
     {
         if (!$definition instanceof CustomLayout) {
             return false;
         }
 
         $importData = json_decode($json, true);
+        if (!is_array($importData) || !is_array($importData['layoutDefinitions'] ?? null)) {
+            $this->writeError('Invalid export file: "layoutDefinitions" is missing');
+
+            return false;
+        }
 
         try {
             $layout = DataObject\ClassDefinition\Service::generateLayoutTreeFromArray($importData['layoutDefinitions'], true);
+            if (!$layout instanceof DataObject\ClassDefinition\Layout) {
+                $this->writeError('Invalid export file: "layoutDefinitions" does not describe a layout');
+
+                return false;
+            }
 
             $definition->setLayoutDefinitions($layout);
-            $definition->setDescription($importData['description']);
+            $definition->setDescription((string) ($importData['description'] ?? ''));
             $definition->setUserModification(0);
             $definition->setUserOwner(0);
 
@@ -139,6 +156,7 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
             return true;
         } catch (Exception $e) {
             Logger::error($e->getMessage());
+            $this->writeError($e->getMessage());
         }
 
         return false;

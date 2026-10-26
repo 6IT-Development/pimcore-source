@@ -168,7 +168,7 @@ create a new custom layout"), and return `Command::INVALID`. Validate `--class-n
 
 ---
 
-## [ ] B-10 – `CustomLayoutCommand`: lookup ignores the class, errors are only logged
+## [x] B-10 – `CustomLayoutCommand`: lookup ignores the class, errors are only logged
 
 **File:** `src/Command/Definition/Import/CustomLayoutCommand.php:75-78,98-122`
 

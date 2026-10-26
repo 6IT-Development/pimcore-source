@@ -110,19 +110,12 @@ class CustomLayout extends Model\AbstractModel
      */
     public static function getByNameAndClassId(string $name, string $classId): ?CustomLayout
     {
-        try {
-            $customLayout = new self();
-            $customLayout->getDao()->getByName($name);
+        $list = new CustomLayout\Listing();
+        $list->setFilter(static function (CustomLayout $layout) use ($name, $classId): bool {
+            return $layout->getName() === $name && $layout->getClassId() === $classId;
+        });
 
-            if ($customLayout->getClassId() != $classId) {
-                throw new Model\Exception\NotFoundException('classId does not match');
-            }
-
-            return $customLayout;
-        } catch (Model\Exception\NotFoundException) {
-        }
-
-        return null;
+        return array_values($list->getLayoutDefinitions())[0] ?? null;
     }
 
     public function getFieldDefinition(string $field): Data|Layout|null
