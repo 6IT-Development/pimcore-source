@@ -285,7 +285,7 @@ specific invalid ID, null-check the config, and warn about unknown thumbnail nam
 
 ---
 
-## [ ] B-17 – `Migrate/StorageCommand`: stream handle leak, errors still give exit 0
+## [x] B-17 – `Migrate/StorageCommand`: stream handle leak, errors still give exit 0
 
 **File:** `src/Command/Migrate/StorageCommand.php:79-112`
 

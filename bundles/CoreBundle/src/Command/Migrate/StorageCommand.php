@@ -21,6 +21,7 @@ use Exception;
 use League\Flysystem\StorageAttributes;
 use Pimcore\Console\AbstractCommand;
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
@@ -46,7 +47,7 @@ class StorageCommand extends AbstractCommand
         $this
             ->addArgument(
                 'storage',
-                InputArgument::IS_ARRAY,
+                InputArgument::REQUIRED | InputArgument::IS_ARRAY,
                 'A list of storages to be migrated'
             );
     }
@@ -63,8 +64,10 @@ class StorageCommand extends AbstractCommand
             try {
                 $sourceStorage = $this->locator->get($storageSourceName);
                 $targetStorage = $this->locator->get($storageTargetName);
-            } catch (Exception) {
-                $this->io->warning(sprintf('Skipped migrating storage "%s": please make sure "%s" and "%s" configuration exists.', $storageName, $storageSourceName, $storageTargetName));
+            } catch (NotFoundExceptionInterface) {
+                $message = sprintf('Skipped migrating storage "%s": please make sure "%s" and "%s" configuration exists.', $storageName, $storageSourceName, $storageTargetName);
+                $this->io->warning($message);
+                $errors[] = $message;
 
                 continue;
             }
@@ -81,19 +84,24 @@ class StorageCommand extends AbstractCommand
                 if ($item->isFile()) {
                     $path = $item->path();
 
+                    $stream = null;
+
                     try {
-                        $stream = $sourceStorage->readStream($path);
-
                         if (!$targetStorage->fileExists($path)) {
-                            $targetStorage->writeStream($item->path(), $stream);
+                            $stream = $sourceStorage->readStream($path);
+                            $targetStorage->writeStream($path, $stream);
 
-                            $progressBar->setMessage(sprintf('Migrating %s: %s', $storageName, $item->path()));
+                            $progressBar->setMessage(sprintf('Migrating %s: %s', $storageName, $path));
                         } else {
-                            $progressBar->setMessage(sprintf('Skipping %s: %s', $storageName, $item->path()));
+                            $progressBar->setMessage(sprintf('Skipping %s: %s', $storageName, $path));
                         }
                     } catch (Exception $e) {
-                        $progressBar->setMessage(sprintf('Skipping %s: %s', $storageName, $item->path()));
-                        $errors[] = $e->getMessage();
+                        $progressBar->setMessage(sprintf('Skipping %s: %s', $storageName, $path));
+                        $errors[] = sprintf('%s: %s: %s', $storageName, $path, $e->getMessage());
+                    } finally {
+                        if (is_resource($stream)) {
+                            fclose($stream);
+                        }
                     }
                     $progressBar->advance();
                 }
@@ -102,14 +110,17 @@ class StorageCommand extends AbstractCommand
             $progressBar->finish();
         }
 
-        $this->io->success('Finished Migrating Storage!');
-
         if ($errors) {
-            $this->io->warning('Some errors occoured during migrating certain files:');
-            $this->io->writeLn(implode("\n", $errors));
+            $this->io->newLine();
+            $this->io->error('Some errors occurred while migrating storage:');
+            $this->io->writeln(implode("\n", $errors));
+
+            return self::FAILURE;
         }
 
-        return 0;
+        $this->io->success('Finished Migrating Storage!');
+
+        return self::SUCCESS;
     }
 
     public function getStorageName(string $name, string $type): string
