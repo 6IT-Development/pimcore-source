@@ -36,6 +36,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class MysqlToolsCommand extends AbstractCommand
 {
+    private const MODES = ['optimize', 'warmup'];
+
     protected function configure(): void
     {
         $this
@@ -43,49 +45,68 @@ class MysqlToolsCommand extends AbstractCommand
                 'mode',
                 'm',
                 InputOption::VALUE_REQUIRED,
-                'optimize or warmup'
+                'optimize or warmup',
+                null,
+                self::MODES
             );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $mode = $input->getOption('mode');
+
         // display error message
-        if (!$input->getOption('mode')) {
+        if (!$mode) {
             $this->writeError('Please specify the mode!');
+
+            return self::INVALID;
+        }
+
+        if (!in_array($mode, self::MODES, true)) {
+            $this->writeError(sprintf('Invalid mode "%s", allowed modes are: %s', $mode, implode(', ', self::MODES)));
+
             return self::INVALID;
         }
 
         $db = Db::get();
 
-        if ($input->getOption('mode') == 'optimize') {
-            $tables = $db->fetchAllAssociative('SHOW TABLES');
+        // views are skipped: OPTIMIZE fails on them and COUNT(*) on object views is expensive
+        $tables = $db->fetchFirstColumn("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'");
 
-            foreach ($tables as $table) {
-                $t = current($table);
+        $errors = [];
 
-                try {
-                    Logger::debug('Running: OPTIMIZE TABLE ' . $t);
-                    $db->executeQuery('OPTIMIZE TABLE ' . $t);
-                } catch (Exception $e) {
-                    Logger::error((string)$e);
-                }
-            }
-        } elseif ($input->getOption('mode') == 'warmup') {
-            $tables = $db->fetchAllAssociative('SHOW TABLES');
+        foreach ($this->io->progressIterate($tables) as $table) {
+            $quotedTable = $db->quoteIdentifier($table);
 
-            foreach ($tables as $table) {
-                $t = current($table);
-
-                try {
-                    Logger::debug("Running: SELECT COUNT(*) FROM $t");
-                    $res = $db->fetchOne("SELECT COUNT(*) FROM $t");
+            try {
+                if ($mode === 'optimize') {
+                    Logger::debug('Running: OPTIMIZE TABLE ' . $quotedTable);
+                    // OPTIMIZE TABLE reports problems as result rows instead of throwing
+                    foreach ($db->fetchAllAssociative('OPTIMIZE TABLE ' . $quotedTable) as $row) {
+                        if (strtolower((string) ($row['Msg_type'] ?? '')) === 'error') {
+                            $errors[$table] = (string) $row['Msg_text'];
+                        }
+                    }
+                } else {
+                    Logger::debug('Running: SELECT COUNT(*) FROM ' . $quotedTable);
+                    $res = $db->fetchOne('SELECT COUNT(*) FROM ' . $quotedTable);
                     Logger::debug('Result: ' . $res);
-                } catch (Exception $e) {
-                    Logger::error((string)$e);
                 }
+            } catch (Exception $e) {
+                Logger::error((string) $e);
+                $errors[$table] = $e->getMessage();
             }
         }
 
-        return 0;
+        if ($errors) {
+            $this->io->error(sprintf('%d of %d tables failed:', count($errors), count($tables)));
+            $this->io->table(['Table', 'Error'], array_map(null, array_keys($errors), array_values($errors)));
+
+            return self::FAILURE;
+        }
+
+        $this->io->success(sprintf('Ran %s on %d tables.', $mode, count($tables)));
+
+        return self::SUCCESS;
     }
 }

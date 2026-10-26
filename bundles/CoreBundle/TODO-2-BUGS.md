@@ -351,7 +351,7 @@ int, use it as the exit code.
 
 ---
 
-## [ ] B-21 – `MysqlToolsCommand`: unknown mode is a silent no-op, identifiers unquoted, views included
+## [x] B-21 – `MysqlToolsCommand`: unknown mode is a silent no-op, identifiers unquoted, views included
 
 **File:** `src/Command/MysqlToolsCommand.php:50-90`
 
