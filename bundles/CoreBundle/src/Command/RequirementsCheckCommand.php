@@ -35,22 +35,43 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class RequirementsCheckCommand extends AbstractCommand
 {
+    private const MIN_LEVELS = ['warning', 'error'];
+
     /** @var int[] $levelsToDisplay */
     protected array $levelsToDisplay = [];
 
     protected function configure(): void
     {
         $this
-            ->addOption('min-level', 'l', InputOption::VALUE_OPTIONAL, "Minimum status level to report: 'warning' or 'error'");
+            ->addOption(
+                'min-level',
+                'l',
+                InputOption::VALUE_OPTIONAL,
+                "Minimum status level to report: 'warning' or 'error'",
+                null,
+                self::MIN_LEVELS
+            )
+            ->addOption('strict', null, InputOption::VALUE_NONE, 'Also return a failure exit code if any check reports a warning');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->levelsToDisplay = match ($input->getOption('min-level')) {
+        $minLevel = $input->getOption('min-level');
+
+        $levelsToDisplay = match ($minLevel) {
+            null => [Requirements\Check::STATE_OK, Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR],
             'warning', 'warnings' => [Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR],
             'error', 'errors' => [Requirements\Check::STATE_ERROR],
-            default => [Requirements\Check::STATE_OK, Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR],
+            default => null,
         };
+
+        if ($levelsToDisplay === null) {
+            $this->writeError(sprintf('Invalid min-level "%s", allowed values are: %s', $minLevel, implode(', ', self::MIN_LEVELS)));
+
+            return self::INVALID;
+        }
+
+        $this->levelsToDisplay = $levelsToDisplay;
 
         $allChecks = Requirements::checkAll(Db::get());
 
@@ -59,7 +80,26 @@ class RequirementsCheckCommand extends AbstractCommand
         $this->display($allChecks['checksFS'], 'Filesystem');
         $this->display($allChecks['checksApps'], 'CLI Tools & Applications');
 
-        return 0;
+        $states = [];
+        foreach ($allChecks as $checks) {
+            foreach ($checks as $check) {
+                $states[] = $check->getState();
+            }
+        }
+
+        if (in_array(Requirements\Check::STATE_ERROR, $states, true)) {
+            $this->writeError('Some system requirements are not met.');
+
+            return self::FAILURE;
+        }
+
+        if ($input->getOption('strict') && in_array(Requirements\Check::STATE_WARNING, $states, true)) {
+            $this->writeError('Some system requirements reported warnings (--strict).');
+
+            return self::FAILURE;
+        }
+
+        return self::SUCCESS;
     }
 
     /**

@@ -395,7 +395,7 @@ every n rows.
 
 ---
 
-## [ ] B-24 – `RequirementsCheckCommand` always returns 0
+## [x] B-24 – `RequirementsCheckCommand` always returns 0
 
 **File:** `src/Command/RequirementsCheckCommand.php:47-63`
 
