@@ -234,7 +234,7 @@ should be included). Initialise `$conditions = []`, batch, and return `FAILURE` 
 
 ---
 
-## [ ] B-14 – `GenerateStaticPagesCommand`: `null` page crashes, LIKE wildcards not escaped
+## [x] B-14 – `GenerateStaticPagesCommand`: `null` page crashes, LIKE wildcards not escaped
 
 **File:** `src/Command/GenerateStaticPagesCommand.php:70-101`
 

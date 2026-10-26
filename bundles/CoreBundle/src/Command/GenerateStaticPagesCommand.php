@@ -17,10 +17,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
+use Exception;
 use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db;
+use Pimcore\Db\Helper;
 use Pimcore\Document\StaticPageGenerator;
 use Pimcore\Model\Document;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -67,15 +69,17 @@ class GenerateStaticPagesCommand extends AbstractCommand
                 throw new InvalidArgumentException(sprintf('Document with path %s not found', $path));
             }
 
-            $ids = $db->fetchFirstColumn('SELECT documents.id FROM `documents_page` LEFT JOIN documents ON documents_page.id = documents.id WHERE `staticGeneratorEnabled` = 1  AND (documents.id = :id OR `path` like :path)', [
+            // trailing "/" so that e.g. /en does not match the sibling trees /en-gb and /enterprise
+            $ids = $db->fetchFirstColumn('SELECT documents.id FROM `documents_page` INNER JOIN documents ON documents_page.id = documents.id WHERE `staticGeneratorEnabled` = 1 AND (documents.id = :id OR documents.`path` LIKE :path)', [
                 'id' => $parent->getId(),
-                'path' => $parent->getFullPath() . '/%',
+                'path' => Helper::escapeLike(rtrim($parent->getRealFullPath(), '/')) . '/%',
             ]);
         } else {
             $ids = $db->fetchFirstColumn('SELECT id FROM `documents_page` WHERE `staticGeneratorEnabled` = 1');
         }
 
         $total = count($ids);
+        $errors = [];
 
         if ($total) {
             $progressBar = new ProgressBar($output, $total);
@@ -83,14 +87,23 @@ class GenerateStaticPagesCommand extends AbstractCommand
 
             foreach ($ids as $id) {
                 $page = Document\Page::getById($id);
-                if ($page->getStaticGeneratorEnabled()) {
-                    $progressBar->setMessage(sprintf('Generate for document "%s"', $page->getFullPath()));
-
-                    $this->staticPageGenerator->generate($page, ['is_cli' => true]);
+                if (!$page instanceof Document\Page) {
+                    // orphaned documents_page row or the document is no longer a page
+                    $errors[] = sprintf('Document with ID %d not found or not a page, skipped', $id);
                 } else {
-                    $progressBar->setMessage(sprintf('Skipping for document "%s" cause static generation is disabled', $page->getFullPath()));
+                    try {
+                        if ($page->getStaticGeneratorEnabled()) {
+                            $progressBar->setMessage(sprintf('Generate for document "%s"', $page->getFullPath()));
 
-                    $this->staticPageGenerator->remove($page);
+                            $this->staticPageGenerator->generate($page, ['is_cli' => true]);
+                        } else {
+                            $progressBar->setMessage(sprintf('Skipping for document "%s" cause static generation is disabled', $page->getFullPath()));
+
+                            $this->staticPageGenerator->remove($page);
+                        }
+                    } catch (Exception $e) {
+                        $errors[] = $page->getRealFullPath() . ' (ID ' . $page->getId() . '): ' . $e->getMessage();
+                    }
                 }
 
                 $progressBar->advance();
@@ -103,11 +116,23 @@ class GenerateStaticPagesCommand extends AbstractCommand
             $progressBar->finish();
 
             $output->writeln('');
+
+            // reported after the progress bar so the messages do not get mixed into it
+            foreach ($errors as $error) {
+                $this->io->error($error);
+            }
+
+            if ($errors) {
+                $this->io->error(sprintf('Failed to generate %d static page(s).', count($errors)));
+
+                return self::FAILURE;
+            }
+
             $output->writeln('<info>Finished generating static pages</info>');
         } else {
             $output->writeln('No static generation pages found');
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 }
