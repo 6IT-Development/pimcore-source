@@ -45,7 +45,8 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                 's',
                 InputOption::VALUE_OPTIONAL,
                 'Do not delete specified locale tables (comma separated eg.: en, en_AT)'
-            );
+            )
+            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Delete without asking for confirmation');
 
         $this->configureDryRunOption('Just output the delete localized queries to be executed.');
     }
@@ -55,11 +56,31 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
         $db = Db::get();
         $skipLocales = [];
         if ($input->getOption('skip-locales')) {
-            $skipLocales = explode(',', $input->getOption('skip-locales'));
+            $skipLocales = array_values(array_filter(
+                array_map('trim', explode(',', $input->getOption('skip-locales'))),
+                static fn (string $locale): bool => $locale !== ''
+            ));
+        }
+
+        $validLanguages = Tool::getValidLanguages();
+        if (!$validLanguages) {
+            $this->writeError('No valid languages are configured, aborting to not delete the data of all languages');
+
+            return self::FAILURE;
+        }
+
+        if (!$this->isDryRun() && !$input->getOption('force') && $input->isInteractive()) {
+            $confirmed = $this->io->confirm(sprintf(
+                'This deletes the localized data, views and query tables of all languages except %s. This cannot be undone. Continue?',
+                implode(', ', array_merge($validLanguages, $skipLocales))
+            ), false);
+
+            if (!$confirmed) {
+                return self::SUCCESS;
+            }
         }
 
         $languageList = [];
-        $validLanguages = Tool::getValidLanguages();
         foreach ($validLanguages as $language) {
             $languageList[] = $db->quote($language);
         }
@@ -95,7 +116,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                 $localizedView = current($existingView);
                 $existingLanguage = str_replace('object_localized_' . $classId . '_', '', $localizedView);
 
-                if (!in_arrayi($existingLanguage, $validLanguages)) {
+                if (!in_arrayi($existingLanguage, $skipLocales) && !in_arrayi($existingLanguage, $validLanguages)) {
                     $sqlDropView = 'DROP VIEW IF EXISTS object_localized_' . $classId . '_' . $existingLanguage;
                     $printLine = true;
 
@@ -114,7 +135,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                 $localizedTable = current($existingTable);
                 $existingLanguage = str_replace('object_localized_query_' . $classId . '_', '', $localizedTable);
 
-                if (!in_arrayi($existingLanguage, $validLanguages)) {
+                if (!in_arrayi($existingLanguage, $skipLocales) && !in_arrayi($existingLanguage, $validLanguages)) {
                     $sqlDropTable = 'DROP TABLE IF EXISTS object_localized_query_' . $classId . '_' . $existingLanguage;
                     $printLine = true;
 
@@ -132,6 +153,6 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
             }
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 }

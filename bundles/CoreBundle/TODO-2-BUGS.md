@@ -200,7 +200,7 @@ warning, and `try/finally` for the cache state.
 
 ---
 
-## [ ] B-12 – `DeleteUnusedLocaleDataCommand`: `--skip-locales` is not trimmed and only partly applied
+## [x] B-12 – `DeleteUnusedLocaleDataCommand`: `--skip-locales` is not trimmed and only partly applied
 
 **File:** `src/Command/DeleteUnusedLocaleDataCommand.php:57-59,80,98,117`
 
