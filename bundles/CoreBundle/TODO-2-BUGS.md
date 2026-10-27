@@ -1037,7 +1037,7 @@ clear `LogicException`. De-duplicate the Kernel/repository loaders (I-63).
 
 ---
 
-## [ ] B-56 – Workflow `placeholders` are kept on the `Configuration` instance: order-dependent, leak into other workflows, applied only partly
+## [x] B-56 – Workflow `placeholders` are kept on the `Configuration` instance: order-dependent, leak into other workflows, applied only partly
 
 **File:** `src/DependencyInjection/Configuration.php:37-45, 1320-1338, 1365-1378, 1499-1510`,
 `Config/Processor/PlaceholderProcessor.php:45-60`

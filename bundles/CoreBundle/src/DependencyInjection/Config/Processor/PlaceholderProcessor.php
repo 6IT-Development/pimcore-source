@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Config\Processor;
 
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+
 /**
  * @internal
  */
@@ -52,6 +54,10 @@ class PlaceholderProcessor
         foreach ($value as $key => $val) {
             $key = $this->processValue($key, $placeholders);
             $val = $this->processValue($val, $placeholders);
+
+            if (array_key_exists($key, $merged)) {
+                throw new InvalidConfigurationException(sprintf('Replacing placeholders results in the duplicate key "%s".', $key));
+            }
 
             $merged[$key] = $val;
         }

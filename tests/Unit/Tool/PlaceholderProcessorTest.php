@@ -19,6 +19,7 @@ namespace Pimcore\Tests\Unit\Tool;
 
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Config\Processor\PlaceholderProcessor;
 use Pimcore\Tests\Support\Test\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 class PlaceholderProcessorTest extends TestCase
 {
@@ -149,5 +150,12 @@ class PlaceholderProcessorTest extends TestCase
         ];
 
         $this->assertEquals($expected, $this->processor->mergePlaceholders($input, $placeholders));
+    }
+
+    public function testKeysCollidingAfterReplacementAreRejected(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+
+        $this->processor->mergePlaceholders(['de_AT' => 1, '%locale%' => 2], ['%locale%' => 'de_AT']);
     }
 }

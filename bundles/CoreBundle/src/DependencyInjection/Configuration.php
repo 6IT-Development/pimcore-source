@@ -34,16 +34,6 @@ use const PASSWORD_ARGON2ID;
  */
 final class Configuration implements ConfigurationInterface
 {
-    private PlaceholderProcessor $placeholderProcessor;
-
-    private array $placeholders;
-
-    public function __construct()
-    {
-        $this->placeholderProcessor = new PlaceholderProcessor();
-        $this->placeholders = [];
-    }
-
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('pimcore');
@@ -1318,6 +1308,20 @@ final class Configuration implements ConfigurationInterface
             ->arrayNode('workflows')
             ->useAttributeAsKey('name')
             ->prototype('array')
+            ->validate()
+            ->always()
+            ->then(function (array $workflow) {
+                // runs on the merged workflow, so placeholders apply regardless of key order or config file
+                $placeholders = $workflow['placeholders'] ?? [];
+                if (empty($placeholders)) {
+                    return $workflow;
+                }
+
+                unset($workflow['placeholders']);
+
+                return ['placeholders' => $placeholders] + (new PlaceholderProcessor())->mergePlaceholders($workflow, $placeholders);
+            })
+            ->end()
             ->children()
             ->arrayNode('placeholders')
             ->info('Placeholder values in this workflow configuration (locale: "%%locale%%") will be replaced by the given placeholder value (eg. "de_AT")')
@@ -1329,12 +1333,6 @@ final class Configuration implements ConfigurationInterface
             ->defaultValue([])
             ->beforeNormalization()
             ->castToArray()
-            ->always()
-            ->then(function ($placeholders) {
-                $this->placeholders = $placeholders;
-
-                return $placeholders;
-            })
             ->end()
             ->prototype('scalar')->end()
             ->end()
@@ -1370,9 +1368,6 @@ final class Configuration implements ConfigurationInterface
             ->then(function ($arguments) {
                 if (is_string($arguments)) {
                     $arguments = [$arguments];
-                }
-                if (!empty($this->placeholders)) {
-                    $arguments = $this->placeholderProcessor->mergePlaceholders($arguments, $this->placeholders);
                 }
 
                 return $arguments;
@@ -1497,18 +1492,6 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->end()
             ->end()
-            ->end()
-            ->beforeNormalization()
-            ->always()
-            ->then(function ($places) {
-                if (!empty($this->placeholders)) {
-                    foreach ($places as $name => $place) {
-                        $places[$name] = $this->placeholderProcessor->mergePlaceholders($place, $this->placeholders);
-                    }
-                }
-
-                return $places;
-            })
             ->end()
             ->example([
                 'places' => [
