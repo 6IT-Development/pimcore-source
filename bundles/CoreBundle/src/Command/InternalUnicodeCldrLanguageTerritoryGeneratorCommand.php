@@ -17,10 +17,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
+use LibXMLError;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\File;
 use Pimcore\Localization\LocaleServiceInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -34,6 +36,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class InternalUnicodeCldrLanguageTerritoryGeneratorCommand extends AbstractCommand
 {
+    /**
+     * CLDR release tag the data is taken from, pinned so the generated mapping is reproducible
+     */
+    private const string CLDR_RELEASE = 'release-49';
+
+    private const int DOWNLOAD_TIMEOUT = 30;
+
     public function __construct(private readonly LocaleServiceInterface $localeService)
     {
         parent::__construct();
@@ -41,9 +50,30 @@ class InternalUnicodeCldrLanguageTerritoryGeneratorCommand extends AbstractComma
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $source = 'https://raw.githubusercontent.com/unicode-org/cldr/master/common/supplemental/supplementalData.xml';
-        $data = file_get_contents($source);
-        $xml = simplexml_load_string($data, null, LIBXML_NOCDATA);
+        $source = 'https://raw.githubusercontent.com/unicode-org/cldr/' . self::CLDR_RELEASE . '/common/supplemental/supplementalData.xml';
+        $context = stream_context_create(['http' => ['timeout' => self::DOWNLOAD_TIMEOUT]]);
+        $data = @file_get_contents($source, false, $context);
+        if ($data === false) {
+            throw new RuntimeException('Could not download ' . $source . ': ' . (error_get_last()['message'] ?? 'unknown error'));
+        }
+
+        $previousUseErrors = libxml_use_internal_errors(true);
+
+        try {
+            $xml = simplexml_load_string($data, null, LIBXML_NOCDATA);
+            if ($xml === false) {
+                $errors = array_map(static fn (LibXMLError $error): string => trim($error->message), libxml_get_errors());
+
+                throw new RuntimeException('Could not parse ' . $source . ': ' . implode('; ', $errors));
+            }
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousUseErrors);
+        }
+
+        if (!isset($xml->territoryInfo->territory)) {
+            throw new RuntimeException('No territoryInfo found in ' . $source);
+        }
 
         $languageRawData = [];
 

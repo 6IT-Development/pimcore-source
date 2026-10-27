@@ -66,8 +66,11 @@ class InternalModelDaoMappingGeneratorCommand extends AbstractCommand
 
         ksort($map);
 
-        $mapFile = realpath(__DIR__ . '/../../../../config/dao-classmap.php');
+        // no realpath(): it returns false when the file does not exist yet
+        $mapFile = PIMCORE_PATH . '/config/dao-classmap.php';
         File::putPhpFile($mapFile, to_php_data_file_format($map));
+
+        $this->output->writeln('Updated mappings in ' . $mapFile);
 
         return 0;
     }

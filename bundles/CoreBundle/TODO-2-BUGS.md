@@ -434,7 +434,7 @@ listener.
 
 ---
 
-## [ ] B-27 – Internal generator commands crash on missing file or network error
+## [x] B-27 – Internal generator commands crash on missing file or network error
 
 **Files:** `src/Command/InternalModelDaoMappingGeneratorCommand.php:69-70`,
 `src/Command/InternalUnicodeCldrLanguageTerritoryGeneratorCommand.php:44-46`
