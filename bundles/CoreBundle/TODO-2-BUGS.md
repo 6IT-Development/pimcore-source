@@ -749,7 +749,7 @@ the controller result overrides them instead of throwing. List entries of `vars`
 
 ---
 
-## [ ] B-42 – `WorkflowManagementListener`: `disable()` has no effect
+## [x] B-42 – `WorkflowManagementListener`: `disable()` has no effect
 
 **Files:** `src/EventListener/WorkflowManagementListener.php:41, 65-102, 136-149`, `config/event_listeners.yaml:75-76`
 

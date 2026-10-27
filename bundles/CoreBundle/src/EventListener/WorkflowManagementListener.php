@@ -64,6 +64,10 @@ class WorkflowManagementListener implements EventSubscriberInterface
      */
     public function onElementPostAdd(ElementEventInterface $e): void
     {
+        if (!$this->enabled) {
+            return;
+        }
+
         /** @var Asset|Document|ConcreteObject $element */
         $element = $e->getElement();
 
@@ -88,6 +92,10 @@ class WorkflowManagementListener implements EventSubscriberInterface
      */
     public function onElementPostDelete(ElementEventInterface $e): void
     {
+        if (!$this->enabled) {
+            return;
+        }
+
         /**
          * @var Asset|Document|ConcreteObject $element
          */
