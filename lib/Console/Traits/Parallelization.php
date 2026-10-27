@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Console\Traits;
 
 use Pimcore;
+use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -30,7 +31,19 @@ trait Parallelization
 {
     private ?LockInterface $lock = null;
 
-    use ParallelizationBase;
+    use ParallelizationBase {
+        execute as baseExecute;
+    }
+
+    public function execute(InputInterface $input, OutputInterface $output): int
+    {
+        try {
+            return $this->baseExecute($input, $output);
+        } finally {
+            // runAfterLastCommand() is skipped when fetchItems() or an item throws
+            $this->release();
+        }
+    }
 
     protected function getParallelExecutableFactory(
         callable        $fetchItems,
@@ -50,8 +63,8 @@ trait Parallelization
     protected function runBeforeFirstCommand(InputInterface $input, OutputInterface $output): void
     {
         if (!$this->lock()) {
-            $this->writeError('The command is already running.');
-            exit(1);
+            // no exit(): it would skip the console TERMINATE event (e.g. --maintenance-mode would stay active)
+            throw new RuntimeException('The command is already running.');
         }
     }
 

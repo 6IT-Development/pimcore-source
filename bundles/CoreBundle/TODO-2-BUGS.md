@@ -419,7 +419,7 @@ every n rows.
 
 ---
 
-## [ ] B-26 – `ThumbnailsImageCommand` / `ThumbnailsVideoCommand`: `exit(1)` inside `fetchItems()` after the lock is taken
+## [x] B-26 – `ThumbnailsImageCommand` / `ThumbnailsVideoCommand`: `exit(1)` inside `fetchItems()` after the lock is taken
 
 **Files:** `src/Command/ThumbnailsImageCommand.php:135`, `src/Command/ThumbnailsVideoCommand.php:80`,
 related `lib/Console/Traits/Parallelization.php:37-43`
