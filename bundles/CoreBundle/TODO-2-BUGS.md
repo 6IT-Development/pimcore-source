@@ -1186,7 +1186,7 @@ type (I-70).
 
 ---
 
-## [ ] B-62 – `DataObjectParamResolver` crashes for folder-typed arguments and ignores `AbstractObject`
+## [x] B-62 – `DataObjectParamResolver` crashes for folder-typed arguments and ignores `AbstractObject`
 
 **File:** `src/Request/ParamResolver/DataObjectParamResolver.php:41-69`
 

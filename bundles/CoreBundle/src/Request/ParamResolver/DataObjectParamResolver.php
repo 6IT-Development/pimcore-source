@@ -39,7 +39,7 @@ class DataObjectParamResolver implements ValueResolverInterface
         $options = $argument->getAttributes(DataObjectParam::class, ArgumentMetadata::IS_INSTANCEOF);
 
         $class = $options[0]->class ?? $argument->getType();
-        if (null === $class || !is_subclass_of($class, AbstractObject::class)) {
+        if (null === $class || !is_a($class, AbstractObject::class, true)) {
             return [];
         }
 
@@ -56,12 +56,13 @@ class DataObjectParamResolver implements ValueResolverInterface
             return [null];
         }
 
-        /** @var Concrete|null $object */
         $object = $value instanceof AbstractObject ? $value : $class::getById($value);
         if (!$object) {
             throw new NotFoundHttpException(sprintf('Invalid data object ID given for parameter "%s".', $param));
         } elseif (
-            !$object->isPublished()
+            // only concrete objects can be unpublished, folders are always published
+            $object instanceof Concrete
+            && !$object->isPublished()
             && !Tool::isElementRequestByAdmin($request, $object)
             && (!isset($options[0]) || !$options[0]->unpublished)
         ) {
