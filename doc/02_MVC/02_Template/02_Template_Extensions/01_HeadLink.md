@@ -79,6 +79,6 @@ Added links will be handled by the web link component and injected into the resp
 # config.yaml
 
 framework:
-    web_links:
+    web_link:
         enabled: true
 ```

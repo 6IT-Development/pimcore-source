@@ -23,6 +23,9 @@ framework:
     php_errors:
         log: true
     assets: ~
+    # sends the Link header of pimcore_head_link() / pimcore_head_script() items with the webLink option
+    web_link:
+        enabled: true
     http_method_override: false
     # all locks (thumbnails, update task queue, parallelized commands, ...) must be shared by all processes/nodes
     lock: 'doctrine.dbal.default_connection'

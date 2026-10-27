@@ -1116,7 +1116,7 @@ if the handler really must release it. Otherwise remove the `release()` call.
 
 ---
 
-## [ ] B-59 – `symfony/web-link` is not required: `pimcore_head_link` / `pimcore_head_script` with `webLink` crash
+## [x] B-59 – `symfony/web-link` is not required: `pimcore_head_link` / `pimcore_head_script` with `webLink` crash
 
 **Files:** `config/aliases.yaml:8` (`WebLinkExtension: '@twig.extension.weblink'`),
 `lib/Twig/Extension/Templating/Traits/WebLinksTrait.php:94`, `lib/Twig/Extension/Templating/HeadLink.php:111`,
