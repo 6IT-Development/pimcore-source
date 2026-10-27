@@ -36,6 +36,8 @@ final class ImageAdapterAliasPass implements CompilerPassInterface
             $container->getDefinition(AdapterInterface::class)->setPublic(true)->setShared(false);
         } elseif ($container->hasAlias(AdapterInterface::class)) {
             $container->getAlias(AdapterInterface::class)->setPublic(true);
+            // adapters are stateful: a shared target would hand the same instance to every Image::getInstance() call
+            $container->findDefinition(AdapterInterface::class)->setShared(false);
         } else {
             if (extension_loaded('imagick')) {
                 $alias = new Alias(Imagick::class, true);

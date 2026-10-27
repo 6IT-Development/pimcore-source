@@ -552,7 +552,7 @@ autoloaded bricks are only autowired, not autoconfigured). Resolve the class wit
 
 ---
 
-## [ ] B-33 – `ImageAdapterAliasPass`: a custom adapter configured as an alias stays a shared service
+## [x] B-33 – `ImageAdapterAliasPass`: a custom adapter configured as an alias stays a shared service
 
 **Files:** `src/DependencyInjection/Compiler/ImageAdapterAliasPass.php:35-39`, `lib/Image.php:32`
 
