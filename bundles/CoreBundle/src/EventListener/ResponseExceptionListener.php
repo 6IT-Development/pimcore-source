@@ -35,6 +35,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Throwable;
 
 /**
  * @internal
@@ -86,6 +87,14 @@ class ResponseExceptionListener implements EventSubscriberInterface
             return;
         }
 
+        // A failing fragment (render()/render_esi()) dispatches the exception event as sub-request with the
+        // parent request and discards the response, so an error page would be rendered for nothing. If the
+        // error page layout contains the same fragment, this would even recurse without bound. Exceptions of
+        // other sub-requests (e.g. forwards) bubble up and are handled for the main request.
+        if (!$event->isMainRequest()) {
+            return;
+        }
+
         $request = $event->getRequest();
         $exception = $event->getThrowable();
 
@@ -115,14 +124,19 @@ class ResponseExceptionListener implements EventSubscriberInterface
             $document = Document\Page::getById(1);
         }
 
+        if (!$document instanceof Document\PageSnippet) {
+            // neither the error page nor home is a page, use Symfony error handling
+            return;
+        }
+
         try {
             $response = $this->documentRenderer->render($document, [
                 'exception' => $exception,
                 PimcoreContextListener::ATTRIBUTE_PIMCORE_CONTEXT_FORCE_RESOLVING => true,
             ]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // we are even not able to render the error page, so we send the client a unicorn
-            $response = 'Page not found. 🦄';
+            $response = $statusCode . ' ' . (Response::$statusTexts[$statusCode] ?? 'Error') . '. 🦄';
             $this->logger->emergency('Unable to render error page, exception thrown');
             $this->logger->emergency((string)$e);
         }

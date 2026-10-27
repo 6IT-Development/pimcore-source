@@ -637,7 +637,7 @@ with the shared "is publicly cacheable" helper from C-09.
 
 ---
 
-## [ ] B-37 – `ResponseExceptionListener`: `TypeError` instead of the error page, and handling of sub-request exceptions
+## [x] B-37 – `ResponseExceptionListener`: `TypeError` instead of the error page, and handling of sub-request exceptions
 
 **File:** `src/EventListener/ResponseExceptionListener.php:64-131`, related `lib/Document/Renderer/DocumentRenderer.php:77`
 
