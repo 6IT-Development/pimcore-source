@@ -79,10 +79,11 @@ class PimcoreContextListener implements EventSubscriberInterface, LoggerAwareInt
     /**
      * Do context specific initialization
      *
+     * An unresolved (null) context is initialized like a non-admin context.
      */
-    protected function initializeContext(string $context, Request $request): void
+    protected function initializeContext(?string $context, Request $request): void
     {
-        if ($context == PimcoreContextResolver::CONTEXT_ADMIN) {
+        if ($context === PimcoreContextResolver::CONTEXT_ADMIN) {
             Pimcore::setAdminMode();
             Document::setHideUnpublished(false);
             DataObject::setHideUnpublished(false);

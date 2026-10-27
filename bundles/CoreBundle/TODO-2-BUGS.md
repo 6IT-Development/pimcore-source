@@ -938,7 +938,7 @@ Build the chain matchers once and `break` after the first match.
 
 ---
 
-## [ ] B-53 – `PimcoreContextListener::initializeContext(string)` receives `?string`
+## [x] B-53 – `PimcoreContextListener::initializeContext(string)` receives `?string`
 
 **File:** `src/EventListener/PimcoreContextListener.php:62-75, 83`
 
