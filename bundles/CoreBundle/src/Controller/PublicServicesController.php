@@ -18,10 +18,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Controller;
 
 use Pimcore\Bundle\SeoBundle\Config;
+use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
 use Pimcore\Controller\Controller;
+use Pimcore\Http\Request\Resolver\SiteResolver;
 use Pimcore\Model\Asset;
-use Pimcore\Model\Site;
-use Pimcore\Tool;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,30 +57,21 @@ class PublicServicesController extends Controller
         return $response;
     }
 
-    public function robotsTxtAction(Request $request): Response
+    public function robotsTxtAction(Request $request, SiteResolver $siteResolver): Response
     {
-        // check for site
-        $domain = Tool::getHostname();
-        $site = Site::getByDomain($domain);
+        // the site the routing layer resolved for this request
+        $siteId = $siteResolver->getSite($request)?->getId() ?? 0;
 
+        // the SEO bundle may be installed but not enabled
         $config = [];
-
-        if (class_exists(Config::class)) {
+        if (in_array(PimcoreSeoBundle::class, $this->getParameter('kernel.bundles'), true)) {
             $config = Config::getRobotsConfig();
         }
 
-        $siteId = 0;
-        if ($site instanceof Site) {
-            $siteId = $site->getId();
-        }
+        // check for configured robots.txt in pimcore, an empty one is served as is
+        $content = $config[$siteId] ?? null;
 
-        // check for configured robots.txt in pimcore
-        $content = '';
-        if (array_key_exists($siteId, $config)) {
-            $content = $config[$siteId];
-        }
-
-        if (empty($content)) {
+        if ($content === null) {
             // default behavior, allow robots to index everything
             $content = "User-agent: *\nDisallow:";
         }

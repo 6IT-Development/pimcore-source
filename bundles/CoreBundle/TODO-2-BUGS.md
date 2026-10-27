@@ -1299,7 +1299,7 @@ while (@ob_end_flush()) ;
 
 ---
 
-## [ ] B-67 – `robotsTxtAction` resolves the site differently from the rest of the frontend
+## [x] B-67 – `robotsTxtAction` resolves the site differently from the rest of the frontend
 
 **Files:** `src/Controller/PublicServicesController.php:68-91`, `models/Site.php:109-134`,
 `bundles/SeoBundle/src/Config.php:31-52`
