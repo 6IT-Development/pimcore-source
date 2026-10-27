@@ -119,6 +119,8 @@ services:
             - { name: kernel.event_listener, event: kernel.response, method: stopPropagationCheck, priority: 100 }
 
     Pimcore\Bundle\CoreBundle\EventListener\MaintenancePageListener:
+        arguments:
+            $excludedIps: '%pimcore.maintenance_mode.excluded_ips%'
         calls:
             - [loadTemplateFromResource, ['@@PimcoreCoreBundle/public/misc/maintenance.html']]
 

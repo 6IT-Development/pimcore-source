@@ -71,6 +71,7 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
 
         $container->setParameter('pimcore.maintenance.housekeeping.cleanup_tmp_files_atime_older_than', $config['maintenance']['housekeeping']['cleanup_tmp_files_atime_older_than']);
         $container->setParameter('pimcore.maintenance.housekeeping.cleanup_profiler_files_atime_older_than', $config['maintenance']['housekeeping']['cleanup_profiler_files_atime_older_than']);
+        $container->setParameter('pimcore.maintenance_mode.excluded_ips', $config['maintenance_mode']['excluded_ips']);
 
         $container->setParameter('pimcore.documents.default_controller', $config['documents']['default_controller']);
 

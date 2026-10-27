@@ -20,7 +20,9 @@ namespace Pimcore\Bundle\CoreBundle\EventListener;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\ResponseInjectionTrait;
 use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
+use InvalidArgumentException;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\IpUtils;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -33,11 +35,21 @@ class MaintenancePageListener implements EventSubscriberInterface
 {
     use ResponseInjectionTrait;
 
+    /**
+     * used when no template could be loaded, so the maintenance page is never empty
+     */
+    private const string FALLBACK_TEMPLATE_CODE = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maintenance</title></head>'
+        . '<body><h1>Temporarily down for maintenance</h1><p>Please try again later.</p></body></html>';
+
     protected ?string $templateCode = null;
 
+    /**
+     * @param string[] $excludedIps client IPs or CIDR ranges that never get the maintenance page
+     */
     public function __construct(
         protected KernelInterface                $kernel,
-        protected MaintenanceModeHelperInterface $maintenanceModeHelper
+        protected MaintenanceModeHelperInterface $maintenanceModeHelper,
+        private readonly array                   $excludedIps = ['127.0.0.1', '::1']
     )
     {
     }
@@ -62,17 +74,25 @@ class MaintenancePageListener implements EventSubscriberInterface
 
     public function loadTemplateFromPath(string $path): void
     {
-        $templateFile = PIMCORE_PROJECT_ROOT . $path;
-        if (file_exists($templateFile)) {
-            $this->setTemplateCode(file_get_contents($templateFile));
-        }
+        $this->loadTemplateFromFile(PIMCORE_PROJECT_ROOT . $path);
     }
 
     public function loadTemplateFromResource(string $path): void
     {
-        $templateFile = $this->kernel->locateResource($path);
-        if (file_exists($templateFile)) {
-            $this->setTemplateCode(file_get_contents($templateFile));
+        try {
+            $templateFile = $this->kernel->locateResource($path);
+        } catch (InvalidArgumentException) {
+            // this runs when the listener is created, a missing template must not break every request
+            return;
+        }
+
+        $this->loadTemplateFromFile($templateFile);
+    }
+
+    private function loadTemplateFromFile(string $templateFile): void
+    {
+        if (is_file($templateFile) && ($code = file_get_contents($templateFile)) !== false) {
+            $this->setTemplateCode($code);
         }
     }
 
@@ -85,7 +105,8 @@ class MaintenancePageListener implements EventSubscriberInterface
         $request = $event->getRequest();
 
         $maintenance = false;
-        $requestSessionId = $request->getSession()->getId();
+        // getSession() throws when sessions are disabled (e.g. headless setups)
+        $requestSessionId = $request->hasSession() ? $request->getSession()->getId() : null;
 
         if ($this->maintenanceModeHelper->isActive($requestSessionId)) {
             $maintenance = true;
@@ -106,11 +127,12 @@ class MaintenancePageListener implements EventSubscriberInterface
 
         // do not activate the maintenance for the server itself
         // this is to avoid problems with monitoring agents
-        $serverIps = ['127.0.0.1'];
-
-        if ($maintenance && !in_array($request->getClientIp(), $serverIps)) {
-            $response = new Response($this->getTemplateCode(), 503);
-            $event->setResponse($response);
+        $clientIp = $request->getClientIp();
+        if (!$maintenance || ($clientIp !== null && IpUtils::checkIp($clientIp, $this->excludedIps))) {
+            return;
         }
+
+        $response = new Response($this->getTemplateCode() ?: self::FALLBACK_TEMPLATE_CODE, Response::HTTP_SERVICE_UNAVAILABLE);
+        $event->setResponse($response);
     }
 }

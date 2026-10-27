@@ -113,6 +113,7 @@ final class Configuration implements ConfigurationInterface
 
         $this->addGeneralNode($rootNode);
         $this->addMaintenanceNode($rootNode);
+        $this->addMaintenanceModeNode($rootNode);
         $this->addObjectsNode($rootNode);
         $this->addAssetNode($rootNode);
         $this->addDocumentsNode($rootNode);
@@ -182,6 +183,23 @@ final class Configuration implements ConfigurationInterface
             ->integerNode('cleanup_profiler_files_atime_older_than')
             ->info('Integer value in seconds.')
             ->defaultValue(1800)
+            ->end();
+    }
+
+    /**
+     * Add maintenance mode config
+     */
+    private function addMaintenanceModeNode(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
+            ->children()
+            ->arrayNode('maintenance_mode')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->arrayNode('excluded_ips')
+            ->info('Client IPs or CIDR ranges that never get the maintenance page (e.g. monitoring agents). Behind a reverse proxy on the same host, configure framework.trusted_proxies, otherwise every client has the proxy IP.')
+            ->scalarPrototype()->end()
+            ->defaultValue(['127.0.0.1', '::1'])
             ->end();
     }
 

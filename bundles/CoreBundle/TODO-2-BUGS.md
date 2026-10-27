@@ -682,7 +682,7 @@ root / main-domain changes (only relevant with `use_main_domain`) and a changed 
 
 ---
 
-## [ ] B-39 – `MaintenancePageListener`: proxy/IPv6 bypass, crash without sessions, blank page
+## [x] B-39 – `MaintenancePageListener`: proxy/IPv6 bypass, crash without sessions, blank page
 
 **File:** `src/EventListener/MaintenancePageListener.php:63-115`, related `lib/Tool/MaintenanceModeHelper.php:59-76`
 
@@ -701,6 +701,10 @@ root / main-domain changes (only relevant with `use_main_domain`) and a changed 
   exists next to the `TmpStore` mechanism.
 - Static pages bypass maintenance mode (C-09). If the admin who enabled maintenance mode loses their session
   (logout / session id migration on login), only the CLI can turn it off, and that is broken (C-03).
+
+**Done:** `pimcore.maintenance_mode.excluded_ips` (IPs/CIDR, default `127.0.0.1`, `::1`) checked with `IpUtils`,
+`hasSession()`, fallback page and safe template loading. **Still open:** `Retry-After` header, removal of the legacy
+`maintenance.php` branch.
 
 ---
 
