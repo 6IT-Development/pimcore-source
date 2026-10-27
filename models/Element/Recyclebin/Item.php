@@ -62,6 +62,14 @@ class Item extends Model\AbstractModel
 
     protected string $deletedby;
 
+    /**
+     * Tag IDs of the element and its children, by element type and ID. The tag assignments are removed when an
+     * element is deleted, so they are kept here to restore them.
+     *
+     * @var array<string, array<int, int[]>>
+     */
+    protected array $tags = [];
+
     public static function create(Element\ElementInterface $element, ?Model\User $user = null): void
     {
         $item = new self();
@@ -130,6 +138,8 @@ class Item extends Model\AbstractModel
             }
         }
 
+        $this->tags = $this->loadTags();
+
         try {
             $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
             DataObject::disableDirtyDetection();
@@ -186,6 +196,10 @@ class Item extends Model\AbstractModel
         };
 
         $saveBinaryData($this->getElement(), $saveBinaryData, $this);
+
+        if ($this->tags) {
+            $storage->write($this->getStorageFileTags(), json_encode($this->tags, JSON_THROW_ON_ERROR));
+        }
     }
 
     public function delete(): void
@@ -215,6 +229,12 @@ class Item extends Model\AbstractModel
         $element->getProperties();
         $element->getScheduledTasks();
 
+        $elementType = Element\Service::getElementType($element);
+        $tagIds = array_map(fn (Element\Tag $tag) => $tag->getId(), Element\Tag::getTagsForElement($elementType, $element->getId()));
+        if ($tagIds) {
+            $this->tags[$elementType][$element->getId()] = $tagIds;
+        }
+
         if ($element instanceof Element\ElementDumpStateInterface) {
             $element->setInDumpState(true);
         }
@@ -237,6 +257,37 @@ class Item extends Model\AbstractModel
                 $this->loadChildren($child);
             }
         }
+    }
+
+    /**
+     * @return array<string, array<int, int[]>>
+     */
+    private function loadTags(): array
+    {
+        $storage = Storage::get('recycle_bin');
+        $file = $this->getStorageFileTags();
+
+        // items created before the tags were stored don't have this file
+        if (!$storage->fileExists($file)) {
+            return [];
+        }
+
+        $tags = json_decode($storage->read($file), true);
+
+        return is_array($tags) ? $tags : [];
+    }
+
+    private function restoreTags(Element\ElementInterface $element): void
+    {
+        $elementType = Element\Service::getElementType($element);
+        $tagIds = $this->tags[$elementType][$element->getId()] ?? [];
+        if (!$tagIds) {
+            return;
+        }
+
+        // tags deleted since the element was deleted are skipped
+        $tags = array_filter(array_map(fn ($tagId) => Element\Tag::getById((int) $tagId), $tagIds));
+        Element\Tag::setTagsForElement($elementType, $element->getId(), $tags);
     }
 
     /**
@@ -263,6 +314,7 @@ class Item extends Model\AbstractModel
             $element->setOmitMandatoryCheck(true);
         }
         $element->save(['isRecycleBinRestore' => true]);
+        $this->restoreTags($element);
 
         if (method_exists($element, 'getChildren')) {
             if ($element instanceof DataObject\AbstractObject) {
@@ -361,6 +413,12 @@ class Item extends Model\AbstractModel
     public function getStoreageFile(): string
     {
         return $this->getStorageFile();
+    }
+
+    private function getStorageFileTags(): string
+    {
+        // the "<id>_" prefix makes delete() remove it together with the binary files
+        return sprintf('%s/%s_tags.json', $this->getType(), $this->getId());
     }
 
     protected function getStorageFileBinary(Element\ElementInterface $element): string

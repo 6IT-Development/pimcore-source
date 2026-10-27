@@ -20,7 +20,6 @@ namespace Pimcore\Bundle\CoreBundle\EventListener;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\DocumentEvents;
-use Pimcore\Event\Model\AssetEvent;
 use Pimcore\Event\Model\ElementEventInterface;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
@@ -39,16 +38,27 @@ class ElementTagsListener implements EventSubscriberInterface
             DocumentEvents::POST_COPY => 'onPostCopy',
             AssetEvents::POST_COPY => 'onPostCopy',
 
-            AssetEvents::POST_DELETE => ['onPostAssetDelete', -9999],
+            // tags_assignment has no foreign keys, so the assignments of deleted elements are removed here.
+            // The recycle bin keeps the tags and restores them.
+            DataObjectEvents::POST_DELETE => ['onPostDelete', -9999],
+            DocumentEvents::POST_DELETE => ['onPostDelete', -9999],
+            AssetEvents::POST_DELETE => ['onPostDelete', -9999],
         ];
     }
 
     public function onPostCopy(ElementEventInterface $e): void
     {
+        if (!$e->hasArgument('base_element')) {
+            return;
+        }
+
+        $baseElement = $e->getArgument('base_element');
+        if (!$baseElement instanceof ElementInterface) {
+            return;
+        }
+
         $elementType = Service::getElementType($e->getElement());
         $copiedElement = $e->getElement();
-        /** @var ElementInterface $baseElement */
-        $baseElement = $e->getArgument('base_element');
         Tag::setTagsForElement(
             $elementType,
             $copiedElement->getId(),
@@ -56,9 +66,9 @@ class ElementTagsListener implements EventSubscriberInterface
         );
     }
 
-    public function onPostAssetDelete(AssetEvent $e): void
+    public function onPostDelete(ElementEventInterface $e): void
     {
-        $asset = $e->getAsset();
-        Tag::setTagsForElement('asset', $asset->getId(), []);
+        $element = $e->getElement();
+        Tag::setTagsForElement(Service::getElementType($element), $element->getId(), []);
     }
 }

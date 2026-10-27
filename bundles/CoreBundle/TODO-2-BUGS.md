@@ -848,7 +848,7 @@ the response.
 
 ---
 
-## [ ] B-47 – `ElementTagsListener`: tag cleanup only for assets (orphans for documents/objects; asset tags lost on restore)
+## [x] B-47 – `ElementTagsListener`: tag cleanup only for assets (orphans for documents/objects; asset tags lost on restore)
 
 **File:** `src/EventListener/ElementTagsListener.php:35-63`, related `bundles/InstallBundle/dump/install.sql:399-406`
 
