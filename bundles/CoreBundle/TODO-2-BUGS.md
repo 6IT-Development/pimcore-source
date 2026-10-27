@@ -407,7 +407,7 @@ every n rows.
 
 ---
 
-## [ ] B-25 – `CacheClearCommand`: `--all` option does nothing, tag `"0"` dropped
+## [x] B-25 – `CacheClearCommand`: `--all` option does nothing, tag `"0"` dropped
 
 **File:** `src/Command/CacheClearCommand.php:60-65,107`
 

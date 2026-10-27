@@ -61,7 +61,7 @@ class CacheClearCommand extends AbstractCommand
                 'all',
                 'a',
                 InputOption::VALUE_NONE,
-                'Clear all'
+                'Clear all (default when no other option is given)'
             );
     }
 
@@ -70,8 +70,27 @@ class CacheClearCommand extends AbstractCommand
         $io = new SymfonyStyle($input, $output);
         $io->newLine();
 
-        if ($input->getOption('tags')) {
-            $tags = $this->prepareTags($input->getOption('tags'));
+        $tagOptions = $input->getOption('tags');
+        $selectedModes = array_keys(array_filter([
+            '--tags' => [] !== $tagOptions,
+            '--output' => $input->getOption('output'),
+            '--all' => $input->getOption('all'),
+        ]));
+
+        if (count($selectedModes) > 1) {
+            $io->error('The options ' . implode(', ', $selectedModes) . ' cannot be combined.');
+
+            return self::INVALID;
+        }
+
+        if ([] !== $tagOptions) {
+            $tags = $this->prepareTags($tagOptions);
+            if ([] === $tags) {
+                $io->error('No valid tags given.');
+
+                return self::INVALID;
+            }
+
             Cache::clearTags($tags);
             $io->success('Pimcore data cache cleared tags: ' . implode(',', $tags));
         } elseif ($input->getOption('output')) {
@@ -85,7 +104,7 @@ class CacheClearCommand extends AbstractCommand
             $io->success('Pimcore data cache cleared successfully');
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 
     /**
@@ -104,7 +123,7 @@ class CacheClearCommand extends AbstractCommand
             foreach ($tagEntries as $tagEntry) {
                 $tagEntry = trim($tagEntry);
 
-                if (!empty($tagEntry)) {
+                if ('' !== $tagEntry) {
                     $result[] = $tagEntry;
                 }
             }
