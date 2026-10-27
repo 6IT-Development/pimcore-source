@@ -21,6 +21,13 @@ use Attribute;
 
 /**
  * Argument to resolve a DataObject.
+ *
+ * - class: the class to load, instead of the argument type (must be a subtype of it)
+ * - unpublished: also resolve unpublished objects (otherwise only admins previewing the object get them)
+ * - options: params passed to getById(), e.g. ['force' => true]
+ *
+ * An empty route value resolves to null for nullable arguments. A non-numeric or unknown ID is a 404, also for
+ * nullable arguments.
  */
 #[Attribute(Attribute::TARGET_PARAMETER)]
 class DataObjectParam

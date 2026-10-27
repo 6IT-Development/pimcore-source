@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Request\ParamResolver;
 
+use LogicException;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Request\Attribute\DataObjectParam;
@@ -36,9 +37,14 @@ class DataObjectParamResolver implements ValueResolverInterface
      */
     public function resolve(Request $request, ArgumentMetadata $argument): iterable
     {
-        $options = $argument->getAttributes(DataObjectParam::class, ArgumentMetadata::IS_INSTANCEOF);
+        /** @var DataObjectParam|null $attribute */
+        $attribute = $argument->getAttributes(DataObjectParam::class, ArgumentMetadata::IS_INSTANCEOF)[0] ?? null;
 
-        $class = $options[0]->class ?? $argument->getType();
+        $class = $attribute?->class ?? $argument->getType();
+        if ($attribute?->class !== null) {
+            $this->validateAttributeClass($attribute->class, $argument);
+        }
+
         if (null === $class || !is_a($class, AbstractObject::class, true)) {
             return [];
         }
@@ -56,15 +62,21 @@ class DataObjectParamResolver implements ValueResolverInterface
             return [null];
         }
 
-        $object = $value instanceof AbstractObject ? $value : $class::getById($value);
-        if (!$object) {
+        if ($value instanceof AbstractObject) {
+            $object = $value;
+        } else {
+            $id = filter_var($value, FILTER_VALIDATE_INT);
+            $object = $id !== false ? $class::getById($id, $attribute?->options ?? []) : null;
+        }
+
+        if (!$object instanceof $class) {
             throw new NotFoundHttpException(sprintf('Invalid data object ID given for parameter "%s".', $param));
         } elseif (
             // only concrete objects can be unpublished, folders are always published
             $object instanceof Concrete
             && !$object->isPublished()
+            && !$attribute?->unpublished
             && !Tool::isElementRequestByAdmin($request, $object)
-            && (!isset($options[0]) || !$options[0]->unpublished)
         ) {
             throw new NotFoundHttpException(sprintf('Data object for parameter "%s" is not published.', $param));
         }
@@ -72,5 +84,26 @@ class DataObjectParamResolver implements ValueResolverInterface
         $request->attributes->set($param, $object);
 
         return [$object];
+    }
+
+    private function validateAttributeClass(string $class, ArgumentMetadata $argument): void
+    {
+        if (!class_exists($class)) {
+            throw new LogicException(sprintf(
+                'The class "%s" of #[DataObjectParam] on argument "$%s" does not exist.',
+                $class,
+                $argument->getName()
+            ));
+        }
+
+        $type = $argument->getType();
+        if ($type !== null && (class_exists($type) || interface_exists($type)) && !is_a($class, $type, true)) {
+            throw new LogicException(sprintf(
+                'The class "%s" of #[DataObjectParam] on argument "$%s" is not a "%s".',
+                $class,
+                $argument->getName(),
+                $type
+            ));
+        }
     }
 }

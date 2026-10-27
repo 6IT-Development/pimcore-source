@@ -1204,7 +1204,7 @@ type (I-70).
 
 ---
 
-## [ ] B-63 – `DataObjectParamResolver`: deprecation on every call, `DataObjectParam::$options` ignored, `class` override can mismatch the argument
+## [x] B-63 – `DataObjectParamResolver`: deprecation on every call, `DataObjectParam::$options` ignored, `class` override can mismatch the argument
 
 **Files:** `src/Request/ParamResolver/DataObjectParamResolver.php:39-60`, `lib/Request/Attribute/DataObjectParam.php:28-33`,
 `models/DataObject/AbstractObject.php:190-201`
