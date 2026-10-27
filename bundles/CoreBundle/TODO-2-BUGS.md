@@ -663,7 +663,7 @@ status.
 
 ---
 
-## [ ] B-38 – `StaticPageGeneratorListener`: stale static files after move/rename; children of a moved parent are never cleaned up
+## [x] B-38 – `StaticPageGeneratorListener`: stale static files after move/rename; children of a moved parent are never cleaned up
 
 **File:** `src/EventListener/Frontend/StaticPageGeneratorListener.php:155-175`
 
@@ -676,6 +676,9 @@ status.
 
 **Fix direction:** `Document::save()` already puts `oldPath` on the `POST_UPDATE` event when the path changed
 (`models/Document.php:391`). Remove `<oldPath>.html` and the whole `<oldPath>/` prefix in storage, or regenerate.
+
+**Done:** old path + `<oldPath>/` are removed on a move/rename, the `<path>/` prefix on delete. **Still open:** `Site`
+root / main-domain changes (only relevant with `use_main_domain`) and a changed pretty URL leave the old file behind.
 
 ---
 

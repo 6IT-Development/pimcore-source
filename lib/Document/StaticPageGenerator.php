@@ -42,14 +42,17 @@ class StaticPageGenerator
 
     public function getStoragePath(Document\PageSnippet $document): string
     {
-        $path = $document->getRealFullPath();
-
         if ($document instanceof Document\Page && $document->getPrettyUrl()) {
-            $path = $document->getPrettyUrl();
-        } elseif ($path === '/') {
-            $path = '/%home';
+            return $this->getStoragePathForPath($document->getPrettyUrl());
         }
 
+        $path = $document->getRealFullPath();
+
+        return $this->getStoragePathForPath($path === '/' ? '/%home' : $path);
+    }
+
+    private function getStoragePathForPath(string $path): string
+    {
         $useMainDomain = Config::getSystemConfiguration('documents')['static_page_generator']['use_main_domain'];
         if ($useMainDomain) {
             $systemConfig = $this->settingsConfig->getSystemSettingsConfig();
@@ -62,8 +65,9 @@ class StaticPageGenerator
                 $pathString = '';
                 foreach ($directories as $directory) {
                     $pathString .= '/' . $directory;
+                    // the directory does not exist anymore when the path is the old path of a moved document
                     $doc = Document::getByPath($pathString);
-                    $site = Site::getByRootId($doc->getId());
+                    $site = $doc ? Site::getByRootId($doc->getId()) : null;
                     if ($site instanceof Site) {
                         $mainDomain = '/' . $site->getMainDomain();
                     } else {
@@ -129,6 +133,26 @@ class StaticPageGenerator
         $storage = Storage::get('document_static');
 
         $storage->delete($storagePath);
+    }
+
+    /**
+     * Removes the static page stored for $path and the static pages of all documents below it,
+     * e.g. for the old path of a moved/renamed document or for a deleted document.
+     * Pages with a pretty URL are stored under that URL and are not affected.
+     *
+     * @throws FilesystemException
+     */
+    public function removeTree(string $path): void
+    {
+        if ($path === '' || $path === '/') {
+            return;
+        }
+
+        $storagePath = $this->getStoragePathForPath(rtrim($path, '/'));
+        $storage = Storage::get('document_static');
+
+        $storage->delete($storagePath);
+        $storage->deleteDirectory(substr($storagePath, 0, -strlen('.html')));
     }
 
     public function pageExists(Document\PageSnippet $document): bool

@@ -67,7 +67,7 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
     {
         return [
             DocumentEvents::POST_ADD => 'onPostAddUpdateDeleteDocument',
-            DocumentEvents::POST_DELETE => 'onPostAddUpdateDeleteDocument',
+            DocumentEvents::POST_DELETE => 'onPostDeleteDocument',
             DocumentEvents::POST_UPDATE => 'onPostAddUpdateDeleteDocument',
             // this must run after the firewall (8) so access_control applies, and after the maintenance page
             // listener (126), but before the targeting listener
@@ -201,6 +201,17 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
             return;
         }
 
+        // after a move/rename the pages of the document and all its descendants are still stored under the old
+        // path and would be served at the old URLs (no event is dispatched for the descendants)
+        $oldPath = $e->hasArgument('oldPath') ? $e->getArgument('oldPath') : null;
+        if (is_string($oldPath)) {
+            try {
+                $this->staticPageGenerator->removeTree($oldPath);
+            } catch (Exception $exception) {
+                Logger::error((string)$exception);
+            }
+        }
+
         if ($document instanceof PageSnippet) {
             try {
                 if ($document->getStaticGeneratorEnabled()
@@ -212,6 +223,18 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
 
                 return;
             }
+        }
+    }
+
+    public function onPostDeleteDocument(DocumentEvent $e): void
+    {
+        $this->onPostAddUpdateDeleteDocument($e);
+
+        // descendants are deleted together with the document, without their own events
+        try {
+            $this->staticPageGenerator->removeTree($e->getDocument()->getRealFullPath());
+        } catch (Exception $exception) {
+            Logger::error((string)$exception);
         }
     }
 
