@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
-use Exception;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Http\Request\Resolver\TemplateResolver;
@@ -64,14 +63,18 @@ class ContentTemplateListener implements EventSubscriberInterface
             return;
         }
 
-        $attribute = $event->controllerArgumentsEvent?->getAttributes()[Template::class][0] ?? null;
+        $attribute = $request->attributes->get('_template');
+        if (!$attribute instanceof Template) {
+            $attribute = $event->controllerArgumentsEvent?->getAttributes()[Template::class][0] ?? null;
+        }
+
         $resolvedTemplate = $this->templateResolver->getTemplate($request);
         if (null === $resolvedTemplate) {
             // no contentTemplate on the request -> nothing to do
             return;
         }
 
-        $parameters = $this->resolveParameters($event, $attribute?->vars ?? []);
+        $parameters = $this->resolveParameters($event, $attribute?->vars);
         $status = 200;
 
         if (interface_exists('Symfony\\Component\\Form\\FormInterface')) {
@@ -86,24 +89,52 @@ class ContentTemplateListener implements EventSubscriberInterface
             }
         }
 
-        $event->setResponse(($attribute instanceof Template && $attribute->stream)
+        $stream = $attribute instanceof Template && $attribute->stream;
+        $block = $attribute instanceof Template ? $attribute->block : null;
+
+        if (null !== $block) {
+            $event->setResponse($stream
+                ? new StreamedResponse(fn() => $this->twig->load($resolvedTemplate)->displayBlock($block, $parameters), $status)
+                : new Response($this->twig->load($resolvedTemplate)->renderBlock($block, $parameters), $status)
+            );
+
+            return;
+        }
+
+        $event->setResponse($stream
             ? new StreamedResponse(fn() => $this->twig->display($resolvedTemplate, $parameters), $status)
             : new Response($this->twig->render($resolvedTemplate, $parameters), $status)
         );
     }
 
-    private function resolveParameters(ViewEvent $event, array $vars): array
+    /**
+     * Template parameters are the named controller arguments, the string-keyed entries of $vars and the controller
+     * result, later ones overriding earlier ones (e.g. `return ['slug' => $slug]` for a `$slug` argument).
+     *
+     * As in Symfony's TemplateAttributeListener, list entries of $vars are the names of the controller arguments to
+     * pass: null passes all arguments, [] none. Vars with only string keys keep all arguments.
+     */
+    private function resolveParameters(ViewEvent $event, ?array $vars): array
     {
         $controllerArguments = $event->controllerArgumentsEvent?->getNamedArguments() ?? [];
         $controllerResults = is_array($event->getControllerResult()) ? $event->getControllerResult() : [];
 
-        $mergedArray = array_merge(array_keys($controllerArguments), array_keys($controllerResults), array_keys($vars));
-        $duplicateKeys = array_unique(array_diff_assoc($mergedArray, array_unique($mergedArray)));
+        $templateVars = [];
+        if (null !== $vars) {
+            $argumentNames = [];
+            foreach ($vars as $key => $value) {
+                if (is_int($key)) {
+                    $argumentNames[] = $value;
+                } else {
+                    $templateVars[$key] = $value;
+                }
+            }
 
-        if ($duplicateKeys) {
-            throw new Exception('Duplicate keys found: ' . implode(', ', array_values($duplicateKeys)) . '. Please use unique names for your controller arguments, controller results and template variables.');
+            if ($argumentNames || !$templateVars) {
+                $controllerArguments = array_intersect_key($controllerArguments, array_flip($argumentNames));
+            }
         }
 
-        return array_merge($controllerArguments, $controllerResults, $vars);
+        return array_merge($controllerArguments, $templateVars, $controllerResults);
     }
 }

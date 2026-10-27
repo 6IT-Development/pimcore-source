@@ -708,7 +708,7 @@ root / main-domain changes (only relevant with `use_main_domain`) and a changed 
 
 ---
 
-## [ ] B-40 – `ContentTemplateListener` diverges from Symfony 7.4 `TemplateAttributeListener`
+## [x] B-40 – `ContentTemplateListener` diverges from Symfony 7.4 `TemplateAttributeListener`
 
 **File:** `src/EventListener/Frontend/ContentTemplateListener.php:59-108`
 (reference: `symfony/twig-bridge` 7.4 `EventListener/TemplateAttributeListener.php`)
@@ -728,6 +728,10 @@ root / main-domain changes (only relevant with `use_main_domain`) and a changed 
 **Fix direction:** reuse Symfony's semantics: `$parameters = $event->getControllerResult() ?? resolveParameters($args,
 $attribute?->vars)`, with `array_intersect_key(..., array_flip($vars))`. Support `block` via
 `$twig->load()->renderBlock()` / `displayBlock()`. Drop the duplicate-key exception.
+
+**Done differently:** named arguments are still merged into the context (Pimcore behaviour templates may rely on), but
+the controller result overrides them instead of throwing. List entries of `vars` select arguments as in Symfony
+(`[]` = none); string-keyed `vars` stay literal values as documented in `doc/02_MVC/02_Template/README.md`.
 
 ---
 
