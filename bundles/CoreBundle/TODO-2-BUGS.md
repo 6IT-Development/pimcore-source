@@ -814,7 +814,7 @@ pushed depth in a request attribute and pop only when it is set. Wrap the render
 
 ---
 
-## [ ] B-45 – `EditmodeListener`: duplicate script, malformed CSS URL, wrong meta attribute, possible `null` user
+## [x] B-45 – `EditmodeListener`: duplicate script, malformed CSS URL, wrong meta attribute, possible `null` user
 
 **File:** `src/EventListener/Frontend/EditmodeListener.php:139-315`
 

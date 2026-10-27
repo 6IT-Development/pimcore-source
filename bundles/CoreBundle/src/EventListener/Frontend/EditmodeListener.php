@@ -163,7 +163,8 @@ class EditmodeListener implements EventSubscriberInterface
             if ($skipCheck || ($headElement && $bodyElement && $htmlElement)) {
                 $startupJavascript = '/bundles/pimcoreadmin/js/pimcore/document/edit/startup.js';
 
-                $headHtml = $this->buildHeadHtml($document, $user->getLanguage());
+                // there is no session user when editmode is forced (EditmodeResolver::setForceEditmode())
+                $headHtml = $this->buildHeadHtml($document, $user?->getLanguage() ?: 'en');
                 $bodyHtml = "\n\n" . $this->editableConfigCollector->getHtml() . "\n\n";
                 $bodyHtml .= "\n\n" . '<script src="' . $startupJavascript . '?_dc=' . Version::getRevision() . '"></script>' . "\n\n";
 
@@ -182,7 +183,7 @@ class EditmodeListener implements EventSubscriberInterface
         $endPosition = strripos($code, $search);
 
         if (false !== $endPosition) {
-            $code = substr_replace($code, $insert . "\n\n" . $search, $endPosition, 7);
+            $code = substr_replace($code, $insert . "\n\n" . $search, $endPosition, strlen($search));
         }
 
         return $code;
@@ -195,12 +196,12 @@ class EditmodeListener implements EventSubscriberInterface
         $stylesheets = $this->getEditmodeStylesheets();
 
         $headHtml = "\n\n\n<!-- pimcore editmode -->\n";
-        $headHtml .= '<meta name="google" value="notranslate">';
+        $headHtml .= '<meta name="google" content="notranslate">';
         $headHtml .= "\n\n";
 
         // include stylesheets
         foreach ($stylesheets as $stylesheet) {
-            $headHtml .= '<link rel="stylesheet" type="text/css" href="' . $stylesheet . '?_dc=' . Version::getRevision() . '" />';
+            $headHtml .= '<link rel="stylesheet" type="text/css" href="' . $this->addCacheBuster($stylesheet) . '" />';
             $headHtml .= "\n";
         }
 
@@ -208,23 +209,34 @@ class EditmodeListener implements EventSubscriberInterface
 
         // include script libraries
         foreach ($libraries as $script) {
-            $headHtml .= '<script src="' . $script . '?_dc=' . Version::getRevision() . '"></script>';
+            $headHtml .= '<script src="' . $this->addCacheBuster($script) . '"></script>';
             $headHtml .= "\n";
         }
 
         // combine the pimcore scripts in non-devmode
         if (Pimcore::disableMinifyJs()) {
             foreach ($scripts as $script) {
-                $headHtml .= '<script src="' . $script . '?_dc=' . Version::getRevision() . '"></script>';
+                $headHtml .= '<script src="' . $this->addCacheBuster($script) . '"></script>';
                 $headHtml .= "\n";
             }
         } else {
             $scriptContents = '';
+            $externalScripts = [];
             foreach ($scripts as $scriptUrl) {
-                $scriptContents .= file_get_contents(PIMCORE_WEB_ROOT . $scriptUrl) . "\n\n\n";
+                // bundle paths can be absolute URLs or generated routes, which can't be read from the web root
+                $file = PIMCORE_WEB_ROOT . $scriptUrl;
+                if (str_starts_with($scriptUrl, '/') && !str_starts_with($scriptUrl, '//') && is_file($file) && ($content = file_get_contents($file)) !== false) {
+                    $scriptContents .= $content . "\n\n\n";
+                } else {
+                    $externalScripts[] = $scriptUrl;
+                }
             }
 
             $headHtml .= '<script src="' . $this->router->generate('pimcore_admin_misc_scriptproxy', Admin::getMinimizedScriptPath($scriptContents)) . '"></script>' . "\n";
+
+            foreach ($externalScripts as $script) {
+                $headHtml .= '<script src="' . $this->addCacheBuster($script) . '"></script>' . "\n";
+            }
         }
         $path = $this->router->generate('pimcore_admin_misc_jsontranslationssystem', [
             'language' => $language,
@@ -244,6 +256,11 @@ class EditmodeListener implements EventSubscriberInterface
         $headHtml .= "\n\n<!-- /pimcore editmode -->\n\n\n";
 
         return $headHtml;
+    }
+
+    private function addCacheBuster(string $url): string
+    {
+        return $url . (str_contains($url, '?') ? '&' : '?') . '_dc=' . Version::getRevision();
     }
 
     protected function getEditmodeLibraries(): array
@@ -295,7 +312,6 @@ class EditmodeListener implements EventSubscriberInterface
                 '/bundles/pimcoreadmin/js/pimcore/document/editables/pdf.js',
                 '/bundles/pimcoreadmin/js/pimcore/document/editables/embed.js',
                 '/bundles/pimcoreadmin/js/pimcore/document/editables/manager.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/edit/helper.js',
             ],
             $this->bundleManager->getEditmodeJsPaths()
         );
@@ -308,7 +324,7 @@ class EditmodeListener implements EventSubscriberInterface
                 '/bundles/pimcoreadmin/css/icons.css',
                 '/bundles/pimcoreadmin/extjs/css/PimcoreApp-all_1.css',
                 '/bundles/pimcoreadmin/extjs/css/PimcoreApp-all_2.css',
-                '/bundles/pimcoreadmin/css/editmode.css?_dc=' . time(),
+                '/bundles/pimcoreadmin/css/editmode.css',
             ],
             $this->bundleManager->getEditmodeCssPaths()
         );
