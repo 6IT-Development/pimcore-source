@@ -65,6 +65,12 @@ class InternalWysiwygHtmlAttributeFilterListener implements EventSubscriberInter
         }
 
         $content = $response->getContent();
+
+        // false for responses without in-memory content (e.g. streamed responses)
+        if (!is_string($content)) {
+            return;
+        }
+
         $content = preg_replace('/ pimcore_(id|type|disable_thumbnail)=\\"([0-9a-z]+)\\"/', '', $content);
 
         $response->setContent($content);

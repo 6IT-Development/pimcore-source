@@ -911,7 +911,7 @@ Build the chain matchers once and `break` after the first match.
 
 ---
 
-## [ ] B-51 – `ResponseInjectionTrait` and HTML filters: `getContent()` can be `false`
+## [x] B-51 – `ResponseInjectionTrait` and HTML filters: `getContent()` can be `false`
 
 **Files:** `src/EventListener/Traits/ResponseInjectionTrait.php:42-55`,
 `src/EventListener/Frontend/InternalWysiwygHtmlAttributeFilterListener.php:67-70`,

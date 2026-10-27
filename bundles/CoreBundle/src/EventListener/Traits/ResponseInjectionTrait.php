@@ -43,6 +43,11 @@ trait ResponseInjectionTrait
     {
         $content = $response->getContent();
 
+        // false for responses without in-memory content (e.g. streamed responses)
+        if (!is_string($content)) {
+            return;
+        }
+
         // search for the end <head> tag, and insert the code before
         // this method is much faster than using simple_html_dom and uses less memory
         $headEndPosition = strripos($content, '</head>');
