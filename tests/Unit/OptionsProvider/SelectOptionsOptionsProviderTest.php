@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Tests\Unit\OptionsProvider;
 
+use LogicException;
 use Pimcore\Bundle\CoreBundle\OptionsProvider\SelectOptionsOptionsProvider;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Multiselect;
@@ -44,5 +45,17 @@ class SelectOptionsOptionsProviderTest extends TestCase
     public function testOtherFieldsHaveNoDefaultValue(): void
     {
         $this->assertNull((new SelectOptionsOptionsProvider())->getDefaultValue([], new Input()));
+    }
+
+    public function testMissingConfigurationIdNamesTheField(): void
+    {
+        $select = new Select();
+        $select->setName('color');
+        $select->setOptionsProviderData(' ');
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('field "color"');
+
+        (new SelectOptionsOptionsProvider())->getOptions([], $select);
     }
 }

@@ -1168,7 +1168,7 @@ any field that has `getDefaultValue()`), widen the return type to `string|array|
 
 ---
 
-## [ ] B-61 – `SelectOptionsOptionsProvider`: an unset select-options ID crashes with a `TypeError` (object editor fails to open)
+## [x] B-61 – `SelectOptionsOptionsProvider`: an unset select-options ID crashes with a `TypeError` (object editor fails to open)
 
 **File:** `src/OptionsProvider/SelectOptionsOptionsProvider.php:34-38`
 
