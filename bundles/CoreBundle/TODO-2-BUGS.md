@@ -1065,7 +1065,7 @@ and run `mergePlaceholders()` over the whole workflow array except `placeholders
 
 ---
 
-## [ ] B-57 – Workflow tree vs. `WorkflowPass`/runtime: optional `label` read as required, `numeric` field type missing for global actions, `~` values crash normalisation
+## [x] B-57 – Workflow tree vs. `WorkflowPass`/runtime: optional `label` read as required, `numeric` field type missing for global actions, `~` values crash normalisation
 
 **Files:** `src/DependencyInjection/Compiler/WorkflowPass.php:66`, `src/DependencyInjection/Configuration.php:1348-1350,
 1499-1510, 1529-1548, 1601-1605, 1764-1767`, `lib/Workflow/WorkflowConfig.php:37-40`

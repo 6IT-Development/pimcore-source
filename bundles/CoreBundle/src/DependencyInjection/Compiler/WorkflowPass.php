@@ -63,7 +63,7 @@ final class WorkflowPass implements CompilerPassInterface
                 [
                     $workflowName,
                     [
-                        'label' => $workflowConfig['label'],
+                        'label' => $workflowConfig['label'] ?? $workflowName,
                         'priority' => $workflowConfig['priority'],
                         'type' => $type,
                     ],

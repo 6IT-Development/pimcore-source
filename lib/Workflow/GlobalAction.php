@@ -55,7 +55,7 @@ class GlobalAction implements NotesAwareInterface
 
     public function getLabel(): string
     {
-        return $this->options['label'] ?: $this->getName();
+        return ($this->options['label'] ?? null) ?: $this->getName();
     }
 
     public function getIconClass(): string
