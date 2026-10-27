@@ -881,7 +881,7 @@ bin item, or never clear and add a maintenance task that removes orphans. Use th
 
 ---
 
-## [ ] B-49 – `EventedControllerListener` ignores invokable and closure controllers
+## [x] B-49 – `EventedControllerListener` ignores invokable and closure controllers
 
 **File:** `src/EventListener/EventedControllerListener.php:40-55`
 

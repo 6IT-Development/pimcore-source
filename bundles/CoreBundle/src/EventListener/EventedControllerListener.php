@@ -17,18 +17,33 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener;
 
+use Closure;
 use Pimcore\Controller\KernelControllerEventInterface;
 use Pimcore\Controller\KernelResponseEventInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use WeakMap;
 
 /**
  * @internal
  */
 class EventedControllerListener implements EventSubscriberInterface
 {
+    /**
+     * Controller of each request, kept out of the request attributes so the profiler doesn't clone and dump it
+     *
+     * @var WeakMap<Request, object>
+     */
+    private WeakMap $controllers;
+
+    public function __construct()
+    {
+        $this->controllers = new WeakMap();
+    }
+
     public static function getSubscribedEvents(): array
     {
         return [
@@ -40,14 +55,21 @@ class EventedControllerListener implements EventSubscriberInterface
     public function onKernelController(ControllerEvent $event): void
     {
         $callable = $event->getController();
-        if (!is_array($callable)) {
+
+        // [$controller, 'action'] or an invokable controller service; closures have no hooks
+        if (is_array($callable)) {
+            $controller = $callable[0];
+        } elseif (is_object($callable) && !$callable instanceof Closure) {
+            $controller = $callable;
+        } else {
             return;
         }
 
-        $request = $event->getRequest();
-        $controller = $callable[0];
+        if (!is_object($controller)) {
+            return;
+        }
 
-        $request->attributes->set('_event_controller', $controller);
+        $this->controllers[$event->getRequest()] = $controller;
 
         if ($controller instanceof KernelControllerEventInterface) {
             $controller->onKernelControllerEvent($event);
@@ -57,7 +79,8 @@ class EventedControllerListener implements EventSubscriberInterface
     public function onKernelResponse(ResponseEvent $event): void
     {
         $request = $event->getRequest();
-        $eventController = $request->attributes->get('_event_controller');
+        $eventController = $this->controllers[$request] ?? null;
+        unset($this->controllers[$request]);
 
         if ($eventController instanceof KernelResponseEventInterface) {
             $eventController->onKernelResponseEvent($event);
