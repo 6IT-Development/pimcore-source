@@ -139,7 +139,7 @@ class RoutingListener implements EventSubscriberInterface
         } else {
             if (Site::isSiteRequest()) {
                 $site = Site::getCurrentSite();
-                if ($site->getRedirectToMainDomain() && $site->getMainDomain() != $request->getHost()) {
+                if ($site->getRedirectToMainDomain() && $site->getMainDomain() && !$this->isRequestHost($request, $site->getMainDomain())) {
                     $hostRedirect = $site->getMainDomain();
                 }
             } else {
@@ -157,9 +157,11 @@ class RoutingListener implements EventSubscriberInterface
             $url = $request->getScheme() . '://' . $hostRedirect . $request->getBaseUrl() . $request->getPathInfo() . $qs;
 
             // log all redirects to the redirect log
-            $this->logger->info(Tool::getAnonymizedClientIp(), ['Host-Redirect Source: ' . $request->getRequestUri() . ' -> ' . $url]);
+            $this->logger->info('Host-Redirect Source: ' . $request->getRequestUri() . ' -> ' . $url, ['ip' => Tool::getAnonymizedClientIp()]);
 
-            $event->setResponse(new RedirectResponse($url, Response::HTTP_MOVED_PERMANENTLY));
+            // clients turn a 301 for POST/PUT/... into a GET and drop the body, 308 keeps method and body
+            $status = $request->isMethodSafe() ? Response::HTTP_MOVED_PERMANENTLY : Response::HTTP_PERMANENTLY_REDIRECT;
+            $event->setResponse(new RedirectResponse($url, $status));
         }
     }
 
@@ -169,10 +171,26 @@ class RoutingListener implements EventSubscriberInterface
 
         $systemConfig = SystemSettingsConfig::get();
         $gc = $systemConfig['general'];
-        if (isset($gc['redirect_to_maindomain']) && $gc['redirect_to_maindomain'] === true && isset($gc['domain']) && $gc['domain'] !== $request->getHost()) {
+        if (isset($gc['redirect_to_maindomain']) && $gc['redirect_to_maindomain'] === true && !empty($gc['domain']) && !$this->isRequestHost($request, $gc['domain'])) {
             $hostRedirect = $gc['domain'];
         }
 
         return $hostRedirect;
+    }
+
+    /**
+     * getHost() is lower-case and without port, so a configured domain like "Example.com" or "example.com:8080"
+     * would never match and every request would be redirected to itself.
+     */
+    private function isRequestHost(Request $request, string $domain): bool
+    {
+        $domain = strtolower($domain);
+
+        if ($domain === strtolower($request->getHost())) {
+            return true;
+        }
+
+        // a domain with port, compared with the explicit port (getHttpHost() drops the default port of the scheme)
+        return str_contains($domain, ':') && $domain === strtolower($request->getHost()) . ':' . $request->getPort();
     }
 }

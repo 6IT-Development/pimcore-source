@@ -735,7 +735,7 @@ the controller result overrides them instead of throwing. List entries of `vars`
 
 ---
 
-## [ ] B-41 – `RoutingListener` main-domain redirect: redirect loops and lost POST bodies
+## [x] B-41 – `RoutingListener` main-domain redirect: redirect loops and lost POST bodies
 
 **File:** `src/EventListener/Frontend/RoutingListener.php:149-195`
 
