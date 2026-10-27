@@ -74,11 +74,11 @@ class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterfac
         }
 
         // do not show toolbar on excluded routes (pimcore.web_profiler.toolbar.excluded_routes config entry)
-        /** @var array $excludeMatcher */
         foreach ($this->getExcludeMatchers() as $excludeMatcher) {
-            $chainRequestMatcher = new ChainRequestMatcher($excludeMatcher);
-            if ($chainRequestMatcher->matches($request)) {
+            if ($excludeMatcher->matches($request)) {
                 $this->disableWebDebugToolbar();
+
+                break;
             }
         }
     }
@@ -102,10 +102,19 @@ class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterfac
         $this->previousMode = null;
     }
 
+    /**
+     * @return ChainRequestMatcher[]
+     */
     protected function getExcludeMatchers(): array
     {
         if (null === $this->excludeMatchers) {
-            $this->excludeMatchers = $this->requestMatcherFactory->buildRequestMatchers($this->excludeRoutes);
+            $this->excludeMatchers = [];
+            foreach ($this->requestMatcherFactory->buildRequestMatchers($this->excludeRoutes) as $matchers) {
+                // an empty chain matches every request (the configuration rejects such entries)
+                if ($matchers) {
+                    $this->excludeMatchers[] = new ChainRequestMatcher($matchers);
+                }
+            }
         }
 
         return $this->excludeMatchers;

@@ -1226,6 +1226,11 @@ final class Configuration implements ConfigurationInterface
             ->arrayNode('methods')
             ->prototype('scalar')->end()
             ->end()
+            ->end()
+            // an entry without criteria builds an empty ChainRequestMatcher, which matches every request
+            ->validate()
+            ->ifTrue(fn (array $v) => !$v['path'] && !$v['route'] && !$v['host'] && empty($v['methods']))
+            ->thenInvalid('A route entry needs at least one of "path", "route", "host" or "methods", otherwise it matches every request.')
             ->end();
     }
 

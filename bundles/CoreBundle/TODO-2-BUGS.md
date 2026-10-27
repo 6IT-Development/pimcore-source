@@ -896,7 +896,7 @@ Closure ? $callable : null)`. Keep the object in a private `WeakMap<Request, obj
 
 ---
 
-## [ ] B-50 – `WebDebugToolbarListener`: an empty `excluded_routes` entry disables the toolbar everywhere
+## [x] B-50 – `WebDebugToolbarListener`: an empty `excluded_routes` entry disables the toolbar everywhere
 
 **Files:** `src/EventListener/WebDebugToolbarListener.php:69-75`, `lib/Http/RequestMatcherFactory.php:49-70`,
 `src/DependencyInjection/Configuration.php:1200-1211`
