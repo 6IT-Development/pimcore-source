@@ -17,10 +17,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Controller;
 
-use Exception;
 use Pimcore\Bundle\SeoBundle\Config;
 use Pimcore\Controller\Controller;
-use Pimcore\Logger;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Site;
 use Pimcore\Tool;
@@ -35,7 +33,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PublicServicesController extends Controller
 {
-    public function thumbnailAction(Request $request): RedirectResponse|StreamedResponse
+    public function thumbnailAction(Request $request): StreamedResponse
     {
         $filename = $request->attributes->getString('filename');
         $requestedFileExtension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
@@ -49,18 +47,14 @@ class PublicServicesController extends Controller
             'file_extension' => $requestedFileExtension,
         ];
 
-        try {
-            $response = Asset\Service::getStreamedResponseForThumbnail($config, $request->getPathInfo());
-            if ($response) {
-                return $response;
-            }
-
-            throw new Exception('Unable to generate ' . $config['type'] . ' thumbnail, see logs for details.');
-        } catch (Exception $e) {
-            Logger::error($e->getMessage());
-
-            return new RedirectResponse('/bundles/pimcoreadmin/img/filetype-not-supported.svg');
+        // generation errors are left to Symfony (logged with context, 500 without caching headers)
+        $response = Asset\Service::getStreamedResponseForThumbnail($config, $request->getPathInfo());
+        if (!$response) {
+            // unknown asset or thumbnail config, prefix not matching the asset path, unsupported variant
+            throw $this->createNotFoundException(sprintf('Unable to find the %s thumbnail "%s".', $config['type'], $request->getPathInfo()));
         }
+
+        return $response;
     }
 
     public function robotsTxtAction(Request $request): Response

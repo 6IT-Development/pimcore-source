@@ -1253,7 +1253,7 @@ return a `Response` and let Symfony send it (`Server::$httpResponse` → `Respon
 
 ---
 
-## [ ] B-65 – Thumbnail errors are turned into a `302` to an admin-bundle SVG (404s become redirects, `NotFoundHttpException` swallowed)
+## [x] B-65 – Thumbnail errors are turned into a `302` to an admin-bundle SVG (404s become redirects, `NotFoundHttpException` swallowed)
 
 **Files:** `src/Controller/PublicServicesController.php:52-63`, `models/Asset/Service.php:362-365,436-443`
 
