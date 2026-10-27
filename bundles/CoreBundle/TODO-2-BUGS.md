@@ -996,7 +996,7 @@ for literal strings.
 
 ---
 
-## [ ] B-55 – `ConfigurationHelper::getConfigNodeFromSymfonyTree()` shallow-merges config files (`config_location` lost; Kernel and runtime disagree)
+## [x] B-55 – `ConfigurationHelper::getConfigNodeFromSymfonyTree()` shallow-merges config files (`config_location` lost; Kernel and runtime disagree)
 
 **Files:** `src/DependencyInjection/ConfigurationHelper.php:103-150`, `lib/Kernel.php:87-131`,
 `lib/Config/LocationAwareConfigRepository.php:289-329`

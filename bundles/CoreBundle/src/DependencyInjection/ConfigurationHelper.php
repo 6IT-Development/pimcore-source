@@ -20,8 +20,10 @@ namespace Pimcore\Bundle\CoreBundle\DependencyInjection;
 use Pimcore\Config\LocationAwareConfigRepository;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
+use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\Filesystem\Path;
 use Symfony\Component\Finder\Finder;
 
@@ -139,7 +141,8 @@ final class ConfigurationHelper
 
         $finder
             ->files()
-            ->in($dirs);
+            ->in($dirs)
+            ->sortByName();
 
         foreach (['*.yml', '*.yaml'] as $namePattern) {
             $finder->name($namePattern);
@@ -159,16 +162,17 @@ final class ConfigurationHelper
 
     public static function getConfigNodeFromSymfonyTree(ContainerBuilder $container, string $nodeName): array
     {
-        $containerConfig = $container->getExtensionConfig($nodeName);
-        $containerConfig = array_merge(...$containerConfig);
+        // one config array per file - let the processor deep merge them, like the extension does
+        $containerConfigs = $container->getExtensionConfig($nodeName);
+
+        $configuration = $container->getExtension($nodeName)->getConfiguration($containerConfigs, $container);
+        if (!$configuration instanceof ConfigurationInterface) {
+            throw new LogicException(sprintf('The extension "%s" does not provide a configuration.', $nodeName));
+        }
 
         $processor = new Processor();
-        // @phpstan-ignore-next-line
-        $configuration = $container->getExtension($nodeName)->getConfiguration($containerConfig, $container);
-        $containerConfig = $processor->processConfiguration($configuration, [$nodeName => $containerConfig]);
+        $containerConfig = $processor->processConfiguration($configuration, $containerConfigs);
 
-        $resolvingBag = $container->getParameterBag();
-
-        return $resolvingBag->resolveValue($containerConfig);
+        return $container->getParameterBag()->resolveValue($containerConfig);
     }
 }
