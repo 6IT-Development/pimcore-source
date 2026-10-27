@@ -926,7 +926,7 @@ Build the chain matchers once and `break` after the first match.
 
 ---
 
-## [ ] B-52 – `HardlinkCanonicalListener`: `TypeError` when the hardlink source cannot be loaded
+## [x] B-52 – `HardlinkCanonicalListener`: `TypeError` when the hardlink source cannot be loaded
 
 **File:** `src/EventListener/Frontend/HardlinkCanonicalListener.php:85-97`
 

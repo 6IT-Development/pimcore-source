@@ -84,6 +84,11 @@ class HardlinkCanonicalListener implements EventSubscriberInterface
         // get the canonical (source) document
         $hardlinkCanonicalSourceDocument = Document::getById($document->getId());
 
+        // the source can be deleted while the wrapper is still cached, or be hidden as unpublished
+        if (!$hardlinkCanonicalSourceDocument) {
+            return;
+        }
+
         if (Frontend::isDocumentInCurrentSite($hardlinkCanonicalSourceDocument)) {
             $canonical = $request->getSchemeAndHttpHost() . $hardlinkCanonicalSourceDocument->getFullPath();
         } elseif (Site::isSiteRequest()) {
