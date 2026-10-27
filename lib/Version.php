@@ -36,14 +36,28 @@ final class Version
         return self::MAJOR_VERSION;
     }
 
-    public static function getVersion(): string
+    /**
+     * null if the package is not installed under PACKAGE_NAME or is replaced/provided by another package
+     */
+    public static function getVersion(): ?string
     {
-        return InstalledVersions::getPrettyVersion(self::PACKAGE_NAME);
+        try {
+            return InstalledVersions::getPrettyVersion(self::PACKAGE_NAME);
+        } catch (OutOfBoundsException) {
+            return null;
+        }
     }
 
-    public static function getRevision(): string
+    /**
+     * null if the package is not installed under PACKAGE_NAME or was installed without a reference (e.g. path repository)
+     */
+    public static function getRevision(): ?string
     {
-        return InstalledVersions::getReference(self::PACKAGE_NAME);
+        try {
+            return InstalledVersions::getReference(self::PACKAGE_NAME);
+        } catch (OutOfBoundsException) {
+            return null;
+        }
     }
 
     public static function getPlatformVersion(): ?string

@@ -53,7 +53,7 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
         parent::__construct($kernel);
 
         $this->setName('Pimcore');
-        $this->setVersion(Version::getVersion());
+        $this->setVersion(Version::getVersion() ?? 'UNKNOWN');
 
         // we set locale to EN.UTF8 to not getting into UTF-8 issues, e.g. when dealing with umlauts & escapeshellarg()
         setlocale(LC_ALL, ['en.utf8', 'en.UTF-8', 'en_US.utf8', 'en_US.UTF-8', 'en_GB.utf8', 'en_GB.UTF-8']);

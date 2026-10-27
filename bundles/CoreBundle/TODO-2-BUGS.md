@@ -568,7 +568,7 @@ throw if the target is shared.
 
 ---
 
-## [ ] B-34 – `PimcoreDataCollector`: `TypeError`/warnings from non-nullable version getters and missing keys
+## [x] B-34 – `PimcoreDataCollector`: `TypeError`/warnings from non-nullable version getters and missing keys
 
 **Files:** `src/DataCollector/PimcoreDataCollector.php:39-77`, `lib/Version.php:39-47`,
 `templates/Profiler/data_collector.html.twig:24,64`

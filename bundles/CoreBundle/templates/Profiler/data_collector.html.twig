@@ -21,12 +21,12 @@
 
         <div class="sf-toolbar-info-piece">
             <b>Version</b>
-            <span>{{ collector.version }} build {{ collector.revision }}</span>
+            <span>{{ collector.version ?: '~' }} build {{ collector.revision ?: '~' }}</span>
         </div>
 
         <div class="sf-toolbar-info-piece">
             <b>Context</b>
-            <span>{{ collector.context }}</span>
+            <span>{{ collector.context ?: '~' }}</span>
         </div>
     {% endset %}
 
@@ -56,17 +56,17 @@
         </div>
 
         <div class="metric">
-            <span class="value">{{ collector.version }}</span>
+            <span class="value">{{ collector.version ?: '~' }}</span>
             <span class="label">Version</span>
         </div>
 
         <div class="metric">
-            <span class="value">{{ collector.revision }}</span>
+            <span class="value">{{ collector.revision ?: '~' }}</span>
             <span class="label">Build</span>
         </div>
 
         <div class="metric">
-            <span class="value">{{ collector.context }}</span>
+            <span class="value">{{ collector.context ?: '~' }}</span>
             <span class="label">Request Context</span>
         </div>
     </div>

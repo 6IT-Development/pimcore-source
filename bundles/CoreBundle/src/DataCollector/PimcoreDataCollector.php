@@ -56,23 +56,25 @@ class PimcoreDataCollector extends DataCollector implements ResetInterface
         return 'pimcore';
     }
 
+    // the getters use ?? null: data is empty after reset() and older stored profiles may lack a key
+
     public function getContext(): ?string
     {
-        return $this->data['context'];
+        return $this->data['context'] ?? null;
     }
 
-    public function getVersion(): string
+    public function getVersion(): ?string
     {
-        return $this->data['version'];
+        return $this->data['version'] ?? null;
     }
 
-    public function getRevision(): string
+    public function getRevision(): ?string
     {
-        return $this->data['revision'];
+        return $this->data['revision'] ?? null;
     }
 
     public function getPlatformVersion(): ?string
     {
-        return $this->data['platform_version'];
+        return $this->data['platform_version'] ?? null;
     }
 }
