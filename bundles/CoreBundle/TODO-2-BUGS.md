@@ -865,7 +865,7 @@ bin item, or never clear and add a maintenance task that removes orphans. Use th
 
 ---
 
-## [ ] B-48 – `LocaleListener`: `Content-Language` from the last sub-request, set on every response
+## [x] B-48 – `LocaleListener`: `Content-Language` from the last sub-request, set on every response
 
 **File:** `src/EventListener/Frontend/LocaleListener.php:44-82`
 
