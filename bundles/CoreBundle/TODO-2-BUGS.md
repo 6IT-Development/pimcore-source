@@ -834,7 +834,7 @@ pushed depth in a request attribute and pop only when it is set. Wrap the render
 
 ---
 
-## [ ] B-46 – `ResponseStackListener` replaces the response after `#[ResponseHeader]` headers were applied
+## [x] B-46 – `ResponseStackListener` replaces the response after `#[ResponseHeader]` headers were applied
 
 **Files:** `src/EventListener/ResponseStackListener.php:37, 47-49`, `src/EventListener/ResponseHeaderListener.php:40, 44-58`
 

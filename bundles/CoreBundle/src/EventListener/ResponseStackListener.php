@@ -34,7 +34,9 @@ readonly class ResponseStackListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::RESPONSE => ['onKernelResponse', 24],
+            // before the ResponseHeaderListener (32), so the #[ResponseHeader] headers are applied to the response
+            // that is actually sent and not to the one that gets replaced
+            KernelEvents::RESPONSE => ['onKernelResponse', 40],
         ];
     }
 
