@@ -1277,7 +1277,7 @@ it in CoreBundle `public/`.
 
 ---
 
-## [ ] B-66 – `robotsTxtAction` sends raw headers and flushes every output buffer
+## [x] B-66 – `robotsTxtAction` sends raw headers and flushes every output buffer
 
 **File:** `src/Controller/PublicServicesController.php:83-85`
 

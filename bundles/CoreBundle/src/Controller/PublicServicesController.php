@@ -74,10 +74,6 @@ class PublicServicesController extends Controller
             $siteId = $site->getId();
         }
 
-        // send correct headers
-        header('Content-Type: text/plain; charset=utf8');
-        while (@ob_end_flush()) ;
-
         // check for configured robots.txt in pimcore
         $content = '';
         if (array_key_exists($siteId, $config)) {
@@ -90,7 +86,7 @@ class PublicServicesController extends Controller
         }
 
         return new Response($content, Response::HTTP_OK, [
-            'Content-Type' => 'text/plain',
+            'Content-Type' => 'text/plain; charset=UTF-8',
         ]);
     }
 
