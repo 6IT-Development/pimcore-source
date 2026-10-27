@@ -1228,7 +1228,7 @@ throw a `\LogicException` with the controller/argument name otherwise.
 
 ---
 
-## [ ] B-64 – `WebDavController` ends with `exit` and swallows errors (worker runtimes, kernel events, empty 200 responses)
+## [x] B-64 – `WebDavController` ends with `exit` and swallows errors (worker runtimes, kernel events, empty 200 responses)
 
 **File:** `src/Controller/WebDavController.php:34-61`
 
