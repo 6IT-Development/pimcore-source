@@ -26,7 +26,7 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
-use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\Service\ResetInterface;
 use Twig\Environment;
@@ -38,6 +38,8 @@ class GlobalTemplateVariablesListener implements EventSubscriberInterface, Logge
 {
     use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
+
+    private const ATTRIBUTE_PUSHED = '_pimcore_template_globals_pushed';
 
     protected array $globalsStack = [];
 
@@ -53,7 +55,8 @@ class GlobalTemplateVariablesListener implements EventSubscriberInterface, Logge
     {
         return [
             KernelEvents::CONTROLLER => ['onKernelController', 15], // has to be after DocumentFallbackListener
-            KernelEvents::RESPONSE => 'onKernelResponse',
+            // kernel.finish_request is dispatched even if the sub-request throws, kernel.response is not
+            KernelEvents::FINISH_REQUEST => 'onKernelFinishRequest',
         ];
     }
 
@@ -75,13 +78,19 @@ class GlobalTemplateVariablesListener implements EventSubscriberInterface, Logge
         } catch (Exception) {
             $this->globalsStack[] = false;
         }
+
+        $request->attributes->set(self::ATTRIBUTE_PUSHED, true);
     }
 
-    public function onKernelResponse(ResponseEvent $event): void
+    public function onKernelFinishRequest(FinishRequestEvent $event): void
     {
-        if (!$this->matchesPimcoreContext($event->getRequest(), PimcoreContextResolver::CONTEXT_DEFAULT)) {
+        // only pop the entry pushed for this request, never the one of the parent request
+        $request = $event->getRequest();
+        if (!$request->attributes->get(self::ATTRIBUTE_PUSHED)) {
             return;
         }
+
+        $request->attributes->remove(self::ATTRIBUTE_PUSHED);
 
         if (count($this->globalsStack)) {
             $this->restoreGlobals(array_pop($this->globalsStack));
@@ -89,8 +98,8 @@ class GlobalTemplateVariablesListener implements EventSubscriberInterface, Logge
     }
 
     /**
-     * Restores the globals from before the first request if a request ended without kernel.response (e.g. an
-     * exception), so the document of that request is not used by the next one
+     * Restores the globals from before the first request if a request ended without kernel.finish_request (e.g. a
+     * fatal error), so the document of that request is not used by the next one
      */
     public function reset(): void
     {

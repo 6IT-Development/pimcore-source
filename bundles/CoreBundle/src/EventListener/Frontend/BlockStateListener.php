@@ -23,8 +23,8 @@ use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
-use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
@@ -37,6 +37,8 @@ class BlockStateListener implements EventSubscriberInterface, LoggerAwareInterfa
     use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
 
+    private const ATTRIBUTE_PUSHED = '_pimcore_block_state_pushed';
+
     public function __construct(protected BlockStateStack $blockStateStack)
     {
     }
@@ -45,7 +47,8 @@ class BlockStateListener implements EventSubscriberInterface, LoggerAwareInterfa
     {
         return [
             KernelEvents::REQUEST => 'onKernelRequest',
-            KernelEvents::RESPONSE => 'onKernelResponse',
+            // kernel.finish_request is dispatched even if the sub-request throws, kernel.response is not
+            KernelEvents::FINISH_REQUEST => 'onKernelFinishRequest',
         ];
     }
 
@@ -69,19 +72,18 @@ class BlockStateListener implements EventSubscriberInterface, LoggerAwareInterfa
         // this is for $this->action() in templates when they are inside a block element
         // adds a new, empty block state to the stack which is used in the sub-request
         $this->blockStateStack->push();
+        $request->attributes->set(self::ATTRIBUTE_PUSHED, true);
     }
 
-    public function onKernelResponse(ResponseEvent $event): void
+    public function onKernelFinishRequest(FinishRequestEvent $event): void
     {
         $request = $event->getRequest();
 
-        if (!$this->matchesPimcoreContext($request, PimcoreContextResolver::CONTEXT_DEFAULT)) {
+        if (!$request->attributes->get(self::ATTRIBUTE_PUSHED)) {
             return;
         }
 
-        if ($request->query->get('disableBlockClearing') || $request->request->get('disableBlockClearing')) {
-            return;
-        }
+        $request->attributes->remove(self::ATTRIBUTE_PUSHED);
 
         if ($this->blockStateStack->count() > 1) {
             // restore parent block data by removing sub-request block state

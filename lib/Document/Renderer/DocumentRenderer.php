@@ -84,64 +84,67 @@ class DocumentRenderer implements DocumentRendererInterface
             DocumentEvents::RENDERER_PRE_RENDER
         );
 
-        // add document route to request if no route is set
-        // this is needed for logic relying on the current route (e.g. pimcoreUrl helper)
-        if (!isset($attributes['_route'])) {
-            $route = $this->documentRouteHandler->buildRouteForDocument($document);
-            $attributes['_route'] = $route?->getRouteKey();
-        }
-
-        try {
-            $request = $this->requestHelper->getCurrentRequest();
-        } catch (Exception) {
-
-            $host = null;
-            $url = $document->getFullPath();
-
-            // don't keep the site of a previously rendered document
-            Site::resetCurrentSite();
-            if ($site = Frontend::getSiteForDocument($document)) {
-                Site::setCurrentSite($site);
-                $host = $site->getMainDomain();
-                $url = preg_replace('@^' . $site->getRootPath() . '/?@', '/', $url);
-            } elseif ($systemMainDomain = Tool::getHostname()) {
-                $host = $systemMainDomain;
-            }
-
-            $request = $this->requestHelper->createRequestWithContext(uri: $url, host: $host);
-        }
-
-        if ($isStaticPageGenerator) {
-            $headers = Config::getSystemConfiguration('documents')['static_page_generator']['headers'];
-            foreach ($headers as $header) {
-                $request->headers->set($header['name'], $header['value']);
-            }
-        }
-
-        $documentLocale = $document->getProperty('language');
         $tempLocale = $this->localeService->getLocale();
-        if ($documentLocale) {
-            $this->localeService->setLocale($documentLocale);
-            $request->setLocale($documentLocale);
-        }
-
-        if ($isStaticPageGenerator && $isCli && !$this->requestHelper->hasMainRequest()) {
-            $this->requestHelper->pushRequest($request);
-        }
-
-        $uri = $this->actionRenderer->createDocumentReference($document, $attributes, $query);
-        $response = $this->fragmentRenderer->render($uri, $request, $options);
-
-        $this->localeService->setLocale($tempLocale);
-
-        $this->eventDispatcher->dispatch(
-            new DocumentEvent($document, $attributes),
-            DocumentEvents::RENDERER_POST_RENDER
-        );
 
         try {
+            // add document route to request if no route is set
+            // this is needed for logic relying on the current route (e.g. pimcoreUrl helper)
+            if (!isset($attributes['_route'])) {
+                $route = $this->documentRouteHandler->buildRouteForDocument($document);
+                $attributes['_route'] = $route?->getRouteKey();
+            }
+
+            try {
+                $request = $this->requestHelper->getCurrentRequest();
+            } catch (Exception) {
+
+                $host = null;
+                $url = $document->getFullPath();
+
+                // don't keep the site of a previously rendered document
+                Site::resetCurrentSite();
+                if ($site = Frontend::getSiteForDocument($document)) {
+                    Site::setCurrentSite($site);
+                    $host = $site->getMainDomain();
+                    $url = preg_replace('@^' . $site->getRootPath() . '/?@', '/', $url);
+                } elseif ($systemMainDomain = Tool::getHostname()) {
+                    $host = $systemMainDomain;
+                }
+
+                $request = $this->requestHelper->createRequestWithContext(uri: $url, host: $host);
+            }
+
+            if ($isStaticPageGenerator) {
+                $headers = Config::getSystemConfiguration('documents')['static_page_generator']['headers'];
+                foreach ($headers as $header) {
+                    $request->headers->set($header['name'], $header['value']);
+                }
+            }
+
+            $documentLocale = $document->getProperty('language');
+            if ($documentLocale) {
+                $this->localeService->setLocale($documentLocale);
+                $request->setLocale($documentLocale);
+            }
+
+            if ($isStaticPageGenerator && $isCli && !$this->requestHelper->hasMainRequest()) {
+                $this->requestHelper->pushRequest($request);
+            }
+
+            $uri = $this->actionRenderer->createDocumentReference($document, $attributes, $query);
+            $response = $this->fragmentRenderer->render($uri, $request, $options);
+
             return $response->getContent();
         } finally {
+            // restore the state even if rendering fails, otherwise the next document (e.g. in the static page
+            // generator) or the rest of the parent page renders with the locale and placeholders of this one
+            $this->localeService->setLocale($tempLocale);
+
+            $this->eventDispatcher->dispatch(
+                new DocumentEvent($document, $attributes),
+                DocumentEvents::RENDERER_POST_RENDER
+            );
+
             if ($isStaticPageGenerator && $isCli) {
                 while ($this->requestHelper->hasCurrentRequest()) {
                     $this->requestHelper->popRequest();

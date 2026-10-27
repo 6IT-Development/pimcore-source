@@ -762,7 +762,7 @@ document the event-dispatcher way of disabling it.
 
 ---
 
-## [ ] B-43 – Push/pop listeners lose balance when a sub-request throws (block state, Twig globals, placeholder index)
+## [x] B-43 – Push/pop listeners lose balance when a sub-request throws (block state, Twig globals, placeholder index)
 
 **Files:** `src/EventListener/Frontend/BlockStateListener.php:52-90`,
 `src/EventListener/Frontend/GlobalTemplateVariablesListener.php:59-92`,
