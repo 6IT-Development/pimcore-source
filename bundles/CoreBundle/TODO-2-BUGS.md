@@ -791,7 +791,7 @@ pushed depth in a request attribute and pop only when it is set. Wrap the render
 
 ---
 
-## [ ] B-44 – `FullPageCacheListener` request side: superglobals, comma-split regexes, unchecked cache item
+## [x] B-44 – `FullPageCacheListener` request side: superglobals, comma-split regexes, unchecked cache item
 
 **File:** `src/EventListener/Frontend/FullPageCacheListener.php:155-169, 189-237, 243-280`
 

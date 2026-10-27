@@ -34,6 +34,7 @@ pimcore:
         lifetime: 120
         exclude_cookie: 'pimcore_admin_sid'
         exclude_patterns: '@^/test/de@'
+        ignore_query_parameters: ['utm_*', 'gclid', 'fbclid']
 ```
 
 
@@ -41,15 +42,16 @@ pimcore:
 | ------ | ----------- |
 | Enable | Set to true to enable to full page cache. |
 | Lifetime | You can optionally define a lifetime (in seconds) for the  full page cache. If you don't do, the cache is evicted automatically when there is a modification in the Pimcore Backend UI. If there is a lifetime the item stays in the cache even when it is changed until the TTL is over. The lifetime is useful if you have embedded some items which are not directly in the cms, like rss feeds, or twitter messages over the API. It is also highly recommended to specify a lifetime on high traffic websites so that the frontend (caches) isn't affected by changes in the admin-UI. Otherwise on every change in the admin-UI the whole output-cache is flushed, what can have drastic effects to the server environment. |
-| Exclude Patterns | You can define some exclude patterns where the cache doesn't affect. The patterns have to be valid regular expressions (including delimiters) and different patterns should be seperated by `,` |
-| Disable Cookie | You can define an additional cookie-name which disables the cache. The cookie "pimcore_admin_sid" (used for the Pimcore admin UI) ALWAYS disables the output-cache to make editor's life easier ;-) 
+| Exclude Patterns | You can define some exclude patterns where the cache doesn't affect. The patterns have to be valid regular expressions (including delimiters) and different patterns should be seperated by `,`. Invalid patterns are ignored and logged as a warning. |
+| Ignore Query Parameters | Query parameters that are not part of the cache key, e.g. tracking parameters. A trailing `*` matches a prefix (`utm_*`). A page requested with such a parameter is served from (and stored as) the entry of the URL without it, so only list parameters that don't change the rendered content. Every other query parameter creates a separate cache entry. |
+| Disable Cookie | You can define additional cookie-names (comma separated) which disable the cache. The cookie "pimcore_admin_sid" (used for the Pimcore admin UI) ALWAYS disables the output-cache to make editor's life easier ;-) 
 
 
 A cached response is served to every visitor, so the following responses are never stored:
 - responses with a `Set-Cookie` header (e.g. a CSRF, A/B testing or tracking cookie): they would send the first
   visitor's cookies to everyone,
 - responses with a `Vary` header other than `Accept-Encoding` and `X-Requested-With` (e.g. `Vary: Accept-Language`):
-  the cache key only contains the hostname, request URI, request method and device, so content negotiated for one
+  the cache key only contains the scheme, hostname, path, query string (parameters sorted), request method and device, so content negotiated for one
   client would be served to all,
 - responses with `Cache-Control: no-store`, streamed responses and binary file responses.
 

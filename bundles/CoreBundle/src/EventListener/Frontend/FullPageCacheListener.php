@@ -35,6 +35,7 @@ use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Logger;
 use Pimcore\Tool;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Event\KernelEvent;
@@ -163,6 +164,7 @@ class FullPageCacheListener implements ResetInterface
 
         $requestUri = $request->getRequestUri();
         $excludePatterns = [];
+        $ignoredQueryParameters = [];
 
         // disable the output-cache if the client sends an authorization header
         if ($request->headers->has('authorization')) {
@@ -178,20 +180,17 @@ class FullPageCacheListener implements ResetInterface
             return;
         }
 
-        // disable the output-cache if browser wants the most recent version
-        // unfortunately only Chrome + Firefox if not using SSL
-        if (!$request->isSecure()) {
-            if (isset($_SERVER['HTTP_CACHE_CONTROL']) && $_SERVER['HTTP_CACHE_CONTROL'] === 'no-cache') {
-                $this->disable('HTTP Header Cache-Control: no-cache was sent');
+        // disable the output-cache if browser wants the most recent version (e.g. a hard reload)
+        if ($request->headers->hasCacheControlDirective('no-cache')) {
+            $this->disable('HTTP Header Cache-Control: no-cache was sent');
 
-                return;
-            }
+            return;
+        }
 
-            if (isset($_SERVER['HTTP_PRAGMA']) && $_SERVER['HTTP_PRAGMA'] === 'no-cache') {
-                $this->disable('HTTP Header Pragma: no-cache was sent');
+        if (str_contains(strtolower((string) $request->headers->get('Pragma')), 'no-cache')) {
+            $this->disable('HTTP Header Pragma: no-cache was sent');
 
-                return;
-            }
+            return;
         }
 
         try {
@@ -213,15 +212,19 @@ class FullPageCacheListener implements ResetInterface
                 }
 
                 if (!empty($conf['exclude_patterns'])) {
-                    $confExcludePatterns = explode(',', $conf['exclude_patterns']);
-                    $excludePatterns = $confExcludePatterns;
+                    $excludePatterns = $this->parseExcludePatterns((string) $conf['exclude_patterns']);
+                }
+
+                if (!empty($conf['ignore_query_parameters'])) {
+                    $ignoredQueryParameters = (array) $conf['ignore_query_parameters'];
                 }
 
                 if (!empty($conf['exclude_cookie'])) {
                     $cookies = explode(',', (string)$conf['exclude_cookie']);
 
                     foreach ($cookies as $cookie) {
-                        if (!empty($cookie) && isset($_COOKIE[trim($cookie)])) {
+                        $cookie = trim($cookie);
+                        if ($cookie !== '' && $request->cookies->has($cookie)) {
                             $this->disable('exclude cookie in system-settings matches');
 
                             return;
@@ -255,7 +258,7 @@ class FullPageCacheListener implements ResetInterface
         }
 
         foreach ($excludePatterns as $pattern) {
-            if (@preg_match($pattern, $requestUri)) {
+            if (preg_match($pattern, $requestUri)) {
                 $this->disable('exclude path pattern in system-settings matches');
 
                 return;
@@ -268,11 +271,9 @@ class FullPageCacheListener implements ResetInterface
 
         $appendKey = '';
         // this is for example for the image-data-uri plugin
-        if (isset($_REQUEST['pimcore_cache_tag_suffix'])) {
-            $tags = $_REQUEST['pimcore_cache_tag_suffix'];
-            if (is_array($tags)) {
-                $appendKey = '_' . implode('_', $tags);
-            }
+        $tags = $request->query->all()['pimcore_cache_tag_suffix'] ?? null;
+        if (is_array($tags)) {
+            $appendKey = '_' . implode('_', $tags);
         }
 
         if ($request->isXmlHttpRequest()) {
@@ -281,7 +282,9 @@ class FullPageCacheListener implements ResetInterface
 
         $appendKey .= $request->getMethod();
 
-        $this->defaultCacheKey = 'output_' . md5(Tool::getHostname() . $requestUri . $appendKey);
+        $this->defaultCacheKey = 'output_' . md5(
+            $request->getScheme() . '://' . Tool::getHostname() . $this->getNormalizedUri($request, $ignoredQueryParameters) . $appendKey
+        );
         $cacheKeys = [
             $this->defaultCacheKey . '_' . $device,
             $this->defaultCacheKey,
@@ -294,16 +297,82 @@ class FullPageCacheListener implements ResetInterface
             }
         }
 
-        if ($cacheItem) {
-            /** @var Response $response */
+        if ($cacheItem instanceof Response) {
             $response = $cacheItem;
             $response->headers->set('X-Pimcore-Output-Cache-Tag', $cacheKey);
-            $cacheItemDate = strtotime($response->headers->get('X-Pimcore-Cache-Date'));
-            $response->headers->set('Age', (string)(time() - $cacheItemDate));
+
+            // a PREPARE_RESPONSE listener may have removed the date header
+            $cacheItemDate = strtotime((string) $response->headers->get('X-Pimcore-Cache-Date'));
+            if ($cacheItemDate !== false) {
+                $response->headers->set('Age', (string) max(0, time() - $cacheItemDate));
+            }
 
             $event->setResponse($response);
             $this->stopResponsePropagation = true;
         }
+    }
+
+    /**
+     * The patterns are a comma separated list, but a regex can contain commas itself (e.g. a quantifier like {1,3}),
+     * so parts are joined again until they form a valid regex.
+     *
+     * @return string[]
+     */
+    private function parseExcludePatterns(string $patterns): array
+    {
+        $result = [];
+        $buffer = null;
+
+        foreach (explode(',', $patterns) as $part) {
+            $buffer = $buffer === null ? $part : $buffer . ',' . $part;
+            $pattern = trim($buffer);
+
+            if ($pattern === '') {
+                $buffer = null;
+
+                continue;
+            }
+
+            if (@preg_match($pattern, '') !== false) {
+                $result[] = $pattern;
+                $buffer = null;
+            }
+        }
+
+        if ($buffer !== null && trim($buffer) !== '') {
+            Logger::warning(sprintf('Full page cache: ignoring invalid exclude pattern "%s"', trim($buffer)));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Path plus the query string with sorted parameters, so the order of the parameters doesn't create separate cache
+     * entries. Parameters in $ignoredParameters (a trailing * matches a prefix, e.g. utm_*) are not part of the key.
+     */
+    private function getNormalizedUri(Request $request, array $ignoredParameters): string
+    {
+        $uri = $request->getBaseUrl() . $request->getPathInfo();
+
+        if ($ignoredParameters) {
+            $query = $request->query->all();
+            foreach (array_keys($query) as $name) {
+                foreach ($ignoredParameters as $ignored) {
+                    $ignored = (string) $ignored;
+                    if ($name === $ignored || (str_ends_with($ignored, '*') && str_starts_with((string) $name, substr($ignored, 0, -1)))) {
+                        unset($query[$name]);
+
+                        break;
+                    }
+                }
+            }
+
+            $queryString = Request::normalizeQueryString(http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+        } else {
+            $queryString = $request->getQueryString() ?? '';
+        }
+
+        return $queryString !== '' ? $uri . '?' . $queryString : $uri;
     }
 
     public function stopPropagationCheck(KernelEvent $event): void
