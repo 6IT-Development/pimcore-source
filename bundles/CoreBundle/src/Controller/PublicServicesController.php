@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Controller;
 
+use DateTimeImmutable;
 use Pimcore\Bundle\SeoBundle\Config;
 use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
 use Pimcore\Controller\Controller;
@@ -33,6 +34,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PublicServicesController extends Controller
 {
+    private const array CUSTOM_ADMIN_ENTRY_POINT_PARAMS = ['token', 'reset', 'deeplink', 'perspective'];
+
     public function thumbnailAction(Request $request): StreamedResponse
     {
         $filename = $request->attributes->getString('filename');
@@ -88,7 +91,20 @@ class PublicServicesController extends Controller
 
     public function customAdminEntryPointAction(Request $request): RedirectResponse
     {
-        $params = $request->query->all();
+        // the parameter (and the login routes) are only defined by pimcore/admin-ui-classic-bundle
+        if (!$this->container->get('parameter_bag')->has('pimcore_admin.custom_admin_path_identifier')) {
+            throw $this->createNotFoundException('The custom admin entry point needs the admin bundle.');
+        }
+
+        // only forward the parameters of the login routes, see LoginController of the admin bundle
+        $params = array_filter(
+            $request->query->all(),
+            fn (mixed $value, string|int $key) => is_scalar($value) && (
+                in_array($key, self::CUSTOM_ADMIN_ENTRY_POINT_PARAMS, true)
+                || preg_match('/^(document|asset|object)_\d+_[a-z]+$/', (string) $key) // deeplink target
+            ),
+            ARRAY_FILTER_USE_BOTH
+        );
 
         $url = match (true) {
             isset($params['token']) => $this->generateUrl('pimcore_admin_login_check', $params),
@@ -98,9 +114,11 @@ class PublicServicesController extends Controller
 
         $redirect = new RedirectResponse($url);
 
-        $customAdminPathIdentifier = $this->getParameter('pimcore_admin.custom_admin_path_identifier');
-        if (!empty($customAdminPathIdentifier) && $request->cookies->get('pimcore_custom_admin') != $customAdminPathIdentifier) {
-            $redirect->headers->setCookie(new Cookie('pimcore_custom_admin', $customAdminPathIdentifier, strtotime('+1 year')));
+        $customAdminPathIdentifier = (string) $this->getParameter('pimcore_admin.custom_admin_path_identifier');
+        if ($customAdminPathIdentifier !== '' && $request->cookies->get('pimcore_custom_admin') !== $customAdminPathIdentifier) {
+            $redirect->headers->setCookie(
+                Cookie::create('pimcore_custom_admin', $customAdminPathIdentifier)->withExpires(new DateTimeImmutable('+1 year'))
+            );
         }
 
         return $redirect;

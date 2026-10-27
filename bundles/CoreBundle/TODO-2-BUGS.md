@@ -1321,7 +1321,7 @@ check the bundle via `kernel.bundles` (or move the action into SeoBundle, I-69);
 
 ---
 
-## [ ] B-68 – `customAdminEntryPointAction` fails without the admin bundle and forwards all query parameters
+## [x] B-68 – `customAdminEntryPointAction` fails without the admin bundle and forwards all query parameters
 
 **Files:** `src/Controller/PublicServicesController.php:108-126`
 
