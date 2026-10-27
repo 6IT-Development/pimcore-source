@@ -388,7 +388,7 @@ class Service extends Model\Element\Service
                 // check if there's an item in the TmpStore
                 // remove an eventually existing cache-buster prefix first (eg. when using with a CDN)
                 $pathInfo = preg_replace('@^cache-buster\-[\d]+/@', '', $config['prefix']) . $config['thumbnail_name'] . '/' . $config['filename'];
-                $deferredConfigId = 'thumb_' . $config['asset_id'] . '__' . md5(urldecode($pathInfo));
+                $deferredConfigId = 'thumb_' . $config['asset_id'] . '__' . md5(rawurldecode($pathInfo));
 
                 if ($thumbnailConfigItem = TmpStore::get($deferredConfigId)) {
                     $thumbnailConfig = $thumbnailConfigItem->getData();
@@ -560,7 +560,7 @@ class Service extends Model\Element\Service
                 $thumbnailStream = $storage->readStream($requestedFile);
             }
         } elseif ($config['type'] === 'video') {
-            $storagePath = urldecode($thumbnail['formats'][$config['file_extension']]);
+            $storagePath = rawurldecode($thumbnail['formats'][$config['file_extension']]);
 
             if ($storage->fileExists($storagePath)) {
                 $thumbnailStream = $storage->readStream($storagePath);
@@ -593,6 +593,8 @@ class Service extends Model\Element\Service
     }
 
     /**
+     * @param string $uri the URL-encoded path (path info, without base URL and query string) of the thumbnail
+     *
      * @throws Exception
      */
     public static function getStreamedResponseByUri(string $uri): ?StreamedResponse
@@ -607,6 +609,8 @@ class Service extends Model\Element\Service
     }
 
     /**
+     * @param string $uri the URL-encoded path (path info, without base URL and query string) of the thumbnail
+     *
      * @throws FilesystemException
      * @internal
      *
@@ -614,15 +618,16 @@ class Service extends Model\Element\Service
     public static function getStreamedResponseForThumbnail(array $config, string $uri): ?StreamedResponse
     {
         $storage = Storage::get('thumbnail');
-        $storagePath = urldecode($uri);
+        // thumbnail paths are encoded with rawurlencode() (urlencode_ignore_slash()), urldecode() would turn "+" into a space
+        $storagePath = rawurldecode($uri);
 
         $prefix = Config::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail'];
         if ($prefix) {
             $storagePath = preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $storagePath);
         }
 
-        // thumbnail urls are at least 10 characters long
-        if (strlen($uri) > 10 && $storage->fileExists($storagePath)) {
+        // thumbnail paths are at least 10 characters long
+        if (strlen($storagePath) > 10 && $storage->fileExists($storagePath)) {
             $stream = $storage->readStream($storagePath);
 
             $lifetime = 86400 * 7; // 1 week lifetime, same as direct delivery in .htaccess

@@ -1339,7 +1339,7 @@ check the bundle via `kernel.bundles` (or move the action into SeoBundle, I-69);
 
 ---
 
-## [ ] B-69 – Thumbnail path decoding uses `urldecode()` (a literal `+` becomes a space) and checks the wrong string length
+## [x] B-69 – Thumbnail path decoding uses `urldecode()` (a literal `+` becomes a space) and checks the wrong string length
 
 **Files:** `src/Controller/PublicServicesController.php:53`, `models/Asset/Service.php:565,573`
 
