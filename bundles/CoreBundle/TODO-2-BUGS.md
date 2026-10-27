@@ -1145,7 +1145,7 @@ variant exhaustion).
 
 ---
 
-## [ ] B-60 – `SelectOptionsOptionsProvider` wipes the default value of every Multiselect field that uses it
+## [x] B-60 – `SelectOptionsOptionsProvider` wipes the default value of every Multiselect field that uses it
 
 **Files:** `src/OptionsProvider/SelectOptionsOptionsProvider.php:54-61`,
 `models/DataObject/ClassDefinition/DynamicOptionsProvider/SelectionProviderTrait.php:56-57`,

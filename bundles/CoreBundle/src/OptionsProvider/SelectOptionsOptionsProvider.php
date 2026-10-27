@@ -51,9 +51,9 @@ class SelectOptionsOptionsProvider implements SelectOptionsProviderInterface
         return true;
     }
 
-    public function getDefaultValue(array $context, Data $fieldDefinition): ?string
+    public function getDefaultValue(array $context, Data $fieldDefinition): string|array|null
     {
-        if ($fieldDefinition instanceof Data\Select) {
+        if ($fieldDefinition instanceof Data\Select || $fieldDefinition instanceof Data\Multiselect) {
             return $fieldDefinition->getDefaultValue();
         }
 
