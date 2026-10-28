@@ -152,6 +152,47 @@ only suggests `elasticsearch/elasticsearch`)
 **(33)** `lib/Serializer/**` (`Serializer`, `Normalizer/ReferenceLoopNormalizer`), plus the direct consumers where a defect originates in the
 interplay (`bundles/CoreBundle/config/serializer.yaml`, `bundles/CoreBundle/src/DependencyInjection/Compiler/SerializerPass.php`,
 `lib/Tool/Serialize.php::removeReferenceLoops()` (`:61-101`), `lib/Controller/Traits/JsonHelperTrait.php`)
+**(34)** `lib/Session/**` (`Attribute/LockableAttributeBag`, `Attribute/LockableAttributeBagInterface`,
+`Attribute/Exception/AttributeBagLockedException`) – no consumer exists in this repository; checked against `lib/Tool/Session.php`,
+`doc/19_Development_Tools_and_Details/35_Working_with_Sessions.md` and Symfony's session storage (`Session::invalidate()`,
+`NativeSessionStorage::clear()`, `MockArraySessionStorage::clear()`)
+**(35)** `lib/Templating/**` (`TwigDefaultDelegatingEngine`, `Renderer/ActionRenderer`, `Renderer/IncludeRenderer`, `Renderer/EditableRenderer`),
+plus the direct consumers where a defect originates in the interplay (`bundles/CoreBundle/config/templating.yaml`,
+`lib/Twig/Extension/Templating/Inc.php` (`pimcore_inc()`), `lib/Controller/Controller.php:27-72`, `lib/Mail.php::renderParams()` (`:593-624`),
+`models/DataObject/ClassDefinition/Layout/Text.php:118-145`, `models/Document/Editable/Snippet.php:100-145`, `lib/Tool/DomCrawler.php`,
+`lib/Tool/Frontend.php::isOutputCacheEnabled()`, Symfony `HttpKernelRuntime::renderFragment()` / `FragmentHandler` / `InlineFragmentRenderer` /
+`FragmentUriGenerator`, Twig `SandboxExtension`)
+**(36)** `lib/Test/**` (`KernelTestCase`, `WebTestCase`) – no consumer in this repository (Pimcore's own suites use Codeception,
+`tests/Support/Helper/Pimcore.php`); checked against `lib/Pimcore.php` (`setKernel()` / `getContainer()` / `shutdown()`), `lib/Bootstrap.php::kernel()`
+(`:232-268`), `lib/Kernel.php::initializeContainer()` (`:155-178`), `lib/Cache.php::getHandler()`, `lib/Event/TestEvents.php`,
+`doc/19_Development_Tools_and_Details/29_Testing/01_Application_Testing.md` and Symfony `KernelTestCase` / `WebTestCase`
+**(37)** `lib/Tool/**` (`Admin`, `ArrayNormalizer`, `AssetsInstaller`, `Authentication`, `ClassUtils`, `Console`, `DeviceDetector`, `DomCrawler`,
+`Frontend`, `HtmlUtils`, `MaintenanceModeHelper(Interface)`, `Requirements`, `Requirements/Check`, `Serialize`, `Session`, `Storage`, `Text`,
+`Text/Csv`, `Transliteration`, `UserTimezone`), plus the direct consumers where a defect originates in the interplay (`lib/File.php::getValidFilename()`,
+`lib/helper-functions.php::array_to_html_attribute_string()`, `lib/Config.php::getSystemConfiguration()`, `lib/Extension/Bundle/PimcoreBundleLocator.php:90`,
+`models/Translation.php:208-213`, `:326`, `:402`, `models/Document/Editable.php:128-131` (and the other `HtmlUtils` callers in `models/Document/Editable/*`),
+`models/DataObject/ClassDefinition/Data/Datetime.php:158-172`, `:402-409`, `bundles/CoreBundle/src/EventListener/Frontend/FullPageCacheListener.php:239-241`,
+`:338-341`, `bundles/SeoBundle/src/Redirect/Csv.php:133`, `tests/Unit/Tool/*`, `tests/Model/Tool/*`)
+**(38)** `lib/Translation/**` (`Translator`, `TranslationEntriesDumper`), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/l10n.yaml:10-15`, `bundles/CoreBundle/config/services.yaml:106`, `bundles/CoreBundle/src/EventListener/DumpTranslationEntriesListener.php`,
+`TranslationDebugListener.php`, `models/Translation.php` (`getByKey()`, `getValidLanguages()`), `lib/Tool/Text.php::wysiwygText()`,
+`doc/06_Multi_Language_i18n/04_Shared_Translations.md`, `tests/Unit/Translation/TranslatorTest.php`)
+**(39)** `lib/Twig/**` (`TwigEnvironmentConfigurator`, `Sandbox/SecurityPolicy`, `TokenParser/*`, `Node/*`, `Options/*`, `Extension/*` incl.
+`Extension/Templating/**` – head / placeholder helpers, `Inc`, `Navigation`, `PimcoreUrl`, traits, exceptions), plus the direct consumers where a
+defect originates in the interplay (`bundles/CoreBundle/config/templating_twig.yaml`, `config/pimcore/default.yaml:334-338` (sandbox defaults),
+`lib/Mail.php::renderParams()` (`:593-624`), `models/DataObject/ClassDefinition/Layout/Text.php:118-145`,
+`bundles/CoreBundle/src/EventListener/Frontend/DocumentRendererListener.php:43-52`, `lib/Templating/Renderer/EditableRenderer.php`,
+`tests/Twig/*`, `tests/Unit/Twig/Options/BlockOptionsTest.php`)
+**(40)** `lib/ValueObject/**` (`Collection/ArrayOfBoolean`, `ArrayOfIntegers`, `ArrayOfPositiveIntegers`, `ArrayOfStrings`, `Integer/PositiveInteger`,
+`String/Path`) – only consumer in this repository: `lib/Twig/TokenParser/CacheParser.php:77`; public API announced in
+`doc/23_Installation_and_Upgrade/09_Upgrade_Notes/README.md:139-141`; tests `tests/Unit/ValueObject/**`
+**(41)** `lib/Video/**` (`Adapter`, `Adapter/Ffmpeg`) and the `lib/Video.php` facade, plus the direct consumers where a defect originates in the
+interplay (`models/Asset/Video/Thumbnail/Processor.php:118-145`, `:244`, `:287`, `models/Asset/Video.php:158-255`,
+`lib/Messenger/Handler/AssetUpdateTasksHandler.php:105-118`, `lib/Tool/Console.php`)
+**(42)** `lib/Workflow/**` (`Manager`, `Service`, `ExpressionService`, `Transition`, `GlobalAction`, `WorkflowConfig`, `MarkingStore/*`,
+`SupportStrategy/*`, `EventSubscriber/*`, `Notification/*`, `Notes/*`, `Place/*`, `Dumper/*`), plus the direct consumers where a defect
+originates in the interplay (`models/Element/AbstractElement.php:480-515` (`isAllowed()`), `models/Element/WorkflowState.php:37-60`,
+`models/DataObject/Concrete.php:428`, `doc/07_Workflow_Management/04_Permissions.md:30-41`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
@@ -165,7 +206,7 @@ fix is tracked there, not repeated),
 [CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-09 static page generator / session check – not repeated)
 
 Errors that cause data corruption, stale data that is never invalidated, or a whole subsystem silently not working.
-IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–33: `033aa183ef`).
+IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–42: `033aa183ef`).
 Grouped by area: **Core cache handler / write lock** C-01–C-03, **Composer** – (no critical findings),
 **Config** C-04–C-05, **Console** – (no critical findings),
 **Controller** – (no critical findings),
@@ -194,7 +235,16 @@ Grouped by area: **Core cache handler / write lock** C-01–C-03, **Composer** �
 **Routing** – (no critical findings),
 **SearchClient** – (no critical findings),
 **Security** C-11,
-**Serializer** – (no critical findings).
+**Serializer** – (no critical findings),
+**Session** – (no critical findings),
+**Templating** – (no critical findings),
+**Test** – (no critical findings),
+**Tool** – (no critical findings),
+**Translation** – (no new critical findings; see models C-18, C-19, C-22),
+**Twig** C-12,
+**ValueObject** – (no critical findings),
+**Video** – (no new critical findings; see models C-10),
+**Workflow** C-13.
 
 ---
 
@@ -788,3 +838,153 @@ signal before the session check succeeded.
 
 No critical findings in Scope 33 (`lib/Serializer/**`). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-171 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md)
 I-143. No Symfony 7.4 / PHP 8.4 incompatibility was found.
+
+---
+
+## Session
+
+No critical findings in Scope 34 (`lib/Session/**`). Nothing in this repository registers or uses `LockableAttributeBag`, so its defects are
+latent; see [TODO-2-BUGS.md](TODO-2-BUGS.md) B-172–B-173 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-144–I-146. No Symfony 7.4 /
+PHP 8.4 incompatibility was found: the overridden signatures (`set(string, mixed): void`, `replace(array): void`, `remove(string): mixed`,
+`clear(): mixed`) match `AttributeBag` / `AttributeBagInterface` in Symfony 7.x.
+
+---
+
+## Templating
+
+No critical findings in Scope 35 (`lib/Templating/**`). The most severe item is B-174 (`pimcore_inc()` output cache serves the
+include of one site / language on another). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-174–B-177 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-147–I-152. No hard Symfony 7.4 / PHP 8.4 incompatibility was found: `HttpKernelRuntime::renderFragment()`,
+`ControllerReference`, Twig `SandboxExtension::enableSandbox()` / `disableSandbox()` (twig/twig `^3.21`) and `Symfony\Component\DomCrawler\Crawler`
+(`^7.4`) are used with their current signatures. The open Twig sandbox (CoreBundle C-12) is not repeated.
+
+---
+
+## Test
+
+No critical findings in Scope 36 (`lib/Test/**`). Both classes only affect test runs of projects that extend them. See
+[TODO-2-BUGS.md](TODO-2-BUGS.md) B-178–B-179 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-153–I-155. No Symfony 7.4 / PHP 8.4
+incompatibility was found: `createKernel(array $options = []): KernelInterface` matches `Symfony\Bundle\FrameworkBundle\Test\KernelTestCase` 7.x.
+
+---
+
+## Tool
+
+No critical findings in Scope 37 (`lib/Tool/**`). The most severe items are B-180 (`Authentication::authenticateSession()` turns an
+unrefreshable admin session into a 500 on every frontend request of that visitor), B-181 (disabled executables are still used, unescaped shell
+arguments) and B-184 (`Text::wysiwygText()` corrupts URLs and writes unescaped attribute values). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-180–B-193
+and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-156–I-163. No hard Symfony 7.4 / PHP 8.4 incompatibility was found; the
+`Connection::connect()` call in `MaintenanceModeHelper` blocks the DBAL 4 upgrade (I-162). Already tracked elsewhere and not repeated: wysiwyg
+sanitizing (models C-60), site-mapping staleness (models C-23 / B-132 / I-67), `isEqualTo()` / deleted admin user in `UserProvider` (models C-41),
+`Authentication` token helpers (models B-236), maintenance mode (B-26, CoreBundle B-39, models B-239), `Serialize::removeReferenceLoops()` (B-171),
+DomCrawler full-document / HTML5 output (GlossaryBundle B-06 / B-08).
+
+---
+
+## Translation
+
+No new critical findings in Scope 38 (`lib/Translation/**`). The critical translator defects are already tracked in
+[models TODO-1](../models/TODO-1-CRITICAL.md): C-18 (key saved as text in every language), C-19 (one `NULL` text breaks every `|trans` of a
+domain / locale), C-22 (auto-create overwrites existing texts). New items: [TODO-2-BUGS.md](TODO-2-BUGS.md) B-194–B-196 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-164–I-166. No Symfony 7.4 / PHP 8.4 incompatibility was found: `trans()`, `getCatalogue()`,
+`getCatalogues()`, `setLocale()` / `getLocale()` and `warmUp(string, ?string): array` match the 7.x contracts.
+
+---
+
+## Twig
+
+> Scope 39 notes: all 47 files in `lib/Twig/**` were read (5 744 lines), plus the consumers listed in the scope header. Twig behaviour (sandbox
+> `checkSecurity()` for functions, `YieldReady`, `Node` constructor) is described from the Twig 3.x source; there is no `vendor/` in this
+> checkout, so nothing was executed (**not verified locally**). Related and not repeated: CoreBundle C-12 (sandbox allows every method / property,
+> `container` global).
+
+## [ ] C-12 – The Twig sandbox allows every `pimcore_*` function regardless of the allowlist: an email editor can read and delete any file, dump users and read website settings
+
+**Files:** `lib/Twig/Sandbox/SecurityPolicy.php:81-86`; `lib/Twig/Extension/HelpersExtension.php:53-60`, `:90-114`;
+`lib/Twig/Extension/PimcoreObjectExtension.php:37-52`; `lib/Twig/Extension/DumpExtension.php:34-44`; `lib/Twig/Extension/WebsiteConfigExtension.php:32`;
+`lib/Twig/Extension/DocumentEditableExtension.php:46`; `config/pimcore/default.yaml:334-338`; `lib/Mail.php:593-624`;
+`models/DataObject/ClassDefinition/Layout/Text.php:118-145`
+
+```php
+//check if a function is allowed or a pimcore twig functions
+if (!in_array($function, $this->allowedFunctions) && !str_starts_with($function, 'pimcore_')) {
+    throw new SecurityNotAllowedFunctionError(...);
+}
+```
+
+- The sandbox renders **email subjects / bodies** (`Mail::renderParams()`) and the data-object *Text* layout. The configured allowlist
+  (`functions: ['path', 'asset']`) is bypassed for every function whose name starts with `pimcore_` – core and third-party.
+- Core functions reachable that way, without any method call (so this stays open even after CoreBundle C-12 adds a method allowlist):
+  - `pimcore_asset_version_preview('/path')` reads **any file** PHP can read, returns it base64-encoded (`HelpersExtension.php:108-114`)
+    and then **deletes it** (`unlink($file)`); `pimcore_image_version_preview()` deletes the file too. A subject such as
+    `{{ pimcore_asset_version_preview('/var/www/html/.env.local') }}` sends the file content in the mail and removes it from the server.
+  - `pimcore_dump(...)` dumps objects through `VarCloner`, i.e. **including private / protected properties** – `pimcore_dump(pimcore_user(1))`
+    prints the admin's password hash, `pimcore_dump(pimcore_object(42))` any object's data, ignoring workspaces and `published`.
+  - `pimcore_website_config()` returns all website settings (often API keys); `pimcore_file_exists()` probes the filesystem; the
+    `pimcore_*` catch-all of `DocumentEditableExtension` and `pimcore_inc()` render documents.
+- Who can trigger it: any user allowed to edit an email document (or a class definition layout text), no admin rights needed; the mail is sent
+  to an address they control.
+
+**Verify:** email document with subject `{{ pimcore_file_exists('/etc/passwd') ? 'yes' : 'no' }}` → per code "yes" although `pimcore_file_exists`
+is not in the allowlist; with a scratch file, `pimcore_asset_version_preview()` returns its content and deletes it.
+
+**Fix direction:** remove the `pimcore_` wildcard; ship a safe default list of Pimcore functions for the sandbox (formatting helpers only) and
+let projects extend it via `sandbox_security_policy.functions`. Independently, move `pimcore_*_version_preview` to the admin bundle (they are
+only used by its templates), make them operate on version ids instead of paths, and never `unlink()` a caller-supplied path. Mark
+`pimcore_dump` as debug-only (register it only when `kernel.debug`). Add sandbox tests that expect `SecurityNotAllowedFunctionError` for these
+functions.
+
+---
+
+## ValueObject
+
+No critical findings in Scope 40 (`lib/ValueObject/**`, 6 `final readonly` classes, 374 lines). See [TODO-2-BUGS.md](TODO-2-BUGS.md) B-204 and
+[TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-173–I-174. No Symfony 7.4 / PHP 8.4 incompatibility was found (`readonly` classes with
+constructor promotion are PHP 8.2+).
+
+---
+
+## Video
+
+No new critical findings in Scope 41 (`lib/Video/**`, `lib/Video.php`). The critical video item is already tracked in
+[models TODO-1](../models/TODO-1-CRITICAL.md) C-10 (thumbnail config without bitrates → `TypeError`, frontend 500). New items:
+[TODO-2-BUGS.md](TODO-2-BUGS.md) B-205–B-208 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-175–I-176. No Symfony 7.4 / PHP 8.4
+incompatibility was found (`Process` is used with argument arrays).
+
+---
+
+## Workflow
+
+> Scope 42 notes: all 27 files in `lib/Workflow/**` were read (3 104 lines), plus the consumers listed in the scope header. Symfony
+> Workflow behaviour (event order guard → leave → transition → enter → `setMarking()` → entered → completed, context passed to listeners) is
+> described from the 7.x source; there is no `vendor/` in this checkout and no test covers `lib/Workflow`, so nothing was executed (**not
+> verified locally**). Related and not repeated: models C-34 (notification transaction never rolled back), C-10 (Twig re-rendering in
+> `Pimcore\Mail`), B-126 (`addTo()` shim), CoreBundle B-57 / I-62 (workflow config tree).
+
+## [ ] C-13 – Workflow permissions are merged in the wrong order: a lower-priority workflow (or a later place) lifts a higher-priority `modify: false`
+
+**Files:** `lib/Workflow/Manager.php:147-154`, `:372-410`; `lib/Workflow/Place/PlaceConfig.php:102-135`; `models/Element/AbstractElement.php:494-509`;
+`doc/07_Workflow_Management/04_Permissions.md:38-40`
+
+```php
+foreach ($this->getAllWorkflows() as $workflowName) {            // sorted by priority DESC
+    ...
+    foreach ($this->getOrderedPlaceConfigs($workflow, $marking) as $placeConfig) {   // config order
+        $userPermissions = array_merge($userPermissions, $placeConfig->getUserPermissions(...));   // later wins
+```
+
+- The documentation promises: "If multiple places provide a valid permission configuration the one with the highest priority will be used …
+  the workflow with the higher priority setting will win. Within a single workflow the order within the places section … will be used."
+- The code iterates workflows from **highest to lowest** priority and places in config order, and `array_merge()` lets **later** keys
+  overwrite earlier ones. So the **lowest**-priority workflow and the **last** matching place win.
+- `AbstractElement::isAllowed()` denies only when the merged value is exactly `false` (`isDeniedInWorkflow()`). A high-priority workflow that
+  locks an element (`modify: false` in place "approved") is silently overridden by any lower-priority workflow whose current place has
+  `modify: true` (or `save: true` / `delete: true`), for every user including non-admins whose ACLs allow the action. The same happens between two
+  marked places of one multi-state workflow.
+- This is the security control that keeps approved / published content from being changed or deleted during a review process.
+
+**Verify:** two workflows on the same class, `priority: 100` with place permission `modify: false`, `priority: 10` with `modify: true`; put an
+object into both places; `$object->isAllowed('save', $editor)` → per code `true`, per documentation `false`.
+
+**Fix direction:** iterate in priority order and keep the **first** value per permission key (`$userPermissions += $placeConfig->getUserPermissions()`),
+or explicitly resolve "deny wins" for `false`; add a functional test with two workflows and with a multi-place marking.

@@ -151,6 +151,47 @@ only suggests `elasticsearch/elasticsearch`)
 **(33)** `lib/Serializer/**` (`Serializer`, `Normalizer/ReferenceLoopNormalizer`), plus the direct consumers where a defect originates in the
 interplay (`bundles/CoreBundle/config/serializer.yaml`, `bundles/CoreBundle/src/DependencyInjection/Compiler/SerializerPass.php`,
 `lib/Tool/Serialize.php::removeReferenceLoops()` (`:61-101`), `lib/Controller/Traits/JsonHelperTrait.php`)
+**(34)** `lib/Session/**` (`Attribute/LockableAttributeBag`, `Attribute/LockableAttributeBagInterface`,
+`Attribute/Exception/AttributeBagLockedException`) – no consumer exists in this repository; checked against `lib/Tool/Session.php`,
+`doc/19_Development_Tools_and_Details/35_Working_with_Sessions.md` and Symfony's session storage (`Session::invalidate()`,
+`NativeSessionStorage::clear()`, `MockArraySessionStorage::clear()`)
+**(35)** `lib/Templating/**` (`TwigDefaultDelegatingEngine`, `Renderer/ActionRenderer`, `Renderer/IncludeRenderer`, `Renderer/EditableRenderer`),
+plus the direct consumers where a defect originates in the interplay (`bundles/CoreBundle/config/templating.yaml`,
+`lib/Twig/Extension/Templating/Inc.php` (`pimcore_inc()`), `lib/Controller/Controller.php:27-72`, `lib/Mail.php::renderParams()` (`:593-624`),
+`models/DataObject/ClassDefinition/Layout/Text.php:118-145`, `models/Document/Editable/Snippet.php:100-145`, `lib/Tool/DomCrawler.php`,
+`lib/Tool/Frontend.php::isOutputCacheEnabled()`, Symfony `HttpKernelRuntime::renderFragment()` / `FragmentHandler` / `InlineFragmentRenderer` /
+`FragmentUriGenerator`, Twig `SandboxExtension`)
+**(36)** `lib/Test/**` (`KernelTestCase`, `WebTestCase`) – no consumer in this repository (Pimcore's own suites use Codeception,
+`tests/Support/Helper/Pimcore.php`); checked against `lib/Pimcore.php` (`setKernel()` / `getContainer()` / `shutdown()`), `lib/Bootstrap.php::kernel()`
+(`:232-268`), `lib/Kernel.php::initializeContainer()` (`:155-178`), `lib/Cache.php::getHandler()`, `lib/Event/TestEvents.php`,
+`doc/19_Development_Tools_and_Details/29_Testing/01_Application_Testing.md` and Symfony `KernelTestCase` / `WebTestCase`
+**(37)** `lib/Tool/**` (`Admin`, `ArrayNormalizer`, `AssetsInstaller`, `Authentication`, `ClassUtils`, `Console`, `DeviceDetector`, `DomCrawler`,
+`Frontend`, `HtmlUtils`, `MaintenanceModeHelper(Interface)`, `Requirements`, `Requirements/Check`, `Serialize`, `Session`, `Storage`, `Text`,
+`Text/Csv`, `Transliteration`, `UserTimezone`), plus the direct consumers where a defect originates in the interplay (`lib/File.php::getValidFilename()`,
+`lib/helper-functions.php::array_to_html_attribute_string()`, `lib/Config.php::getSystemConfiguration()`, `lib/Extension/Bundle/PimcoreBundleLocator.php:90`,
+`models/Translation.php:208-213`, `:326`, `:402`, `models/Document/Editable.php:128-131` (and the other `HtmlUtils` callers in `models/Document/Editable/*`),
+`models/DataObject/ClassDefinition/Data/Datetime.php:158-172`, `:402-409`, `bundles/CoreBundle/src/EventListener/Frontend/FullPageCacheListener.php:239-241`,
+`:338-341`, `bundles/SeoBundle/src/Redirect/Csv.php:133`, `tests/Unit/Tool/*`, `tests/Model/Tool/*`)
+**(38)** `lib/Translation/**` (`Translator`, `TranslationEntriesDumper`), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/l10n.yaml:10-15`, `bundles/CoreBundle/config/services.yaml:106`, `bundles/CoreBundle/src/EventListener/DumpTranslationEntriesListener.php`,
+`TranslationDebugListener.php`, `models/Translation.php` (`getByKey()`, `getValidLanguages()`), `lib/Tool/Text.php::wysiwygText()`,
+`doc/06_Multi_Language_i18n/04_Shared_Translations.md`, `tests/Unit/Translation/TranslatorTest.php`)
+**(39)** `lib/Twig/**` (`TwigEnvironmentConfigurator`, `Sandbox/SecurityPolicy`, `TokenParser/*`, `Node/*`, `Options/*`, `Extension/*` incl.
+`Extension/Templating/**` – head / placeholder helpers, `Inc`, `Navigation`, `PimcoreUrl`, traits, exceptions), plus the direct consumers where a
+defect originates in the interplay (`bundles/CoreBundle/config/templating_twig.yaml`, `config/pimcore/default.yaml:334-338` (sandbox defaults),
+`lib/Mail.php::renderParams()` (`:593-624`), `models/DataObject/ClassDefinition/Layout/Text.php:118-145`,
+`bundles/CoreBundle/src/EventListener/Frontend/DocumentRendererListener.php:43-52`, `lib/Templating/Renderer/EditableRenderer.php`,
+`tests/Twig/*`, `tests/Unit/Twig/Options/BlockOptionsTest.php`)
+**(40)** `lib/ValueObject/**` (`Collection/ArrayOfBoolean`, `ArrayOfIntegers`, `ArrayOfPositiveIntegers`, `ArrayOfStrings`, `Integer/PositiveInteger`,
+`String/Path`) – only consumer in this repository: `lib/Twig/TokenParser/CacheParser.php:77`; public API announced in
+`doc/23_Installation_and_Upgrade/09_Upgrade_Notes/README.md:139-141`; tests `tests/Unit/ValueObject/**`
+**(41)** `lib/Video/**` (`Adapter`, `Adapter/Ffmpeg`) and the `lib/Video.php` facade, plus the direct consumers where a defect originates in the
+interplay (`models/Asset/Video/Thumbnail/Processor.php:118-145`, `:244`, `:287`, `models/Asset/Video.php:158-255`,
+`lib/Messenger/Handler/AssetUpdateTasksHandler.php:105-118`, `lib/Tool/Console.php`)
+**(42)** `lib/Workflow/**` (`Manager`, `Service`, `ExpressionService`, `Transition`, `GlobalAction`, `WorkflowConfig`, `MarkingStore/*`,
+`SupportStrategy/*`, `EventSubscriber/*`, `Notification/*`, `Notes/*`, `Place/*`, `Dumper/*`), plus the direct consumers where a defect
+originates in the interplay (`models/Element/AbstractElement.php:480-515` (`isAllowed()`), `models/Element/WorkflowState.php:37-60`,
+`models/DataObject/Concrete.php:428`, `doc/07_Workflow_Management/04_Permissions.md:30-41`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
@@ -169,7 +210,7 @@ repeated),
 state reset – not repeated)
 
 Code quality, readability, modernization (Symfony 7.4 / PHP 8.4) and logic simplifications. No behaviour change unless
-stated. IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–33: `033aa183ef`).
+stated. IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–42: `033aa183ef`).
 Grouped by area: **Core cache handler** I-01–I-08, **RuntimeCache** I-09, **Warming** I-10,
 **CacheClearer / SessionStatus** I-11, **Tests** I-12,
 **Composer** I-13–I-15, **Config** I-16–I-22, **Console** I-23–I-29,
@@ -196,7 +237,16 @@ Grouped by area: **Core cache handler** I-01–I-08, **RuntimeCache** I-09, **Wa
 **Routing** I-138–I-139,
 **SearchClient** I-140,
 **Security** I-141–I-142,
-**Serializer** I-143.
+**Serializer** I-143,
+**Session** I-144–I-146,
+**Templating** I-147–I-152,
+**Test** I-153–I-155,
+**Tool** I-156–I-163,
+**Translation** I-164–I-166,
+**Twig** I-167–I-172,
+**ValueObject** I-173–I-174,
+**Video** I-175–I-176,
+**Workflow** I-177–I-180.
 
 ---
 
@@ -2567,3 +2617,561 @@ callers in `models/Document.php`, `models/Asset.php`, `models/DataObject/ClassDe
   serialized with their data (B-171).
 - Tests: none exist for `lib/Serializer` – add cases for nested cycles, `JsonSerializable` returning a cycle, protected properties and an asset
   with pending stream data (B-171).
+
+---
+
+## Session
+
+### [ ] I-144 – Decide the future of `LockableAttributeBag`: deprecate and remove, or keep and modernise for PHP 8.4
+
+**Files:** `lib/Session/Attribute/LockableAttributeBag.php`, `LockableAttributeBagInterface.php`, `Exception/AttributeBagLockedException.php`
+
+- **Dead code in this repository:** since the AdminBundle extraction (`c6ca4331a8`) no class, service definition, test or
+  doc page references the three classes (Scope 34 notes in TODO-2). Check the admin bundle / known third-party bundles; if nothing uses them, mark them `@deprecated` (and trigger
+  `trigger_deprecation('pimcore/pimcore', '<version>', …)` in the constructor) and remove them in the next major. This is the preferred option.
+- If the classes stay (all no behaviour change unless stated):
+  - Add `#[\Override]` (PHP 8.3+) to `set()`, `replace()`, `remove()`, `clear()` so a signature change in Symfony's `AttributeBag` is caught.
+  - PHP 8.4 asymmetric visibility: `public private(set) bool $locked = false;` replaces the `protected` property + `isLocked()` getter
+    internally; keep `isLocked()` for BC (an interface property `public bool $locked { get; }` is possible in 8.4 but is a BC break for
+    implementers).
+  - `checkLock()` → `assertUnlocked(string $operation)`; message with bag name and operation:
+    `sprintf('Cannot %s on session bag "%s": the bag is locked.', $operation, $this->getName())` instead of the fixed 'Attribute bag is locked'.
+  - Scoped API to avoid forgotten unlocks (B-173): `public function withLock(callable $fn): mixed` with `try`/`finally`, or a lock counter.
+  - `final` is not possible without a BC break (the class is public API and has a `protected` member) – consider `@final` first.
+  - Remove the docblocks that only repeat the method name (`Lock the attribute bag`, `Unlock the attribute bag`, `Get lock status`); keep and
+    expand the class-level contract instead (what is guarded, that `invalidate()` always wins – B-172 –, that the lock is not persisted).
+
+### [ ] I-145 – `AttributeBagLockedException`: proper exception type and context
+
+**Files:** `lib/Session/Attribute/Exception/AttributeBagLockedException.php`
+
+- Writing to a locked bag is a programming error, not a runtime condition → extend `\LogicException`. Changing the parent is a BC break for
+  `catch (\RuntimeException)` callers; do it with the deprecation/removal decision in I-144.
+- Add context: `public function __construct(public readonly string $bagName, public readonly string $operation, ?\Throwable $previous = null)`
+  (constructor promotion + `readonly`) so callers / logs know which bag and which operation failed; `final` class (no subclasses exist).
+
+### [ ] I-146 – Tests and documentation for sessions
+
+**Files:** new `tests/Unit/Session/Attribute/LockableAttributeBagTest.php` (no test covers `lib/Session` today);
+`doc/19_Development_Tools_and_Details/35_Working_with_Sessions.md`
+
+- Tests (only if the classes are kept, I-144): every mutator throws when locked and works after `unlock()`; `get()` / `has()` / `all()` /
+  `count()` work while locked; `Session::invalidate()` with a locked bag on `MockArraySessionStorage` (B-172); object mutation while locked
+  (B-173, documents the chosen contract).
+- Docs: the last line says `Pimcore\Tool\Session::getReadonly()` returns an `AttributeBagInterface` – that method does not exist;
+  `Tool\Session` has `useBag()` and `getSessionBag()` (`lib/Tool/Session.php:29`, `:40`). Fix the sentence or document the two real methods.
+- Docs example: the listener is missing the `use` statements for `EventSubscriberInterface`, `KernelEvents` and `RequestEvent`, and imports
+  the unused `SessionInterface`; with Symfony 7.4 the listener can be written with `#[AsEventListener(event: KernelEvents::REQUEST, priority: 127)]`
+  instead of `getSubscribedEvents()`. If the lockable bag is kept, add a short section on when and how to use it (and its limits, B-173).
+
+---
+
+## Templating
+
+### [ ] I-147 – `TwigDefaultDelegatingEngine`: remove the dead "delegate" machinery and unused members
+
+**Files:** `lib/Templating/TwigDefaultDelegatingEngine.php`; `lib/Controller/Controller.php:27-72`; `bundles/CoreBundle/config/templating.yaml:43-47`
+
+- `setDelegate()` is never called (no service definition, no code in `lib/`, `models/`, `bundles/`), so `isDelegate()` is always `false` and the
+  three delegate branches in `Controller::render()` / `stream()` / `renderView()` are dead code. Removing them also resolves TODO-2 B-39
+  (form 422 handling / `renderBlock()` mismatch) – deprecate `setDelegate()` / `isDelegate()` and the `pimcore.templating` subscribed service.
+- `Config $config` is injected but never used; `supports()` always returns `true` (left over from the removed `EngineInterface`); `exists()`,
+  `render()`, `renderResponse()`, `stream()` are thin wrappers around `Environment`.
+- Longer term: inject `Twig\Environment` directly in the consumers (`Navigation\Renderer\*`, `EditableHandler`, `NotificationEmailService`,
+  tests) and drop the class; the sandbox helpers move to a dedicated service (I-148).
+- If it stays: constructor promotion with `private readonly`, `final` (it is `@internal`), `$response ??= new Response();`, remove the empty
+  docblocks (`/** * * @throws Exception */`) and the wrong `@return bool $delegate`; the `@throws Exception` should name Twig's
+  `LoaderError|RuntimeError|SyntaxError`.
+
+### [ ] I-148 – Sandboxed rendering without global mutable state
+
+**Files:** `lib/Templating/TwigDefaultDelegatingEngine.php:70-86`; `lib/Mail.php:593-624`;
+`models/DataObject/ClassDefinition/Layout/Text.php:118-145`
+
+- `getTwigEnvironment(true)` switches the sandbox on for the **shared** Twig environment; every caller must remember the `finally { disable… }`
+  (both current callers do). The toggle is not nesting-safe: if a sandboxed render triggers another sandboxed render (e.g. a layout text or
+  mail rendered from inside a template / Twig function), the inner `finally` disables the sandbox while the outer template is still rendering.
+  In a worker runtime a missed `disable` would affect all later requests. A getter with a side effect is also surprising.
+- Twig 3.x (`^3.21` is required) supports a `SourcePolicyInterface` passed to `SandboxExtension` that decides per template source whether it is
+  sandboxed – e.g. sandbox every template created via `createTemplate()` with the `pimcore_email_*` / layout-text names. Alternatively, provide
+  one method `renderSandboxed(string $template, array $context, string $name): string` that handles enable/disable with a depth counter and
+  `finally`, and use it from both callers (removes the duplicated try / catch(SecurityError) / message-cutting code).
+- Rename `disableSandboxExtensionFromTwigEnvironment()` (it does not remove the extension) once the API is replaced.
+
+### [ ] I-149 – `IncludeRenderer` cleanup
+
+**Files:** `lib/Templating/Renderer/IncludeRenderer.php`; `models/Document/Editable/Snippet.php:100-145`
+
+- Shared cache key / save logic with the `Snippet` editable (same code, already diverged: `siteId`, the extra `cache` param) – extract one
+  `OutputFragmentCache` service (fixes B-174 / B-175 in one place); inject the cache, `FullPageCacheListener` and `DeviceDetector` instead
+  of the static `Cache` / `Frontend::isOutputCacheEnabled()` / `DeviceDetector::getInstance()` calls; replace the `bool|array` `$cacheConfig`
+  with a small readonly value object.
+- `getUseTargetGroup()` exists nowhere any more (personalization was removed): drop the `method_exists()` block and its TODO comment (`:97-100`)
+  here and in `Snippet.php:119-122`.
+- Type the input: `render(int|string|PageSnippet|\Stringable|null $include, …)` (`pimcore_inc()` already restricts to `int|string|PageSnippet`);
+  `$include instanceof \Stringable` instead of `is_object() && method_exists('__toString')` (also in the cache-key normaliser).
+- `catch (Exception)` around `getById()` / `getByPath()` silently renders nothing on DB errors – log at warning level, catch only expected
+  exceptions. A `Hardlink` pointing to a snippet is not resolved (renders nothing) – document or support it.
+- `array_merge($params, ['document' => $include])` → `[...$params, 'document' => $include]`; `$html->clear(); unset($html);` is unnecessary;
+  empty docblocks; `$editmodeClass` with leading/trailing spaces → build the class list with `trim()`.
+- Document that `INCLUDERENDERER_PRE_RENDER` fires on cache hits too (`:73-78` runs before the cache lookup), and only for published snippets.
+- Constructor promotion with `private readonly`; `final` (`@internal`; `renderAction()` / `modifyEditmodeContent()` are `protected` only for
+  extension – check subclasses in known bundles first).
+
+### [ ] I-150 – `ActionRenderer`: typed API, separated attributes / options, PHP 8.4 style
+
+**Files:** `lib/Templating/Renderer/ActionRenderer.php`
+
+- `render(mixed $uri, array $options)` → `render(PageSnippet|ControllerReference|string $uri, array $attributes = [], array $options = [])`
+  (anything else is a `TypeError` inside `renderFragment()` anyway) – fixes the attribute / option mixing of B-176.
+- `addDocumentAttributes(…, string $context = …)` checks `null !== $context` although the parameter is not nullable: either `?string` (allow
+  "no context") or drop the dead check (`:74`).
+- `ControllerReference` with a `null` controller: `PageSnippet::getController()` is `?string` (falls back to the default-controller
+  parameter, which can be empty) → assert / throw a clear exception instead of a `TypeError` in the `ControllerReference` constructor.
+- Constructor promotion `private readonly HttpKernelRuntime $httpKernelRuntime`; `final`; remove empty docblocks; `$language` from the
+  `language` property should be validated (`\Locale::canonicalize()` or the configured valid languages) before it becomes `_locale`.
+
+### [ ] I-151 – `EditableRenderer`: misleading `render()`, unused logger, private service
+
+**Files:** `lib/Templating/Renderer/EditableRenderer.php`; `bundles/CoreBundle/config/templating.yaml:14-19`; `models/Document/Editable/Area.php:198`,
+`Areablock.php:393`
+
+- `render()` does not render, it is an alias of `getEditable()` → deprecate `render()` (`#[\Deprecated]` attribute, PHP 8.4) and update the
+  callers.
+- `LoggerAwareInterface` / `LoggerAwareTrait` and the `setLogger` call in `templating.yaml` are unused – remove (or log the type mismatch case
+  below).
+- When an editable with the same name but a different type exists (`:65`), it is silently replaced and its data is lost on the next save; at
+  least log it in editmode.
+- `public: true` is only needed for `Pimcore::getContainer()->get(EditableRenderer::class)` in `Area` / `Areablock` (models I-80); make the
+  service private once those receive it via DI.
+- Constructor promotion with `private readonly`, `final`, `use Pimcore\Model\Document\Editable\EditableInterface` instead of
+  `Editable\EditableInterface`, `@throws Exception` → the concrete loader exception.
+
+### [ ] I-152 – Tests for `lib/Templating`
+
+**Files:** new `tests/Unit/Templating/*` (only `tests/Twig/Pimcore{Date,Placeholder}Test` use the engine as a fixture today)
+
+- `IncludeRenderer`: cache key differs per site / locale (B-174); nested objects / closures in params do not throw (B-175); empty content is
+  a cache hit; params named `alt` / `strategy` do not change the strategy (B-176).
+- Editmode marking for text-only, single-element and multi-element includes; HTML5 markup survives (B-177).
+- Sandbox: nested sandboxed renders keep the outer render sandboxed; the sandbox is off after an exception (I-148).
+- `ActionRenderer::addDocumentAttributes()`: context, template, `_locale` from the `language` property.
+
+---
+
+## Test
+
+### [ ] I-153 – One shared implementation for the test base classes, PHP 8.4 / Symfony 7.4 style
+
+**Files:** `lib/Test/KernelTestCase.php`, `lib/Test/WebTestCase.php`
+
+- The two classes are byte-for-byte identical apart from the parent → move the logic into a `Pimcore\Test\PimcoreKernelTestTrait`
+  (`createKernel()` / `bootKernel()` / `ensureKernelShutdown()` overrides, B-178 / B-179) used by both, so fixes are made once.
+- `#[\Override]` (PHP 8.3+) on the overridden static methods, so a signature change in Symfony's `KernelTestCase` is caught.
+- `getKernelClass()`: Symfony requires the `KERNEL_CLASS` env var and throws a `LogicException` without it; Pimcore already knows its kernel
+  class (`PIMCORE_KERNEL_CLASS`, default `App\Kernel`, `Bootstrap.php:229`, `:242-246`). Override `getKernelClass()` to fall back to it and to
+  check `is_subclass_of(…, Pimcore\Kernel::class)` (B-179).
+- Ensure the Pimcore constants exist: call `Bootstrap::setProjectRoot()` / `Bootstrap::bootstrap()` lazily (guarded) in the trait, or fail
+  with a clear message, instead of undefined-constant errors deep in the kernel boot when the project forgot the bootstrap file.
+- Mark the classes `abstract` (they are) and document them as public, BC-relevant API (they are not `@internal`); a short class docblock on
+  what they add on top of Symfony's classes.
+- `use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase as BaseKernelTestCase;` instead of the inline FQCN in `extends`.
+
+### [ ] I-154 – Testing documentation is outdated for Symfony 7.4 / PHPUnit 10–11
+
+**Files:** `doc/19_Development_Tools_and_Details/29_Testing/01_Application_Testing.md:120-220`
+
+- Says Pimcore expects the container to be set via `Pimcore::setContainer()` – that method does not exist; the base classes call
+  `Pimcore::setKernel()`.
+- The `phpunit.xml` example uses the PHPUnit 7.4 schema, `SYMFONY_PHPUNIT_VERSION=7.4`, `<filter><allowlist processUncoveredFilesFromAllowlist>`
+  (PHPUnit 9 syntax; PHPUnit 10/11 – the versions in `composer.json` – use `<source><include>`), `KERNEL_DIR` (removed in Symfony 5) and
+  `KERNEL_CLASS=AppKernel` (Pimcore 11+ uses `App\Kernel`).
+- `include "../../vendor/autoload.php";` in `tests/bootstrap.php` resolves relative to the CWD, not the file → `dirname(__DIR__) . '/vendor/autoload.php'`.
+- The `PIMCORE_TEST_DB_DSN` link points to the `11.x` branch.
+- Mention the limits of the base classes (B-178 / B-179) until they are fixed, and `WebTestCase::createClient()` needing `symfony/browser-kit`
+  (not in `composer.json` `require`).
+
+### [ ] I-155 – Tests for `lib/Test`
+
+**Files:** new `tests/Unit/Test/*` (or a small PHPUnit-only suite, since the repository's suites are Codeception)
+
+- Two consecutive `bootKernel()` calls: `Pimcore::getKernel()` is the current kernel, `Cache::getHandler()` belongs to the current container,
+  `Pimcore::getContainer()` after `tearDown()` behaves as documented (B-178).
+- Timezone from `pimcore.general.timezone` is applied and `TestEvents::KERNEL_BOOTED` is dispatched (B-179).
+- `getKernelClass()` fallback to `PIMCORE_KERNEL_CLASS` and rejection of non-Pimcore kernels (I-153).
+
+---
+
+## Tool
+
+### [ ] I-156 – Replace static facades and process-wide statics with services (worker-safe)
+
+**Files:** `lib/Tool/*`
+
+- Container look-ups inside static helpers: `Storage::get()`, `Frontend::isOutputCacheEnabled()` (public listener, CoreBundle I-44),
+  `Admin::getCurrentUser()` / `getLanguages()`, `Authentication::*` (`UserProvider`, `secret`), `MaintenanceModeHelper` (`Pimcore::getEventDispatcher()`
+  although it is a service), `Serialize::getAdminSerializer()`. Inject the dependencies in services and keep the statics only as deprecated
+  BC wrappers.
+- `Serialize::getAdminSerializer()` returns `pimcore_admin.serializer`, a service that does not exist in this repository (admin UI bundle) →
+  deprecate here and move it to the bundle.
+- Static state that survives requests in worker runtimes: `DeviceDetector::$instance` (B-182), `UserTimezone::$userTimezone` (B-188),
+  `Console::$executableCache` / `$systemEnvironment` (fine to keep, but resettable for tests), `Serialize::$loopFilterProcessedObjects`.
+  Request-dependent state belongs in request-scoped services with `ResetInterface`.
+- Classes that are `@internal` but used by other bundles (`Admin`, `Text`, `Console`) – document the public subset.
+
+### [ ] I-157 – `Console`: modern process handling
+
+**Files:** `lib/Tool/Console.php`
+
+- `getSystemEnvironment()` → `PHP_OS_FAMILY` (`'Windows'`, `'Darwin'`, …); remove the static cache.
+- The `setup<Name>()` / `check<Name>()` hooks (`:70-73`, `:96-99`) have no implementations in the class (it is `final`, so nobody can add them)
+  → dead code, remove.
+- `runPhpScriptInBackground()` is `@deprecated since v6.9` – remove; replace `execInBackground()` (shell string, `shell_exec`, `COM`) with a
+  `Process`-based implementation that takes an argument array (B-181).
+- `protected static` members in a `final` class → `private`; `new ExecutableFinder()` once instead of per path; `getExecutable()` returns
+  `?string` instead of `string|false`; exceptions: a dedicated `ExecutableNotFoundException` instead of `\Exception` with a long message;
+  the message mentions `parameters.yml` (Symfony 3 era).
+- `addLowProcessPriority(array|string &$cmd)` by-reference → return the new command.
+
+### [ ] I-158 – `Text`: DOM-based rewriting, fewer duplicates, bounded caching
+
+**Files:** `lib/Tool/Text.php`
+
+- `wysiwygText()` (160 lines, 6 nesting levels) parses HTML with regular expressions; extract "link rewriting" and "image rewriting" into
+  small methods operating on DOM nodes (PHP 8.4 `\Dom\HTMLDocument`, B-184); the parallel arrays `$matches[0..3]` → a small readonly value
+  object per match.
+- `removeLineBreaks()` and `getStringAsOneLine()` do nearly the same (the latter removes tabs instead of replacing them) → one method;
+  `for ($i = 0; $i < count(...); $i++)` → `foreach`.
+- `getElementsTagsInWysiwyg()` / `getElementsInWysiwyg()` store one `RuntimeCache` entry per distinct text (`md5` key) – unbounded in long
+  imports; use a small LRU or no cache (the regex is cheap compared with the element loads).
+- Commented-out code (`//$text = Pimcore_Tool_Text::removeLineBreaks($text);`, `:224`) → remove.
+- `convertToUTF8()` / `detectEncoding()`: typed result, BOM handling (B-183); consider `mb_detect_encoding()` with an explicit list before the
+  external detector.
+
+### [ ] I-159 – `Authentication`: PHP 8.4 hardening and clearer API
+
+**Files:** `lib/Tool/Authentication.php`
+
+- `#[\SensitiveParameter]` on `$password` / `$plainTextPassword` (`verifyPassword()`, `getPasswordHash()`, `preparePlainTextPassword()`), so
+  plaintext passwords do not appear in stack traces / logs (same as I-141 for `lib/Security`).
+- `safelyUnserialize()`: the magic code `0x37313BC` → a named private constant; `set_error_handler` closure signature without the PHP 7
+  `$context` parameter; log message without the full serialized token (`'received' => $serializedToken` writes session secrets to the log).
+- The MD5 pre-hash (`md5($username . ':pimcore:' . $password)`) binds the hash to the user name: document that a rename requires a password
+  reset (or re-hash on rename) – check the admin bundle's rename path.
+- `getPasswordHash()` `if ($hash = password_hash(...))` – `password_hash()` never returns `false` in PHP 8 (throws `ValueError`) → simplify.
+- Class is neither `final` nor `@internal`, yet static-only → mark `final`, make it a service for new code (I-156).
+
+### [ ] I-160 – `Requirements` / `Requirements\Check`: value object, enum state, current checks
+
+**Files:** `lib/Tool/Requirements.php`, `lib/Tool/Requirements/Check.php`
+
+- `Check` is built from an array and assigns arbitrary keys as properties (`$this->$key = $value`, `:43-45`) – an unknown key creates a
+  dynamic property (deprecated). Use a constructor with named, promoted `readonly` parameters and a `CheckState` enum (`Ok`, `Warning`, `Error`)
+  instead of the three `int` constants. `ArrayAccess` (for Twig) can stay; `offsetUnset()` unsetting a typed property makes the next read throw.
+- `getMessage()` returns "`<name>` is required." for **passing** checks too (empty message) – return `null` when the state is OK.
+- MySQL checks: DDL / DML via `executeStatement()` instead of `executeQuery()`; drop `innodb_file_format` / `innodb_large_prefix` (removed in
+  MySQL 8.0 and MariaDB 10.3+, the minimum versions Pimcore supports); add a MariaDB / MySQL version check instead.
+- PHP checks: data-driven list (`['iconv' => fn() => function_exists('iconv'), …]`); `Pdo\Mysql::ATTR_FOUND_ROWS` (PHP 8.4 driver subclass)
+  instead of `@constant('PDO::MYSQL_ATTR_FOUND_ROWS')` (the `PDO::MYSQL_*` constants are deprecated in PHP 8.5); `memory_limit` message says 150M
+  while the thresholds are 64M / 128M; use `ini_parse_quantity()` (PHP 8.2) instead of `filesize2bytes()`.
+- `rscandir()` → `RecursiveDirectoryIterator` with a limit; `checkAll()` uses `Requirements::` inside the class → `self::`.
+
+### [ ] I-161 – Small helper classes: `final`, promotion, explicit types
+
+**Files:** `lib/Tool/{ArrayNormalizer,ClassUtils,Frontend,HtmlUtils,Serialize,Storage,Transliteration,AssetsInstaller,Session,Text/Csv}.php`
+
+- `ArrayNormalizer::normalize()` skips keys whose value is `null` (`isset`) – use `array_key_exists()` if normalizers should see `null`, or
+  document it; `final`.
+- `Transliteration`: `transliterator_list_ids()` is built on every call → static cache or `Transliterator::create()` once per id; `final`.
+- `Storage`: constructor promotion (`private readonly ContainerInterface $locator`), clear exception for an unknown storage name, `final`.
+- `Frontend::getSiteMapping()`: an empty mapping (`[]`, no sites) is treated as a cache miss (`if (!$siteMapping)`, `:80`) → one DB query
+  and one cache write per request on every single-site installation; compare with `false`. The `setOrderKey()` subquery is raw SQL in a
+  listing.
+- `Serialize::unserialize()`: no `allowed_classes` option (object injection if any stored value is attacker-controlled); `if ($data)` skips
+  `"0"`; `protected static` in a `final` class. Callers should pass the expected classes (same as models I-75 for editables).
+- `AssetsInstaller`: `json_decode(..., flags: JSON_THROW_ON_ERROR)`, `Closure` callback typed as `?callable`, empty docblocks.
+- `Text\Csv`: returns `stdClass` → small readonly `CsvDialect` value object (also used by `Admin::determineCsvDialect()`); the pattern list
+  carries a "dont know if any of the regexes starting here work properly" comment – cover with tests or remove.
+- `HtmlUtils` / `ClassUtils` / `Transliteration` are `@internal` utility classes with one method each – consider merging `HtmlUtils` into
+  the escaping helper of B-186.
+
+### [ ] I-162 – `MaintenanceModeHelper` / deprecated maintenance API
+
+**Files:** `lib/Tool/MaintenanceModeHelper.php`, `lib/Tool/MaintenanceModeHelperInterface.php`, `lib/Tool/Admin.php:127-251`
+
+- `isActive()` calls `$this->db->connect()` (`:62-64`): public in DBAL 3, `protected` in DBAL 4 → blocks the DBAL 4 upgrade. Just run the
+  query and catch the DBAL exception.
+- `activate('')` in CLI calls `RequestStack::getSession()` → `SessionNotFoundException` instead of the intended `InvalidArgumentException`; check
+  `$this->requestStack->getCurrentRequest()?->hasSession()` first. The interface takes `string $sessionId` although an empty string is
+  "use the current session" → `?string`.
+- `getEntry(): ?string` returns `TmpStore::getData()` (`mixed`) unchecked; inject the event dispatcher (constructor promotion, `readonly`).
+- `Admin::activateMaintenanceMode()` / `isInMaintenanceMode()` / the schedule-on-login file methods are deprecated "and will be removed in
+  Pimcore 12"; the deprecation text names a non-existent method (`MaintenanceModeHelperInterface::active`). Remove on the 12 branch or fix
+  the message.
+
+### [ ] I-163 – Tests for `lib/Tool`
+
+**Files:** `tests/Unit/Tool/*`, `tests/Model/Tool/*`
+
+- `Authentication::authenticateSession()` with an unsupported / deleted user (B-180).
+- `Console::getExecutable()` with `pimcore_executable_x: false` and `null`; escaping of `execInBackground()` arguments (B-181).
+- `DeviceDetector`: `setDeviceType()` on a fresh instance, default `mobile`, two requests in one process (B-182).
+- `Text::detectEncoding()` / `convertToUTF8()` for UTF-8 BOM, UTF-16LE/BE, UTF-32LE/BE (B-183); `wysiwygText()` with `$1` in an asset name,
+  quotes in a link-generator URL, `data-src`, alt text with `&` (B-184); `cutStringRespectingWhitespace()` with multibyte text (B-185).
+- `HtmlUtils` with quotes / booleans (B-186); `ClassUtils::findClassName()` with an attribute using `::class` and with an enum (B-193).
+- `Requirements::checkPhp()` leaves the process locale unchanged (B-189).
+
+---
+
+## Translation
+
+### [ ] I-164 – `Translator` decorator: precise types, PHP 8.4 style, no magic
+
+**Files:** `lib/Translation/Translator.php`; `bundles/CoreBundle/config/l10n.yaml:10-15`
+
+- `protected TranslatorInterface|WarmableInterface|TranslatorBagInterface $translator` is a **union** although all three capabilities are used
+  (`trans()`, `getCatalogue()`, `warmUp()`); the constructor checks only `TranslatorBagInterface`, so a non-warmable inner translator fails late in
+  `warmUp()` with an `Error`. Use the intersection type `TranslatorInterface&TranslatorBagInterface&LocaleAwareInterface&WarmableInterface` in a
+  promoted `private readonly` constructor parameter and drop the runtime check.
+- `__call()` forwards unknown calls via `call_user_func_array()` – hides missing methods from static analysis and IDEs. List what callers need
+  (Symfony's `addResource()`, `getFallbackLocales()`, …) and implement them explicitly, or at least use `$this->translator->$method(...$args)`.
+- `protected Kernel $kernel` is only set by a `setKernel` method call and is unused inside the class; `getKernel()` before the call is an
+  "uninitialized property" `Error`. `getAdminPath()` / `setAdminPath()` / `getAdminTranslationMapping()` / `setAdminTranslationMapping()` are not
+  called anywhere in this repository (admin UI bundle) – document them as the admin-bundle extension point or move them.
+- `getLocale()` falls back to `Tool::getDefaultLanguage()` (`?string`) for a `string` return type → `TypeError` when no language is configured.
+- `#[\Override]` on the interface methods; `get_class($translator)` → `$translator::class`; `strpos($text, 'pimcore_id')` (`:366`, a match at
+  offset 0 is treated as "not found") → `str_contains()`; empty docblocks (`/** @internal * */`) and the redundant `@param` block on `warmUp()`.
+
+### [ ] I-165 – Separate catalogue loading and missing-key collection from the decorator
+
+**Files:** `lib/Translation/Translator.php:138-298`; `lib/Translation/TranslationEntriesDumper.php`;
+`bundles/CoreBundle/src/EventListener/DumpTranslationEntriesListener.php`
+
+- `lazyInitialize()` merges DB catalogues into the inner translator's in-memory catalogue at runtime and keeps its own persistent cache entry.
+  Symfony's model for this is a translation **loader** + resource (`translation.loader` tag, `LoaderInterface::load()` from the DB) or a
+  `TranslatorBagInterface` provider; that gives cache invalidation through Symfony's catalogue cache and works with `kernel.reset` (B-124).
+- `checkForEmptyTranslation()` (80 lines) mixes plural selection, missing-key detection, auto-create (DB access during rendering) and fallback
+  lookup. Split into: (a) lookup with fallback, (b) a `MissingTranslationCollector` service that records `domain|key|locale` (no DB access during
+  rendering) and inserts only the missing rows at terminate (fixes models C-22 / B-115 together).
+- `TranslationEntriesDumper` keeps its queue in a **static** array but is used as a service with an instance method (`dumpToDb()`): make the
+  queue instance state, implement `ResetInterface`, and flush on `WorkerMessageHandledEvent` as well (CoreBundle I-52). `final`.
+- Document the legacy pipe-plural notation (`'key_one|key_many'|trans({'%count%': n})`, covered by `TranslatorTest`) next to the ICU section
+  in `doc/06_Multi_Language_i18n/04_Shared_Translations.md`, or deprecate it in favour of ICU.
+
+### [ ] I-166 – Tests for `lib/Translation`
+
+**Files:** `tests/Unit/Translation/TranslatorTest.php`
+
+- Existing tests cover simple texts, parameters, `%count%`, pipe plurals, case sensitivity, list loading and cache invalidation.
+- Add: a text containing `%` with a positional parameter (B-194); a failing first catalogue load followed by a successful one in the same
+  process (B-195); a translation `"0"`; `debug_admin_translations` with a website domain; fallback for a locale without a row (B-196); two
+  domains with the same missing key in one request (models B-115).
+
+---
+
+## Twig
+
+### [ ] I-167 – Twig 3.21 / Twig 4 readiness of the tag nodes
+
+**Files:** `lib/Twig/Node/*`, `lib/Twig/TokenParser/*`, `lib/Twig/Options/HasBlockOptionsTrait.php`
+
+- The nodes compile `ob_start()` / `echo` and are not marked `#[\Twig\Attribute\YieldReady]`. Since Twig 3.9 Twig reports nodes that are not
+  yield-ready (deprecation), and with `use_yield: true` (mandatory in Twig 4) the body is **yielded**, not echoed, so `ob_start()` captures
+  nothing: `pimcorecache` would cache empty strings and `pimcoreassetcompress` would compress nothing. Rewrite with `yield` (collect the body
+  via `implode('', iterator_to_array(...))` or Twig's `CaptureNode`) and mark the nodes `#[YieldReady]`.
+- Node constructors pass `$tag` to `Node::__construct()`; newer Twig 3.x sets the tag through the parser (`setNodeTag()`) and deprecates the
+  argument – check the deprecation log on twig/twig `^3.21` and drop it.
+- `ExpressionParser::parseArguments()` / `parseExpression()` usage in the token parsers: Twig 3.21 moved expression parsing to
+  `Parser::parseExpression()` and deprecated parts of `ExpressionParser` – verify and migrate.
+- Generated code fetches extensions by string (`getExtension('Pimcore\Twig\Extension\…')`) – use `::class` and runtime loaders.
+- The split-by-`uniqid()` technique (`explode($splitChars, …)`) is fragile; write the parts directly with `$compiler->write()` / `subcompile()`.
+
+### [ ] I-168 – Extension classes: lazy runtimes, attributes, PHP 8.4 style
+
+**Files:** `lib/Twig/Extension/*.php`, `lib/Twig/Extension/Templating/*.php`; `bundles/CoreBundle/config/templating_twig.yaml`
+
+- Extensions that hold services (`HeaderExtension` with 7 helpers, `NavigationExtension`, `SubrequestExtension`, `HelpersExtension`,
+  `DocumentEditableExtension`) instantiate them on every Twig environment creation. Use `[RuntimeClass::class, 'method']` callables (the helpers
+  already implement `RuntimeExtensionInterface`) or Twig 3.21 / Symfony 7.3 attribute extensions (`#[AsTwigFunction]`, `#[AsTwigFilter]`,
+  `#[AsTwigTest]`) so they are loaded lazily.
+- Constructor promotion with `private readonly`, `final` for the `@internal` classes; `get_class()` → `::class`.
+- `DocumentEditableExtension::getFunctions()` has unreachable `new TwigFunction(...)` statements after `return` (`:53-75`, "for auto-complete")
+  – remove; the `pimcore_*` catch-all turns every typo (`pimcore_inptu`) into an editable lookup with an obscure loader exception – register the
+  configured editable types explicitly.
+- `is_safe` review: `pimcore_device` (`PimcoreToolExtension.php:34`) returns an object whose string is the device name – does not need
+  `is_safe: html`; `pimcore_inc`, `pimcore_dump` are fine. `HelpersExtension::getImageVersionPreview()` leaves the temp file behind on exceptions.
+- `Navigation::render()` uses `method_exists()` + `call_user_func_array()` with a template-supplied method name; restrict to `render*` methods
+  of `RendererInterface`. `Navigation::__call()` magic alias → explicit `menu()` / `breadcrumbs()` methods (they are already documented with
+  `@method`).
+- `TwigEnvironmentConfigurator` marks every `Editable` as HTML-safe – document that editables must escape their own output (models I-202).
+
+### [ ] I-169 – Remove deprecated and ZF1-era APIs
+
+**Files:** `lib/Twig/Extension/CacheExtension.php` (deprecated 11.4); `Placeholder/Container.php:259-332`, `HeadScript.php:182-227`,
+`HeadStyle.php` (capture API deprecated 11.4); `Placeholder/AbstractExtension.php`; `HeadMeta.php`, `HeadLink.php`, `HeadScript.php`, `HeadStyle.php`
+
+- `CacheExtension` keeps `$key` / `$lifetime` / `$force` on the shared service – nested `pimcore_cache()` calls overwrite each other (same as
+  B-198) – remove with the next major as announced.
+- `captureStart()` / `captureEnd()` (deprecated since 11.4) – remove; also the `_captureLock` / `_captureType` state.
+- The placeholder layer is a port of `Zend_View_Helper_*` (underscored members `_regKey`, `_escape`, magic `__get` / `__set` / `__call`
+  proxies, `stdClass` items, `ArrayObject` subclass registered as a service – CoreBundle I-59, `templating_twig.yaml:59-65`). Replace with small
+  typed value objects (`ScriptItem`, `LinkItem`, `MetaItem`) and explicit methods; keep the Twig function names.
+- IE conditional comments (`conditional`, `conditionalStylesheet`, `!IE`) – drop (B-202). `useCdata` / XHTML handling – drop.
+
+### [ ] I-170 – Head helpers: inject CSP nonce and asset versioning instead of container look-ups and `filemtime()`
+
+**Files:** `lib/Twig/Extension/Templating/HeadScript.php:454-460`, `:527-564`; `HeadLink.php:350-379`
+
+- `HeadScript::itemToString()` calls `Pimcore::getContainer()->has('pimcore_admin_bundle.content_security_policy_handler')` **per script item**
+  and asks an admin-bundle service for the nonce. Inject an optional `?NonceProviderInterface` (or dispatch an event) once.
+- The cache buster runs `file_exists()` + `filemtime()` for every local `src` / `href` on every render and rewrites the item in place. Symfony
+  7.4's Asset component (`VersionStrategyInterface`, `json_manifest_path`) or AssetMapper solve this with a build-time manifest.
+- A `GenericEvent` is dispatched per item per render (`VIEW_HELPER_HEAD_SCRIPT` / `_HEAD_LINK`); a typed event class would document the
+  contract.
+- `handleWebLink()` calls a template-chosen method on `WebLinkExtension` (`call_user_func([$ext, $method])`) – restrict to `preload` /
+  `prefetch` / `preconnect` / `dnsPrefetch` / `prerender` / `link`.
+
+### [ ] I-171 – `Sandbox\SecurityPolicy`: reuse Twig's policy, strict checks
+
+**Files:** `lib/Twig/Sandbox/SecurityPolicy.php`
+
+- The class is a copy of `Twig\Sandbox\SecurityPolicy` with the method / property checks disabled. Extend or wrap Twig's class and pass
+  allowed methods / properties (CoreBundle C-12) instead of keeping a fork; drop the `pimcore_` wildcard (C-12).
+- `in_array()` without `strict`; constructor promotion; the `@author Fabien Potencier` header on a modified copy should name the origin
+  (license compliance) or disappear with the fork.
+
+### [ ] I-172 – Tests for `lib/Twig`
+
+**Files:** `tests/Twig/*`, `tests/Unit/Twig/*`
+
+- Sandbox: `pimcore_asset_version_preview`, `pimcore_dump`, `pimcore_file_exists`, `pimcore_user` rejected (C-12).
+- Tags: keys / class options with `'`, `$`, `{` compile and render literally (B-197); nested `pimcorecache` and nested `pimcoreblock` (B-198);
+  non-constant options give a `SyntaxError` (B-199); `pimcoreassetcompress` with a `//` comment (B-200).
+- Head helpers: two renders through one `ContainerService` with a reset in between; `pimcore_placeholder` inside a pushed index (B-201);
+  JSON-LD output, media queries, attribute name validation (B-202).
+- `pimcore_url()` without `reset` on a request with `?token=…&_fragment=x` (B-203).
+
+---
+
+## ValueObject
+
+### [ ] I-173 – Value objects: one validation pattern, proper exception type, `__unserialize()`
+
+**Files:** `lib/ValueObject/**`
+
+- The four collection classes are copies of each other with a different `is_*()` check (`ArrayOfPositiveIntegers` duplicates
+  `ArrayOfIntegers` and adds `> 0`). Extract a shared private helper / abstract base (or a single generic `TypedArray` with a
+  `@template T` PHPStan annotation and a validator closure) and keep the public classes as thin, `final` wrappers for BC.
+- `ValueError` is the engine's exception for invalid arguments to internal functions; domain validation conventionally throws
+  `\InvalidArgumentException` (or a Pimcore `InvalidValueException extends \InvalidArgumentException`). Changing the class is a BC break for
+  `catch (ValueError)` (e.g. `CacheParser.php:79`) – introduce a subclass-compatible exception in a major.
+- Error messages do not name the offending key / index (`'Provided array must contain only string values. (integer given)'`) – add the key
+  and use `get_debug_type()` instead of `gettype()` (`int` / `Foo\Bar` instead of `integer` / `object`).
+- Re-validation after unserialize uses `__wakeup()`. `__serialize()` / `__unserialize()` (PHP 7.4+) are the recommended pair and allow
+  validating the incoming array before it is assigned; `__sleep()` / `__wakeup()` are slated for deprecation in upcoming PHP versions
+  (verify for PHP 8.5).
+- Keys are not constrained: `new ArrayOfStrings(['a' => 'x', 5 => 'y'])` is accepted. If the types mean "list", check `array_is_list()`
+  (PHP 8.1) or normalise with `array_values()`; document either way.
+- API consistency: `equals()` exists only on `PositiveInteger` and `Path`; `ArrayOfBoolean` (singular) vs `ArrayOfIntegers` / `ArrayOfStrings`
+  (plural); `Path` could implement `\Stringable`. Add `count()` / `IteratorAggregate` to the collections if callers iterate them.
+- The promoted property could be `public readonly` (direct reads like `$obj->value`, writes still impossible) – optional, keep `getValue()`
+  for BC.
+
+### [ ] I-174 – Tests for `lib/ValueObject`
+
+**Files:** `tests/Unit/ValueObject/**`
+
+- Existing tests cover the happy path, the main rejection case and re-validation after `unserialize()` for every class.
+- Add: `Path` with `..`, `.`, NUL, newline, trailing slash and root `/` (B-204); collections with string keys and an empty array;
+  `ArrayOfPositiveIntegers` with `0`, a negative number and `true`; `PositiveInteger` with `PHP_INT_MAX`.
+
+---
+
+## Video
+
+### [ ] I-175 – Video adapter: typed configuration, DI instead of the static factory, ffprobe for metadata
+
+**Files:** `lib/Video.php`, `lib/Video/Adapter.php`, `lib/Video/Adapter/Ffmpeg.php`
+
+- `Video::getInstance(?string $adapter)` builds a class name from a string (`'\\Pimcore\\Video\\Adapter\\' . $adapter`) and `isAvailable()` /
+  `getDefaultAdapter()` instantiate the adapter on every call (`models/Asset/Video.php` calls `isAvailable()` and then `getInstance()` – two
+  instances and two executable look-ups per metadata read). Register adapters as tagged services and inject a `VideoAdapterFactory`.
+- The adapter mixes configuration (bitrates, format, medias, destination) and per-file state (`$file`, `$processId`, arguments) in one mutable
+  object with public typed properties. Split into a readonly `ConversionOptions` value object (with a `VideoFormat` enum: `Mp4`, `Webm`, `Mpd`,
+  `Mpg`) and a stateless converter service.
+- `save()` is a 130-line method with one branch per format; extract `buildArguments(VideoFormat): list<string>` per format (also fixes the
+  argument pairing problems of models B-64), use `-c:v` / `-c:a` consistently.
+- Metadata: one `ffprobe` JSON call cached per file (B-206) instead of two `ffmpeg -i` runs written to temp files.
+- `uniqid()` as process id → `bin2hex(random_bytes(8))`; `(string)` / `ceil()` float juggling in `resize()` / `scaleBy*()` → integer
+  arithmetic (`intdiv($w + 1, 2) * 2`); constructor promotion; `final` for `Ffmpeg` (`@internal`).
+- `Video` facade: `@internal` but static – deprecate in favour of the service.
+
+### [ ] I-176 – Tests for `lib/Video`
+
+**Files:** new `tests/Unit/Video/*`
+
+- No test covers the adapter. Add unit tests for the generated argument lists per format (mp4 / webm / mpd / mpg, with and without
+  bitrates, `cut`, `mute`, filters) by asserting on the `Process` command line (extract `buildArguments()` first, I-175).
+- Parsing tests with recorded `ffprobe` / `ffmpeg -i` output: rotated portrait video, video with attached cover art, missing duration (B-206).
+- Getter behaviour before setters (B-205).
+
+---
+
+## Workflow
+
+### [ ] I-177 – `Manager` / config objects: DI, typed options, Symfony 7.4 workflow features
+
+**Files:** `lib/Workflow/Manager.php`, `Transition.php`, `GlobalAction.php`, `WorkflowConfig.php`, `Place/PlaceConfig.php`, `ExpressionService.php`
+
+- `getWorkflowByName()` fetches `"{type}.{name}"` from the static container (`Pimcore::getContainer()`) and is marked "will return
+  `?WorkflowInterface` in 12.0.0"; `getTransitionByName()` and the subscribers depend on it. Inject a `ServiceLocator` of the workflows (or the
+  `Registry` plus the definition) and return `?WorkflowInterface` now with a deprecation layer.
+- `Transition` subclasses Symfony's `Transition` only to carry an options array; Symfony offers the `MetadataStoreInterface`
+  (`$workflow->getMetadataStore()->getTransitionMetadata($t)`) for exactly that. `GlobalAction`, `PlaceConfig`, `WorkflowConfig` wrap raw arrays
+  with `?? default` getters – several read keys without defaults (`GlobalAction::getLabel()` / `getObjectLayout()`, `Transition::getObjectLayout()` /
+  `getChangePublishedState()`, `PlaceConfig::isVisibleInHeader()`, `WorkflowConfig::getPriority()` / `getType()`) → undefined-key warnings for
+  programmatic configs. Use readonly value objects built from the normalised config (CoreBundle I-62).
+- Constructor promotion with `private readonly` everywhere (`Manager`, `ExpressionService`, `OptionsProvider`, `StatusInfo`, notification services,
+  marking stores, `ExpressionSupportStrategy`); `private $options` without type → `private array $options`.
+- `ExpressionService::evaluateExpression()` has an unused `$workflow` parameter; `'user' => $token->getUser() ?: 'anonymous'` is the Symfony < 6
+  anonymous-user convention – expressions calling `user.getId()` fail on a string. Mirror Symfony 7.4's `ExpressionVoter` variables
+  (`user` is `null` when unauthenticated).
+- `ExpressionSupportStrategy` evaluates an expression on **every** `Registry::get()` / `has()` call (several per admin request and per element);
+  an expression error surfaces as `SyntaxError` from the registry and breaks `getAllWorkflowsForSubject()`. Cache per subject class where the
+  expression does not use the subject, and catch / log evaluation errors.
+- Subscribers listen to the global `workflow.enter` / `workflow.completed` events and filter by class; Symfony 7.4 supports per-workflow event
+  names and `#[AsCompletedListener(workflow: …)]` attributes.
+
+### [ ] I-178 – Notes / notification subscribers without shared mutable state
+
+**Files:** `lib/Workflow/EventSubscriber/*.php`, `lib/Workflow/Notification/*.php`, `lib/Workflow/Notes/*.php`, `lib/Workflow/Service.php`
+
+- `NotesSubscriber::$additionalData` and the `$enabled` flags of both subscribers are per-process state on shared services (B-209). The
+  additional data is already passed to `$workflow->apply($subject, $transition, $additionalData)` as **context**; read it from
+  `$event->getContext()` and delete `setAdditionalData()`. Implement `ResetInterface` for the `enabled` flags.
+- Notification sending belongs after commit (B-210) and can use Symfony Notifier (`ChatterInterface` / `NotifierInterface`) channels instead of two
+  hand-written services; `AbstractNotificationService` is not `abstract` and builds `IN (...)` lists with `quote()` – use
+  `ArrayParameterType::STRING`.
+- `Service::createNoteData()` contains a commented-out block of TODO branches (`:54-67`); `Service::getDataFromEditmode()` builds a class name from
+  config (`'…\\Data\\' . ucfirst($pimcoreTagName)`) – resolve through the field-definition loader.
+- `NotesAwareTrait` relies on `@property array $options` / `@method getLabel()` of the using class – make it an abstract method contract.
+- `AbstractCustomHtmlService` is matched to transitions / actions by **name only** (`NotesAwareTrait::setCustomHtmlService()`): two workflows with
+  a transition of the same name get the same custom HTML service. Include the workflow name.
+
+### [ ] I-179 – Dumpers: reuse Symfony's Graphviz / Mermaid dumpers
+
+**Files:** `lib/Workflow/Dumper/GraphvizDumper.php`, `StateMachineGraphvizDumper.php`
+
+- Both classes are modified copies of Symfony's dumpers (the `@author` headers remain). Symfony 7.4 ships `GraphvizDumper`,
+  `StateMachineGraphvizDumper`, `PlantUmlDumper` and `MermaidDumper`, which read labels from the metadata store (`label` metadata) and escape
+  them. With transition / place labels in metadata (I-177) the copies can be removed (fixes the escaping of B-214).
+
+### [ ] I-180 – Tests for `lib/Workflow`
+
+**Files:** new `tests/Unit/Workflow/*`, `tests/Model/Workflow/*` (no test covers `lib/Workflow` today)
+
+- Permission resolution with two workflows of different priority and with a multi-place marking (C-13).
+- `applyWithAdditionalData()` that throws, followed by a second transition (no leaked notes data); global action with a failing guard (B-209).
+- Transition whose subject save fails: no note / state row / notification left behind (B-210).
+- `StateTableMarkingStore` with an unsaved element (B-211); notes with omitted optional fields, `0` for a required field, date in seconds and
+  milliseconds (B-212); `getNoteInfo()` with an asset and an object sharing an id (B-213).

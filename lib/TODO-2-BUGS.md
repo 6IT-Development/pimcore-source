@@ -153,6 +153,47 @@ only suggests `elasticsearch/elasticsearch`)
 **(33)** `lib/Serializer/**` (`Serializer`, `Normalizer/ReferenceLoopNormalizer`), plus the direct consumers where a defect originates in the
 interplay (`bundles/CoreBundle/config/serializer.yaml`, `bundles/CoreBundle/src/DependencyInjection/Compiler/SerializerPass.php`,
 `lib/Tool/Serialize.php::removeReferenceLoops()` (`:61-101`), `lib/Controller/Traits/JsonHelperTrait.php`)
+**(34)** `lib/Session/**` (`Attribute/LockableAttributeBag`, `Attribute/LockableAttributeBagInterface`,
+`Attribute/Exception/AttributeBagLockedException`) – no consumer exists in this repository; checked against `lib/Tool/Session.php`,
+`doc/19_Development_Tools_and_Details/35_Working_with_Sessions.md` and Symfony's session storage (`Session::invalidate()`,
+`NativeSessionStorage::clear()`, `MockArraySessionStorage::clear()`)
+**(35)** `lib/Templating/**` (`TwigDefaultDelegatingEngine`, `Renderer/ActionRenderer`, `Renderer/IncludeRenderer`, `Renderer/EditableRenderer`),
+plus the direct consumers where a defect originates in the interplay (`bundles/CoreBundle/config/templating.yaml`,
+`lib/Twig/Extension/Templating/Inc.php` (`pimcore_inc()`), `lib/Controller/Controller.php:27-72`, `lib/Mail.php::renderParams()` (`:593-624`),
+`models/DataObject/ClassDefinition/Layout/Text.php:118-145`, `models/Document/Editable/Snippet.php:100-145`, `lib/Tool/DomCrawler.php`,
+`lib/Tool/Frontend.php::isOutputCacheEnabled()`, Symfony `HttpKernelRuntime::renderFragment()` / `FragmentHandler` / `InlineFragmentRenderer` /
+`FragmentUriGenerator`, Twig `SandboxExtension`)
+**(36)** `lib/Test/**` (`KernelTestCase`, `WebTestCase`) – no consumer in this repository (Pimcore's own suites use Codeception,
+`tests/Support/Helper/Pimcore.php`); checked against `lib/Pimcore.php` (`setKernel()` / `getContainer()` / `shutdown()`), `lib/Bootstrap.php::kernel()`
+(`:232-268`), `lib/Kernel.php::initializeContainer()` (`:155-178`), `lib/Cache.php::getHandler()`, `lib/Event/TestEvents.php`,
+`doc/19_Development_Tools_and_Details/29_Testing/01_Application_Testing.md` and Symfony `KernelTestCase` / `WebTestCase`
+**(37)** `lib/Tool/**` (`Admin`, `ArrayNormalizer`, `AssetsInstaller`, `Authentication`, `ClassUtils`, `Console`, `DeviceDetector`, `DomCrawler`,
+`Frontend`, `HtmlUtils`, `MaintenanceModeHelper(Interface)`, `Requirements`, `Requirements/Check`, `Serialize`, `Session`, `Storage`, `Text`,
+`Text/Csv`, `Transliteration`, `UserTimezone`), plus the direct consumers where a defect originates in the interplay (`lib/File.php::getValidFilename()`,
+`lib/helper-functions.php::array_to_html_attribute_string()`, `lib/Config.php::getSystemConfiguration()`, `lib/Extension/Bundle/PimcoreBundleLocator.php:90`,
+`models/Translation.php:208-213`, `:326`, `:402`, `models/Document/Editable.php:128-131` (and the other `HtmlUtils` callers in `models/Document/Editable/*`),
+`models/DataObject/ClassDefinition/Data/Datetime.php:158-172`, `:402-409`, `bundles/CoreBundle/src/EventListener/Frontend/FullPageCacheListener.php:239-241`,
+`:338-341`, `bundles/SeoBundle/src/Redirect/Csv.php:133`, `tests/Unit/Tool/*`, `tests/Model/Tool/*`)
+**(38)** `lib/Translation/**` (`Translator`, `TranslationEntriesDumper`), plus the direct consumers where a defect originates in the interplay
+(`bundles/CoreBundle/config/l10n.yaml:10-15`, `bundles/CoreBundle/config/services.yaml:106`, `bundles/CoreBundle/src/EventListener/DumpTranslationEntriesListener.php`,
+`TranslationDebugListener.php`, `models/Translation.php` (`getByKey()`, `getValidLanguages()`), `lib/Tool/Text.php::wysiwygText()`,
+`doc/06_Multi_Language_i18n/04_Shared_Translations.md`, `tests/Unit/Translation/TranslatorTest.php`)
+**(39)** `lib/Twig/**` (`TwigEnvironmentConfigurator`, `Sandbox/SecurityPolicy`, `TokenParser/*`, `Node/*`, `Options/*`, `Extension/*` incl.
+`Extension/Templating/**` – head / placeholder helpers, `Inc`, `Navigation`, `PimcoreUrl`, traits, exceptions), plus the direct consumers where a
+defect originates in the interplay (`bundles/CoreBundle/config/templating_twig.yaml`, `config/pimcore/default.yaml:334-338` (sandbox defaults),
+`lib/Mail.php::renderParams()` (`:593-624`), `models/DataObject/ClassDefinition/Layout/Text.php:118-145`,
+`bundles/CoreBundle/src/EventListener/Frontend/DocumentRendererListener.php:43-52`, `lib/Templating/Renderer/EditableRenderer.php`,
+`tests/Twig/*`, `tests/Unit/Twig/Options/BlockOptionsTest.php`)
+**(40)** `lib/ValueObject/**` (`Collection/ArrayOfBoolean`, `ArrayOfIntegers`, `ArrayOfPositiveIntegers`, `ArrayOfStrings`, `Integer/PositiveInteger`,
+`String/Path`) – only consumer in this repository: `lib/Twig/TokenParser/CacheParser.php:77`; public API announced in
+`doc/23_Installation_and_Upgrade/09_Upgrade_Notes/README.md:139-141`; tests `tests/Unit/ValueObject/**`
+**(41)** `lib/Video/**` (`Adapter`, `Adapter/Ffmpeg`) and the `lib/Video.php` facade, plus the direct consumers where a defect originates in the
+interplay (`models/Asset/Video/Thumbnail/Processor.php:118-145`, `:244`, `:287`, `models/Asset/Video.php:158-255`,
+`lib/Messenger/Handler/AssetUpdateTasksHandler.php:105-118`, `lib/Tool/Console.php`)
+**(42)** `lib/Workflow/**` (`Manager`, `Service`, `ExpressionService`, `Transition`, `GlobalAction`, `WorkflowConfig`, `MarkingStore/*`,
+`SupportStrategy/*`, `EventSubscriber/*`, `Notification/*`, `Notes/*`, `Place/*`, `Dumper/*`), plus the direct consumers where a defect
+originates in the interplay (`models/Element/AbstractElement.php:480-515` (`isAllowed()`), `models/Element/WorkflowState.php:37-60`,
+`models/DataObject/Concrete.php:428`, `doc/07_Workflow_Management/04_Permissions.md:30-41`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
@@ -173,7 +214,7 @@ C-06 / B-26 `exit` in commands, I-29 `lib/Console` helpers – not repeated),
 `CacheWarmingCommand` – not repeated)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
-IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–33: `033aa183ef`).
+IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`, Scope 16–42: `033aa183ef`).
 Grouped by area, roughly ordered by impact inside each group: **Core cache handler / write lock** B-01–B-09,
 **RuntimeCache** B-10, **Warming** B-11–B-12, **FullPage / SessionStatus** B-13, **Tests** B-14,
 **Composer** B-15–B-16, **Config** B-17–B-25,
@@ -202,7 +243,16 @@ Grouped by area, roughly ordered by impact inside each group: **Core cache handl
 **Routing** B-163–B-166,
 **SearchClient** – (no bugs),
 **Security** B-167–B-170,
-**Serializer** B-171.
+**Serializer** B-171,
+**Session** B-172–B-173,
+**Templating** B-174–B-177,
+**Test** B-178–B-179,
+**Tool** B-180–B-193,
+**Translation** B-194–B-196,
+**Twig** B-197–B-203,
+**ValueObject** B-204,
+**Video** B-205–B-208,
+**Workflow** B-209–B-214.
 
 ---
 
@@ -3620,3 +3670,892 @@ to `buildRouteForFromSlug()`; return the object from `getContent()`; cache the d
 `AbstractNormalizer::CIRCULAR_REFERENCE_HANDLER` instead of cloning; if the custom normalizer stays, walk the graph without `clone` (track
 visited objects in an `SplObjectStorage` and build arrays), apply the loop filter to the `jsonSerialize()` result, and widen/handle object
 results.
+
+---
+
+## Session
+
+> Scope 34 notes: all 3 files in `lib/Session/**` were read (142 lines). `LockableAttributeBag` / `LockableAttributeBagInterface` /
+> `AttributeBagLockedException` have **no consumer** in this repository (`bundles/`, `models/`, `lib/`, `tests/`) – the last in-repo user went away with the AdminBundle extraction (`c6ca4331a8`, #14908, 2023-04-12); the admin session bags
+> (`pimcore_admin`, see `lib/Tool/Session.php`) are registered by the external admin bundle, which is not part of this checkout – whether it
+> still uses the lockable bag was **not verified**. Both findings are therefore latent: they hit any project or third-party bundle that
+> registers the bag. Symfony behaviour is described from the 7.x source (`Session::invalidate()` → `$storage->clear()` →
+> `$bag->clear()` for every registered bag); there is no `vendor/` in this checkout, so it was **not verified locally** against 7.4.
+
+## [ ] B-172 – A locked bag makes `Session::invalidate()` throw: logout / session invalidation fails with a 500 and the session is not cleared
+
+**Files:** `lib/Session/Attribute/LockableAttributeBag.php:63-68`, `:72-79`; Symfony `Session::invalidate()`,
+`NativeSessionStorage::clear()`, `MockArraySessionStorage::clear()`, `SessionLogoutListener`
+
+```php
+public function clear(): mixed
+{
+    $this->checkLock();              // throws while locked
+    return parent::clear();
+}
+```
+
+- `clear()` is not only a user-facing API: the session **storage** calls `clear()` on every registered bag in `NativeSessionStorage::clear()`
+  (and `MockArraySessionStorage::clear()` in tests), which `Session::invalidate()` runs before `migrate(true)`.
+- `invalidate()` is used by Symfony's `SessionLogoutListener` (logout with `invalidate_session: true`, the default), by
+  `SessionAuthenticationStrategy::INVALIDATE`, and by application code after a password change / privilege change.
+- If a bag is still locked at that moment, `AttributeBagLockedException` aborts the loop: the remaining bags are not cleared, `$_SESSION` is not
+  reset and the session id is not regenerated. Result: a 500 on logout and an authenticated session that survives the attempt to destroy it
+  (security relevant once a consumer exists – that is why it would be critical with a consumer, and a bug while there is none).
+- The lock is also inconsistent: `initialize()` is **not** guarded, so the storage may rebind a "locked" bag to new data
+  (`loadSession()` after `migrate()` / `start()`), but may not clear it.
+
+**Verify:** unit test with `MockArraySessionStorage` + `Session`: register a `LockableAttributeBag`, `lock()`, call `$session->invalidate()` →
+per code `AttributeBagLockedException`; expected `true` and an empty session.
+
+**Fix direction:** the lock must protect against application writes, not against the session lifecycle. Either do not guard `clear()` (only
+`set()` / `replace()` / `remove()`), or let the storage path through (e.g. `clear()` unlocks first – the bag is emptied anyway). Document that
+`invalidate()` / `clear()` always wins over the lock.
+
+## [ ] B-173 – The lock is shallow and per-object: stored objects stay mutable, the lock is lost between requests
+
+**Files:** `lib/Session/Attribute/LockableAttributeBag.php:25`, `:42-61`; `lib/Session/Attribute/LockableAttributeBagInterface.php:24-37`
+
+- The interface promises "Lock the attribute bag (disallow modifications)", but only the four mutator methods are guarded. `get()` returns
+  objects by handle: `$bag->get('cart')->addItem(…)` modifies a locked bag, and the change is written to the session at `save()` (the whole
+  `$_SESSION` is serialised). Arrays are returned by value, so the behaviour differs by value type.
+- `AttributeBag::initialize(array &$attributes)` binds `$this->attributes` to the storage array by reference; any code that writes through
+  the storage (`$_SESSION[$storageKey]`, another bag sharing the storage key, `MockArraySessionStorage::setSessionData()`) bypasses the lock.
+- `$locked` lives on the PHP object only; it is not stored in the session. A bag locked in request A is unlocked in request B (new bag
+  instance), but a bag instance that is reused across requests (registered once on a long-lived session in a worker runtime / tests) keeps the
+  lock of a previous request – there is no `ResetInterface`/reset hook. The state model is not documented either way.
+- `lock()` / `unlock()` are not paired or nested: two components that lock and unlock independently unlock each other (the first `unlock()` wins).
+
+**Fix direction:** document the lock as "guards the bag API only, per instance, per request" or make it real: return clones / read-only views
+from `get()` while locked, keep a lock counter (or a scoped `withLock(callable)` that restores the previous state in `finally`), and reset
+the lock when the bag is (re)initialised (`initialize()` → `$this->locked = false`).
+
+---
+
+## Templating
+
+> Scope 35 notes: all 4 files in `lib/Templating/**` were read (474 lines), plus the consumers listed in the scope header. Symfony
+> (`InlineFragmentRenderer` forwarding `_locale` / `_format`, `HttpKernelRuntime::renderFragment()` reading `strategy`, `FragmentUriGenerator`
+> rejecting non-scalar attributes) and Twig behaviour are described from the 7.x / 3.x source; there is no `vendor/` in this checkout, so
+> nothing was executed and it is **not verified locally**. Not repeated: the open sandbox policy (CoreBundle C-12), `ignore_errors` /
+> sub-request exception handling (CoreBundle B-37, B-43), `Controller::render()` delegate path (B-39 – see I-147:
+> the path is dead), `defaultValue` `TypeError` through `EditableRenderer` (models B-348), the mail subject message cut (Mail scope).
+
+## [ ] B-174 – `pimcore_inc()` output cache key ignores site and locale: the include rendered for one site / language is served on all others
+
+**Files:** `lib/Templating/Renderer/IncludeRenderer.php:80-106`, `:119-124`; compare `models/Document/Editable/Snippet.php:124-126`
+
+```php
+$cacheParams = $params;
+$cacheParams['~~include-document'] = $originalInclude;
+...
+$cacheKey = 'tag_inc__' . md5(serialize($cacheParams));   // no site, no locale, no host
+```
+
+- The key is built only from the template parameters and the include reference. The rendered content of the same snippet usually depends on
+  the request: `Site::getCurrentSite()` (navigation, links, `pimcore_url()` with site prefixes), the locale (translations, `app.request.locale`),
+  the host.
+- `InlineFragmentRenderer` forwards the parent's `_locale` to the sub-request when the attribute is not set; `ActionRenderer` sets `_locale`
+  only if the **included** document has a `language` property (`ActionRenderer.php:90-92`). A shared snippet without that property therefore
+  renders in the parent page's language – and the first language rendered is cached for all languages.
+- The `pimcore_snippet` editable adds `siteId` to its key for exactly this reason (`Snippet.php:124-126`); `IncludeRenderer` does not.
+- With the output cache enabled, the first site / language that renders `{{ pimcore_inc('/shared/footer') }}` fills the cache entry for all
+  sites and languages until the `output` tag is cleared (or, with a lifetime, until it expires – the `output_lifetime` tag is not cleared by
+  document saves).
+
+**Verify:** two sites (or two languages) whose layout includes the same snippet that prints the current site id / locale; enable the full-page
+cache; request site A, then site B → per code B shows A's value.
+
+**Fix direction:** add `Site::isSiteRequest() ? Site::getCurrentSite()->getId() : 0`, the request locale and the host to `$cacheParams`;
+better: one shared key builder for `IncludeRenderer` and the `Snippet` editable (I-149) so both stay consistent.
+
+## [ ] B-175 – Building the include cache key can throw or serialise whole object graphs (500 only when the output cache is on)
+
+**Files:** `lib/Templating/Renderer/IncludeRenderer.php:86-105`
+
+- `array_walk()` only normalises **top-level** values: elements become ids, `__toString()` objects become strings. Nested values stay as they
+  are: `{{ pimcore_inc('/x', {'items': products}) }}` (array / listing of elements) serialises every element including its loaded relations;
+  a closure, generator, `PDO`, `\Dom\…` or any non-serialisable object anywhere in the params → `Exception: Serialization of 'Closure' is not
+  allowed` from `serialize()` (`:102`).
+- Top-level objects that are neither elements nor `Stringable` (DTOs, `Request`) are serialised too – expensive and
+  fragile (private state, lazy proxies).
+- Because this code runs only when `Frontend::isOutputCacheEnabled()` is truthy, the same template works in dev / editmode / for logged-in
+  users and fails in production for anonymous visitors.
+- `if ($content = Cache::load($cacheKey))` (`:103`) treats a cached `''` or `'0'` as a miss: empty includes (unpublished / missing document,
+  swallowed fragment errors) are re-rendered and re-saved on every request.
+
+**Fix direction:** normalise recursively (elements → `type:id`, `Stringable` → string, scalars / null as-is, arrays recursively, everything
+else → `get_debug_type()` or "not cacheable": skip caching for that call); hash with `hash('xxh128', …)` over a `json_encode()`d normalised
+array; compare the load result with `false` (`Cache::load()` returns `false` on a miss).
+
+## [ ] B-176 – Include params are passed to Symfony as fragment *options*: `strategy`, `ignore_errors`, `alt`, `standalone` keys change rendering; non-inline strategies always fail
+
+**Files:** `lib/Templating/Renderer/IncludeRenderer.php:108-112`, `:129-132`; `lib/Templating/Renderer/ActionRenderer.php:46-53`, `:60-65`
+
+```php
+$params = array_merge($params, ['document' => $include]);
+$content = $this->actionRenderer->render($include, $params);        // $params = template params
+// ActionRenderer::render():
+$uri = $this->createDocumentReference($uri, $options);              // options become controller attributes …
+return $this->httpKernelRuntime->renderFragment($uri, $options);    // … and fragment options at the same time
+```
+
+- The same array is used as controller **attributes** and as `FragmentHandler` **options**. `HttpKernelRuntime::renderFragment()` takes
+  `strategy` out of it, and the renderers read `ignore_errors`, `alt`, `standalone`, `comment`, `absolute_uri`. A template parameter with one
+  of these names (`{{ pimcore_inc('/x', {'alt': 'Banner'}) }}`, `{'strategy': 'big'}`) changes how the include is rendered, or throws
+  `InvalidArgumentException: The "big" renderer does not exist.`
+- The attributes always contain objects (`document`, `contentDocument` = the `PageSnippet`). Every non-inline strategy (`esi`, `ssi`,
+  `hinclude`) generates a fragment URI and `FragmentUriGenerator` throws `LogicException: Controller attributes cannot contain non-scalar/non-null
+  values` – so passing `strategy: 'esi'` (the only way to get ESI for an include) can never work.
+- `DocumentRenderer` (`lib/Document/Renderer/DocumentRenderer.php`) calls `ActionRenderer::render()` with its own `$attributes` + options mix;
+  same overlap.
+
+**Fix direction:** separate the two: `ActionRenderer::render(PageSnippet|string|ControllerReference $uri, array $attributes = [], array $options = [])`
+(I-150); `IncludeRenderer` passes template params only as attributes and an explicit, documented options array (e.g. a reserved
+`pimcore_inc(…, {'_fragment_options': {…}})` or a separate argument). For non-inline strategies pass the document **id** and resolve it in
+the controller instead of the object.
+
+## [ ] B-177 – Editmode include highlighting: text-only includes are never marked, and the include HTML is re-serialised by libxml
+
+**Files:** `lib/Templating/Renderer/IncludeRenderer.php:141-166`; `lib/Tool/DomCrawler.php:30-50`
+
+- The fallback wrapper `<div class="pimcore_editable pimcore_editable_inc" …>` is added only in `catch (Exception)`. `Pimcore\Tool\DomCrawler`
+  wraps every fragment in `<pimcore-fragment-wrapper>` and does not throw for plain text, so for a snippet that renders only text (or text
+  around inline elements) `filterXPath('//pimcore-fragment-wrapper/*')` finds nothing / only the inline elements: no `pimcore_id` /
+  `pimcore_type` is set on the text and the include cannot be opened from the editmode context menu. The `catch` branch is practically
+  unreachable.
+- Each top-level element of the include gets the attributes, i.e. an include with three sibling blocks shows three separate include targets.
+- The include HTML is parsed and serialised again (`$html->html()`). On Symfony 7.4 + PHP 8.4 `Crawler` uses the native `\Dom\HTMLDocument`
+  parser (reproduced in [GlossaryBundle TODO-2](../bundles/GlossaryBundle/TODO-2-BUGS.md) B-08): entities in untouched nodes are written as raw
+  characters and the markup is normalised, so the editmode HTML of an include differs from the frontend HTML (snapshot / diff tooling, JS that
+  matches on the original markup).
+
+**Fix direction:** always wrap in editmode (one `<div class="pimcore_editable pimcore_editable_inc" data-…>` around the whole include, or
+`display: contents`), or mark only when exactly one element child and no non-whitespace text exists; or avoid re-parsing
+altogether (a wrapper element needs no parsing). Escape the attribute values with `htmlspecialchars()` (they are ints / internal types today, but
+the method builds HTML by concatenation).
+
+---
+
+## Test
+
+> Scope 36 notes: both files in `lib/Test/**` were read (2 × 33 lines, identical except the parent class), plus the files listed in the scope
+> header. Nothing in this repository extends them; the only reference is the testing doc. Symfony `KernelTestCase` behaviour (`bootKernel()` →
+> `ensureKernelShutdown()` → `createKernel()`; `tearDown()` shuts the kernel down and sets `static::$kernel = null`; `Kernel::getContainer()`
+> throws `LogicException` on a non-booted kernel) is described from the 7.x source; there is no `vendor/` in this checkout, so nothing was
+> executed (**not verified locally**). Not repeated: `Cache::$handler` static surviving container rebuilds (I-07), the static
+> `Wysiwyg` sanitizer (models I-199), `Pimcore::getContainer()` on a `null` kernel (Pimcore facade, not in this scope).
+
+## [ ] B-178 – Test base classes register the kernel globally but never unregister it: stale kernel, stale statics and one shutdown closure per test
+
+**Files:** `lib/Test/KernelTestCase.php:25-32`, `lib/Test/WebTestCase.php:25-32`; `lib/Pimcore.php:108-122`, `:165-177`;
+`lib/Kernel.php:164-177`; `lib/Cache.php:31-46`
+
+```php
+protected static function createKernel(array $options = []): KernelInterface
+{
+    $kernel = parent::createKernel($options);
+    Pimcore::setKernel($kernel);      // never reset when Symfony shuts the kernel down
+    return $kernel;
+}
+```
+
+- Symfony's `tearDown()` shuts the kernel down and drops `static::$kernel`; `Pimcore::$kernel` still points to the shut-down kernel.
+  Between tests (`tearDown()` code after `parent::tearDown()`, `tearDownAfterClass()`, data providers of the next class, destructors)
+  `Pimcore::hasKernel()` is `true` but `Pimcore::getContainer()` throws `LogicException: Cannot retrieve the container from a non-booted kernel`
+  – every static model call (`DataObject::getById()`, `Cache::…`, `Tool::…`) fails there.
+- `createKernel()` is also called without booting (tests that build a second kernel with other options to inspect it): it replaces the
+  global kernel with an **un-booted** one while the booted kernel / test client is still in use.
+- Statics that cache services of the first kernel are never reset: `Cache::$handler` (the facade keeps writing through the first
+  container's `CoreCacheHandler`, its pool, write lock and queue), `Pimcore::$adminMode`, `Tool::$currentRequest`, and `RuntimeCache::$instance` (`lib/Cache/RuntimeCache.php:38-75`): `getInstance()` returns the first
+  instance early, so test A's loaded objects are returned in test B and the new container's synthetic runtime-cache service is never set.
+  Tests become order-dependent.
+- `Kernel::initializeContainer()` registers a new `register_shutdown_function()` closure on **every** boot, capturing `$this`. With
+  `bootKernel()` / `createClient()` per test, a suite of N tests keeps N kernel objects alive until the process ends and then runs N
+  `Pimcore::shutdown()` calls (only the last kernel's container is still booted; the others return early).
+
+**Verify:** a test class with two tests that each call `static::bootKernel()`, and `tearDownAfterClass()` calling `\Pimcore::getContainer()` →
+per code `LogicException`; a test that `Cache::save()`s in test 1 and asserts `Cache::getHandler()` identity against the new container in test 2.
+
+**Fix direction:** override `ensureKernelShutdown()` (static, called by `tearDown()` and before every boot) in a shared trait: after
+`parent::ensureKernelShutdown()` reset the Pimcore statics (a new `@internal Pimcore::resetKernel()` / `unsetKernel()`, `Cache::$handler =
+null`, `RuntimeCache::clear()`, `Pimcore::unsetAdminMode()`); set the global kernel only after a successful boot (override `bootKernel()`
+instead of `createKernel()`). In `Kernel`, register the shutdown function once per process (static flag) and look the current kernel up via
+`Pimcore::getKernel()` instead of capturing `$this`.
+
+## [ ] B-179 – Kernels booted through the test base classes skip Pimcore's boot steps: wrong timezone, no kernel-class check, no `TestEvents::KERNEL_BOOTED`
+
+**Files:** `lib/Test/KernelTestCase.php:25-32`, `lib/Test/WebTestCase.php:25-32`; `lib/Bootstrap.php:232-268`; `lib/Event/TestEvents.php`;
+`tests/Support/Helper/Pimcore.php:110-128`
+
+- `Bootstrap::kernel()` – the path used by `bin/console`, `public/index.php` and Pimcore's own Codeception helper – does more than
+  `new Kernel()` + `boot()`: after booting it applies `pimcore.general.timezone` with `date_default_timezone_set()` (`:260-265`) and it
+  rejects kernel classes that do not extend `Pimcore\Kernel` (`:252-254`). Kernels booted by `Pimcore\Test\KernelTestCase` / `WebTestCase`
+  skip both: tests run with the `php.ini` timezone (date / `Carbon` assertions, scheduled tasks, versions differ from production), and a
+  `KERNEL_CLASS` that is a plain Symfony kernel boots and then fails later with unrelated errors.
+- `TestEvents::KERNEL_BOOTED` is documented as the hook "used from services which need to reset state between tests", but only the
+  Codeception helper dispatches it (`tests/Support/Helper/Pimcore.php:128`). Listeners that a project registers for it never run in PHPUnit
+  tests that use `Pimcore\Test\*`.
+
+**Fix direction:** move the post-boot steps of `Bootstrap::kernel()` into one reusable method (e.g. `Bootstrap::afterKernelBoot(KernelInterface)`),
+call it from the test base classes after `parent::bootKernel()`, and dispatch `TestEvents::KERNEL_BOOTED` there; validate the kernel class in
+`getKernelClass()` (I-153).
+
+---
+
+## Tool
+
+> Scope 37 notes: all 21 files in `lib/Tool/**` were read (3 533 lines), plus the consumers listed in the scope header. PHP / Symfony / ICU
+> behaviour (`transliterator_transliterate()` returning `false` on invalid UTF-8, `iconv()` keeping a UTF-8 BOM, `Session::getBag()` throwing for
+> unknown bags, `Crawler::filter()` requiring `symfony/css-selector`) is described from the documentation / source; there is no `vendor/` and no
+> `composer.lock` in this checkout, so nothing was executed (**not verified locally**). Existing tests: `tests/Unit/Tool/{ClassUtils,HtmlUtils,
+> ArrayNormalizer}Test`, `tests/Model/Tool/{Text,Frontend}Test` – none covers the defects below. Items already in other TODOs are listed in
+> TODO-1 (Tool section) and not repeated.
+
+## [ ] B-180 – `Authentication::authenticateSession()` dereferences `null` when the session user cannot be refreshed; `getPasswordHash()` fallback misses `Error`
+
+**Files:** `lib/Tool/Authentication.php:52-64`, `:105-122`, `:193-212`; `lib/Config.php:138-145`
+
+```php
+$token = static::refreshUser($token, Pimcore::getContainer()->get(UserProvider::class));
+$user = $token->getUser();          // refreshUser() returns ?TokenInterface
+```
+
+- `refreshUser()` returns `null` when the provider does not support the token's user class (`:109-111`) or throws `UserNotFoundException`
+  (`:117-121`). `authenticateSession()` then calls `->getUser()` on `null` → `Error`.
+- `authenticateSession()` runs for **frontend** requests that carry an admin session cookie (`UserLoader` / `RequestHelper::isFrontendRequestByAdmin()`,
+  see C-11). A user that was deleted – or deactivated, once models C-41 makes `refreshUser()` throw `UserNotFoundException` as proposed – gets a
+  500 on every frontend page until the cookie expires; so does a session whose token holds a user class from another provider.
+- `getPasswordHash()` (`:197-205`) catches `Exception` to fall back to defaults "in case kernel is not booted yet". Without any kernel
+  `Pimcore::getContainer()` calls `getContainer()` on `null` → `Error`, which is not caught; only the "kernel set but not booted" case
+  (`LogicException`) reaches the fallback.
+
+**Fix direction:** `if (!$token = static::refreshUser(...)) { return null; }`; catch `\Throwable` (or check `Pimcore::hasContainer()`) in
+`getPasswordHash()`; add a test with a deleted user in the session.
+
+## [ ] B-181 – `Console`: a disabled executable is still found on the `PATH`; background commands are built with unescaped shell strings
+
+**Files:** `lib/Tool/Console.php:59-131`, `:133-147`, `:201-222`, `:248-301`
+
+- `pimcore_executable_<name>: false` is documented in the code as "disabled manually". `getExternalExecutable()` throws only when
+  `$throwException` is `true`; otherwise it returns `false`, `getExecutable()` treats that as "not configured" (`:76`) and continues with the
+  `PATH` search – so `getExecutable('ffmpeg')` / `getExecutable('nice')` still return the binary the admin disabled.
+- A parameter value that is not a string or `false` (`~` / `null` in YAML) is returned from a `string|false` method → `TypeError`.
+- `execInBackgroundUnix()` builds `$nohup . $nice . $cmd . ' > ' . $outputFile . ' 2>&1 & echo $!'` and runs it with `shell_exec()` (`:278-280`):
+  `$outputFile` and the binary paths are not escaped (a path with a space breaks the command, a path with shell metacharacters is executed);
+  the Windows variant does the same through `COM` (`:293-297`). `execInBackground()` is public and takes an arbitrary string command.
+- `runPhpScript()` does not check `fopen($outputFile, 'a')` (`:212`) → `fwrite(false, …)` `TypeError` inside the process callback.
+
+**Fix direction:** treat `false` from the parameter as final (cache `false`, never search the `PATH`); validate the parameter type;
+`escapeshellarg()` every path (or use `Process` with an argument array and `Process::start()` without waiting); check `fopen()`.
+
+## [ ] B-182 – `DeviceDetector`: process-wide singleton state, `setDeviceType()` works on the wrong instance, inconsistent device names
+
+**Files:** `lib/Tool/DeviceDetector.php:40-54`, `:93-111`, `:129-213`; `bundles/CoreBundle/src/EventListener/Frontend/FullPageCacheListener.php:239-241`, `:338-341`;
+`lib/Templating/Renderer/IncludeRenderer.php:120`, `models/Document/Editable/Snippet.php:137`
+
+- The detected type is cached in the static singleton (`determinedDeviceType`) and read from superglobals (`$_SERVER`, `$_REQUEST`, `$_COOKIE`).
+  In a worker runtime (FrankenPHP worker mode / RoadRunner with `symfony/runtime`) the first visitor's device is returned for all later requests
+  of that worker, and the full-page cache key suffix (`FullPageCacheListener.php:339-341`) uses it → phone visitors get the cached desktop
+  page or the other way round. `wasUsed` is only reset by `FullPageCacheListener::onKernelRequest()`, i.e. not in CLI / sub-request paths.
+- `setDeviceType()` writes to `self::$instance` instead of `$this` (`:95`): on an instance created with `new DeviceDetector()` it changes the
+  singleton – or fails with "Attempt to assign property on null" if `getInstance()` was never called. It also does not set
+  `determinedDeviceType`, so the next `isX()` call runs detection and sets a **second** flag (`isPhone` and `isDesktop` both `true`).
+- The constructor accepts `'mobile'` as default (`:51`) but not `'phone'`; with default `'mobile'` the detector writes the undeclared property
+  `$this->isMobile` (`:211`, dynamic property – deprecated since PHP 8.2) and `isPhone()` stays `false`.
+- `setcookie('forceDeviceType', $type)` (`:206`) bypasses the Symfony `Response` (lost for cached / streamed responses, not testable) and is
+  set without `path` (defaults to the current directory, so the forced type does not apply to other sections of the site), `secure`,
+  `samesite`.
+
+**Fix direction:** turn it into a request-scoped service (read the `Request`, reset via `kernel.reset` / `ResetInterface`); `setDeviceType()`
+on `$this` and mark as determined; one name per device (`phone`, accept `mobile` as alias and map it); set the cookie on the response
+with `Cookie::create(...)->withPath('/')`.
+
+## [ ] B-183 – `Text::detectEncoding()` never detects UTF-32 and reports UTF-32LE as UTF-16LE; `convertToUTF8()` keeps the BOM and can return `false`
+
+**Files:** `lib/Tool/Text.php:326-369`; callers `models/Translation.php:402` (translation CSV import), `bundles/SeoBundle/src/Redirect/Csv.php:133` (redirect import)
+
+```php
+$first3bytes = substr($text, 0, 3);
+$first4bytes = substr($text, 0, 3);   // 3 bytes, compared with 4-byte BOMs
+```
+
+- `$first4bytes` holds 3 bytes, so both UTF-32 comparisons are always false. A UTF-32LE file starts with `FF FE 00 00` and matches the
+  UTF-16LE BOM `FF FE` → converted as UTF-16LE → garbage (every second character `\0`).
+- For a UTF-8 file with BOM `convertToUTF8()` runs `iconv('UTF-8', 'UTF-8', …)`, which keeps the BOM: the first CSV header cell becomes
+  `"\xEF\xBB\xBFkey"`, so the import does not find its first column (translations: the `key` column).
+- `iconv()` returns `false` for an illegal sequence (detector guessed wrong) → `TypeError` against the `string` return type; no `//IGNORE`
+  / `//TRANSLIT`, no error message for the user.
+
+**Fix direction:** `substr($text, 0, 4)`; check the 4-byte BOMs before the 2-byte ones; strip the BOM after detection; use
+`mb_convert_encoding()` or check the `iconv()` result and throw a domain exception.
+
+## [ ] B-184 – `Text::wysiwygText()` inserts paths as regex replacements and unescaped attributes; double-escapes alt / title; matches `data-*` attributes
+
+**Files:** `lib/Tool/Text.php:41-202`, `:204-211`; `lib/helper-functions.php:174-187`
+
+```php
+$replacement = $linkAttr . '="' . $path . '"';
+$newTag = preg_replace($pattern, $replacement, $newTag);   // $path is a replacement string
+```
+
+- `$path` (element full path, link-generator output, query / fragment of the old `href`, thumbnail path) is used as the **replacement** of
+  `preg_replace()`: `$1`, `${1}`, `\0` or a backslash in a path (asset filenames are user-chosen, link generators are project code) are
+  interpreted as back-references and silently removed / changed (`/files/price$10.pdf` → `/files/price.pdf`).
+- The value is written into `href="…"` / `src="…"` without `htmlspecialchars()`: a `"` (link-generator output, query string) breaks out of
+  the attribute. The rest of the HTML is sanitized on save (models C-60), this rewrite happens **after** that on output.
+- `alt` / `title` are cut out of `getImageTag()` output (already HTML-escaped) and passed to `array_to_html_attribute_string()`, which escapes
+  again (`htmlspecialchars()` with `double_encode`): `Tom &amp; Jerry` becomes `Tom &amp;amp; Jerry` in the page.
+- `'/href="[^"]*"/'` / `'/src="[^"]*"/'` also match `data-href="…"` / `data-src="…"` (lazy-load markup) – whichever comes first in the tag
+  is replaced. `addAttributeToTag()` uses `str_contains($oldTag, 'src')`, which is true for `srcset` / `data-src`, so a missing `src` is not
+  added back.
+- A broken link is only unwrapped when its content contains no tag (`'([^\<]+)\</a\>'`, `:195`); `<a pimcore_id=…><strong>x</strong></a>`
+  keeps the dead internal link.
+
+**Fix direction:** rewrite with a DOM parser (`\Dom\HTMLDocument::createFromString()` in PHP 8.4) and set attributes through the DOM API, or
+at least use `preg_replace_callback()` and `htmlspecialchars()` for every inserted value, use `(?<![-\w])` before the attribute name, and do not
+re-escape values taken from generated HTML (take alt / title from the thumbnail / asset metadata directly).
+
+## [ ] B-185 – Multibyte / invalid UTF-8 in string helpers: `cutStringRespectingWhitespace()` splits characters, `Transliteration::toASCII()` returns `false`
+
+**Files:** `lib/Tool/Text.php:380-391`; `lib/Tool/Transliteration.php:25-32`; `lib/File.php:37-45`
+
+- `cutStringRespectingWhitespace()` uses byte functions (`strlen` / `substr` / `strrpos`). For text without a space before the limit it cuts in
+  the middle of a multibyte character → invalid UTF-8 (`json_encode()` fails, `htmlspecialchars()` returns `''`); `$length` counts bytes, so
+  non-Latin text is cut much shorter than requested.
+- `transliterator_transliterate()` returns `false` for invalid UTF-8 input; `toASCII(): string` in a strict file → `TypeError`.
+  `File::getValidFilename()` (asset / document keys, uploaded file names) passes user input straight in, so an upload whose name is not valid
+  UTF-8 (Latin-1 from older clients, ZIP imports) fails with a 500 instead of a cleaned name.
+- The rule `[^\u001F-\u007f] remove` keeps `U+001F` and `U+007F` (control characters) – the printable ASCII range is ` -~`.
+
+**Fix direction:** `mb_strlen()` / `mb_substr()` / `mb_strrpos()` (or `grapheme_*`); check the transliterator result and fall back to
+`mb_convert_encoding($value, 'UTF-8', 'UTF-8')` first; fix the range.
+
+## [ ] B-186 – `HtmlUtils::assembleAttributeString()` does not escape attribute names or values
+
+**Files:** `lib/Tool/HtmlUtils.php:30-49`; callers `models/Document/Editable.php:130`, `Editable/Block.php:203`, `:245`, `:393`,
+`Editable/Scheduledblock.php:164`, `:192-193`, `Editable/Area.php:77`, `:184`, `Editable/Areablock.php:320`; `tests/Unit/Tool/HtmlUtilsTest.php`
+
+- `sprintf('%s="%s"', $key, $value)`: a `"`, `<` or `&` in a value breaks the markup. The editmode attributes include names and
+  configuration values from templates (`class`, editable names with block indices, dialog configuration), so a template option such as
+  `{'class': 'a" onmouseover="…'}` or a translated label ends up as live markup in the admin editmode page.
+- `true` / `false` become `"1"` / `""`, arrays become `"Array"` with a warning; the sister helper `array_to_html_attribute_string()`
+  (`lib/helper-functions.php:174`) escapes values and skips non-scalars – two helpers with different safety for the same job.
+
+**Fix direction:** escape values with `htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE)`, validate names (`/^[a-zA-Z_:][-a-zA-Z0-9_:.]*$/`),
+handle `true` as boolean attribute and `false` as omitted; make one helper delegate to the other; extend `HtmlUtilsTest` with quotes.
+
+## [ ] B-187 – `Admin`: CSV dialect sniffing reads the file ten times and defeats its own checks; `getLanguages()` depends on admin-bundle parameters
+
+**Files:** `lib/Tool/Admin.php:41-85`, `:100-125`; `lib/Tool/Text/Csv.php:33-60`; `models/Translation.php:208-213`, `:326`
+
+- `determineCsvDialect()` calls `file($file)` **inside** a 10-iteration loop and appends the same first 11 lines ten times. Besides reading
+  the whole file ten times (models I-56 lists the performance side), the sample is the same 11 lines repeated: `Csv::detect()`'s "at least ten
+  lines" check always passes (a 1-line file "passes"), and every per-line frequency is identical, so the deviation filter (`Csv.php:191-199`)
+  never removes a wrong delimiter. `file()` returning `false` → `array_slice(false)` `TypeError`.
+- `getLanguages()` reads `pimcore_admin.translations.path` / `pimcore_admin.admin_languages` – parameters defined only by the admin UI bundle
+  (not in this repository). Without it `Translation::getValidLanguages(DOMAIN_ADMIN)` and the admin-domain branch of
+  `Translation::getByKeyLocalized()` (`:326`) throw `ParameterNotFoundException`.
+- `$parts[1]` is read for every file name (`:63`); a file without a dot (`README`, `LICENSE`) → "Undefined array key 1" warning (an
+  `ErrorException` in debug mode). The directories are scanned on every call (`Translation.php:326` calls it per lookup).
+
+**Fix direction:** read the first ~20 lines once with `SplFileObject` / `fgets()`; skip the sample padding and let the sniffer fall back to
+defaults for short files; check `hasParameter()` (or move `getLanguages()` into the admin bundle) and cache the result per request;
+`$parts[1] ?? null`.
+
+## [ ] B-188 – `UserTimezone::applyTimezone()` mutates the caller's `DateTime`; the user timezone is process-wide static state
+
+**Files:** `lib/Tool/UserTimezone.php:29-52`; `models/DataObject/ClassDefinition/Data/Datetime.php:158-172`, `:402-409`, `Data/Date.php:393-398`
+
+- For mutable dates (`DateTime`, `Carbon`) `$date->setTimezone()` changes the passed object. `Datetime::getForCsvExport()` passes the object's own
+  field value (`getDataFromObjectParam()`), so a CSV export / grid preview changes the timezone of the loaded object's `Carbon` in place; later
+  `format()` calls in the same process (indexing, other exports, templates) use the admin user's timezone, and for `Date` fields the date part
+  can shift by one day.
+- `self::$userTimezone` is static and is never reset (set by the admin UI bundle per user): in a worker runtime or a messenger worker the
+  previous user's timezone is applied to the next request / message.
+- `timezone_identifiers_list(DateTimeZone::ALL_WITH_BC)` is built on every `setUserTimezone()` call; `method_exists($date, 'setTimezone')` is
+  always true for `DateTimeInterface` implementations in core.
+
+**Fix direction:** work on a copy: `DateTimeImmutable::createFromInterface($date)->setTimezone(...)` (or `$date instanceof DateTime ? clone $date`);
+keep the timezone in a request-scoped service (reset via `kernel.reset`); validate with `new DateTimeZone()` in a `try`.
+
+## [ ] B-189 – `Requirements`: global `setlocale()` side effect, a leftover check table makes every later run fail, unguarded `scandir()` / `convert`
+
+**Files:** `lib/Tool/Requirements.php:44-78`, `:133-334`, `:606-615`, `:624-647`, `:708-729`
+
+- The `locales-utf8` check calls `setlocale(LC_ALL, [...])` and never restores the previous locale: running the requirements check (admin system
+  page, installer, `pimcore:system:requirements:check`) switches the process locale for everything that follows (`strtolower()` /
+  `sprintf('%f')` / `escapeshellarg()` behaviour; in a worker for all later requests).
+- `checkMysql()` creates `__pimcore_req_check` / `__pimcore_req_check_view` and drops them at the end. If a run is interrupted (timeout,
+  `Error`, missing privilege for `DROP`), the objects stay; every later `CREATE TABLE` fails and the check reports "CREATE TABLE" as an
+  error although the privilege exists. No `IF NOT EXISTS` / pre-cleanup / `finally`.
+- `rscandir()` uses `scandir()` without checking for `false` (unreadable directory) → `array_diff(false, …)` `TypeError`; `checkFilesystem()`
+  catches only `Exception`, so the whole requirements page fails with a 500 exactly when the filesystem is the problem.
+- Imagick check: `Console::getExecutable('convert')` returns `false` without the CLI (and ImageMagick 7 ships `magick`, `convert` is deprecated)
+  → `Process::fromShellCommandline(false . ' -list configure')` runs ` -list configure`; the path is not escaped.
+
+**Fix direction:** read the current locale with `setlocale(LC_ALL, 0)` and restore it (or test with `\Locale` / `localeconv()` only); drop
+leftovers first (`DROP VIEW IF EXISTS` / `DROP TABLE IF EXISTS`) and clean up in `finally`; check `scandir()` and catch `\Throwable` per
+check; skip the LCMS check when no binary is found, try `magick` first, pass arguments as an array.
+
+## [ ] B-190 – `Tool\Session::getSessionBag()` promises `null` for a missing bag but throws
+
+**Files:** `lib/Tool/Session.php:29-51`
+
+- Symfony's `Session::getBag()` throws `InvalidArgumentException` ("The SessionBagInterface "x" is not registered") for an unknown name; it
+  never returns `null` / a non-bag. `getSessionBag(): ?AttributeBagInterface` therefore throws instead of returning `null`, and
+  `useBag()`'s own `InvalidArgumentException` is unreachable for that case.
+- The default namespace `pimcore_admin` is registered only by the admin UI bundle; without it every default call throws.
+
+**Fix direction:** check `$session->isStarted()` / catch `InvalidArgumentException` and return `null` (or remove the nullable contract);
+document that the bag comes from the admin bundle (docs: I-146).
+
+## [ ] B-191 – `DomCrawler::html()` relies on CSS selectors, but `symfony/css-selector` is not a dependency
+
+**Files:** `lib/Tool/DomCrawler.php:44-53`; `composer.json` (`require`)
+
+- For wrapped fragments `html()` calls `$this->filter(self::FRAGMENT_WRAPPER_TAG)`. `Crawler::filter()` needs `symfony/css-selector` and throws
+  `LogicException: To filter with a CSS selector, install the CssSelector component` without it.
+- `composer.json` requires `symfony/dom-crawler` but not `symfony/css-selector`; whether it is installed transitively could not be checked (no
+  `composer.lock`). If it is missing, every fragment round trip fails: wysiwyg `rewriteIds()`, editmode includes (B-177), glossary.
+- **Verify:** `composer why symfony/css-selector` in a production install (`--no-dev`).
+
+**Fix direction:** use `filterXPath('//' . self::FRAGMENT_WRAPPER_TAG)` (no extra component) or add `symfony/css-selector` to `require`.
+
+## [ ] B-192 – `AssetsInstaller`: non-string `symfony-assets-install` causes a `TypeError`; the env variable cannot force a hard copy
+
+**Files:** `lib/Tool/AssetsInstaller.php:105-149`, `:151-171`
+
+- `$json['extra']['symfony-assets-install']` is assigned to `?string $composerJsonSetting` unchecked (`:165`): `true` / an array in
+  `composer.json` → `TypeError` in the installer and in `pimcore:bundle:install` (`PostStateChange`).
+- `SYMFONY_ASSETS_INSTALL` can only switch symlinks **on** (`:136-142`); `SYMFONY_ASSETS_INSTALL=hard` (Symfony Flex's documented value for a
+  copy) does not override a `symlink` setting from `composer.json`, unlike Flex.
+- The `env` option has no allowed-type definition; `ansi` and `no-ansi` can both be `true`; the 240 s timeout is fixed.
+
+**Fix direction:** accept only `'symlink' | 'relative' | 'hard'`; let the env variable win in both directions (`hard` → `symlink = false`);
+`setAllowedTypes('env', ['bool', 'string'])`; mutually exclusive `ansi` / `no-ansi`; configurable timeout.
+
+## [ ] B-193 – `ClassUtils::findClassName()` takes the token after `::class` and ignores enums / interfaces / traits
+
+**Files:** `lib/Tool/ClassUtils.php:49-105`; `lib/Extension/Bundle/PimcoreBundleLocator.php:90`; `tests/Unit/Tool/ClassUtilsTest.php`
+
+- `T_CLASS` is also the token of the `::class` constant. A file that uses `Foo::class` before its class declaration (attribute arguments such as
+  `#[Autoconfigure(tags: [Foo::class])]` on the class, or a `const X = Foo::class;` before it) sets `$gettingClass` and takes the **next**
+  `T_STRING` – e.g. a constant or method name – as the class name. `PimcoreBundleLocator` then registers a non-existing class.
+- `T_ENUM`, `T_INTERFACE`, `T_TRAIT` are not handled → `RuntimeException` for such files; an anonymous `new class` before the declaration is
+  also picked up.
+
+**Fix direction:** use `PhpToken::tokenize()` and accept `T_CLASS` only when the previous meaningful token is not `T_DOUBLE_COLON` / `T_NEW`;
+handle the other type tokens; or use Composer's `ClassMapGenerator::createMap()` (`composer/class-map-generator`). Add the `::class` and enum
+cases to `ClassUtilsTest`.
+
+---
+
+## Translation
+
+> Scope 38 notes: both files in `lib/Translation/**` were read (437 lines), plus the consumers listed in the scope header. Symfony translator
+> behaviour (pipe plural selection with `%count%`, `MessageCatalogue::has()` checking the `+intl-icu` domain) is described from the 7.x source;
+> there is no `vendor/` in this checkout, so nothing was executed (**not verified locally**). The pipe-plural path was checked against
+> `TranslatorTest::testTranslatePluralizationWithCountParam()` (the pipe id is a list of *keys*, one per plural form) and is not a defect.
+> Already tracked and not repeated: models C-18, C-19, C-22, B-115 (dumper queue keyed by key only, poison queue), B-123 (wrong language list,
+> 190-byte check), B-124 (catalogues never refresh in long-running processes), CoreBundle C-08 (`TranslationDebugListener` flag on the shared
+> translator, never reset), CoreBundle I-52 (dumper in Messenger workers), B-184 (`wysiwygText()` on translated texts).
+
+## [ ] B-194 – `vsprintf()` on every term called with a positional parameter: a literal `%` or a placeholder-count mismatch is a 500
+
+**Files:** `lib/Translation/Translator.php:97-100`
+
+```php
+// check for an indexed array, that used the ZF1 vsprintf() notation for parameters
+if (isset($parameters[0])) {
+    $term = vsprintf($term, $parameters);
+}
+```
+
+- Runs after Symfony has already replaced its own placeholders, on **any** term (simple or ICU) as soon as the parameter array has a key `0`.
+- PHP 8 throws instead of warning: `ValueError: Unknown format specifier` for a literal `%` followed by a letter (`"50% off"` → `% o`),
+  `ArgumentCountError` / `ValueError` when the text has more `%s` than parameters. A translator (admin user) who writes `100% Bio` into a
+  text that a template calls with a positional parameter turns that page into a 500 – the text is data, the crash is in rendering.
+- `TranslatorInterface::trans()` parameters are documented as a placeholder map; the ZF1 notation is undocumented in this repository's docs.
+
+**Fix direction:** deprecate the positional notation (`trigger_deprecation()` when `isset($parameters[0])`), wrap `vsprintf()` in a
+`try/catch (\ValueError|\ArgumentCountError)` that logs and returns the unformatted term, and escape `%` that is not followed by a valid
+specifier; remove the branch in the next major.
+
+## [ ] B-195 – `lazyInitialize()` marks a catalogue as initialised before loading it: one failed load leaves the domain untranslated for the rest of the process
+
+**Files:** `lib/Translation/Translator.php:138-193`, `:240-272`
+
+```php
+$this->initializedCatalogues[$cacheKey] = true;     // set first
+if (Translation::isAValidDomain($domain)) {
+    if (!$catalogue = Cache::load($cacheKey)) {
+        ... $list->loadRaw() ...                     // may throw (DB, C-19 TypeError)
+```
+
+- If loading throws (lost DB connection, lock timeout, the `NULL` row of models C-19), the flag is already `true`. Every later `trans()` for that
+  domain / locale in the same process skips loading: in a Messenger worker or a worker runtime, the whole domain shows raw keys until the
+  process restarts (combines with B-124: nothing resets the flag).
+- With the DB catalogue missing, `checkForEmptyTranslation()` treats **every** key as missing: one `Translation::getByKey()` query per key per
+  process and entries in the save queue – the path that can blank or overwrite existing texts (models C-22).
+
+**Fix direction:** set the flag only after a successful load (or in `finally` only on success); on failure log, return and let the next call
+retry; do not auto-create keys while the domain's catalogue is not loaded.
+
+## [ ] B-196 – Empty-text handling: `"0"` counts as untranslated, the `debug_admin_translations` marker leaks into website domains, fallback languages need an empty row
+
+**Files:** `lib/Translation/Translator.php:156-177`, `:217-298`; `bundles/CoreBundle/src/DependencyInjection/Configuration.php:261-262`
+
+- `empty($translationTerm)` (`:164`, `:167`) and `empty($translated)` (`:231`, `:297`) treat the text `"0"` as missing: a translation whose
+  value is `0` (counts, flags, "0 %" short labels) is replaced by the file catalogue value or the key, and the fallback search runs for it.
+- The `+key+` marker of `debug_admin_translations` ("Debug Admin-Translations", config `:261-262`) is applied in `lazyInitialize()` for **every**
+  domain, including `messages` and custom website domains: enabling admin-translation debugging shows `+key+` on the public frontend for every
+  empty website translation. The marker is baked into the persistently cached catalogue, so toggling the setting has no effect until the
+  `translator` cache tag is cleared.
+- Fallback languages (`:276-295`) are only consulted when the current locale has an **empty row** (`$translated === ''`). If the locale has no
+  row at all (language added later, partial import), Symfony returns the key, `lookForFallback` is `false`, and the visitor sees the raw key
+  although a fallback text exists; only after the auto-create queue has inserted an empty row does the next request use the fallback.
+- The fallback is restricted to the literal `'messages'` (`:276`) instead of `Translation::DOMAIN_DEFAULT`.
+
+**Fix direction:** compare with `''` / `null` instead of `empty()`; apply the debug marker only for `Translation::DOMAIN_ADMIN` and include the
+flag in the cache key (or apply it at `trans()` time); look for fallbacks whenever the key is not defined for the locale
+(`!$catalogue->defines($id, $domain)`), not only for empty texts; use the constant.
+
+---
+
+## Twig
+
+> Scope 39 notes: see TODO-1 (Twig section). Existing tests: `tests/Twig/{PimcoreDate,PimcorePlaceholder}Test`,
+> `tests/Unit/Twig/Options/BlockOptionsTest` – none covers the tag nodes, the sandbox policy or the head helpers' output. Not repeated:
+> CoreBundle B-59 (`symfony/web-link` not required), B-43 (placeholder index after a throwing sub-request), models I-202 (editable interfaces).
+
+## [ ] B-197 – Custom tags paste template literals into generated PHP without escaping: a `'` breaks compilation, `$` / `{$…}` is evaluated
+
+**Files:** `lib/Twig/Node/CacheNode.php:54-79`; `lib/Twig/Node/BlockNode.php:53-68`; `lib/Twig/Node/ManualBlockNode.php:69-90`;
+`lib/Twig/Options/BlockOptions.php:93-112`; `lib/Twig/TokenParser/CacheParser.php:47`, `:112-121`
+
+```php
+\$key = '$key';                       // CacheNode – raw template string inside single quotes
+\$tags = $tags;                       // json_encode() output = double-quoted PHP strings
+\$block = ...renderEditable(\$context, 'block', '$this->blockName', $optionsString);
+$options .= "'class' => \"" . $this->getClass() . '",';   // BlockOptions – double quotes
+```
+
+- The compiled template is built by string concatenation instead of `Compiler::string()` / `repr()`.
+- `{% pimcorecache "today's-news" %}` or `{% pimcoreblock "team's" %}` → `ParseError` in the compiled cache file (500 on every page using that
+  template, only visible after a cache clear / deploy).
+- Tags and the block `class` option end up in **double-quoted** PHP strings: `$name` / `{$expr}` / `${expr}` inside them are interpolated at
+  runtime (`class('price-{$x}')` → "Undefined variable"; `{${system('id')}}`-style payloads execute). A `'` in a cache key closes the string and
+  appends arbitrary PHP. Template sources are normally trusted, so this is a bug; it becomes code execution wherever a project allows these
+  tags in the sandbox (`sandbox_security_policy.tags`) or renders templates from the database.
+
+**Fix direction:** emit everything through the compiler: `$compiler->write('$key = ')->string($this->key)->raw(";\n")`, `->repr($this->tags)`,
+`->repr($optionsArray)`; let `BlockOptions` return an array instead of PHP source.
+
+## [ ] B-198 – Nested `pimcorecache` / `pimcoreblock` tags overwrite each other's generated variables
+
+**Files:** `lib/Twig/Node/CacheNode.php:62-77`; `lib/Twig/Node/BlockNode.php:57-66`; `lib/Twig/Node/ManualBlockNode.php:74-88`
+
+- All nodes compile into the same PHP scope with fixed variable names: `$cacheExtension`, `$key`, `$tags`, `$ttl`, `$force`, `$content`,
+  `$editableExtension`, `$block`, `$config`.
+- Nested `{% pimcorecache 'outer' %}…{% pimcorecache 'inner' %}…{% endpimcorecache %}…{% endpimcorecache %}`: after the inner tag, `$key`,
+  `$tags`, `$ttl` hold the inner values → `endBuffering($key, …)` stores the **outer** fragment under the **inner** key (the inner cache entry
+  is overwritten with the outer HTML, the outer key is never filled and re-renders every time).
+- Nested `pimcoreblock`: the inner tag assigns `$block` = inner block. From the second iteration on, the outer loop calls
+  `$block->setCurrent($key)` on the **inner** block (`BlockNode.php:61`) and `$context['_block']` is not restored after the inner block, so the rest
+  of the outer body sees the inner block. Editables of the outer block get wrong names / indices; editmode data is saved under the wrong keys.
+- A `pimcorecache` inside a `pimcoreblock` overwrites the block's `$key` loop variable as well.
+
+**Fix direction:** use `$compiler->getVarName()` for every generated variable (Twig's own nodes do), restore `$context['_block']` after the loop;
+add tests with nested tags.
+
+## [ ] B-199 – `{% pimcorecache %}`: constant key only (no locale / site / device), unclear errors for non-constant options, empty content never cached
+
+**Files:** `lib/Twig/TokenParser/CacheParser.php:42-121`; `lib/Twig/Extension/CacheTagExtension.php:40-75`; `lib/Twig/Options/HasBlockOptionsTrait.php:33-72`
+
+- The key must be a string literal (`expect(Token::STRING_TYPE)`), and `ttl` / `tags` / `force` must be constants. The deprecated
+  `pimcore_cache(name)` accepted an expression, so templates migrating to the tag lose the ability to vary the key: a navigation or teaser cached
+  with `{% pimcorecache 'main-nav' %}` is served in the first rendered language / site / device to all others (same pattern as B-174). Nothing
+  is added to the key automatically.
+- A non-constant option (`ttl(cacheTtl)`, `tags([tagVar])`, block `limit(maxItems)`) calls `getAttribute('value')` on a non-constant node →
+  `LogicException: Attribute "value" does not exist` instead of a `SyntaxError` with line number (`CacheParser.php:64`, `:89`;
+  `HasBlockOptionsTrait.php:47`). Unknown block options (`limt`) are silently ignored (`HasBlockOptionsTrait.php:66-67`).
+- `if (!$content)` in the generated code treats a cached `''` / `'0'` as a miss → re-rendered and re-saved every time.
+- The cache ignores `DeviceDetector::wasUsed()` (unlike includes / snippets).
+
+**Fix direction:** accept an expression for the key (`parseExpression()`) and compile it; optionally append site id + locale by default;
+raise `SyntaxError` for non-constant options; compare with `false`.
+
+## [ ] B-200 – `{% pimcoreassetcompress %}` removes every newline: `//` comments swallow the rest of the script, ASI-dependent code breaks
+
+**Files:** `lib/Twig/Node/AssetCompressNode.php:33-40`; `lib/Twig/TokenParser/AssetCompressParser.php:28-30`
+
+- The node does `str_replace("\n", '', ob_get_clean())`. In JavaScript a `// comment` line then comments out **everything after it**; code that
+  relies on automatic semicolon insertion (`return\nvalue`, lines without `;`) changes meaning; template literals and `<pre>` lose line breaks.
+  `\r` is kept, so CRLF files become `\r`-separated.
+- The parser comment says it is "suited for a simple minification of CSS/JS"; CSS survives, JS often does not.
+
+**Fix direction:** document "CSS only" or remove the tag in favour of a real asset pipeline (AssetMapper / Encore); at minimum keep newlines
+inside `<script>` and only collapse whitespace between tags.
+
+## [ ] B-201 – Placeholder / head helper state lives on shared services: content leaks across requests (worker runtimes) and across rendered documents
+
+**Files:** `lib/Twig/Extension/Templating/Placeholder/ContainerService.php:50-146`; `lib/Twig/Extension/Templating/Placeholder.php:64-79`;
+`HeadMeta.php:80`, `:93-97`, `:391-396`; `HeadTitle.php:60`, `:95-108`; `HeadScript.php:84-119`; `Placeholder/AbstractExtension.php:86`;
+`CacheBusterAware.php:25`; `Traits/WebLinksTrait.php:35`; `bundles/CoreBundle/src/EventListener/Frontend/DocumentRendererListener.php:43-52`
+
+- `ContainerService` keeps all containers of index 0 for the lifetime of the service and has no reset. In a worker runtime (FrankenPHP worker
+  mode / RoadRunner) every request **appends** to the previous request's head title, meta tags, scripts, styles and placeholders: page B gets
+  page A's `<title>` parts, canonical / OG meta and inline scripts (possibly with the previous visitor's data); memory grows per request.
+- `Placeholder::__invoke()` caches containers in `$this->containers` by name (`:74-76`). After `DocumentRendererListener` pushes a new index
+  (rendering an email / PDF / static page during a request), `pimcore_placeholder('x')` still returns the container of the **outer** index –
+  the isolation that `pushIndex()` exists for does not apply to `pimcore_placeholder`, and after `popIndex()` the cached object is detached
+  from the service.
+- Per-helper settings are properties of the shared service, not of the indexed container: `HeadMeta::$rawItems` (raw meta tags of a rendered
+  email end up in the page), `HeadTitle::$_defaultAttachOrder`, `_autoEscape`, `cacheBuster`, `webLinksEnabled`, `useCdata`,
+  `_arbitraryAttributes`. The `PHP_EOL` separator is set in the constructors on the index-0 container only, so containers of pushed indices
+  render without separators.
+
+**Fix direction:** implement `ResetInterface` on `ContainerService` and the helpers (reset to a fresh index 0); drop the `$containers` cache
+in `Placeholder`; move per-helper settings into the container (or a per-index state object); set separators when a container is created.
+
+## [ ] B-202 – Head helpers produce invalid or unsafe markup: JSON-LD / module scripts wrapped in `//<!--`, media queries dropped, unescaped attribute names and conditionals
+
+**Files:** `lib/Twig/Extension/Templating/HeadScript.php:428-495`, `:502-525`; `HeadStyle.php:69-78`, `:327-379`, `:410-423`; `HeadLink.php:290-323`,
+`:439-448`; `HeadMeta.php:209-212`, `:306-341`
+
+- `HeadScript` wraps every inline script in `//<!--` … `//-->` unless the item has `noescape`. For `application/ld+json` the result is not valid
+  JSON (search engines ignore the structured data); for `importmap` / `speculationrules` the browser rejects it. The type is escaped twice
+  (`:432` then again in the attribute loop `:450`).
+- `HeadStyle` keeps a `media` value only if it is one of the CSS2 media types (`all`, `screen`, `print`, …). A media query
+  (`(max-width: 600px)`, `screen and (min-width: 40em)`) is **silently removed**, so the CSS applies to all devices. Styles without `media`
+  get `media="screen"` by default and do not apply in print.
+- Attribute **names** from `extras` (`HeadLink`) or arbitrary attributes (`HeadScript::setAllowArbitraryAttributes(true)`) are not validated or
+  escaped; the IE `conditional` / `conditionalStylesheet` value is inserted unescaped into `<!--[if …]>` (`HeadScript.php:489`,
+  `HeadLink.php:319`, `HeadStyle.php:375`) while `HeadMeta` escapes it.
+- `HeadLink::_isDuplicateStylesheet()` reads `$item->rel` on items created with `createData()` that have no `rel` → "Undefined property" warning
+  (`ErrorException` in debug). `HeadMeta::_isValid()` always returns `true`, so `pimcore_head_meta().append('<meta …>')` stores a string and
+  `itemToString(stdClass)` throws a `TypeError` that the `catch (Exception)` in `toString()` does not catch.
+- Conditional comments are ignored by every browser since IE 10 – dead output.
+
+**Fix direction:** no comment wrapping for non-JavaScript types (or drop it entirely – it is an HTML 4 relic); allow any media query (escape it,
+do not filter); validate attribute names (`/^[a-zA-Z_:][-a-zA-Z0-9_:.]*$/`) and escape conditionals (or drop IE conditionals); `?->`/`isset` for
+`rel`; validate `stdClass` in `HeadMeta::_isValid()`.
+
+## [ ] B-203 – `pimcore_url()` copies every query parameter of the main request into generated URLs by default
+
+**Files:** `lib/Twig/Extension/Templating/PimcoreUrl.php:39-47`, `:52-103`
+
+- Unless `reset` is `true`, `array_replace($mainRequest->query->all(), $urlOptions)` merges **all** current query parameters into every
+  generated link (ZF1 behaviour). Tracking parameters (`utm_*`, `gclid`, `fbclid`), pagination / filter state and one-time tokens
+  (`?token=…` of a password-reset or double-opt-in page) are repeated in every link on the page – sent to the next page, logged, cached by the
+  full-page cache as separate URLs (duplicate content).
+- Reserved parameters from the query string take effect: `_fragment` adds a fragment, `encode=0` is passed to the router (Pimcore's static
+  route generator then skips URL-encoding of the values that came from the query string), `_locale` overrides the route's locale when the
+  template did not set it.
+
+**Fix direction:** change the default to `reset: true` in a new major (deprecation now when `reset` is not passed explicitly and the query is
+non-empty); never copy parameters starting with `_` or `encode`; document the behaviour.
+
+---
+
+## ValueObject
+
+> Scope 40 notes: all 6 files were read (374 lines) together with their unit tests (`tests/Unit/ValueObject/**`). Inside this repository only
+> `CacheParser` uses `ArrayOfStrings`; the classes are public API for other Pimcore bundles (upgrade notes), which were not checked. Nothing was
+> executed.
+
+## [ ] B-204 – `Path` accepts `..` / `.` segments, NUL bytes, control characters and a trailing slash
+
+**Files:** `lib/ValueObject/String/Path.php:40-49`; `tests/Unit/ValueObject/String/PathTest.php`
+
+- Validation only requires a leading `/` and no `//`. `/../../etc/passwd`, `/a/./b`, `/foo\0bar`, `/foo\nbar`, `/folder/` and `/` with
+  trailing whitespace are all valid `Path` objects.
+- A type named `Path` reads as "already validated"; a consumer that builds a storage path, an element path or a redirect target from it gets
+  no protection against traversal or header / log injection, although the object suggests it. The class does not say whether it models an
+  element path (`/folder/key`), a filesystem path or a URL path – the rules differ.
+
+**Fix direction:** decide and document what the type represents; for element paths reject `.` / `..` segments, NUL and control characters
+(`/[\x00-\x1F\x7F]/`) and a trailing slash except for the root `/`; add the cases to `PathTest`. If other bundles rely on the lax behaviour, add a
+stricter type (`ElementPath`) instead of changing `Path`.
+
+---
+
+## Video
+
+> Scope 41 notes: all 3 files were read (647 lines), plus the consumers listed in the scope header. ffmpeg behaviour (output format of
+> `ffmpeg -i`, rotation side data, `libfdk_aac` availability) is described from the ffmpeg documentation; nothing was executed (**not verified
+> locally**). No test covers `lib/Video`. Already tracked and not repeated: models C-10 (`null` bitrates), B-64 (DASH drops main-config arguments,
+> `-an` pairing, duplicate `-c:v`), B-65 (`cut` start reset by `getDuration() * 100`), I-12 (`ffmpeg -codecs` run and discarded,
+> unvalidated `colorchannelmixer` filter).
+
+## [ ] B-205 – `Video\Adapter`: uninitialised typed properties and a non-nullable `$medias` turn expected errors into `Error`s
+
+**Files:** `lib/Video/Adapter.php:25-41`, `:75-83`, `:104-107`; `lib/Video/Adapter/Ffmpeg.php:81`, `:205-206`, `:305-311`, `:330-333`;
+`models/Asset/Video/Thumbnail/Processor.php:287`
+
+- All state is declared as non-nullable typed properties without defaults (`int $videoBitrate`, `string $format`, `array $medias`,
+  `string $destinationFile`, `string $storageFile`, `int $length`). Every getter called before its setter throws
+  `Error: Typed property … must not be accessed before initialization`.
+- `save()` starts with `if ($this->getDestinationFile())` to throw "There is no destination file for video converter" (`Ffmpeg.php:205-206`) –
+  unreachable, the getter throws an `Error` first, which `catch (Exception)` callers do not handle.
+- `setMedias(?array $medias)` assigns to `array $medias` → `TypeError` for `null`; `getMedias(): ?array` promises `null` it can never return. A
+  `mpd` converter without medias fails in `array_keys(null)` (`:122`) instead of with a clear message.
+- `destroy()` / `getConversionLogFile()` use `getFormat()`: an adapter instance used only for `getDuration()` / `getDimensions()`
+  (`models/Asset/Video.php:165-184`) has no format → `Error` if `destroy()` is ever called on it.
+
+**Fix direction:** nullable properties with `null` defaults (`?string $destinationFile = null`, `array $medias = []`), getters returning
+`?type`, explicit checks with domain exceptions in `save()`.
+
+## [ ] B-206 – Video dimensions ignore rotation and come back as strings; metadata parsing scrapes `ffmpeg -i` stderr twice
+
+**Files:** `lib/Video/Adapter/Ffmpeg.php:239-303`; `lib/Messenger/Handler/AssetUpdateTasksHandler.php:108-113`; `models/Asset/Video.php:211-255`
+
+- `getDimensions()` takes the first ` WxH` match in the human-readable `ffmpeg -i` output. Rotation metadata (`displaymatrix: rotation of -90.00
+  degrees` / `rotate: 90`, standard for phone videos) is ignored: a portrait video recorded as 1920x1080 is stored as **landscape**
+  (`videoWidth` 1920, `videoHeight` 1080). The video editable / player and image thumbnails of the video then use the wrong aspect ratio.
+  The sample aspect ratio (`SAR`) is ignored as well, although `saveImage()` corrects for it (`scale=iw*sar:ih`).
+- The values are returned as **strings** (`explode()` result); `AssetUpdateTasksHandler` stores them unchanged in `videoWidth` / `videoHeight`,
+  while `Video::getDimensions()` stores `(int)` casts – the same custom setting has two types depending on the code path.
+- `getDuration()` and `getDimensions()` each start a separate ffmpeg process and write its output to a temp file (`:241-257`) instead of
+  reading `getErrorOutput()`; the format of `ffmpeg -i` is not a stable interface (localised builds, extra streams such as attached cover art
+  appearing first in some containers).
+
+**Fix direction:** use `ffprobe -v error -print_format json -show_streams -show_format` once per file, pick the first real video stream
+(`disposition.attached_pic = 0`), swap width / height for ±90° rotation, apply SAR, return `int`s.
+
+## [ ] B-207 – Codec defaults: DASH needs the non-free `libfdk_aac`, WebM uses a 44 000 Hz sample rate, MP4 still passes `-strict experimental`
+
+**Files:** `lib/Video/Adapter/Ffmpeg.php:96-157`
+
+- The `mpd` branch hard-codes `-c:a libfdk_aac` (`:129`). `libfdk_aac` is only present in ffmpeg builds compiled with `--enable-nonfree`; the
+  ffmpeg packages of Debian / Ubuntu / Alpine and the official Docker images do not have it, so every DASH thumbnail fails with "Unknown encoder"
+  (the error only lands in the `.error.log` file). The native `aac` encoder is the portable choice.
+- WebM: `-ar 44000` (`:118`) – almost certainly meant 44 100 Hz; 44 000 Hz is a non-standard rate that forces resampling and is rejected by
+  some players. VP8 + Vorbis (`libvpx` / `libvorbis`) are the legacy WebM codecs; VP9 / Opus are supported by all current browsers (the code
+  even contains a disabled VP9 switch).
+- MP4: `-strict experimental` (`:97`, `:114`) has not been needed for the native AAC encoder since ffmpeg 3.0; `-vcodec` / `-acodec` are legacy
+  aliases of `-c:v` / `-c:a`.
+
+**Fix direction:** `-c:a aac` for DASH; `-ar 44100` (or omit and keep the source rate); move codec choices into the thumbnail config with sane
+defaults (`libvpx-vp9` + `libopus` for WebM); drop `-strict experimental`.
+
+## [ ] B-208 – `Ffmpeg::save()`: no timeout, unchecked file handles, error logs that are never cleaned up
+
+**Files:** `lib/Video/Adapter/Ffmpeg.php:41-54`, `:163-204`, `:243-257`
+
+- `$process->setTimeout(null)` (`:181`): a stuck ffmpeg (corrupt input, network file system) blocks the messenger worker that runs the
+  conversion forever; the asset stays "in progress". No idle timeout either.
+- `fopen()` for the conversion log (`:184`) and the info temp file (`:248`) is not checked; a full / read-only log directory turns into
+  `fwrite(false)` `TypeError`s inside the process callback.
+- Failed conversions copy the log to `ffmpeg-<id>-<format>.error.log` in `PIMCORE_LOG_DIRECTORY` (`:198-202`); nothing removes those files.
+- `realpath($this->file)` returns `false` for a missing file and is passed as the `-i` argument (`:164`, `:219`, `:243`) → ffmpeg error
+  instead of a clear "source file not found".
+- `isAvailable()` also requires a PHP CLI binary (`Console::getPhpCli()`, `:45`), which the adapter does not use since conversions run in
+  messenger workers – on systems where the PHP binary cannot be located, video support is reported as unavailable.
+
+**Fix direction:** `setTimeout()` based on the source duration (e.g. 10× duration, minimum some minutes) plus `setIdleTimeout()`; check
+`fopen()`; rotate / delete `.error.log` files (maintenance task) or log through Monolog; validate the source file; drop the PHP CLI check.
+
+---
+
+## Workflow
+
+> Scope 42 notes: see TODO-1 (Workflow section).
+
+## [ ] B-209 – `Manager`: notes data leaks to the next transition after an exception; global actions skip their guard; `ensureInitialPlace()` assumes data objects
+
+**Files:** `lib/Workflow/Manager.php:222-248`, `:255-295`, `:327-363`; `lib/Workflow/GlobalAction.php:79-91`
+
+- `applyWithAdditionalData()` / `applyGlobalAction()` put the form data on the **shared** `NotesSubscriber` and reset it only on the success
+  path (`:230-234`, `:268-288`). If `apply()` throws (guard blocked, `ValidationException` for a required note field, save error), the data stays
+  on the service: in a batch run, a messenger worker or a worker runtime the next transition of any element writes the previous user's comment
+  and additional fields into its note / object fields.
+- `applyGlobalAction()` never calls `GlobalAction::isGuardValid()` and writes the marking directly through the marking store, so neither the
+  global action's `guard` expression nor Symfony's guard events are applied. Whether the admin UI checks the guard before calling it could not be
+  verified (admin bundle not in this repo); every other caller bypasses it.
+- `ensureInitialPlace()` calls `$subject->getOmitMandatoryCheck()` / `setOmitMandatoryCheck()` (`:353-356`) for every marking store except
+  `StateTableMarkingStore`; only `DataObject\Concrete` has these methods → `Error` for documents / assets that use a property-based marking store.
+
+**Fix direction:** reset in `finally` – better, drop the shared state and read the data from the workflow **context**, which `apply()` already
+receives (`$event->getContext()`, I-178); check the guard (and dispatch a guard event) in `applyGlobalAction()`; guard the omit-mandatory calls
+with `instanceof Concrete`.
+
+## [ ] B-210 – Notes, state-table marking and notifications are persisted before the subject is saved: a failed save leaves a transition that never happened
+
+**Files:** `lib/Workflow/Manager.php:222-248`; `lib/Workflow/EventSubscriber/NotesSubscriber.php:68-80`, `:141-169`;
+`EventSubscriber/NotificationSubscriber.php:66-95`; `MarkingStore/StateTableMarkingStore.php:59-73`
+
+- Symfony's `apply()` stores the marking and dispatches `workflow.completed` **before** `Manager::applyWithAdditionalData()` saves the subject
+  (`:239-245`). In that window:
+  - `StateTableMarkingStore::setMarking()` writes the new place to `element_workflow_state` immediately;
+  - `NotesSubscriber::onWorkflowCompleted()` saves the action note;
+  - `NotificationSubscriber` sends e-mails / Pimcore notifications ("… was moved to *approved*").
+- If the following `$subject->save()` fails (mandatory field, validation, version conflict, DB error), the element data is unchanged but the
+  workflow place, the note and the notifications say otherwise. There is no transaction around the whole operation (models C-34 covers the
+  notification service's own broken transaction).
+
+**Fix direction:** wrap transition + save in one DB transaction and send notifications after commit (e.g. on `postUpdate` of the element or via
+a messenger message dispatched after commit); create the note after the save.
+
+## [ ] B-211 – `StateTableMarkingStore` fails for unsaved elements and splits place names on commas
+
+**Files:** `lib/Workflow/MarkingStore/StateTableMarkingStore.php:36-73`; `models/Element/WorkflowState.php:37`, `:57`; `lib/Workflow/Manager.php:389-393`
+
+- `WorkflowState::getByPrimary(int $cid, …)` is called with `$subject->getId()`, which is `null` for a new, unsaved element → `TypeError`
+  (strict file). `Manager::getWorkflowUserPermissions()` catches only `LogicException` around `getMarking()`, so `AbstractElement::isAllowed()` on
+  a new element (e.g. a permission check in an importer or a custom controller before the first save) throws instead of returning a result.
+- `setMarking()` for an unsaved element passes `null` to `setCid(int)` → `TypeError`; with an id of `0` all new elements would share one row.
+- Places are stored as `implode(',', …)` and read back with `explode(',', …)`: a place name containing a comma is split into two places.
+
+**Fix direction:** return an empty marking / skip persistence while `getId()` is `null`; validate place names (no `,`) at config time or store JSON.
+
+## [ ] B-212 – Notes additional fields: undefined index for omitted fields, `empty()`-based required check, date conversion `TypeError`s
+
+**Files:** `lib/Workflow/EventSubscriber/NotesSubscriber.php:113-139`, `:210-221`; `lib/Workflow/Service.php:35-76`
+
+- `getAdditionalDataForField()` reads `$additional[$fieldConfig['name']]` without `isset` (`:214`): an optional field that the client does not send
+  (unchecked checkbox, API call, global action without the form) → "Undefined array key" warning, an `ErrorException` in debug mode that aborts the
+  transition.
+- The required check uses `empty($data)` (`:123`): `0`, `"0"` and `false` count as missing – a required numeric field cannot be `0`, a required
+  checkbox must be ticked.
+- `Service::createNoteData()` for `date` / `datetime`: `setTimestamp($value / 1000)` gets a `float` whenever the milliseconds are not a multiple of
+  1000, and the non-millisecond branch passes the raw request **string** – both are `TypeError`s in this strict file. An empty optional date
+  becomes `1970-01-01` (`setTimestamp(0)`) or a `TypeError` (`''`).
+
+**Fix direction:** `$additional[$name] ?? null`; required check `=== null || === ''`; `(int) round((float) $value / 1000)` with an explicit
+"no value" branch that skips the note row.
+
+## [ ] B-213 – Workflow notifications: wrong element's note text, all recipients in one `To:` header, failures swallowed
+
+**Files:** `lib/Workflow/Notification/AbstractNotificationService.php:26-92`; `NotificationEmailService.php:57-155`; `PimcoreNotificationService.php:43-79`
+
+- `getNoteInfo()` filters notes by `cid` only (`:29`), not by `ctype`: the e-mail / notification for object 5 contains the latest note of
+  **document 5 or asset 5** if that one is newer – note text leaks to recipients who may have no access to that element.
+- `sendTemplateMail()` / `sendPimcoreDocumentMail()` add all recipients of one language as `To:` (`:129-131`, `:143-145`): every recipient sees the
+  others' e-mail addresses; one invalid address can fail the whole mail.
+- Users without a language end up under the key `''`: `%_locale%` in the mail path becomes empty and the translator is called with locale `''`.
+- Errors are swallowed: `PimcoreNotificationService` logs "Error sending Workflow change notification." without the exception; the deep link
+  needs the admin-bundle route `pimcore_admin_login_deeplink` – without it `RouteNotFoundException` aborts **all** e-mails of that transition
+  and only a log line remains. The subject / message translations use positional parameters, i.e. the `vsprintf()` path of B-194 (a `%` in the
+  translated text or in an element path → `ValueError`, which `catch (Exception)` does not catch).
+
+**Fix direction:** filter by `ctype` too (`Service::getElementType($subject)`); one mail per recipient (or `Bcc`); fall back to the system
+language; log the exception; check `$router->getRouteCollection()->get(...)` before generating; switch the translations to named placeholders.
+
+## [ ] B-214 – `StatusInfo` freezes the first user's language; `OptionsProvider` / dumpers build markup and DOT without escaping
+
+**Files:** `lib/Workflow/Place/StatusInfo.php:35-43`; `lib/Workflow/Place/OptionsProvider.php:81-94`; `lib/Workflow/Dumper/GraphvizDumper.php:63-106`, `:129-150`;
+`Dumper/StateMachineGraphvizDumper.php:38-49`, `:76-87`
+
+- `StatusInfo` reads `Admin::getCurrentUser()->getLanguage()` in its **constructor**. The service is shared: the language of whoever caused the
+  first instantiation (or `en` when created before authentication) is used for every later user of the process (worker runtimes, admin
+  requests served by one long-running PHP worker).
+- `OptionsProvider::generatePlaceLabel()` returns HTML with the configured colour and the translated label inserted unescaped (the comment says
+  "disabled for the moment", but the code is active in admin context).
+- Dumpers insert place / transition labels into DOT strings as `label="%s"` without escaping (`"` or `\` in a label breaks the graph); `dump()`
+  reads `$options['workflowName']` **before** merging the defaults (undefined key when omitted); `findPlaces()` calls `getLabel()` on a `null`
+  `PlaceConfig` when a place has no Pimcore place configuration; `dotize()` maps `a-b` and `a_b` to the same node id.
+
+**Fix direction:** resolve the user language per call; `htmlspecialchars()` for the label and validate the colour (`/^#[0-9a-f]{3,8}$/i`);
+escape DOT strings (`addcslashes($label, '"\\')`), merge options first, null-safe labels, collision-free ids (e.g. `md5`).
