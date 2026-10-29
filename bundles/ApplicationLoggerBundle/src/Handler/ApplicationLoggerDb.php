@@ -30,6 +30,26 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
 
     final public const string TABLE_ARCHIVE_PREFIX = 'application_logs_archive';
 
+    /**
+     * Column definitions of the log table, shared by the archive tables so both always have the same schema.
+     *
+     * @internal
+     */
+    final public const array COLUMNS = [
+        'id' => 'BIGINT(20) UNSIGNED NOT NULL',
+        'pid' => 'INT(11) NULL DEFAULT NULL',
+        'timestamp' => 'DATETIME NOT NULL',
+        'message' => 'TEXT NULL',
+        'priority' => "ENUM('emergency','alert','critical','error','warning','notice','info','debug') DEFAULT NULL",
+        'fileobject' => 'VARCHAR(1024) DEFAULT NULL',
+        'info' => 'VARCHAR(1024) DEFAULT NULL',
+        'component' => 'VARCHAR(190) DEFAULT NULL',
+        'source' => 'VARCHAR(190) DEFAULT NULL',
+        'relatedobject' => 'INT(11) UNSIGNED DEFAULT NULL',
+        'relatedobjecttype' => "ENUM('object','document','asset') DEFAULT NULL",
+        'maintenanceChecked' => 'TINYINT(1) DEFAULT NULL',
+    ];
+
     public function __construct(
         private readonly Connection $db,
         int|string|Level            $level = Level::Debug,

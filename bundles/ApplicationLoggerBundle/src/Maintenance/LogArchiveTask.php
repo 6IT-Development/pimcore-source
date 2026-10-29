@@ -46,7 +46,8 @@ readonly class LogArchiveTask implements TaskInterface
         $storage = Storage::get('application_log');
 
         $date = new DateTime('now');
-        $tablename = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_' . $date->format('Y') . '_' . $date->format('m');
+        $archiveTableName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_' . $date->format('Y') . '_' . $date->format('m');
+        $tablename = $archiveTableName;
 
         if (!empty($this->config['applicationlog']['archive_alternative_database'])) {
             $tablename = $db->quoteIdentifier($this->config['applicationlog']['archive_alternative_database']) . '.' . $tablename;
@@ -58,22 +59,18 @@ readonly class LogArchiveTask implements TaskInterface
         $sql = 'SELECT %s FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $archive_threshold . ' DAY)';
 
         if ($db->fetchOne(sprintf($sql, 'COUNT(*)')) > 0) {
-            $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $tablename . " (
-                       id BIGINT(20) NOT NULL,
-                       `pid` INT(11) NULL DEFAULT NULL,
-                       `timestamp` DATETIME NOT NULL,
-                       message VARCHAR(1024),
-                       `priority` ENUM('emergency','alert','critical','error','warning','notice','info','debug') DEFAULT NULL,
-                       fileobject VARCHAR(1024),
-                       info VARCHAR(1024),
-                       component VARCHAR(255),
-                       source VARCHAR(255) NULL DEFAULT NULL,
-                       relatedobject BIGINT(20),
-                       relatedobjecttype ENUM('object', 'document', 'asset'),
-                       maintenanceChecked TINYINT(1)
-                    ) ENGINE = ARCHIVE ROW_FORMAT = DEFAULT;");
+            $columns = [];
+            $columnDefinitions = [];
+            foreach (ApplicationLoggerDb::COLUMNS as $name => $definition) {
+                $columns[] = $db->quoteIdentifier($name);
+                $columnDefinitions[] = $db->quoteIdentifier($name) . ' ' . $definition;
+            }
 
-            $db->executeQuery('INSERT INTO ' . $tablename . ' ' . sprintf($sql, '*'));
+            $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $tablename . ' (' . implode(', ', $columnDefinitions) . ') ENGINE = ARCHIVE ROW_FORMAT = DEFAULT DEFAULT CHARSET=utf8mb4;');
+            $this->widenLegacyArchiveTable($archiveTableName, $tablename);
+
+            // explicit column lists, so a column added to the log table cannot shift values into the wrong archive column
+            $db->executeQuery('INSERT INTO ' . $tablename . ' (' . implode(', ', $columns) . ') ' . sprintf($sql, implode(', ', $columns)));
 
             $this->logger->debug('Deleting referenced FileObjects of application_logs which are older than ' . $archive_threshold . ' days');
 
@@ -121,6 +118,27 @@ readonly class LogArchiveTask implements TaskInterface
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Archive tables created by earlier versions have message VARCHAR(1024), so in strict mode a single longer message
+     * made every archive run fail. Their other columns are at least as wide as the log table's.
+     */
+    private function widenLegacyArchiveTable(string $archiveTableName, string $quotedTableName): void
+    {
+        $messageType = $this->db->fetchOne(
+            'SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?',
+            [
+                $this->config['applicationlog']['archive_alternative_database'] ?: $this->db->getDatabase(),
+                $archiveTableName,
+                'message',
+            ]
+        );
+
+        if (is_string($messageType) && strtolower($messageType) === 'varchar') {
+            $this->logger->info('Changing column message of ' . $archiveTableName . ' to TEXT');
+            $this->db->executeStatement('ALTER TABLE ' . $quotedTableName . ' MODIFY `message` ' . ApplicationLoggerDb::COLUMNS['message']);
         }
     }
 }

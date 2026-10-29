@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
+use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 
@@ -46,26 +47,20 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $db = Db::get();
 
-        $db->executeQuery("CREATE TABLE IF NOT EXISTS `application_logs` (
-          `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-          `pid` INT(11) NULL DEFAULT NULL,
-          `timestamp` datetime NOT NULL,
-          `message` TEXT NULL,
-          `priority` ENUM('emergency','alert','critical','error','warning','notice','info','debug') DEFAULT NULL,
-          `fileobject` varchar(1024) DEFAULT NULL,
-          `info` varchar(1024) DEFAULT NULL,
-          `component` varchar(190) DEFAULT NULL,
-          `source` varchar(190) DEFAULT NULL,
-          `relatedobject` int(11) unsigned DEFAULT NULL,
-          `relatedobjecttype` enum('object','document','asset') DEFAULT NULL,
-          `maintenanceChecked` tinyint(1) DEFAULT NULL,
+        $columns = [];
+        foreach (ApplicationLoggerDb::COLUMNS as $name => $definition) {
+            $columns[] = $db->quoteIdentifier($name) . ' ' . $definition . ($name === 'id' ? ' AUTO_INCREMENT' : '');
+        }
+
+        $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $db->quoteIdentifier(ApplicationLoggerDb::TABLE_NAME) . ' (
+          ' . implode(",\n          ", $columns) . ',
           PRIMARY KEY (`id`),
           KEY `component` (`component`),
           KEY `timestamp` (`timestamp`),
           KEY `relatedobject` (`relatedobject`),
           KEY `priority` (`priority`),
           KEY `maintenanceChecked` (`maintenanceChecked`)
-        ) DEFAULT CHARSET=utf8mb4;");
+        ) DEFAULT CHARSET=utf8mb4;');
     }
 
     private function dropApplicationLogTable(): void

@@ -32,7 +32,7 @@ separate variable, and derive the folder name from the original (unmodified) arc
 
 ---
 
-## [ ] C-02 – Archive table schema does not match `application_logs` → archiving fails permanently
+## [x] C-02 – Archive table schema does not match `application_logs` → archiving fails permanently
 
 **Files:** `src/Maintenance/LogArchiveTask.php:62-77`, `src/Installer.php:49-68`
 
