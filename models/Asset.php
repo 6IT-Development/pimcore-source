@@ -745,15 +745,28 @@ class Asset extends Element\AbstractElement
                     // using hardlinks, so it's safer to write them to a temp file first, so the inode and therefore
                     // also the versioning information persists. Using the stream on the existing file would overwrite the
                     // contents of the inode and therefore leads to wrong version data
+                    // The temp file stays in the same directory (same filesystem), so the move is an atomic rename()
+                    // that replaces the existing file; it is hidden (dot prefix) and removed again if anything fails.
                     $pathInfo = pathinfo($this->getFilename());
-                    $tempFilePath = $this->getRealPath() . uniqid('temp_');
+                    $tempFilePath = $this->getRealPath() . uniqid('.temp_');
                     if ($pathInfo['extension'] ?? false) {
                         $tempFilePath .= '.' . $pathInfo['extension'];
                     }
 
-                    $storage->writeStream($tempFilePath, $src);
-                    $storage->delete($path);
-                    $storage->move($tempFilePath, $path);
+                    try {
+                        $storage->writeStream($tempFilePath, $src);
+                        $storage->move($tempFilePath, $path);
+                    } catch (Throwable $e) {
+                        try {
+                            if ($storage->fileExists($tempFilePath)) {
+                                $storage->delete($tempFilePath);
+                            }
+                        } catch (Throwable $cleanupException) {
+                            Logger::error('Unable to delete temporary asset file ' . $tempFilePath . ': ' . $cleanupException->getMessage());
+                        }
+
+                        throw $e;
+                    }
                 }
 
                 //generate & save checksum in custom settings

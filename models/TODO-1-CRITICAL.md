@@ -329,7 +329,7 @@ event). Same in `delete()`.
 
 ---
 
-## [ ] C-06 – Binary replacement is non-atomic (delete, then move) – content lost if the move fails
+## [x] C-06 – Binary replacement is non-atomic (delete, then move) – content lost if the move fails
 
 **File:** `models/Asset.php:738-750`
 
