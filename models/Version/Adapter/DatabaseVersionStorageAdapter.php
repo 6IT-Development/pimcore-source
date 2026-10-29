@@ -39,10 +39,12 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
             $contents = stream_get_contents($binaryDataStream);
         }
 
+        // a re-saved version (or one that references its own row as binaryFileId) has no binary to write:
+        // keep the stored one, other versions may read it through binaryFileId
         $query = 'INSERT INTO ' . self::versionsTableName . '(`id`, `cid`, `ctype`, `metaData`, `binaryData`) VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE `metaData` = ?, `binaryData` = ?';
+            ON DUPLICATE KEY UPDATE `metaData` = ?, `binaryData` = COALESCE(?, `binaryData`)';
 
-        $this->databaseConnection->executeQuery(
+        $this->databaseConnection->executeStatement(
             $query,
             [
                 $version->getId(),
@@ -78,16 +80,23 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function loadMetaData(Version $version): ?string
     {
-        return $this->loadData($version->getId(), $version->getCid(), $version->getCtype());
+        $metaData = $this->loadData($version->getId(), $version->getCid(), $version->getCtype());
+
+        // false: no row, null: no data
+        return is_string($metaData) ? $metaData : null;
     }
 
-    protected function getStream(string $data): ?false
+    /**
+     * @return resource|null
+     */
+    protected function getStream(mixed $data): mixed
     {
-        if ($data) {
-            $fileName = tmpfile();
-            fwrite($fileName, $data);
+        if (is_string($data) && $data !== '') {
+            $stream = tmpfile();
+            fwrite($stream, $data);
+            rewind($stream);
 
-            return $fileName;
+            return $stream;
         }
 
         return null;
@@ -102,11 +111,36 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function delete(Version $version, bool $isBinaryHashInUse): void
     {
-        $this->databaseConnection->delete(self::versionsTableName, [
+        $identifier = [
             'id' => $version->getId(),
             'cid' => $version->getCid(),
             'ctype' => $version->getCtype(),
-        ]);
+        ];
+
+        if ($isBinaryHashInUse) {
+            // later versions read the binary from this row through binaryFileId: keep it, drop only the metadata
+            $this->databaseConnection->executeStatement(
+                'UPDATE ' . self::versionsTableName . ' SET metaData = NULL WHERE id = :id AND cid = :cid AND ctype = :ctype AND binaryData IS NOT NULL',
+                $identifier
+            );
+            $this->databaseConnection->executeStatement(
+                'DELETE FROM ' . self::versionsTableName . ' WHERE id = :id AND cid = :cid AND ctype = :ctype AND binaryData IS NULL',
+                $identifier
+            );
+
+            return;
+        }
+
+        $this->databaseConnection->delete(self::versionsTableName, $identifier);
+
+        // the last version using a binary kept from an already deleted version: remove that row as well
+        $binaryFileId = $version->getBinaryFileId();
+        if ($binaryFileId && $binaryFileId !== $version->getId()) {
+            $this->databaseConnection->executeStatement(
+                'DELETE FROM ' . self::versionsTableName . ' WHERE id = :id AND cid = :cid AND ctype = :ctype AND metaData IS NULL',
+                ['id' => $binaryFileId] + $identifier
+            );
+        }
     }
 
     public function getBinaryFileStream(Version $version): mixed

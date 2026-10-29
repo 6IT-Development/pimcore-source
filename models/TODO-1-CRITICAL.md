@@ -1287,7 +1287,7 @@ fallback. Verify that the version belongs to the task's element (`cid` + `ctype`
 
 ---
 
-## [ ] C-38 – `DatabaseVersionStorageAdapter`: every asset version is unreadable (`TypeError`), and deleting the oldest version deletes the binary that all later versions share
+## [x] C-38 – `DatabaseVersionStorageAdapter`: every asset version is unreadable (`TypeError`), and deleting the oldest version deletes the binary that all later versions share
 
 **Files:** `models/Version/Adapter/DatabaseVersionStorageAdapter.php:35-57`, `:64-77`, `:79-82`, `:84-94`, `:96-101`,
 `:103-110`, `:112-122`; `models/Version.php:171-189`, `:297-302`; `models/Version/Dao.php:96-110`;
