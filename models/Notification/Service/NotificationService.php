@@ -19,6 +19,7 @@ namespace Pimcore\Model\Notification\Service;
 
 use Carbon\Carbon;
 use Doctrine\DBAL\Exception;
+use InvalidArgumentException;
 use Pimcore\Db;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Notification;
@@ -182,10 +183,14 @@ class NotificationService
         $conditionVariables = [];
         foreach ($filter as $key => $value) {
             if (isset($value['condition'])) {
-                $conditions[] = $value['condition'];
+                $conditions[] = '(' . $value['condition'] . ')';
                 $conditionVariables[] = $value['conditionVariables'] ?? [];
             } else {
-                $conditions[] = $key . ' = :' . $key;
+                // the key is used as column name and placeholder name
+                if (!preg_match('/^[a-zA-Z]\w*$/D', (string)$key)) {
+                    throw new InvalidArgumentException(sprintf('Invalid notification filter key "%s"', $key));
+                }
+                $conditions[] = '`' . $key . '` = :' . $key;
                 $conditionVariables[] = [$key => $value];
             }
         }

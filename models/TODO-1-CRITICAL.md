@@ -1133,7 +1133,7 @@ and continue around a failed transaction (`PimcoreNotificationService`). Add a t
 
 ---
 
-## [ ] C-35 – Notification filter: the request `property` (and `findAll()` filter keys) go into SQL unvalidated (SQL injection, every user's notifications readable)
+## [x] C-35 – Notification filter: the request `property` (and `findAll()` filter keys) go into SQL unvalidated (SQL injection, every user's notifications readable)
 
 **Files:** `models/Notification/Service/NotificationServiceFilterParser.php:66-96`, `:103-123`, `:130-174`, `:176-181`;
 `models/Notification/Service/NotificationService.php:181-200`

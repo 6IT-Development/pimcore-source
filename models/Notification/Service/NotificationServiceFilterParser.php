@@ -20,6 +20,7 @@ namespace Pimcore\Model\Notification\Service;
 use Carbon\Carbon;
 use Exception;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
  * @internal
@@ -50,9 +51,16 @@ class NotificationServiceFilterParser
 
     private Request $request;
 
+    /**
+     * The filterable properties and their columns, anything else is rejected (the property goes into SQL)
+     */
     private array $properties = [
         'title' => 'title',
+        'message' => 'message',
+        'type' => 'type',
         'timestamp' => 'creationDate',
+        'creationDate' => 'creationDate',
+        'modificationDate' => 'modificationDate',
     ];
 
     public function __construct(Request $request)
@@ -110,7 +118,7 @@ class NotificationServiceFilterParser
             $key = $property . '_like';
             $result = [
                 $key,
-                "$property LIKE :$key",
+                "`$property` LIKE :$key",
                 [$key => "%$value%"],
             ];
         }
@@ -138,7 +146,7 @@ class NotificationServiceFilterParser
                 $key = $property . '_eq';
                 $result = [
                     $key,
-                    "$property BETWEEN :{$key}_start AND :{$key}_end",
+                    "`$property` BETWEEN :{$key}_start AND :{$key}_end",
                     [
                         $key . '_start' => $value->toDateTimeString(),
                         $key . '_end' => $value->addDay()->subSecond()->toDateTimeString(),
@@ -150,7 +158,7 @@ class NotificationServiceFilterParser
                 $key = $property . '_gt';
                 $result = [
                     $key,
-                    "$property > :$key",
+                    "`$property` > :$key",
                     [$key => $value->toDateTimeString()],
                 ];
 
@@ -159,7 +167,7 @@ class NotificationServiceFilterParser
                 $key = $property . '_lt';
                 $result = [
                     $key,
-                    "$property < :$key",
+                    "`$property` < :$key",
                     [$key => $value->addDay()->subSecond()->toDateTimeString()],
                 ];
 
@@ -175,8 +183,12 @@ class NotificationServiceFilterParser
 
     private function getDbProperty(array $item): string
     {
-        $property = $item[self::KEY_PROPERTY];
+        $property = $item[self::KEY_PROPERTY] ?? null;
 
-        return $this->properties[$property] ?? $property;
+        if (!is_string($property) || !isset($this->properties[$property])) {
+            throw new BadRequestHttpException('Invalid filter property');
+        }
+
+        return $this->properties[$property];
     }
 }
