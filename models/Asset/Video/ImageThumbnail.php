@@ -131,36 +131,39 @@ final class ImageThumbnail implements ImageThumbnailInterface
                     $timeOffset
                 );
 
+                $cacheFileAvailable = true;
                 if (!$storage->fileExists($cacheFilePath)) {
                     $lock = Pimcore::getContainer()->get(LockFactory::class)->createLock($cacheFilePath);
                     $lock->acquire(true);
 
-                    // after we got the lock, check again if the image exists in the meantime - if not - generate it
-                    if (!$storage->fileExists($cacheFilePath)) {
-                        $tempFile = File::getLocalTempFilePath('png');
-                        $converter = Video::getInstance();
-                        $converter->load($this->asset->getLocalFile());
-                        if (false === $converter->saveImage($tempFile, (int)$timeOffset)) {
-                            Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is failed.');
+                    try {
+                        // after we got the lock, check again if the image exists in the meantime - if not - generate it
+                        if (!$storage->fileExists($cacheFilePath)) {
+                            $tempFile = File::getLocalTempFilePath('png');
+                            $converter = Video::getInstance();
+                            $converter->load($this->asset->getLocalFile());
+                            $tempFileContent = false;
+                            if (false !== $converter->saveImage($tempFile, (int)$timeOffset)) {
+                                $tempFileContent = @file_get_contents($tempFile);
+                            }
+                            @unlink($tempFile);
 
-                            return;
+                            if (false === $tempFileContent) {
+                                Logger::info('Creation of cache file stream of video ' . $this->asset->getRealFullPath() . ' is failed.');
+                                $cacheFileAvailable = false;
+                            } else {
+                                $storage->write($cacheFilePath, $tempFileContent);
+                                $generated = true;
+                            }
                         }
-                        $tempFileContent = file_get_contents($tempFile);
-                        if (false === $tempFileContent) {
-                            Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is failed.');
-
-                            return;
-                        }
-                        $storage->write($cacheFilePath, $tempFileContent);
-                        $generated = true;
+                    } finally {
+                        $lock->release();
                     }
-
-                    $lock->release();
                 }
 
-                $cacheFileStream = $storage->readStream($cacheFilePath);
-
-                if ($this->getConfig()) {
+                // without a frame, fall through to the error placeholder below
+                if ($cacheFileAvailable && $this->getConfig()) {
+                    $cacheFileStream = $storage->readStream($cacheFilePath);
                     $this->getConfig()->setFilenameSuffix('time-' . $timeOffset);
 
                     try {

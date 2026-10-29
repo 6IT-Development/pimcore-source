@@ -460,7 +460,7 @@ $data = object2array($xml);      // object2array(object $node): false → TypeEr
 
 ---
 
-## [ ] C-13 – Video image thumbnail crashes `getPath()` when frame extraction fails (frontend 500)
+## [x] C-13 – Video image thumbnail crashes `getPath()` when frame extraction fails (frontend 500)
 
 **Files:** `models/Asset/Video/ImageThumbnail.php:140-153`; `models/Asset/Thumbnail/ImageThumbnailTrait.php:292-315`
 
