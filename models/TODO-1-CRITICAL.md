@@ -405,7 +405,7 @@ next to the asset; on failure remove the temp file.
 
 ---
 
-## [ ] C-10 – Video thumbnail config without bitrates crashes with `TypeError` (frontend 500)
+## [x] C-10 – Video thumbnail config without bitrates crashes with `TypeError` (frontend 500)
 
 **Files:** `models/Asset/Video/Thumbnail/Processor.php:122-123`, `models/Asset/Video.php:115`;
 `lib/Video/Adapter/Ffmpeg.php:350`, `:363`

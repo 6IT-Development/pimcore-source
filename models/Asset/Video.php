@@ -26,6 +26,7 @@ use Pimcore\Model;
 use Pimcore\Tool;
 use RuntimeException;
 use Symfony\Component\EventDispatcher\GenericEvent;
+use Throwable;
 
 /**
  * @method Dao getDao()
@@ -112,7 +113,7 @@ class Video extends Model\Asset
 
                     return $customSetting[$thumbnail->getName()];
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 Logger::error("Couldn't create thumbnail of video " . $this->getRealFullPath() . ': ' . $e);
             }
         }

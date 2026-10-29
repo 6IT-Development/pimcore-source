@@ -119,8 +119,13 @@ class Processor
             $tmpPath = File::getLocalTempFilePath($format);
 
             if ($converter = Video::getInstance()) {
-                $converter->setAudioBitrate($config->getAudioBitrate());
-                $converter->setVideoBitrate($config->getVideoBitrate());
+                // both bitrates are optional in the config, the adapter keeps its defaults then
+                if ($config->getAudioBitrate() !== null) {
+                    $converter->setAudioBitrate($config->getAudioBitrate());
+                }
+                if ($config->getVideoBitrate() !== null) {
+                    $converter->setVideoBitrate($config->getVideoBitrate());
+                }
                 $converter->setFormat($format);
                 $converter->setDestinationFile($tmpPath);
                 $converter->setStorageFile($storagePath);
