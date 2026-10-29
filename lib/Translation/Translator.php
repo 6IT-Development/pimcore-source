@@ -158,7 +158,8 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
                 $translations = $list->loadRaw();
 
                 foreach ($translations as $translation) {
-                    $translationTerm = Tool\Text::removeLineBreaks($translation['text']);
+                    // the column is nullable, a single NULL must not break the whole catalogue
+                    $translationTerm = Tool\Text::removeLineBreaks($translation['text'] ?? '');
                     if (
                         (!isset($data[$translation['key']]) && !$this->getCatalogue($locale)->has($translation['key'], $domain)) ||
                         !empty($translationTerm)) {

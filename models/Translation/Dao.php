@@ -63,7 +63,7 @@ class Dao extends Model\Dao\AbstractDao
 
         if (!empty($data)) {
             foreach ($data as $d) {
-                $this->model->addTranslation($d['language'], $d['text']);
+                $this->model->addTranslation($d['language'], $d['text'] ?? '');
                 $this->model->setKey($d['key']);
                 $this->model->setCreationDate($d['creationDate']);
                 $this->model->setModificationDate($d['modificationDate']);
@@ -98,6 +98,9 @@ class Dao extends Model\Dao\AbstractDao
 
         if ($this->model->getKey() !== '') {
             foreach ($this->model->getTranslations() as $language => $text) {
+                // setTranslations() does not type its values, never write a NULL (it breaks the catalogue)
+                $text = (string)$text;
+
                 if (count($editableLanguages) && !in_array($language, $editableLanguages)) {
                     Logger::warning(sprintf('User %s not allowed to edit %s translation', $user?->getUsername() ?? 'N/A', $language)); // @phpstan-ignore-line
 

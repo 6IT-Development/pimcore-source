@@ -76,7 +76,7 @@ class Dao extends Model\Listing\Dao\AbstractDao
                     $translations[$t['key']]->setType($t['type']);
                 }
 
-                $translations[$t['key']]->addTranslation($t['language'], $t['text']);
+                $translations[$t['key']]->addTranslation($t['language'], $t['text'] ?? '');
 
                 //for legacy support
                 if ($translations[$t['key']]->getModificationDate() < $t['creationDate']) {

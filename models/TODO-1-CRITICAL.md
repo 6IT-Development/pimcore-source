@@ -645,7 +645,7 @@ this path (only rows whose `creationDate = modificationDate` and `userModificati
 
 ---
 
-## [ ] C-19 – One `NULL` in `text` breaks every `|trans` for that domain and locale (frontend 500); `Dao::save()` can write the `NULL`
+## [x] C-19 – One `NULL` in `text` breaks every `|trans` for that domain and locale (frontend 500); `Dao::save()` can write the `NULL`
 
 **Files:** `lib/Translation/Translator.php:158-161`; `models/Translation/Dao.php:64-66`, `:100-122`;
 `models/Translation/Listing/Dao.php:79`; schema `install.sql:437` (`text` is `DEFAULT NULL`),
