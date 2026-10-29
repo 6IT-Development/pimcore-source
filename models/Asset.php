@@ -526,6 +526,11 @@ class Asset extends Element\AbstractElement
                         $oldPath = $this->getDao()->getCurrentFullPath();
                     }
 
+                    // new binary data has to be processed again: drop the failure flag before it is written to the DB
+                    if ($this->getDataChanged()) {
+                        $this->removeCustomSetting(Asset::CUSTOM_SETTING_PROCESSING_FAILED);
+                    }
+
                     $this->update($parameters);
 
                     $storage = Storage::get('asset');
@@ -606,11 +611,8 @@ class Asset extends Element\AbstractElement
             // add to queue that saves dependencies
             $this->addToDependenciesQueue();
 
-            if ($this->getDataChanged()) {
-                $this->removeCustomSetting(Asset::CUSTOM_SETTING_PROCESSING_FAILED);
-                if (in_array($this->getType(), ['image', 'video', 'document'])) {
-                    $this->addToUpdateTaskQueue();
-                }
+            if ($this->getDataChanged() && in_array($this->getType(), ['image', 'video', 'document'])) {
+                $this->addToUpdateTaskQueue();
             }
 
             $this->setDataChanged(false);

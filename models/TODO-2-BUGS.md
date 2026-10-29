@@ -266,7 +266,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** remove the override (or invert to `!in_array(...)`).
 
-## [ ] B-08 – `CUSTOM_SETTING_PROCESSING_FAILED` is removed only in memory, after the DB write
+## [x] B-08 – `CUSTOM_SETTING_PROCESSING_FAILED` is removed only in memory, after the DB write
 
 **File:** `models/Asset.php:613-617`
 
