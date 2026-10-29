@@ -30,6 +30,7 @@ use Pimcore\Model\Element\Service;
 use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Stringable;
+use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException as ContainerInvalidArgumentException;
 use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
 use const PIMCORE_PROJECT_ROOT;
@@ -48,27 +49,54 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
     protected static array $instances = [];
 
-    public static function getInstance(string $component = 'default', bool $initDbHandler = false): ApplicationLogger
+    /**
+     * Without $initDbHandler the logger has no writer until one is added with addWriter()
+     */
+    public static function getInstance(string $component = 'default', bool $initDbHandler = true): ApplicationLogger
     {
         $container = Pimcore::getContainer();
         $containerId = 'pimcore.app_logger.' . $component;
+        $service = $container->has($containerId) ? $container->get($containerId) : null;
 
-        if ($container->has($containerId)) {
-            $logger = $container->get($containerId);
+        if ($service instanceof self) {
+            if ($service->component === $component) {
+                return $service;
+            }
 
             // the service is shared, setting the component on it would change it for every other consumer
-            if ($logger->component !== $component) {
-                $logger = clone $logger;
-                $logger->setComponent($component);
-            }
-        } else {
+            $logger = clone $service;
+            $logger->setComponent($component);
+
+            return $logger;
+        }
+
+        if ($service instanceof LoggerInterface) {
+            // e.g. a Monolog channel registered under this id
             $logger = new self();
             $logger->setComponent($component);
-            if ($initDbHandler) {
-                $logger->addWriter($container->get(ApplicationLoggerDb::class));
-            }
+            $logger->addWriter($service);
 
-            $container->set($containerId, $logger);
+            return $logger;
+        }
+
+        if (null === $service && isset(self::$instances[$containerId])) {
+            return self::$instances[$containerId];
+        }
+
+        $logger = new self();
+        $logger->setComponent($component);
+        if ($initDbHandler) {
+            $logger->addWriter($container->get(ApplicationLoggerDb::class));
+        }
+
+        // do not replace a foreign service registered under this id
+        if (null === $service) {
+            try {
+                $container->set($containerId, $logger);
+            } catch (ContainerInvalidArgumentException) {
+                // the id belongs to a private or removed service of the compiled container
+                self::$instances[$containerId] = $logger;
+            }
         }
 
         return $logger;

@@ -72,7 +72,7 @@ object is actually used.
 **Fix direction:** reset per-call state after `log()`, implement `ResetInterface` + `kernel.reset` tag (see I-08), avoid
 mutating shared instances in `getInstance()`.
 
-### [ ] B-09 – `getInstance()` edge cases
+### [x] B-09 – `getInstance()` edge cases
 **Lines:** 50-69
 - If a user defined `pimcore.app_logger.<component>` as a non-`ApplicationLogger` service (e.g. a Monolog channel, as
   the docs suggest for handlers), `->setComponent()` → fatal error, and the return type `ApplicationLogger` → `TypeError`.
