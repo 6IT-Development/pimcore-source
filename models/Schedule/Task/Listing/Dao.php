@@ -36,7 +36,10 @@ class Dao extends Model\Listing\Dao\AbstractDao
         $tasksData = $this->db->fetchFirstColumn('SELECT id FROM schedule_tasks' . $this->getCondition() . $this->getOrder() . $this->getOffsetLimit(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
 
         foreach ($tasksData as $taskData) {
-            $tasks[] = Model\Schedule\Task::getById($taskData);
+            // the task can be deleted between both queries
+            if ($task = Model\Schedule\Task::getById($taskData)) {
+                $tasks[] = $task;
+            }
         }
 
         $this->model->setTasks($tasks);

@@ -1192,7 +1192,7 @@ B-196 (parser robustness).
 
 ---
 
-## [ ] C-36 – One failing scheduled task stalls all scheduled publishing, unpublishing and deletion, permanently
+## [x] C-36 – One failing scheduled task stalls all scheduled publishing, unpublishing and deletion, permanently
 
 **Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:43-135` (`:45-47`, `:50`, `:52`, `:74-76`, `:130`);
 `lib/Maintenance/Executor.php:48-70` (`:65`); `models/Schedule/Task/Listing/Dao.php:33-45` (`:39`);
