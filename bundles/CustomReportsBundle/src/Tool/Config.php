@@ -408,6 +408,22 @@ class Config extends Model\AbstractModel implements JsonSerializable
         $this->sharedRoleNames = $sharedRoleNames;
     }
 
+    /**
+     * Whether the report is shared with the user (admins see every report).
+     */
+    public function isVisibleFor(Model\User $user): bool
+    {
+        if ($user->isAdmin() || $this->getShareGlobally()) {
+            return true;
+        }
+
+        if (in_array($user->getId(), $this->getSharedUserIds())) {
+            return true;
+        }
+
+        return (bool) array_intersect($user->getRoles(), $this->getSharedRoleIds());
+    }
+
     public function jsonSerialize(): array
     {
         $data = $this->getObjectVars();

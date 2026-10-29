@@ -145,12 +145,14 @@ class CustomReportController extends UserAwareController
     {
         $this->checkPermissionsHasOneOf(['reports_config', 'reports']);
 
-        $report = Tool\Config::getByName($request->query->getString('name'));
-        if (!$report) {
-            throw $this->createNotFoundException();
-        }
+        $report = $this->getReportForCurrentUser($request->query->getString('name'));
         $data = $report->getObjectVars();
         $data['writeable'] = $report->isWriteable();
+
+        if (!$this->getPimcoreUser()->isAllowed('reports_config')) {
+            // viewers only need the presentation settings, not the SQL and the sharing settings
+            unset($data['sql'], $data['dataSourceConfig'], $data['shareGlobally'], $data['sharedUserNames'], $data['sharedRoleNames']);
+        }
 
         return $this->jsonResponse($data);
     }
@@ -272,10 +274,7 @@ class CustomReportController extends UserAwareController
         }
         $offset = $request->request->getInt('start');
         $limit = $request->request->getInt('limit', 40);
-        $config = Tool\Config::getByName($request->request->getString('name'));
-        if (!$config) {
-            throw $this->createNotFoundException();
-        }
+        $config = $this->getReportForCurrentUser($request->request->getString('name'));
         $configuration = $config->getDataSourceConfig();
         $adapter = Tool\Config::getAdapter($configuration, $config);
         $sortFilters = $this->getSortAndFilters($request, $configuration, $config);
@@ -297,10 +296,7 @@ class CustomReportController extends UserAwareController
         $filters = ($request->request->getString('filter') ? json_decode($request->request->getString('filter'), true) : null);
         $drillDownFilters = $request->request->all('drillDownFilters');
 
-        $config = Tool\Config::getByName($request->request->getString('name'));
-        if (!$config) {
-            throw $this->createNotFoundException();
-        }
+        $config = $this->getReportForCurrentUser($request->request->getString('name'));
         $this->validateRequestColumns($config, $filters, $drillDownFilters, [$field]);
         $configuration = $config->getDataSourceConfig();
 
@@ -317,10 +313,7 @@ class CustomReportController extends UserAwareController
     public function chartAction(Request $request): JsonResponse
     {
         $this->checkPermission('reports');
-        $config = Tool\Config::getByName($request->request->getString('name'));
-        if (!$config) {
-            throw $this->createNotFoundException();
-        }
+        $config = $this->getReportForCurrentUser($request->request->getString('name'));
         $configuration = $config->getDataSourceConfig();
         $adapter = Tool\Config::getAdapter($configuration, $config);
         $sortFilters = $this->getSortAndFilters($request, $configuration, $config);
@@ -357,10 +350,7 @@ class CustomReportController extends UserAwareController
         $drillDownFilters = $drillDownFilters ? json_decode($drillDownFilters, true) : null;
         $includeHeaders = $request->query->getBoolean('headers');
 
-        $config = Tool\Config::getByName($request->query->getString('name'));
-        if (!$config) {
-            throw $this->createNotFoundException();
-        }
+        $config = $this->getReportForCurrentUser($request->query->getString('name'));
         $this->validateRequestColumns($config, $filters, $drillDownFilters, $sort !== '' ? [$sort] : []);
 
         $columns = $config->getColumnConfiguration();
@@ -436,6 +426,24 @@ class CustomReportController extends UserAwareController
         if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $configName)) {
             throw new Exception('The customer report name is invalid');
         }
+    }
+
+    /**
+     * Loads a report the current user may see: it is shared with the user, or the user may edit reports.
+     */
+    private function getReportForCurrentUser(string $name): Tool\Config
+    {
+        $report = Tool\Config::getByName($name);
+        if (!$report) {
+            throw $this->createNotFoundException();
+        }
+
+        $user = $this->getPimcoreUser();
+        if (!$user || (!$user->isAllowed('reports_config') && !$report->isVisibleFor($user))) {
+            throw $this->createAccessDeniedHttpException();
+        }
+
+        return $report;
     }
 
     /**

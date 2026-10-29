@@ -81,7 +81,7 @@ reject unknown columns with `400`.
 
 ---
 
-## [ ] C-03 – Missing per-report authorization: sharing settings are only applied to the menu list (IDOR)
+## [x] C-03 – Missing per-report authorization: sharing settings are only applied to the menu list (IDOR)
 
 **File:** `src/Controller/Reports/CustomReportController.php:142-155`, `:265-288`, `:290-312`, `:314-332`, `:344-411`
 

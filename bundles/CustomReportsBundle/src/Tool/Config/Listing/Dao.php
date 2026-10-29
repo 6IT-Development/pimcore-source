@@ -47,24 +47,10 @@ class Dao extends Config\Dao
      */
     public function loadForGivenUser(Model\User $user): array
     {
-        $allConfigs = $this->loadList();
-
-        if ($user->isAdmin()) {
-            return $allConfigs;
-        }
-
-        $filteredConfigs = [];
-        foreach ($allConfigs as $config) {
-            if ($config->getShareGlobally()) {
-                $filteredConfigs[] = $config;
-            } elseif ($config->getSharedUserIds() && in_array($user->getId(), $config->getSharedUserIds())) {
-                $filteredConfigs[] = $config;
-            } elseif ($config->getSharedRoleIds() && array_intersect($user->getRoles(), $config->getSharedRoleIds())) {
-                $filteredConfigs[] = $config;
-            }
-        }
-
-        return $filteredConfigs;
+        return array_values(array_filter(
+            $this->loadList(),
+            static fn (Config $config): bool => $config->isVisibleFor($user)
+        ));
     }
 
     public function getTotalCount(): int
