@@ -477,7 +477,7 @@ release the lock in `finally`.
 
 ---
 
-## [ ] C-14 – PDF JavaScript scan is trivially bypassable and always returns `true` (false `SAFE` security status)
+## [x] C-14 – PDF JavaScript scan is trivially bypassable and always returns `true` (false `SAFE` security status)
 
 **File:** `models/Asset/Document.php:146-176`; caller `lib/Messenger/Handler/AssetUpdateTasksHandler.php:78`
 

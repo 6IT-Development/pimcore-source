@@ -22,6 +22,7 @@ use Pimcore\Cache;
 use Pimcore\Config;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Throwable;
 
 /**
  * @method Dao getDao()
@@ -29,6 +30,12 @@ use Pimcore\Model;
 class Document extends Model\Asset
 {
     public const string CUSTOM_SETTING_PDF_SCAN_STATUS = 'document_pdf_scan_status';
+
+    private const int PDF_SCAN_CHUNK_SIZE = 65536;
+
+    private const int PDF_SCAN_OVERLAP = 64;
+
+    private const int PDF_SCAN_MAX_OBJECT_STREAM_SIZE = 16777216;
 
     protected string $type = 'document';
 
@@ -136,10 +143,25 @@ class Document extends Model\Asset
         return (string)$text;
     }
 
+    /**
+     * Scans the PDF and stores the result as scan status.
+     *
+     * @return bool true if the PDF contains JavaScript or could not be verified (status UNSAFE)
+     */
     public function checkIfPdfContainsJS(): bool
     {
+        return $this->scanPdfForJavaScript() === Model\Asset\Enum\PdfScanStatus::UNSAFE;
+    }
+
+    /**
+     * Scans the PDF and stores the result as scan status.
+     *
+     * @return Model\Asset\Enum\PdfScanStatus|null null if PDF scanning is disabled
+     */
+    public function scanPdfForJavaScript(): ?Model\Asset\Enum\PdfScanStatus
+    {
         if (!$this->isPdfScanningEnabled()) {
-            return false;
+            return null;
         }
 
         $this->setCustomSetting(
@@ -147,32 +169,18 @@ class Document extends Model\Asset
             Model\Asset\Enum\PdfScanStatus::IN_PROGRESS->value
         );
 
-        $chunkSize = 1024;
-        $filePointer = $this->getStream();
-
-        $tagLength = strlen('/JS');
-
-        while ($chunk = fread($filePointer, $chunkSize)) {
-            if (strlen($chunk) <= $tagLength) {
-                break;
-            }
-
-            if (str_contains($chunk, '/JS') || str_contains($chunk, '/JavaScript')) {
-                $this->setCustomSetting(
-                    self::CUSTOM_SETTING_PDF_SCAN_STATUS,
-                    Model\Asset\Enum\PdfScanStatus::UNSAFE->value
-                );
-
-                return true;
-            }
+        try {
+            $status = $this->pdfMayContainJavaScript()
+                ? Model\Asset\Enum\PdfScanStatus::UNSAFE
+                : Model\Asset\Enum\PdfScanStatus::SAFE;
+        } catch (Throwable $e) {
+            Logger::warning('Unable to scan PDF asset ' . $this->getId() . ' for JavaScript: ' . $e->getMessage());
+            $status = Model\Asset\Enum\PdfScanStatus::UNSAFE;
         }
 
-        $this->setCustomSetting(
-            self::CUSTOM_SETTING_PDF_SCAN_STATUS,
-            Model\Asset\Enum\PdfScanStatus::SAFE->value
-        );
+        $this->setCustomSetting(self::CUSTOM_SETTING_PDF_SCAN_STATUS, $status->value);
 
-        return true;
+        return $status;
     }
 
     public function getScanStatus(): ?Model\Asset\Enum\PdfScanStatus
@@ -208,5 +216,100 @@ class Document extends Model\Asset
     private function isPdfScanningEnabled(): bool
     {
         return Config::getSystemConfiguration('assets')['document']['scan_pdf'];
+    }
+
+    /**
+     * Streams through the file and looks for JavaScript names (also with #xx name escapes and across chunk
+     * boundaries). Compressed object streams are inflated and scanned as well; an object stream that can't be
+     * decoded counts as JavaScript, because its content can't be verified.
+     */
+    private function pdfMayContainJavaScript(): bool
+    {
+        $filePointer = $this->getStream();
+        $buffer = '';
+        $objectStream = null; // the collected data while inside a compressed object stream
+
+        try {
+            do {
+                $chunk = fread($filePointer, self::PDF_SCAN_CHUNK_SIZE);
+                $eof = $chunk === false || $chunk === '';
+                if (!$eof) {
+                    $buffer .= $chunk;
+                }
+
+                while (true) {
+                    if ($objectStream === null) {
+                        if ($this->containsPdfJavaScriptName($buffer)) {
+                            return true;
+                        }
+
+                        $objectStreamPosition = strpos($buffer, '/ObjStm');
+                        if ($objectStreamPosition === false) {
+                            // keep an overlap, a name can be split between two chunks
+                            $buffer = substr($buffer, -self::PDF_SCAN_OVERLAP);
+
+                            break;
+                        }
+
+                        $streamPosition = strpos($buffer, 'stream', $objectStreamPosition);
+                        if ($streamPosition === false) {
+                            if ($eof || strlen($buffer) > self::PDF_SCAN_MAX_OBJECT_STREAM_SIZE) {
+                                return true;
+                            }
+                            $buffer = substr($buffer, $objectStreamPosition);
+
+                            break;
+                        }
+
+                        $objectStream = '';
+                        $buffer = substr($buffer, $streamPosition + strlen('stream'));
+                        $buffer = preg_replace('/^\r?\n/', '', $buffer);
+                    } else {
+                        $endPosition = strpos($buffer, 'endstream');
+                        if ($endPosition === false) {
+                            if ($eof) {
+                                return true;
+                            }
+                            // keep the tail, the keyword can be split between two chunks
+                            $keep = strlen('endstream');
+                            $objectStream .= substr($buffer, 0, -$keep);
+                            $buffer = substr($buffer, -$keep);
+                            if (strlen($objectStream) > self::PDF_SCAN_MAX_OBJECT_STREAM_SIZE) {
+                                return true;
+                            }
+
+                            break;
+                        }
+
+                        $objectStream .= substr($buffer, 0, $endPosition);
+                        $buffer = substr($buffer, $endPosition + strlen('endstream'));
+
+                        $decoded = @zlib_decode($objectStream);
+                        $objectStream = null;
+                        if ($decoded === false || $this->containsPdfJavaScriptName($decoded)) {
+                            return true;
+                        }
+                    }
+                }
+            } while (!$eof);
+        } finally {
+            if (is_resource($filePointer)) {
+                fclose($filePointer);
+            }
+        }
+
+        return false;
+    }
+
+    private function containsPdfJavaScriptName(string $data): bool
+    {
+        // PDF names may escape any character as #xx, e.g. /J#53
+        $data = preg_replace_callback(
+            '/#([0-9A-Fa-f]{2})/',
+            static fn (array $matches): string => chr((int) hexdec($matches[1])),
+            $data
+        );
+
+        return str_contains($data, '/JS') || str_contains($data, '/JavaScript');
     }
 }

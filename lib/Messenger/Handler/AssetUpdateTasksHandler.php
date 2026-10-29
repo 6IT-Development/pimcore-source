@@ -92,7 +92,7 @@ class AssetUpdateTasksHandler
     {
         $save = false;
         $saveParams = [];
-        if ($asset->getMimeType() === 'application/pdf' && $asset->checkIfPdfContainsJS()) {
+        if ($asset->getMimeType() === 'application/pdf' && $asset->scanPdfForJavaScript() !== null) {
             $save = true;
             $saveParams['versionNote'] = 'PDF scan result';
         }
