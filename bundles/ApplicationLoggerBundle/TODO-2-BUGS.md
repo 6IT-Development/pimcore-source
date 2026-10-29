@@ -61,7 +61,7 @@ An explicit `$context['relatedObjectType']` passed by the caller is ignored and 
 **Fix direction:** respect `$context['relatedObjectType']` if given; only use the instance type when the instance-level
 object is actually used.
 
-### [ ] B-08 – Sticky / leaking state on a shared service
+### [x] B-08 – Sticky / leaking state on a shared service
 **Lines:** 38-46, 89-107, 115-118
 - `relatedObject` is **never** reset → every later log line of the same (shared!) service is linked to that element.
 - `fileObject` is reset only if it was used; when the context contains its own `fileObject`, the instance one leaks into

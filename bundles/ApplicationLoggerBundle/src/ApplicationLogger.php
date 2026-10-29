@@ -30,10 +30,11 @@ use Pimcore\Model\Element\Service;
 use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Stringable;
+use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
 use const PIMCORE_PROJECT_ROOT;
 
-class ApplicationLogger implements LoggerInterface
+class ApplicationLogger implements LoggerInterface, ResetInterface
 {
     protected ?string $component = null;
 
@@ -54,16 +55,21 @@ class ApplicationLogger implements LoggerInterface
 
         if ($container->has($containerId)) {
             $logger = $container->get($containerId);
+
+            // the service is shared, setting the component on it would change it for every other consumer
+            if ($logger->component !== $component) {
+                $logger = clone $logger;
+                $logger->setComponent($component);
+            }
         } else {
             $logger = new self();
+            $logger->setComponent($component);
             if ($initDbHandler) {
                 $logger->addWriter($container->get(ApplicationLoggerDb::class));
             }
 
             $container->set($containerId, $logger);
         }
-
-        $logger->setComponent($component);
 
         return $logger;
     }
@@ -106,15 +112,32 @@ class ApplicationLogger implements LoggerInterface
         }
     }
 
+    /**
+     * Clears the file object and related object set on the instance, also called by the kernel between requests
+     * and messages
+     */
+    public function reset(): void
+    {
+        $this->fileObject = null;
+        $this->relatedObject = null;
+        $this->relatedObjectType = 'object';
+    }
+
     public function log(mixed $level, string|Stringable $message, array $context = []): void
     {
+        // the file object and related object set on the instance apply to the next log call only,
+        // the logger is a shared service
+        $instanceFileObject = $this->fileObject;
+        $instanceRelatedObject = $this->relatedObject;
+        $instanceRelatedObjectType = $this->relatedObjectType;
+        $this->reset();
+
         if (!isset($context['component'])) {
             $context['component'] = $this->component;
         }
 
-        if (!isset($context['fileObject']) && $this->fileObject) {
-            $context['fileObject'] = $this->fileObject;
-            $this->fileObject = null;
+        if (!isset($context['fileObject']) && $instanceFileObject) {
+            $context['fileObject'] = $instanceFileObject;
         }
 
         if (isset($context['fileObject'])) {
@@ -131,9 +154,9 @@ class ApplicationLogger implements LoggerInterface
         $relatedObjectType = $context['relatedObjectType'] ?? null;
 
         // the instance type belongs to the instance object only
-        if (!$relatedObject && $this->relatedObject) {
-            $relatedObject = $this->relatedObject;
-            $relatedObjectType = $this->relatedObjectType;
+        if (!$relatedObject && $instanceRelatedObject) {
+            $relatedObject = $instanceRelatedObject;
+            $relatedObjectType = $instanceRelatedObjectType;
         }
 
         if (is_numeric($relatedObject)) {
