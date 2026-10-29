@@ -257,32 +257,24 @@ class Dao extends Model\Dao\AbstractDao
         $this->db->delete('objects', ['classId' => $this->model->getId()]);
 
         // remove fieldcollection tables
-        $allTables = $this->db->fetchAllAssociative("SHOW TABLES LIKE 'object\_collection\_%\_" . $this->model->getId() . "'");
-        foreach ($allTables as $table) {
-            $collectionTable = current($table);
-            $this->db->executeQuery('DROP TABLE IF EXISTS `' . $collectionTable . '`');
+        foreach ($this->getTablesOfClass(fn (string $classId) => ['object_collection_', '_' . $classId]) as $collectionTable) {
+            $this->db->executeQuery('DROP TABLE IF EXISTS ' . $this->db->quoteIdentifier($collectionTable));
         }
 
         // remove localized fields tables and views
-        $allViews = $this->db->fetchAllAssociative("SHOW TABLES LIKE 'object\_localized\_" . $this->model->getId() . "\_%'");
-        foreach ($allViews as $view) {
-            $localizedView = current($view);
-            $this->db->executeQuery('DROP VIEW IF EXISTS `' . $localizedView . '`');
+        foreach ($this->getTablesOfClass(fn (string $classId) => ['object_localized_' . $classId . '_', '']) as $localizedView) {
+            $this->db->executeQuery('DROP VIEW IF EXISTS ' . $this->db->quoteIdentifier($localizedView));
         }
 
-        $allTables = $this->db->fetchAllAssociative("SHOW TABLES LIKE 'object\_localized\_query\_" . $this->model->getId() . "\_%'");
-        foreach ($allTables as $table) {
-            $queryTable = current($table);
-            $this->db->executeQuery('DROP TABLE IF EXISTS `' . $queryTable . '`');
+        foreach ($this->getTablesOfClass(fn (string $classId) => ['object_localized_query_' . $classId . '_', '']) as $queryTable) {
+            $this->db->executeQuery('DROP TABLE IF EXISTS ' . $this->db->quoteIdentifier($queryTable));
         }
 
         $this->db->executeQuery('DROP TABLE IF EXISTS object_localized_data_' . $this->model->getId());
 
         // objectbrick tables
-        $allTables = $this->db->fetchAllAssociative("SHOW TABLES LIKE 'object\_brick\_%\_" . $this->model->getId() . "'");
-        foreach ($allTables as $table) {
-            $brickTable = current($table);
-            $this->db->executeQuery('DROP TABLE IF EXISTS `' . $brickTable . '`');
+        foreach ($this->getTablesOfClass(fn (string $classId) => ['object_brick_', '_' . $classId]) as $brickTable) {
+            $this->db->executeQuery('DROP TABLE IF EXISTS ' . $this->db->quoteIdentifier($brickTable));
         }
 
         $this->db->executeQuery('DROP TABLE IF EXISTS object_classificationstore_data_' . $this->model->getId());
@@ -290,6 +282,42 @@ class Dao extends Model\Dao\AbstractDao
 
         // clean slug table
         DataObject\Data\UrlSlug::handleClassDeleted($this->model->getId());
+    }
+
+    /**
+     * Returns the existing tables named <prefix><anything><suffix>, where $nameParts returns prefix and suffix for a
+     * class id. The wildcard part also matches the id of other classes (class `archive` vs. tables of class
+     * `news_archive`), so a table that also fits the name structure of a class with a longer id belongs to that class.
+     *
+     * @param callable(string): array{string, string} $nameParts
+     *
+     * @return string[]
+     */
+    private function getTablesOfClass(callable $nameParts): array
+    {
+        $id = $this->model->getId();
+        [$prefix, $suffix] = $nameParts($id);
+        $escape = static fn (string $value): string => addcslashes($value, '\\_%');
+        $tables = $this->db->fetchFirstColumn(
+            'SHOW TABLES LIKE ' . $this->db->quote($escape($prefix) . '%' . $escape($suffix))
+        );
+
+        $longerIds = array_filter(
+            array_map('strval', $this->db->fetchFirstColumn('SELECT id FROM classes')),
+            static fn (string $otherId): bool => strlen($otherId) > strlen($id)
+        );
+
+        return array_values(array_filter($tables, static function (string $table) use ($nameParts, $longerIds): bool {
+            foreach ($longerIds as $otherId) {
+                [$otherPrefix, $otherSuffix] = $nameParts($otherId);
+                if (strlen($table) > strlen($otherPrefix) + strlen($otherSuffix)
+                    && str_starts_with($table, $otherPrefix) && str_ends_with($table, $otherSuffix)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 
     /**

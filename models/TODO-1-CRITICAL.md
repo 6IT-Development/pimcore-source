@@ -1043,7 +1043,7 @@ name, class id, field names and select-option ids, checked in the setters and in
 
 ---
 
-## [ ] C-33 – Deleting a class drops tables of other classes: unescaped `SHOW TABLES LIKE` patterns
+## [x] C-33 – Deleting a class drops tables of other classes: unescaped `SHOW TABLES LIKE` patterns
 
 **File:** `models/DataObject/ClassDefinition/Dao.php:240-296` (`:260`, `:267`, `:273`, `:282`)
 
