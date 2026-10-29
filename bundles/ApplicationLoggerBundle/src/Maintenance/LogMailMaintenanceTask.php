@@ -86,7 +86,8 @@ readonly class LogMailMaintenanceTask implements TaskInterface
 
                     $rowsProcessed += count($entries);
 
-                    $html = var_export($entries, true);
+                    // log entries contain user-controlled input, so they must not end up as markup in the mail
+                    $html = htmlspecialchars(var_export($entries, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                     $html = "<pre>$html</pre>";
                     $mail = new Mail();
                     $mail->setIgnoreDebugMode(true);

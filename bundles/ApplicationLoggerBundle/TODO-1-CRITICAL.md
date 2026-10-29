@@ -65,7 +65,7 @@ explicit column list in both `INSERT INTO archive (cols...)` and `SELECT cols...
 
 ---
 
-## [ ] C-04 – HTML injection in log summary e-mails
+## [x] C-04 – HTML injection in log summary e-mails
 
 **File:** `src/Maintenance/LogMailMaintenanceTask.php:89-93`
 
