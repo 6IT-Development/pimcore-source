@@ -249,7 +249,7 @@ class ApplicationLogger implements LoggerInterface
         $this->handleLog('debug', $message, func_get_args());
     }
 
-    protected function handleLog(mixed $level, string $message, array $params): void
+    protected function handleLog(mixed $level, string|Stringable $message, array $params): void
     {
         $context = [];
 

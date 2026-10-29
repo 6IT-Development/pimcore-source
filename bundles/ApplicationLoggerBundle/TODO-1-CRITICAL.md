@@ -52,7 +52,7 @@ explicit column list in both `INSERT INTO archive (cols...)` and `SELECT cols...
 
 ---
 
-## [ ] C-03 – PSR-3 level methods throw `TypeError` for `Stringable` messages
+## [x] C-03 – PSR-3 level methods throw `TypeError` for `Stringable` messages
 
 **File:** `src/ApplicationLogger.php:212-252`
 
