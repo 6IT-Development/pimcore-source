@@ -573,7 +573,7 @@ class Asset extends Element\AbstractElement
                     $this->commit();
 
                     break; // transaction was successfully completed, so we cancel the loop here -> no restart required
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     try {
                         $this->rollBack();
                     } catch (Exception $er) {
@@ -636,7 +636,7 @@ class Asset extends Element\AbstractElement
             }
 
             return $this;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // TODO: we should rollback any files that were moved here,
             // assuming a prior revert has not been done.
             $failureEvent = new AssetEvent($this, $parameters);
@@ -1043,7 +1043,7 @@ class Asset extends Element\AbstractElement
 
             $this->clearThumbnails(true);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             try {
                 $this->rollBack();
             } catch (Exception $er) {
