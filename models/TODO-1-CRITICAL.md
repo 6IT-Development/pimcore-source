@@ -1085,7 +1085,7 @@ tables owned by a class.
 
 ---
 
-## [ ] C-34 – `NotificationService` opens DB transactions and never rolls them back: after any error, later writes in the same request / worker are silently lost
+## [x] C-34 – `NotificationService` opens DB transactions and never rolls them back: after any error, later writes in the same request / worker are silently lost
 
 **Files:** `models/Notification/Service/NotificationService.php:59-84` (`sendToUser()`), `:155-171`
 (`findAndMarkAsRead()`), `:216-223` (`findAll()`), `:245-252` (`findLastUnread()`), `:303-314` (`delete()`), `:324-330`

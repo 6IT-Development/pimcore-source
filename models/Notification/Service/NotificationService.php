@@ -56,8 +56,6 @@ class NotificationService
         ?ElementInterface $element = null
     ): void
     {
-        $this->beginTransaction();
-
         $sender = User::getById($fromUser);
         $recipient = User::getById($userId);
 
@@ -80,8 +78,6 @@ class NotificationService
         $notification->setMessage($message);
         $notification->setLinkedElement($element);
         $notification->save();
-
-        $this->commit();
     }
 
     /**
@@ -154,7 +150,6 @@ class NotificationService
      */
     public function findAndMarkAsRead(int $id, ?int $recipientId = null): Notification
     {
-        $this->beginTransaction();
         $notification = $this->find($id);
 
         if ($notification->getRecipient()?->getId() !== $recipientId) {
@@ -164,7 +159,6 @@ class NotificationService
         if ($recipientId && $recipientId === $notification->getRecipient()?->getId()) {
             $notification->setRead(true);
             $notification->save();
-            $this->commit();
         }
 
         return $notification;
@@ -213,16 +207,11 @@ class NotificationService
             $limit = (int)$limit;
         }
 
-        $this->beginTransaction();
-
-        $result = [
+        // count and items from the same snapshot
+        return $this->transactional(fn () => [
             'total' => $listing->count(),
             'data' => $listing->getItems($offset, $limit),
-        ];
-
-        $this->commit();
-
-        return $result;
+        ]);
     }
 
     /**
@@ -242,16 +231,10 @@ class NotificationService
         $listing->setOrder('DESC');
         $listing->setLimit(1);
 
-        $this->beginTransaction();
-
-        $result = [
+        return $this->transactional(fn () => [
             'total' => $listing->count(),
             'data' => $listing->getData(),
-        ];
-
-        $this->commit();
-
-        return $result;
+        ]);
     }
 
     public function format(Notification $notification): array
@@ -302,15 +285,11 @@ class NotificationService
      */
     public function delete(int $id, ?int $recipientId = null): void
     {
-        $this->beginTransaction();
-
         $notification = $this->find($id);
 
         if ($recipientId && $recipientId === $notification->getRecipient()?->getId()) {
             $notification->delete();
         }
-
-        $this->commit();
     }
 
     /**
@@ -321,28 +300,27 @@ class NotificationService
         $listing = new Listing();
         $listing->setCondition('recipient = ?', [$user]);
 
-        $this->beginTransaction();
-
-        foreach ($listing->getData() as $notification) {
-            $notification->delete();
-        }
-
-        $this->commit();
+        $this->transactional(function () use ($listing): void {
+            foreach ($listing->getData() as $notification) {
+                $notification->delete();
+            }
+        });
     }
 
     /**
+     * Runs $callback in a transaction that is rolled back on any error, so a failure never leaves the shared
+     * connection inside an open transaction (later writes of the request / worker would never be committed).
+     *
+     * @template T
+     *
+     * @param callable(): T $callback
+     *
+     * @return T
+     *
      * @throws Exception
      */
-    private function beginTransaction(): void
+    private function transactional(callable $callback): mixed
     {
-        Db::getConnection()->beginTransaction();
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function commit(): void
-    {
-        Db::getConnection()->commit();
+        return Db::getConnection()->transactional(static fn () => $callback());
     }
 }
