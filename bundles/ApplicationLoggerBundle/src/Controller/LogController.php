@@ -49,6 +49,8 @@ class LogController extends UserAwareController implements KernelControllerEvent
 
     private const int DEFAULT_LIMIT = 50;
 
+    private const int MAX_LIMIT = 1000;
+
     private const string DATE_TIME_PATTERN = '/^(?P<date>\d{4}\-\d{2}\-\d{2})T(?P<time>\d{2}:\d{2}:\d{2})$/';
 
     public function onKernelControllerEvent(ControllerEvent $event): void
@@ -70,8 +72,8 @@ class LogController extends UserAwareController implements KernelControllerEvent
         $qb
             ->select('*')
             ->from(ApplicationLoggerDb::TABLE_NAME)
-            ->setFirstResult($requestSource->getInt('start'))
-            ->setMaxResults($requestSource->getInt('limit', self::DEFAULT_LIMIT))
+            ->setFirstResult(max(0, $requestSource->getInt('start')))
+            ->setMaxResults(min(max(1, $requestSource->getInt('limit', self::DEFAULT_LIMIT)), self::MAX_LIMIT))
             ->orderBy('id', 'DESC');
 
         if (class_exists(QueryParams::class)) {

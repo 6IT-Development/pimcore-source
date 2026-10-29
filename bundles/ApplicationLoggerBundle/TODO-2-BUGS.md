@@ -37,7 +37,7 @@ parent already handles `null` correctly – the event listener should use it (se
 - Empty `filePath` (`''`) is passed to `fileExists()` unchecked.
 **Fix direction:** throw `NotFoundHttpException`, catch `FilesystemException` → 404/400.
 
-### [ ] B-05 – Paging parameters not validated
+### [x] B-05 – Paging parameters not validated
 **Lines:** 71-72
 Negative `start` produces `OFFSET -n` → SQL syntax error (500). `limit` is unbounded (`limit=10000000` loads the
 whole table into memory). Clamp `start >= 0` and `1 <= limit <= max` (e.g. 1000).
