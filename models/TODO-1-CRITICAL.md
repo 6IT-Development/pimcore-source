@@ -807,7 +807,7 @@ Cache::save($site, $cacheKey, ['system', 'site'], null, 999);   // $site->rootDo
 
 ---
 
-## [ ] C-24 – Deleting a site's root page silently deletes the site through the FK cascade: the site definition is lost for good, the domain keeps routing to the deleted path
+## [x] C-24 – Deleting a site's root page silently deletes the site through the FK cascade: the site definition is lost for good, the domain keeps routing to the deleted path
 
 **Files:** `bundles/InstallBundle/dump/install.sql:381-382`; `models/Site.php:399-408`; `models/Site/Dao.php:149-159`;
 `models/Document.php:648`; `models/Element/Recyclebin/**`

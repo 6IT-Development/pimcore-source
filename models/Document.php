@@ -633,6 +633,11 @@ class Document extends Element\AbstractElement
             self::setHideUnpublished($unpublishedStatus);
         }
 
+        // the FK on sites.rootId would remove the site silently (no events, no slug cleanup, stale site caches)
+        if ($site = Site::getByRootId($this->getId())) {
+            $site->delete();
+        }
+
         // remove all properties
         $this->getDao()->deleteAllProperties();
 

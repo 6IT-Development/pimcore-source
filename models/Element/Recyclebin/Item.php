@@ -70,6 +70,14 @@ class Item extends Model\AbstractModel
      */
     protected array $tags = [];
 
+    /**
+     * Definitions of the sites whose root document is the element or one of its children, by document ID. Deleting
+     * the root document deletes the site, so it is kept here to restore it.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    protected array $sites = [];
+
     public static function create(Element\ElementInterface $element, ?Model\User $user = null): void
     {
         $item = new self();
@@ -139,6 +147,7 @@ class Item extends Model\AbstractModel
         }
 
         $this->tags = $this->loadTags();
+        $this->sites = $this->loadSites();
 
         try {
             $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
@@ -200,6 +209,10 @@ class Item extends Model\AbstractModel
         if ($this->tags) {
             $storage->write($this->getStorageFileTags(), json_encode($this->tags, JSON_THROW_ON_ERROR));
         }
+
+        if ($this->sites) {
+            $storage->write($this->getStorageFileSites(), json_encode($this->sites, JSON_THROW_ON_ERROR));
+        }
     }
 
     public function delete(): void
@@ -233,6 +246,16 @@ class Item extends Model\AbstractModel
         $tagIds = array_map(fn (Element\Tag $tag) => $tag->getId(), Element\Tag::getTagsForElement($elementType, $element->getId()));
         if ($tagIds) {
             $this->tags[$elementType][$element->getId()] = $tagIds;
+        }
+
+        if ($element instanceof Document && $site = Model\Site::getByRootId($element->getId())) {
+            $this->sites[$element->getId()] = [
+                'domains' => $site->getDomains(),
+                'mainDomain' => $site->getMainDomain(),
+                'errorDocument' => $site->getErrorDocument(),
+                'localizedErrorDocuments' => $site->getLocalizedErrorDocuments(),
+                'redirectToMainDomain' => $site->getRedirectToMainDomain(),
+            ];
         }
 
         if ($element instanceof Element\ElementDumpStateInterface) {
@@ -291,6 +314,40 @@ class Item extends Model\AbstractModel
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function loadSites(): array
+    {
+        $storage = Storage::get('recycle_bin');
+        $file = $this->getStorageFileSites();
+
+        // items created before the sites were stored don't have this file
+        if (!$storage->fileExists($file)) {
+            return [];
+        }
+
+        $sites = json_decode($storage->read($file), true);
+
+        return is_array($sites) ? $sites : [];
+    }
+
+    private function restoreSite(Element\ElementInterface $element): void
+    {
+        $siteData = $element instanceof Document ? $this->sites[$element->getId()] ?? null : null;
+        if (!$siteData || Model\Site::getByRootId($element->getId())) {
+            return;
+        }
+
+        // the document is restored anyway, a site that cannot be restored (e.g. invalid domains) is only logged
+        try {
+            $site = Model\Site::create($siteData + ['rootId' => $element->getId()]);
+            $site->save();
+        } catch (Exception $e) {
+            Logger::error(sprintf('Unable to restore the site of document %s: %s', $element->getId(), $e));
+        }
+    }
+
+    /**
      * @throws Exception
      */
     protected function doRecursiveRestore(Element\ElementInterface $element): void
@@ -315,6 +372,7 @@ class Item extends Model\AbstractModel
         }
         $element->save(['isRecycleBinRestore' => true]);
         $this->restoreTags($element);
+        $this->restoreSite($element);
 
         if (method_exists($element, 'getChildren')) {
             if ($element instanceof DataObject\AbstractObject) {
@@ -419,6 +477,12 @@ class Item extends Model\AbstractModel
     {
         // the "<id>_" prefix makes delete() remove it together with the binary files
         return sprintf('%s/%s_tags.json', $this->getType(), $this->getId());
+    }
+
+    private function getStorageFileSites(): string
+    {
+        // the "<id>_" prefix makes delete() remove it together with the binary files
+        return sprintf('%s/%s_sites.json', $this->getType(), $this->getId());
     }
 
     protected function getStorageFileBinary(Element\ElementInterface $element): string
