@@ -1229,7 +1229,7 @@ message per due task so one failure cannot block the queue (I-98). Related: C-37
 
 ---
 
-## [ ] C-37 – Scheduled tasks run without a permission check for deleted users, and `publish-version` saves any version id (other elements overwritten)
+## [x] C-37 – Scheduled tasks run without a permission check for deleted users, and `publish-version` saves any version id (other elements overwritten)
 
 **Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:50-126` (`:50`, `:56-58`, `:83-85`, `:103-105`);
 `models/Element/AbstractElement.php:480-492`; `models/User/AbstractUser.php:44-48`;

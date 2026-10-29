@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\Schedule\Task;
 
+use InvalidArgumentException;
 use Pimcore\Model;
 use Pimcore\Model\Schedule\Task;
 use Pimcore\Tool\Serialize;
@@ -41,6 +42,19 @@ class Dao extends Model\Dao\AbstractDao
 
     public function save(): void
     {
+        if ($this->model->getVersion()) {
+            // a version of another element would be published in place of the task's element
+            $version = $this->db->fetchAssociative('SELECT cid, ctype FROM versions WHERE id = ?', [$this->model->getVersion()]);
+            if ($version && ((int)$version['cid'] !== $this->model->getCid() || $version['ctype'] !== $this->model->getCtype())) {
+                throw new InvalidArgumentException(sprintf(
+                    'Version %d does not belong to %s %d',
+                    $this->model->getVersion(),
+                    (string)$this->model->getCtype(),
+                    (int)$this->model->getCid()
+                ));
+            }
+        }
+
         if (!$this->model->getId()) {
             $this->create();
         }

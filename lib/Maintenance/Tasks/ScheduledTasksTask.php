@@ -66,13 +66,30 @@ class ScheduledTasksTask implements TaskInterface
      */
     private function executeTask(Task $task): void
     {
-        $taskUser = $task->getUserId() ? User::getById($task->getUserId()) : null;
+        $taskUser = null;
+        if ($task->getUserId()) {
+            $taskUser = User::getById($task->getUserId());
+            // without the user the permission checks below would fall back to the full rights of the CLI
+            if (!$taskUser instanceof User || !$taskUser->isActive()) {
+                $this->logger->warning(sprintf(
+                    'Scheduled task ID %d (%s %d) is cancelled: user ID %d does not exist or is inactive',
+                    $task->getId(),
+                    $task->getCtype(),
+                    $task->getCid(),
+                    $task->getUserId()
+                ));
+                $task->setActive(false);
+                $task->save();
+
+                return;
+            }
+        }
 
         if ($task->getCtype() === 'document') {
             $document = Document::getById($task->getCid());
             if ($document instanceof Document) {
                 if ($task->getAction() === 'publish-version' && $task->getVersion() && $document->isAllowed('publish', $taskUser) && $document->isAllowed('versions', $taskUser)) {
-                    if ($version = Version::getById($task->getVersion())) {
+                    if ($version = $this->getVersionOfTask($task)) {
                         $document = $version->getData();
                         if ($document instanceof Document) {
                             $document->setPublished(true);
@@ -81,7 +98,7 @@ class ScheduledTasksTask implements TaskInterface
                             $this->logger->error('Schedule\\Task\\Executor: Could not restore document from version data.');
                         }
                     } else {
-                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist.');
+                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist or does not belong to the element of the task.');
                     }
                 } elseif ($task->getAction() === 'publish' && $document->isAllowed('publish', $taskUser)) {
                     $document->setPublished(true);
@@ -98,7 +115,7 @@ class ScheduledTasksTask implements TaskInterface
 
             if ($asset instanceof Asset) {
                 if ($task->getAction() === 'publish-version' && $task->getVersion() && $asset->isAllowed('publish', $taskUser) && $asset->isAllowed('versions', $taskUser)) {
-                    if ($version = Version::getById($task->getVersion())) {
+                    if ($version = $this->getVersionOfTask($task)) {
                         $asset = $version->getData();
                         if ($asset instanceof Asset) {
                             $asset->save();
@@ -106,7 +123,7 @@ class ScheduledTasksTask implements TaskInterface
                             $this->logger->error('Schedule\\Task\\Executor: Could not restore asset from version data.');
                         }
                     } else {
-                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist.');
+                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist or does not belong to the element of the task.');
                     }
                 } elseif ($task->getAction() === 'delete' && $asset->isAllowed('delete', $taskUser)) {
                     $this->deleteElement($asset, $taskUser);
@@ -117,7 +134,7 @@ class ScheduledTasksTask implements TaskInterface
 
             if ($object instanceof DataObject\Concrete) {
                 if ($task->getAction() === 'publish-version' && $task->getVersion() && $object->isAllowed('publish', $taskUser) && $object->isAllowed('versions', $taskUser)) {
-                    if ($version = Version::getById($task->getVersion())) {
+                    if ($version = $this->getVersionOfTask($task)) {
                         $object = $version->getData();
                         if ($object instanceof DataObject\Concrete) {
                             $object->setPublished(true);
@@ -126,7 +143,7 @@ class ScheduledTasksTask implements TaskInterface
                             $this->logger->error('Schedule\\Task\\Executor: Could not restore object from version data.');
                         }
                     } else {
-                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist.');
+                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist or does not belong to the element of the task.');
                     }
                 } elseif ($task->getAction() === 'publish' && $object->isAllowed('publish', $taskUser)) {
                     $object->setPublished(true);
@@ -142,6 +159,21 @@ class ScheduledTasksTask implements TaskInterface
 
         $task->setActive(false);
         $task->save();
+    }
+
+    /**
+     * The version must belong to the element of the task: the permission checks ran on that element, the element
+     * that is saved is the one inside the version.
+     */
+    private function getVersionOfTask(Task $task): ?Version
+    {
+        $version = Version::getById($task->getVersion());
+
+        if ($version && $version->getCid() === $task->getCid() && $version->getCtype() === $task->getCtype()) {
+            return $version;
+        }
+
+        return null;
     }
 
     /**
