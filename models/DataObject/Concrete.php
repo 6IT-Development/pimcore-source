@@ -33,6 +33,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Relations\AbstractRelations;
 use Pimcore\Model\DataObject\Exception\InheritanceParentNotFoundException;
 use Pimcore\Model\Element\DirtyIndicatorInterface;
 use Pimcore\SystemSettingsConfig;
+use Throwable;
 
 /**
  * @method Model\DataObject\Concrete\Dao getDao()
@@ -274,7 +275,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
             }
 
             return $version;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $postUpdateFailureEvent = new DataObjectEvent($this, [
                 'saveVersionOnly' => true,
                 'exception' => $e,

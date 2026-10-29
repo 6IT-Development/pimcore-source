@@ -863,7 +863,7 @@ parameters; the same for both `cpath` updates, plus `AND ctype = :ctype` on `pro
 
 ---
 
-## [ ] C-26 – Document / DataObject `save()` and `delete()` catch only `Exception`: an `Error` leaves the DB transaction open (and global flags changed) in workers
+## [x] C-26 – Document / DataObject `save()` and `delete()` catch only `Exception`: an `Error` leaves the DB transaction open (and global flags changed) in workers
 
 **Files:** `models/Document.php:310-366` (inner retry `catch (Exception $e)` at `:346`), `:399`, `delete()` `:648-690`
 (`:672`); `models/DataObject/AbstractObject.php:518-590` (`:557`), `:626`, `delete()` `:448-492` (`:468`);

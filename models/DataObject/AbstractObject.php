@@ -33,6 +33,7 @@ use Pimcore\Model\DataObject;
 use Pimcore\Model\Element;
 use Pimcore\Model\Element\DuplicateFullPathException;
 use Pimcore\Model\Element\ElementInterface;
+use Throwable;
 
 /**
  * @method AbstractObject\Dao getDao()
@@ -465,7 +466,7 @@ abstract class AbstractObject extends Model\Element\AbstractElement
                     $parent->setChildren(null);
                 }
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             try {
                 $this->rollBack();
             } catch (Exception $er) {
@@ -495,9 +496,9 @@ abstract class AbstractObject extends Model\Element\AbstractElement
     {
         $isUpdate = false;
         $differentOldPath = null;
+        $isDirtyDetectionDisabled = self::isDirtyDetectionDisabled();
 
         try {
-            $isDirtyDetectionDisabled = self::isDirtyDetectionDisabled();
             $preEvent = new DataObjectEvent($this, $parameters);
             if ($this->getId()) {
                 $isUpdate = true;
@@ -554,7 +555,7 @@ abstract class AbstractObject extends Model\Element\AbstractElement
                     $this->commit();
 
                     break; // transaction was successfully completed, so we cancel the loop here -> no restart required
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     try {
                         $this->rollBack();
                     } catch (Exception $er) {
@@ -623,7 +624,12 @@ abstract class AbstractObject extends Model\Element\AbstractElement
             }
 
             return $this;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
+            // dirty detection is disabled for new objects, it would stay disabled for the whole process
+            if (!$isUpdate) {
+                self::setDisableDirtyDetection($isDirtyDetectionDisabled);
+            }
+
             $failureEvent = new DataObjectEvent($this, $parameters);
             $failureEvent->setArgument('exception', $e);
             if ($isUpdate) {

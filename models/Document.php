@@ -39,6 +39,7 @@ use Pimcore\Tool\Frontend as FrontendTool;
 use ReflectionClass;
 use Symfony\Cmf\Bundle\RoutingBundle\Routing\DynamicRouter;
 use Symfony\Component\EventDispatcher\GenericEvent;
+use Throwable;
 
 /**
  * @method Dao getDao()
@@ -343,7 +344,7 @@ class Document extends Element\AbstractElement
                     $this->commit();
 
                     break; // transaction was successfully completed, so we cancel the loop here -> no restart required
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     try {
                         $this->rollBack();
                     } catch (Exception $er) {
@@ -396,7 +397,7 @@ class Document extends Element\AbstractElement
             }
 
             return $this;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $failureEvent = new DocumentEvent($this, $parameters);
             $failureEvent->setArgument('exception', $e);
             if ($isUpdate) {
@@ -625,12 +626,15 @@ class Document extends Element\AbstractElement
             // delete also unpublished children
             $unpublishedStatus = self::doHideUnpublished();
             self::setHideUnpublished(false);
-            foreach ($this->getChildren(true) as $child) {
-                if (!$child instanceof WrapperInterface) {
-                    $child->delete();
+            try {
+                foreach ($this->getChildren(true) as $child) {
+                    if (!$child instanceof WrapperInterface) {
+                        $child->delete();
+                    }
                 }
+            } finally {
+                self::setHideUnpublished($unpublishedStatus);
             }
-            self::setHideUnpublished($unpublishedStatus);
         }
 
         // the FK on sites.rootId would remove the site silently (no events, no slug cleanup, stale site caches)
@@ -674,8 +678,14 @@ class Document extends Element\AbstractElement
                     $parent->setChildren(null);
                 }
             }
-        } catch (Exception $e) {
-            $this->rollBack();
+        } catch (Throwable $e) {
+            try {
+                $this->rollBack();
+            } catch (Exception $er) {
+                // PDO adapter throws exceptions if rollback fails
+                Logger::info((string)$er);
+            }
+
             $failureEvent = new DocumentEvent($this);
             $failureEvent->setArgument('exception', $e);
             $this->dispatchEvent($failureEvent, DocumentEvents::POST_DELETE_FAILURE);

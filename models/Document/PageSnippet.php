@@ -32,6 +32,7 @@ use Pimcore\Model\Document\Editable\Loader\EditableLoaderInterface;
 use Pimcore\SystemSettingsConfig;
 use Pimcore\Tool;
 use Pimcore\Tool\Frontend;
+use Throwable;
 
 /**
  * @method Model\Document\PageSnippet\Dao getDao()
@@ -205,7 +206,7 @@ abstract class PageSnippet extends Model\Document
             }
 
             return $version;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $postUpdateFailureEvent = new DocumentEvent($this, [
                 'saveVersionOnly' => true,
                 'exception' => $e,
