@@ -43,6 +43,16 @@ class CustomReportController extends UserAwareController
 {
     use JsonHelperTrait;
 
+    /**
+     * Report properties updateAction() takes from the request. The name and the dates are not among them, the name
+     * becomes a file name.
+     */
+    private const array UPDATABLE_PROPERTIES = [
+        'sql', 'dataSourceConfig', 'columnConfiguration', 'niceName', 'group', 'groupIconClass', 'iconClass',
+        'reportClass', 'menuShortcut', 'chartType', 'pieColumn', 'pieLabelColumn', 'xAxis', 'yAxis', 'shareGlobally',
+        'sharedUserNames', 'sharedRoleNames',
+    ];
+
     #[Route('/tree', name: 'pimcore_bundle_customreports_customreport_tree', methods: [Request::METHOD_GET, Request::METHOD_POST])]
     public function treeAction(): JsonResponse
     {
@@ -172,15 +182,17 @@ class CustomReportController extends UserAwareController
         }
 
         $data = $this->decodeJson($request->request->getString('configuration'));
+        if (!is_array($data)) {
+            throw new BadRequestHttpException('Invalid report configuration');
+        }
 
-        if (!is_array($data['yAxis'])) {
+        if (!is_array($data['yAxis'] ?? null)) {
             $data['yAxis'] = strlen($data['yAxis'] ?? '') ? [$data['yAxis']] : [];
         }
 
-        foreach ($data as $key => $value) {
-            $setter = 'set' . ucfirst($key);
-            if (method_exists($report, $setter)) {
-                $report->$setter($value);
+        foreach (self::UPDATABLE_PROPERTIES as $key) {
+            if (array_key_exists($key, $data)) {
+                $report->{'set' . ucfirst($key)}($data[$key]);
             }
         }
 

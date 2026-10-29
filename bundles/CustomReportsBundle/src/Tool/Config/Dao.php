@@ -76,6 +76,11 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function save(): void
     {
+        // the name becomes a file name of the YAML write target
+        if (!preg_match('/^[a-zA-Z0-9_\-]+$/D', $this->model->getName())) {
+            throw new Exception(sprintf('Invalid custom report name "%s"', $this->model->getName()));
+        }
+
         $ts = time();
         if (!$this->model->getCreationDate()) {
             $this->model->setCreationDate($ts);

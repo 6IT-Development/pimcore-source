@@ -100,7 +100,7 @@ to `reports_config`, or return a reduced view model (no SQL, no sharing data) fo
 
 ---
 
-## [ ] C-04 – Mass assignment in `updateAction` allows renaming the report → path traversal file write
+## [x] C-04 – Mass assignment in `updateAction` allows renaming the report → path traversal file write
 
 **Files:** `src/Controller/Reports/CustomReportController.php:157-187`, `src/Tool/Config/Dao.php:77-97`,
 `lib/Config/LocationAwareConfigRepository.php:195-205`, `:236-241`
