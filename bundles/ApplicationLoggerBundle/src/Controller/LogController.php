@@ -36,7 +36,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 class LogController extends UserAwareController implements KernelControllerEventInterface
@@ -51,9 +50,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
 
     public function onKernelControllerEvent(ControllerEvent $event): void
     {
-        if (!$this->getPimcoreUser()->isAllowed(self::PERMISSION)) {
-            throw new AccessDeniedHttpException(sprintf("Permission denied, user needs '%s' permission.", self::PERMISSION));
-        }
+        $this->checkPermission(self::PERMISSION);
     }
 
     #[Route('/log/show', name: 'pimcore_admin_bundle_applicationlogger_log_show', methods: [Request::METHOD_GET, Request::METHOD_POST])]

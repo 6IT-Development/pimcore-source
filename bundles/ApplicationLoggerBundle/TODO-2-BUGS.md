@@ -25,7 +25,7 @@ convert to UTC before binding.
 **Lines:** 113-115
 Filtering for PID `12` also returns `112`, `1203`, … and cannot use an index. PID is an integer → use `pid = :pid`.
 
-### [ ] B-03 – Null user causes a 500 instead of 403
+### [x] B-03 – Null user causes a 500 instead of 403
 **Lines:** 50-55
 `getPimcoreUser()` returns `User|UserProxy|null`; `->isAllowed()` on `null` throws `Error`. `checkPermission()` in the
 parent already handles `null` correctly – the event listener should use it (see also I-21).
