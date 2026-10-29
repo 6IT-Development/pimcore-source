@@ -293,13 +293,15 @@ expire instead of releasing from a different key.
 
 **Fix direction:** move post-commit storage cleanup out of the transactional `try`; log its errors.
 
-## [ ] B-11 – `Asset::create()` leaks its temp file when `save()` throws
+## [x] B-11 – `Asset::create()` leaks its temp file when `save()` throws
 
 **File:** `models/Asset.php:405-411`
 
 - `unlink($tmpFile)` is skipped on exception; files accumulate in `PIMCORE_SYSTEM_TEMP_DIRECTORY`.
 
 **Fix direction:** `try/finally` (together with C-03 / C-04).
+
+**Done:** fixed by `f215fb75ee` (C-03), which moved the temp file removal of `create()` into `finally`.
 
 ## [ ] B-12 – `Asset::create()` passes `null`/`false` into typed functions
 
