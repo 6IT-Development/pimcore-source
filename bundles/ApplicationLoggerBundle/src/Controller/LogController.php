@@ -24,18 +24,21 @@ use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
+use League\Flysystem\FilesystemException;
+use League\Flysystem\PathTraversalDetected;
 use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Controller\KernelControllerEventInterface;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
 use Pimcore\Tool\Storage;
-use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 class LogController extends UserAwareController implements KernelControllerEventInterface
@@ -175,13 +178,23 @@ class LogController extends UserAwareController implements KernelControllerEvent
         $this->checkPermission(self::PERMISSION);
 
         $filePath = $request->query->getString('filePath');
-        $storage = Storage::get('application_log');
-
-        if (!$storage->fileExists($filePath)) {
-            throw new FileNotFoundException($filePath);
+        if ('' === $filePath) {
+            throw new BadRequestHttpException('Parameter "filePath" is missing.');
         }
 
-        $fileData = $storage->readStream($filePath);
+        $storage = Storage::get('application_log');
+
+        try {
+            if (!$storage->fileExists($filePath)) {
+                throw new NotFoundHttpException(sprintf('File object "%s" not found.', $filePath));
+            }
+
+            $fileData = $storage->readStream($filePath);
+        } catch (PathTraversalDetected $e) {
+            throw new BadRequestHttpException(sprintf('Invalid file object path "%s".', $filePath), $e);
+        } catch (FilesystemException $e) {
+            throw new NotFoundHttpException(sprintf('File object "%s" could not be read.', $filePath), $e);
+        }
 
         return new StreamedResponse(
             static function () use ($fileData): void {

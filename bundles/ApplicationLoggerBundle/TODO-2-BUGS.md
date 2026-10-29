@@ -30,7 +30,7 @@ Filtering for PID `12` also returns `112`, `1203`, … and cannot use an index. 
 `getPimcoreUser()` returns `User|UserProxy|null`; `->isAllowed()` on `null` throws `Error`. `checkPermission()` in the
 parent already handles `null` correctly – the event listener should use it (see also I-21).
 
-### [ ] B-04 – `show-file-object` returns 500 for missing/invalid paths
+### [x] B-04 – `show-file-object` returns 500 for missing/invalid paths
 **Lines:** 171-193
 - `Symfony\Component\Filesystem\Exception\FileNotFoundException` is not an `HttpExceptionInterface` → 500 instead of 404.
 - `filePath` containing traversal (`../`) makes Flysystem throw `PathTraversalDetected` → uncaught 500.
