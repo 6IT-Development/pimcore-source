@@ -669,7 +669,7 @@ this path (only rows whose `creationDate = modificationDate` and `userModificati
 
 ---
 
-## [ ] C-20 – View-only translation users can save every language: `Dao::save()` treats "no edit languages" as "no restriction"
+## [x] C-20 – View-only translation users can save every language: `Dao::save()` treats "no edit languages" as "no restriction"
 
 **Files:** `models/Translation/Dao.php:92-105`; `models/User.php:601-620`
 

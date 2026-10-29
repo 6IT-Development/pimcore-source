@@ -89,7 +89,8 @@ class Dao extends Model\Dao\AbstractDao
 
         $user = null;
 
-        $editableLanguages = [];
+        // null means no restriction, an empty array means the user may edit no language at all
+        $editableLanguages = null;
         if ($this->model->getDomain() != Translation::DOMAIN_ADMIN) {
             if ($user = User::getById($this->model->getUserModification())) {
                 $editableLanguages = $user->getAllowedLanguagesForEditingWebsiteTranslations();
@@ -101,7 +102,7 @@ class Dao extends Model\Dao\AbstractDao
                 // setTranslations() does not type its values, never write a NULL (it breaks the catalogue)
                 $text = (string)$text;
 
-                if (count($editableLanguages) && !in_array($language, $editableLanguages)) {
+                if ($editableLanguages !== null && !in_array($language, $editableLanguages, true)) {
                     Logger::warning(sprintf('User %s not allowed to edit %s translation', $user?->getUsername() ?? 'N/A', $language)); // @phpstan-ignore-line
 
                     continue;
