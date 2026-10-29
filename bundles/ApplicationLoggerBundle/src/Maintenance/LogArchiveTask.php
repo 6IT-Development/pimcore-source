@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
 
-use Carbon\Carbon;
 use DateInterval;
 use DateTime;
 use DateTimeImmutable;
@@ -104,11 +103,18 @@ readonly class LogArchiveTask implements TaskInterface
 
         foreach ($archiveTables as $archiveTable) {
             if (preg_match('/^' . ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_(\d{4})_(\d{2})$/', $archiveTable, $matches)) {
-                $deleteArchiveLogDate = Carbon::createFromFormat('Y/m', $matches[1] . '/' . $matches[2]);
-                if ($deleteArchiveLogDate->add(new DateInterval('P' . ($this->config['applicationlog']['delete_archive_threshold'] ?? 6) . 'M')) < new DateTimeImmutable()) {
+                // "!" resets day and time, otherwise they are taken from now and e.g. 2026/02 becomes 2026-03-03 on the 31st
+                $archiveLogDate = DateTimeImmutable::createFromFormat('!Y/m', $matches[1] . '/' . $matches[2]);
+                if ($archiveLogDate === false) {
+                    continue;
+                }
+
+                $deleteArchiveLogDate = $archiveLogDate->add(new DateInterval('P' . (int)($this->config['applicationlog']['delete_archive_threshold'] ?? 6) . 'M'));
+                if ($deleteArchiveLogDate < new DateTimeImmutable()) {
                     $db->executeStatement('DROP TABLE IF EXISTS `' . ($this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase()) . '`.' . $archiveTable);
 
-                    $folderName = $deleteArchiveLogDate->format('Y/m');
+                    // the folder of the archived month, not of the month the archive expires
+                    $folderName = $archiveLogDate->format('Y/m');
 
                     if ($storage->directoryExists($folderName)) {
                         $storage->deleteDirectory($folderName);

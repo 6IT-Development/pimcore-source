@@ -9,7 +9,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – LogArchiveTask deletes the FileObject folder of the wrong (recent) month → data loss
+## [x] C-01 – LogArchiveTask deletes the FileObject folder of the wrong (recent) month → data loss
 
 **File:** `src/Maintenance/LogArchiveTask.php:107-115`
 
