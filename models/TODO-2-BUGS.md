@@ -228,7 +228,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** count only `FileAttributes`.
 
-## [ ] B-04 – `PRE_GET_METADATA` listener result is written into the model and then persisted
+## [x] B-04 – `PRE_GET_METADATA` listener result is written into the model and then persisted
 
 **File:** `models/Asset.php:1489-1492`; `models/Asset/Dao.php:138`
 

@@ -1508,13 +1508,13 @@ class Asset extends Element\AbstractElement
         $preEvent = new AssetEvent($this);
         $preEvent->setArgument('metadata', $this->metadata);
         $this->dispatchEvent($preEvent, AssetEvents::PRE_GET_METADATA);
-        $this->metadata = $preEvent->getArgument('metadata');
+        // the listener result only affects the returned value, it must not end up in the model (and be saved)
+        $metaData = $preEvent->getArgument('metadata');
 
         if ($name) {
-            return $this->getMetadataByName($name, $language, $strictMatchLanguage, $raw);
+            return $this->findMetadataByName($metaData, $name, $language, $strictMatchLanguage, $raw);
         }
 
-        $metaData = $this->getObjectVar('metadata');
         $result = [];
         $metaDataWithLanguage = [];
         if (is_array($metaData)) {
@@ -1573,13 +1573,25 @@ class Asset extends Element\AbstractElement
         bool    $raw = false
     ): mixed
     {
+        return $this->findMetadataByName($this->metadata, $name, $language, $strictMatchLanguage, $raw);
+    }
+
+    private function findMetadataByName(
+        array   $metadata,
+        string  $name,
+        ?string $language,
+        bool    $strictMatchLanguage,
+        bool    $raw
+    ): mixed
+    {
         $result = null;
         $data = null;
         if ($language === null) {
             $language = Pimcore::getContainer()->get(LocaleServiceInterface::class)->findLocale();
         }
 
-        foreach ($this->metadata as $md) {
+        foreach ($metadata as $md) {
+            $md = (array)$md;
             if ($md['name'] == $name) {
                 if ($language == $md['language'] || (empty($md['language']) && !$strictMatchLanguage)) {
                     $data = $md;

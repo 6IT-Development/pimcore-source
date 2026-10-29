@@ -134,13 +134,15 @@ class Dao extends Model\Element\Dao
             $this->db->delete('assets_metadata', ['cid' => $this->model->getId()]);
         }
 
+        // read the model state directly, getMetadata() applies PRE_GET_METADATA listeners
         /** @var array $metadata */
-        $metadata = $this->model->getMetadata(null, null, false, true);
+        $metadata = $this->model->getObjectVar('metadata');
 
         $data['hasMetaData'] = 0;
         $metadataItems = [];
         if (!empty($metadata)) {
             foreach ($metadata as $metadataItem) {
+                $metadataItem = (array)$metadataItem;
                 $metadataItem['cid'] = $this->model->getId();
                 unset($metadataItem['config']);
 
