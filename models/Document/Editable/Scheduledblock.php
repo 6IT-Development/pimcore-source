@@ -107,12 +107,21 @@ class Scheduledblock extends Block implements BlockInterface
     /**
      * Set cache lifetime to timestamp of next element
      */
-    private function updateOutputCacheLifetime(int $outputTimestamp, array $nextElement): void
+    private function updateOutputCacheLifetime(int $outputTimestamp, ?array $nextElement): void
     {
+        // no scheduled change ahead, the output does not expire because of this block
+        if ($nextElement === null) {
+            return;
+        }
+
         $cacheService = Pimcore::getContainer()->get(FullPageCacheListener::class);
 
         if ($cacheService->isEnabled()) {
-            $calculatedLifetime = $nextElement['date'] - $outputTimestamp;
+            $calculatedLifetime = (int)$nextElement['date'] - $outputTimestamp;
+            if ($calculatedLifetime <= 0) {
+                return;
+            }
+
             $currentLifetime = $cacheService->getLifetime();
 
             if (empty($currentLifetime) || $currentLifetime > $calculatedLifetime) {

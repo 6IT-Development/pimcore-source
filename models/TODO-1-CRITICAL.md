@@ -918,7 +918,7 @@ implement `ResetInterface` and tag the service with `kernel.reset`.
 
 ---
 
-## [ ] C-28 – Scheduled block: frontend 500 as soon as no entry lies in the future (`updateOutputCacheLifetime()` receives `null`)
+## [x] C-28 – Scheduled block: frontend 500 as soon as no entry lies in the future (`updateOutputCacheLifetime()` receives `null`)
 
 **File:** `models/Document/Editable/Scheduledblock.php:70-122` (`:83`, `:87-89`, `:95`, `:110`)
 
