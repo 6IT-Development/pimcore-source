@@ -208,17 +208,29 @@ class Processor
 
         if (!$instanceItem) {
             Logger::error('Video conversion job with processId "' . $processId . '" not found in TmpStore.');
-            if ($assetId) {
-                $asset = Model\Asset::getById($assetId);
+            $asset = $assetId ? Model\Asset::getById($assetId) : null;
+            if ($asset) {
+                // the job (and with it the config) is gone, find the thumbnail entries by their process id
                 $customSetting = $asset->getCustomSetting('thumbnails');
                 $customSetting = is_array($customSetting) ? $customSetting : [];
-                if (array_key_exists($instance->getConfig()->getName(), $customSetting)) {
-                    $customSetting[$instance->getConfig()->getName()]['status'] = 'error';
+                $changed = false;
+                foreach ($customSetting as $configName => $thumbnailSetting) {
+                    if (is_array($thumbnailSetting) && ($thumbnailSetting['processId'] ?? null) === $processId) {
+                        $customSetting[$configName]['status'] = 'error';
+                        $changed = true;
+                    }
+                }
+
+                if ($changed) {
                     $asset->setCustomSetting('thumbnails', $customSetting);
 
                     Model\Version::disable();
-                    $asset->save();
-                    Model\Version::enable();
+
+                    try {
+                        $asset->save();
+                    } finally {
+                        Model\Version::enable();
+                    }
                 }
             }
 
@@ -233,71 +245,86 @@ class Processor
         $formats = [];
         $conversionStatus = 'finished';
 
+        $asset = Model\Asset::getById($instance->getAssetId());
+        if (!$asset) {
+            Logger::warning('Video conversion job with processId "' . $processId . '" skipped, asset ' . $instance->getAssetId() . ' does not exist anymore.');
+            TmpStore::delete($instance->getJobStoreId());
+
+            return;
+        }
+
         // check if there is already a transcoding process running, wait if so ...
         $lock = Pimcore::getContainer()->get(LockFactory::class)->createLock('video-transcoding', 7200);
         $lock->acquire(true);
 
-        $asset = Model\Asset::getById($instance->getAssetId());
-        $workerSourceFile = $asset->getTemporaryFile();
+        $workerSourceFile = null;
 
-        // start converting
-        foreach ($instance->queue as $converter) {
-            try {
-                $converter->load($workerSourceFile, ['asset' => $asset]);
+        try {
+            $workerSourceFile = $asset->getTemporaryFile();
 
-                Logger::info('start video ' . $converter->getFormat() . ' to ' . $converter->getDestinationFile());
-                $success = $converter->save();
-                Logger::info('finished video ' . $converter->getFormat() . ' to ' . $converter->getDestinationFile());
+            // start converting
+            foreach ($instance->queue as $converter) {
+                try {
+                    $converter->load($workerSourceFile, ['asset' => $asset]);
 
-                if ($success) {
-                    $source = fopen($converter->getDestinationFile(), 'rb');
-                    if (false === $source) {
-                        $conversionStatus = 'error';
-                        Logger::info('could not open stream resource at path "' . $converter->getDestinationFile() . '" for Video conversion.');
+                    Logger::info('start video ' . $converter->getFormat() . ' to ' . $converter->getDestinationFile());
+                    $success = $converter->save();
+                    Logger::info('finished video ' . $converter->getFormat() . ' to ' . $converter->getDestinationFile());
 
-                        continue;
-                    }
-                    Storage::get('thumbnail')->writeStream($converter->getStorageFile(), $source);
+                    if ($success) {
+                        $source = fopen($converter->getDestinationFile(), 'rb');
+                        if (false === $source) {
+                            $conversionStatus = 'error';
+                            Logger::info('could not open stream resource at path "' . $converter->getDestinationFile() . '" for Video conversion.');
 
-                    fclose($source);
+                            continue;
+                        }
+                        Storage::get('thumbnail')->writeStream($converter->getStorageFile(), $source);
 
-                    unlink($converter->getDestinationFile());
+                        fclose($source);
 
-                    if ($converter->getFormat() === 'mpd') {
-                        $streamFilesPath = str_replace('.mpd', '-stream*.mp4', $converter->getDestinationFile());
-                        $streams = glob($streamFilesPath);
-                        $parentPath = dirname($converter->getStorageFile());
+                        unlink($converter->getDestinationFile());
 
-                        foreach ($streams as $steam) {
-                            $storagePath = $parentPath . '/' . basename($steam);
-                            $source = fopen($steam, 'rb');
-                            Storage::get('thumbnail')->writeStream($storagePath, $source);
+                        if ($converter->getFormat() === 'mpd') {
+                            $streamFilesPath = str_replace('.mpd', '-stream*.mp4', $converter->getDestinationFile());
+                            $streams = glob($streamFilesPath);
+                            $parentPath = dirname($converter->getStorageFile());
 
-                            if (is_resource($source)) {
-                                fclose($source);
+                            foreach ($streams as $steam) {
+                                $storagePath = $parentPath . '/' . basename($steam);
+                                $source = fopen($steam, 'rb');
+                                Storage::get('thumbnail')->writeStream($storagePath, $source);
+
+                                if (is_resource($source)) {
+                                    fclose($source);
+                                }
                             }
                         }
+
+                        $formats[$converter->getFormat()] = preg_replace(
+                            '/' . preg_quote($asset->getRealPath(), '/') . '/',
+                            '',
+                            $converter->getStorageFile(),
+                            1
+                        );
+                    } else {
+                        $conversionStatus = 'error';
                     }
 
-                    $formats[$converter->getFormat()] = preg_replace(
-                        '/' . preg_quote($asset->getRealPath(), '/') . '/',
-                        '',
-                        $converter->getStorageFile(),
-                        1
-                    );
-                } else {
-                    $conversionStatus = 'error';
+                    $converter->destroy();
+                } catch (Exception $e) {
+                    Logger::error((string)$e);
                 }
+            }
+        } finally {
+            $lock->release();
 
-                $converter->destroy();
-            } catch (Exception $e) {
-                Logger::error((string)$e);
+            if ($workerSourceFile) {
+                @unlink($workerSourceFile);
             }
         }
 
-        $lock->release();
-
-        if ($asset) {
+        try {
             $customSetting = $asset->getCustomSetting('thumbnails');
             $customSetting = is_array($customSetting) ? $customSetting : [];
 
@@ -314,13 +341,15 @@ class Processor
             $asset->setCustomSetting('thumbnails', $customSetting);
 
             Model\Version::disable();
-            $asset->save();
-            Model\Version::enable();
+
+            try {
+                $asset->save();
+            } finally {
+                Model\Version::enable();
+            }
+        } finally {
+            TmpStore::delete($instance->getJobStoreId());
         }
-
-        @unlink($workerSourceFile);
-
-        TmpStore::delete($instance->getJobStoreId());
     }
 
     public function save(): bool

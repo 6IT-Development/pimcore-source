@@ -425,7 +425,7 @@ $converter->setVideoBitrate($config->getVideoBitrate());   // Ffmpeg::set*Bitrat
 
 ---
 
-## [ ] C-11 – `Video\Thumbnail\Processor::execute()` crashes on a missing job or deleted asset; the global lock and TmpStore entry are never released
+## [x] C-11 – `Video\Thumbnail\Processor::execute()` crashes on a missing job or deleted asset; the global lock and TmpStore entry are never released
 
 **File:** `models/Asset/Video/Thumbnail/Processor.php:200-221` (job-not-found branch), `:231-236`, `:288-293`
 
