@@ -53,7 +53,7 @@ Document clearly that `reports_config` is equivalent to DB read access.
 
 ---
 
-## [ ] C-02 – SQL injection via unquoted column identifiers – reachable with the `reports` (view-only) permission
+## [x] C-02 – SQL injection via unquoted column identifiers – reachable with the `reports` (view-only) permission
 
 **File:** `src/Tool/Adapter/Sql.php:190-191`, `:153`, `:173`, `:178`, `:208`, `:211`
 

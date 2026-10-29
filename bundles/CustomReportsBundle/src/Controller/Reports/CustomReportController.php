@@ -31,6 +31,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Exception\InvalidArgumentException;
 
@@ -277,7 +278,7 @@ class CustomReportController extends UserAwareController
         }
         $configuration = $config->getDataSourceConfig();
         $adapter = Tool\Config::getAdapter($configuration, $config);
-        $sortFilters = $this->getSortAndFilters($request, $configuration);
+        $sortFilters = $this->getSortAndFilters($request, $configuration, $config);
         $result = $adapter->getData($sortFilters['filters'], $sortFilters['sort'], $sortFilters['dir'], $offset, $limit, null, $sortFilters['drillDownFilters']);
 
         return $this->jsonResponse([
@@ -300,6 +301,7 @@ class CustomReportController extends UserAwareController
         if (!$config) {
             throw $this->createNotFoundException();
         }
+        $this->validateRequestColumns($config, $filters, $drillDownFilters, [$field]);
         $configuration = $config->getDataSourceConfig();
 
         $adapter = Tool\Config::getAdapter($configuration, $config);
@@ -321,7 +323,7 @@ class CustomReportController extends UserAwareController
         }
         $configuration = $config->getDataSourceConfig();
         $adapter = Tool\Config::getAdapter($configuration, $config);
-        $sortFilters = $this->getSortAndFilters($request, $configuration);
+        $sortFilters = $this->getSortAndFilters($request, $configuration, $config);
         $result = $adapter->getData($sortFilters['filters'], $sortFilters['sort'], $sortFilters['dir'], null, null, null, $sortFilters['drillDownFilters']);
 
         return $this->jsonResponse([
@@ -352,15 +354,14 @@ class CustomReportController extends UserAwareController
         $dir = $request->query->getString('dir');
         $filters = $request->query->has('filter') ? json_decode(urldecode($request->query->getString('filter')), true) : null;
         $drillDownFilters = $request->query->getString('drillDownFilters');
-        if ($drillDownFilters) {
-            $drillDownFilters = json_decode($drillDownFilters, true);
-        }
+        $drillDownFilters = $drillDownFilters ? json_decode($drillDownFilters, true) : null;
         $includeHeaders = $request->query->getBoolean('headers');
 
         $config = Tool\Config::getByName($request->query->getString('name'));
         if (!$config) {
             throw $this->createNotFoundException();
         }
+        $this->validateRequestColumns($config, $filters, $drillDownFilters, $sort !== '' ? [$sort] : []);
 
         $columns = $config->getColumnConfiguration();
         $fields = [];
@@ -437,8 +438,36 @@ class CustomReportController extends UserAwareController
         }
     }
 
+    /**
+     * Rejects column names from the request (filter properties, drill-down filters, sort or option field) that are
+     * not columns of the report, they end up as identifiers in the report SQL.
+     */
+    private function validateRequestColumns(Tool\Config $config, mixed $filters, mixed $drillDownFilters, array $fields = []): void
+    {
+        if ($filters !== null && !is_array($filters)) {
+            throw new BadRequestHttpException('Invalid report filters');
+        }
+        if ($drillDownFilters !== null && !is_array($drillDownFilters)) {
+            throw new BadRequestHttpException('Invalid report drill-down filters');
+        }
+
+        foreach ($filters ?? [] as $filter) {
+            $fields[] = is_array($filter) ? ($filter['property'] ?? null) : null;
+        }
+        foreach (array_keys($drillDownFilters ?? []) as $field) {
+            $fields[] = (string) $field;
+        }
+
+        $columns = array_column($config->getColumnConfiguration(), 'name');
+        foreach ($fields as $field) {
+            if (!is_string($field) || !in_array($field, $columns, true)) {
+                throw new BadRequestHttpException('Invalid report column');
+            }
+        }
+    }
+
     // gets the sort, direction, filters, drilldownfilters from grid or initial config
-    private function getSortAndFilters(Request $request, stdClass $configuration): array
+    private function getSortAndFilters(Request $request, stdClass $configuration, Tool\Config $config): array
     {
         $sortingSettings = null;
         $sort = null;
@@ -452,6 +481,7 @@ class CustomReportController extends UserAwareController
         }
         $filters = ($request->request->has('filter') ? json_decode($request->request->getString('filter'), true) : null);
         $drillDownFilters = $request->request->all('drillDownFilters');
+        $this->validateRequestColumns($config, $filters, $drillDownFilters, $sort !== null ? [$sort] : []);
         if ($sort === null && $dir === null && property_exists($configuration, 'orderby') && $configuration->orderby !== '' && $configuration->orderbydir !== '') {
             $sort = $configuration->orderby;
             $dir = $configuration->orderbydir;
