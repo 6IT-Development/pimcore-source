@@ -91,17 +91,17 @@ class Dao extends Model\Dao\AbstractDao
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN objects o ON o.id = d.targetid AND d.targettype= 'object'
-            WHERE d.sourcetype = '" . $sourceType . "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(o.path, o.key)) RLIKE '" . $value . "'
+            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(o.path, o.key)) RLIKE :value
             UNION
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN documents doc ON doc.id = d.targetid AND d.targettype= 'document'
-            WHERE d.sourcetype = '" . $sourceType . "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(doc.path, doc.key)) RLIKE '" . $value . "'
+            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(doc.path, doc.key)) RLIKE :value
             UNION
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN assets a ON a.id = d.targetid AND d.targettype= 'asset'
-            WHERE d.sourcetype = '" . $sourceType . "' AND d.sourceid = " . $sourceId . " AND LOWER(CONCAT(a.path, a.filename)) RLIKE '" . $value . "'
+            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(a.path, a.filename)) RLIKE :value
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
@@ -109,7 +109,12 @@ class Dao extends Model\Dao\AbstractDao
             $query = sprintf($query . ' LIMIT %d,%d', $offset, $limit);
         }
 
-        $requiresByPath = $this->db->fetchAllAssociative($query);
+        // the search value comes from user input, it must only ever be bound as a parameter
+        $requiresByPath = $this->db->fetchAllAssociative($query, [
+            'type' => $sourceType,
+            'id' => $sourceId,
+            'value' => (string)$value,
+        ]);
 
         if (count($requiresByPath) > 0) {
             return $requiresByPath;
@@ -150,17 +155,17 @@ class Dao extends Model\Dao\AbstractDao
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN objects o ON o.id = d.sourceid AND d.targettype= 'object'
-            WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(o.path, o.key)) RLIKE '" . $value . "'
+            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(o.path, o.key)) RLIKE :value
             UNION
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN documents doc ON doc.id = d.sourceid AND d.targettype= 'document'
-            WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(doc.path, doc.key)) RLIKE '" . $value . "'
+            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(doc.path, doc.key)) RLIKE :value
             UNION
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN assets a ON a.id = d.sourceid AND d.targettype= 'asset'
-            WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND LOWER(CONCAT(a.path, a.filename)) RLIKE '" . $value . "'
+            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(a.path, a.filename)) RLIKE :value
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
@@ -168,7 +173,12 @@ class Dao extends Model\Dao\AbstractDao
             $query = sprintf($query . ' LIMIT %d,%d', $offset, $limit);
         }
 
-        $requiredByPath = $this->db->fetchAllAssociative($query);
+        // the search value comes from user input, it must only ever be bound as a parameter
+        $requiredByPath = $this->db->fetchAllAssociative($query, [
+            'type' => $targetType,
+            'id' => $targetId,
+            'value' => (string)$value,
+        ]);
 
         if (count($requiredByPath) > 0) {
             return $requiredByPath;

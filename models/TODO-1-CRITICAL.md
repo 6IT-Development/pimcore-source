@@ -557,7 +557,7 @@ result as `UNKNOWN`/unsafe unless the PDF is actually parsed; return the `PdfSca
 
 ---
 
-## [ ] C-16 – Dependency filter concatenates the raw search value into SQL (SQL injection; any `'` breaks the query)
+## [x] C-16 – Dependency filter concatenates the raw search value into SQL (SQL injection; any `'` breaks the query)
 
 **Files:** `models/Dependency/Dao.php:94`, `:99`, `:104` (`getFilterRequiresByPath()`), `:153`, `:158`, `:163`
 (`getFilterRequiredByPath()`); public wrappers `models/Dependency.php:105-117`
