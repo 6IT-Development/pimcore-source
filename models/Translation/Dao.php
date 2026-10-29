@@ -49,11 +49,12 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function getByKey(string $key, ?array $languages = null): void
     {
+        $table = $this->db->quoteIdentifier($this->getDatabaseTableName());
         if (is_array($languages)) {
-            $sql = 'SELECT * FROM ' . $this->getDatabaseTableName() . ' WHERE `key` = :key
+            $sql = 'SELECT * FROM ' . $table . ' WHERE `key` = :key
             AND `language` IN (:languages) ORDER BY `creationDate` ';
         } else {
-            $sql = 'SELECT * FROM ' . $this->getDatabaseTableName() . ' WHERE `key` = :key ORDER BY `creationDate` ';
+            $sql = 'SELECT * FROM ' . $table . ' WHERE `key` = :key ORDER BY `creationDate` ';
         }
 
         $data = $this->db->fetchAllAssociative($sql,
@@ -133,7 +134,7 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function delete(): void
     {
-        $this->db->delete($this->getDatabaseTableName(), [$this->db->quoteIdentifier('key') => $this->model->getKey()]);
+        $this->db->delete($this->db->quoteIdentifier($this->getDatabaseTableName()), [$this->db->quoteIdentifier('key') => $this->model->getKey()]);
     }
 
     /**
@@ -142,7 +143,7 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function getAvailableLanguages(): array
     {
-        $l = $this->db->fetchAllAssociative('SELECT * FROM ' . $this->getDatabaseTableName() . '  GROUP BY `language`;');
+        $l = $this->db->fetchAllAssociative('SELECT `language` FROM ' . $this->db->quoteIdentifier($this->getDatabaseTableName()) . ' GROUP BY `language`;');
         $languages = [];
 
         foreach ($l as $values) {
@@ -179,12 +180,12 @@ class Dao extends Model\Dao\AbstractDao
     public function isAValidDomain(string $domain): bool
     {
         try {
-            $translationDomains = $this->model::getRegisteredDomains();
-            if (!in_array($domain, $translationDomains)) {
+            if (!preg_match(Translation::DOMAIN_PATTERN, $domain)
+                || !in_array($domain, Translation::getRegisteredDomains(), true)) {
                 return false;
             }
 
-            $this->db->fetchOne(sprintf('SELECT * FROM translations_%s LIMIT 1;', $domain));
+            $this->db->fetchOne('SELECT 1 FROM ' . $this->db->quoteIdentifier(self::TABLE_PREFIX . $domain) . ' LIMIT 1;');
 
             return true;
         } catch (Exception) {
@@ -196,11 +197,10 @@ class Dao extends Model\Dao\AbstractDao
     {
         $table = $this->getDatabaseTableName();
 
-        if ($table == self::TABLE_PREFIX) {
-            throw new Exception('Domain is missing to create new translation domain');
-        }
+        // only registered domains with a plain identifier name get a table
+        Translation::validateDomain($this->model->getDomain());
 
-        $this->db->executeQuery('CREATE TABLE IF NOT EXISTS `' . $table . "` (
+        $this->db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $this->db->quoteIdentifier($table) . " (
                           `key` varchar(190) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
                           `type` varchar(10) DEFAULT NULL,
                           `language` varchar(10) NOT NULL DEFAULT '',

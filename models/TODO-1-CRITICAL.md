@@ -697,7 +697,7 @@ a voter (I-55).
 
 ---
 
-## [ ] C-21 – The translation domain is never validated in the model and goes into SQL identifiers and DDL (`translations_<domain>`)
+## [x] C-21 – The translation domain is never validated in the model and goes into SQL identifiers and DDL (`translations_<domain>`)
 
 **Files:** `models/Translation.php:179-182`, `:246-263`, `:386-444`; `models/Translation/Dao.php:40-43`, `:53-56`,
 `:132`, `:191-210`; `models/Translation/Listing/Dao.php:33-36`

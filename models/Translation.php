@@ -19,6 +19,7 @@ namespace Pimcore\Model;
 
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
+use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
@@ -48,6 +49,11 @@ final class Translation extends AbstractModel
     public const string DOMAIN_DEFAULT = 'messages';
 
     public const string DOMAIN_ADMIN = 'admin';
+
+    /**
+     * @internal
+     */
+    public const string DOMAIN_PATTERN = '/^[a-z0-9_]+$/i';
 
     protected ?string $key = null;
 
@@ -176,9 +182,33 @@ final class Translation extends AbstractModel
         return $this->domain;
     }
 
+    /**
+     * @throws InvalidArgumentException if the domain is not registered in `pimcore.translations.domains`
+     */
     public function setDomain(string $domain): void
     {
-        $this->domain = !empty($domain) ? $domain : self::DOMAIN_DEFAULT;
+        $domain = !empty($domain) ? $domain : self::DOMAIN_DEFAULT;
+        self::validateDomain($domain);
+
+        $this->domain = $domain;
+    }
+
+    /**
+     * The domain is part of the table name (translations_<domain>), so it must be a registered, plain identifier
+     *
+     * @throws InvalidArgumentException
+     *
+     * @internal
+     */
+    public static function validateDomain(string $domain): void
+    {
+        if (!preg_match(self::DOMAIN_PATTERN, $domain)) {
+            throw new InvalidArgumentException(sprintf('Invalid translation domain "%s"', $domain));
+        }
+
+        if (!in_array($domain, self::getRegisteredDomains(), true)) {
+            throw new InvalidArgumentException(sprintf('Translation domain "%s" is not registered in config `pimcore.translations.domains`', $domain));
+        }
     }
 
     public function getUserOwner(): ?int
