@@ -256,7 +256,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** normalise the name in one helper used by all three methods.
 
-## [ ] B-07 – `__sleep()` condition is inverted: every cached asset re-queries `customSettings`
+## [x] B-07 – `__sleep()` condition is inverted: every cached asset re-queries `customSettings`
 
 **File:** `models/Asset.php:193-201`
 

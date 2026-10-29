@@ -192,16 +192,6 @@ class Asset extends Element\AbstractElement
         return $blockedVars;
     }
 
-    public function __sleep(): array
-    {
-        $blockedVars = parent::__sleep();
-        if (in_array('customSettings', $blockedVars)) {
-            $this->customSettingsNeedRefresh = true;
-        }
-
-        return $blockedVars;
-    }
-
     public static function getTypes(): array
     {
         $assetsConfig = Config::getSystemConfiguration('assets');
