@@ -328,91 +328,93 @@ class Asset extends Element\AbstractElement
         // (tree) is generated immediately after creating an image
         $type = 'unknown';
         $tmpFile = null;
-        if (
-            array_key_exists('filename', $data) &&
-            (
-                array_key_exists('data', $data) ||
-                array_key_exists('sourcePath', $data) ||
-                array_key_exists('stream', $data)
-            )
-        ) {
-            $mimeType = 'directory';
-            $mimeTypeGuessData = null;
-            if (array_key_exists('data', $data) || array_key_exists('stream', $data)) {
-                $tmpFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/asset-create-tmp-file-' . uniqid() . '.' . pathinfo($data['filename'], PATHINFO_EXTENSION);
-                $mimeTypeGuessData = $tmpFile;
+        try {
+            if (
+                array_key_exists('filename', $data) &&
+                (
+                    array_key_exists('data', $data) ||
+                    array_key_exists('sourcePath', $data) ||
+                    array_key_exists('stream', $data)
+                )
+            ) {
+                $mimeType = 'directory';
+                $mimeTypeGuessData = null;
+                if (array_key_exists('data', $data) || array_key_exists('stream', $data)) {
+                    $tmpFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/asset-create-tmp-file-' . uniqid() . '.' . pathinfo($data['filename'], PATHINFO_EXTENSION);
+                    $mimeTypeGuessData = $tmpFile;
 
-                if (!str_starts_with($tmpFile, PIMCORE_SYSTEM_TEMP_DIRECTORY)) {
-                    throw new InvalidArgumentException('Invalid filename');
-                }
+                    if (!str_starts_with($tmpFile, PIMCORE_SYSTEM_TEMP_DIRECTORY)) {
+                        throw new InvalidArgumentException('Invalid filename');
+                    }
 
-                if (array_key_exists('data', $data)) {
-                    $filesystem = new Filesystem();
-                    $filesystem->dumpFile($tmpFile, $data['data']);
-                } else {
-                    $streamMeta = stream_get_meta_data($data['stream']);
-                    if (file_exists($streamMeta['uri'])) {
-                        // stream is a local file, so we don't have to write a tmp file
-                        $mimeTypeGuessData = $streamMeta['uri'];
+                    if (array_key_exists('data', $data)) {
+                        $filesystem = new Filesystem();
+                        $filesystem->dumpFile($tmpFile, $data['data']);
                     } else {
-                        // write a tmp file because the stream isn't a pointer to the local filesystem
-                        $isRewindable = @rewind($data['stream']);
-                        $dest = fopen($tmpFile, 'w+', false, File::getContext());
-                        stream_copy_to_stream($data['stream'], $dest);
-                        $mimeTypeGuessData = $tmpFile;
-
-                        if (!$isRewindable) {
-                            $data['stream'] = $dest;
+                        $streamMeta = stream_get_meta_data($data['stream']);
+                        if (file_exists($streamMeta['uri'])) {
+                            // stream is a local file, so we don't have to write a tmp file
+                            $mimeTypeGuessData = $streamMeta['uri'];
                         } else {
-                            fclose($dest);
-                            unlink($tmpFile);
+                            // write a tmp file because the stream isn't a pointer to the local filesystem
+                            $isRewindable = @rewind($data['stream']);
+                            $dest = fopen($tmpFile, 'w+', false, File::getContext());
+                            stream_copy_to_stream($data['stream'], $dest);
+                            $mimeTypeGuessData = $tmpFile;
+
+                            if (!$isRewindable) {
+                                $data['stream'] = $dest;
+                            } else {
+                                // keep the tmp file, the mime type guess and the max pixels check still need it
+                                fclose($dest);
+                            }
                         }
                     }
-                }
-                $mimeType = MimeTypes::getDefault()->guessMimeType($mimeTypeGuessData);
-            } else {
-                if (!is_dir($data['sourcePath'])) {
-                    $mimeTypeGuessData = $data['sourcePath'];
-                    if (is_file($data['sourcePath'])) {
-                        $data['stream'] = fopen($data['sourcePath'], 'rb', false, File::getContext());
-                    }
                     $mimeType = MimeTypes::getDefault()->guessMimeType($mimeTypeGuessData);
+                } else {
+                    if (!is_dir($data['sourcePath'])) {
+                        $mimeTypeGuessData = $data['sourcePath'];
+                        if (is_file($data['sourcePath'])) {
+                            $data['stream'] = fopen($data['sourcePath'], 'rb', false, File::getContext());
+                        }
+                        $mimeType = MimeTypes::getDefault()->guessMimeType($mimeTypeGuessData);
+                    }
+                    unset($data['sourcePath']);
                 }
-                unset($data['sourcePath']);
-            }
 
-            $type = self::getTypeFromMimeMapping($mimeType, $data['filename']);
-            // only check maxpixels if it is an image
-            if ($type === 'image' && $mimeTypeGuessData) {
-                self::checkMaxPixels($mimeTypeGuessData, $data);
-            }
+                $type = self::getTypeFromMimeMapping($mimeType, $data['filename']);
+                // only check maxpixels if it is an image
+                if ($type === 'image' && $mimeTypeGuessData) {
+                    self::checkMaxPixels($mimeTypeGuessData, $data);
+                }
 
-            if (array_key_exists('type', $data)) {
+                if (array_key_exists('type', $data)) {
+                    unset($data['type']);
+                }
+            } elseif (array_key_exists('type', $data)) {
+                $type = $data['type'];
                 unset($data['type']);
             }
-        } elseif (array_key_exists('type', $data)) {
-            $type = $data['type'];
-            unset($data['type']);
+
+            $className = Pimcore::getContainer()->get('pimcore.class.resolver.asset')->resolve($type)
+                ?? throw new InvalidArgumentException('Invalid asset type provided');
+
+            /** @var Asset $asset */
+            $asset = self::getModelFactory()->build($className);
+            $asset->setParentId($parentId);
+            self::checkCreateData($data);
+            $asset->setValues($data);
+
+            if ($save) {
+                $asset->save();
+            }
+
+            return $asset;
+        } finally {
+            if ($tmpFile !== null && file_exists($tmpFile)) {
+                unlink($tmpFile);
+            }
         }
-
-        $className = Pimcore::getContainer()->get('pimcore.class.resolver.asset')->resolve($type)
-            ?? throw new InvalidArgumentException('Invalid asset type provided');
-
-        /** @var Asset $asset */
-        $asset = self::getModelFactory()->build($className);
-        $asset->setParentId($parentId);
-        self::checkCreateData($data);
-        $asset->setValues($data);
-
-        if ($save) {
-            $asset->save();
-        }
-
-        if ($tmpFile !== null && file_exists($tmpFile)) {
-            unlink($tmpFile);
-        }
-
-        return $asset;
     }
 
     private static function checkMaxPixels(string $localPath, array $data): void

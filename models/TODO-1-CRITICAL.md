@@ -272,7 +272,7 @@ destination with `$newPath . substr('/' . $src, strlen($oldPath))` after asserti
 
 ---
 
-## [ ] C-03 – `Asset::create()` with a rewindable non-local stream always crashes (temp file deleted before MIME guess)
+## [x] C-03 – `Asset::create()` with a rewindable non-local stream always crashes (temp file deleted before MIME guess)
 
 **File:** `models/Asset.php:355-370`
 
