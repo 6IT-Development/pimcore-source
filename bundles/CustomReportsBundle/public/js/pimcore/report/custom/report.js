@@ -575,7 +575,10 @@ pimcore.bundle.customreports.custom.report = Class.create(pimcore.bundle.customr
                 if(response["finished"]) {
                     this.progressBar.updateProgress(1,"100%");
                     this.progressWindow.close();
-                    var downloadUrl = Routing.generate('pimcore_bundle_customreports_customreport_downloadcsv') + '?exportFile=' + response["exportFile"];
+                    var downloadUrl = Routing.generate('pimcore_bundle_customreports_customreport_downloadcsv', {
+                        exportFile: response["exportFile"],
+                        name: this.config.name
+                    });
                     pimcore.helpers.download(downloadUrl);
                 }else{
                     this.progressBar.updateProgress(response["progress"],Number.parseFloat(response["progress"]*100).toFixed(0)+"%");

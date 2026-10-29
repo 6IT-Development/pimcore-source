@@ -136,7 +136,7 @@ so no bundle can trigger a traversal.
 
 ---
 
-## [ ] C-05 – CSV export temp files are shared between all users: read/append/delete other users' exports
+## [x] C-05 – CSV export temp files are shared between all users: read/append/delete other users' exports
 
 **File:** `src/Controller/Reports/CustomReportController.php:334-342`, `:382-389`, `:413-428`
 

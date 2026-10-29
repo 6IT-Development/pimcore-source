@@ -27,13 +27,13 @@ use Pimcore\Model\Element\Service;
 use Pimcore\Model\Exception\ConfigWriteException;
 use stdClass;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Core\Exception\InvalidArgumentException;
 
 /**
  * @internal
@@ -338,14 +338,22 @@ class CustomReportController extends UserAwareController
         ]);
     }
 
-    protected function getTemporaryFileFromFileName(string $exportFileName): string
+    /**
+     * Export files live in a directory of the current user and the report, so a user can only continue or download
+     * their own exports of reports they may still see.
+     */
+    private function getExportDirectory(Tool\Config $report): string
     {
-        $exportFileName = basename($exportFileName);
-        if (!str_ends_with($exportFileName, '.csv')) {
-            throw new InvalidArgumentException($exportFileName . ' is not a valid csv file.');
+        return PIMCORE_SYSTEM_TEMP_DIRECTORY . '/custom-reports/' . $this->getPimcoreUser()->getId() . '/' . hash('xxh128', $report->getName());
+    }
+
+    protected function getTemporaryFileFromFileName(string $exportFileName, Tool\Config $report): string
+    {
+        if (!preg_match('/^report-export-[0-9a-f]{32}\.csv$/D', $exportFileName)) {
+            throw new BadRequestHttpException('Invalid export file name');
         }
 
-        return PIMCORE_SYSTEM_TEMP_DIRECTORY . '/' . $exportFileName;
+        return $this->getExportDirectory($report) . '/' . $exportFileName;
     }
 
     #[Route('/create-csv', name: 'pimcore_bundle_customreports_customreport_createcsv', methods: [Request::METHOD_GET])]
@@ -383,10 +391,14 @@ class CustomReportController extends UserAwareController
         ++$offset;
 
         if (!($exportFile = $request->query->getString('exportFile'))) {
-            $exportFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/report-export-' . uniqid() . '.csv';
-            @unlink($exportFile);
+            $exportDirectory = $this->getExportDirectory($config);
+            (new Filesystem())->mkdir($exportDirectory);
+            $exportFile = $exportDirectory . '/report-export-' . bin2hex(random_bytes(16)) . '.csv';
         } else {
-            $exportFile = $this->getTemporaryFileFromFileName($exportFile);
+            $exportFile = $this->getTemporaryFileFromFileName($exportFile, $config);
+            if (!is_file($exportFile)) {
+                throw $this->createNotFoundException();
+            }
         }
 
         $fp = fopen($exportFile, 'a');
@@ -417,8 +429,9 @@ class CustomReportController extends UserAwareController
     public function downloadCsvAction(Request $request): BinaryFileResponse
     {
         $this->checkPermission('reports');
+        $config = $this->getReportForCurrentUser($request->query->getString('name'));
         if ($exportFile = $request->query->getString('exportFile')) {
-            $exportFile = $this->getTemporaryFileFromFileName($exportFile);
+            $exportFile = $this->getTemporaryFileFromFileName($exportFile, $config);
             $response = new BinaryFileResponse($exportFile);
             $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
             $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, 'export.csv');
