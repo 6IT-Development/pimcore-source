@@ -1694,7 +1694,18 @@ class Asset extends Element\AbstractElement
         $this->versions = null;
         $this->siblings = null;
         $this->scheduledTasks = null;
-        $this->closeStream();
+
+        // the handle is shared with the original, closing it here would drop the original's pending data
+        $stream = $this->stream;
+        $this->stream = null;
+        if ($this->getDataChanged() && is_resource($stream) && @rewind($stream)) {
+            // pending new data: give the clone its own copy (e.g. for the version created from a clone)
+            $copy = fopen('php://temp', 'w+b');
+            stream_copy_to_stream($stream, $copy);
+            rewind($stream);
+            rewind($copy);
+            $this->stream = $copy;
+        }
     }
 
     public function clearThumbnails(bool $force = false): void

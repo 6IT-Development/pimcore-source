@@ -352,7 +352,7 @@ next to the asset; on failure remove the temp file.
 
 ---
 
-## [ ] C-07 – `__clone()` closes the original asset's stream: pending new data is dropped and the version records the old binary
+## [x] C-07 – `__clone()` closes the original asset's stream: pending new data is dropped and the version records the old binary
 
 **File:** `models/Asset.php:1671-1679` (`closeStream()` at `:1678`)
 
