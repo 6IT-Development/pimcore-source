@@ -72,8 +72,17 @@ class Dao extends Model\Dao\AbstractDao
             }
 
             //check for id-path and update it, if path has changed -> update all other tags that have idPath == idPath/id
+            // replace only the leading old path: REPLACE() would rewrite every slash for a former root tag (idPath '/')
             if ($originalIdPath && $originalIdPath != $this->model->getIdPath()) {
-                $this->db->executeQuery('UPDATE tags SET idPath = REPLACE(idPath, ?, ?)  WHERE idPath LIKE ?;', [$originalIdPath, $this->model->getIdPath(), Helper::escapeLike($originalIdPath) . $this->model->getId() . '/%']);
+                $oldPrefix = $originalIdPath . $this->model->getId() . '/';
+                $this->db->executeStatement(
+                    'UPDATE tags SET idPath = CONCAT(:newPrefix, SUBSTRING(idPath, CHAR_LENGTH(:oldPrefix) + 1)) WHERE idPath LIKE :oldPrefixLike',
+                    [
+                        'newPrefix' => $this->model->getFullIdPath(),
+                        'oldPrefix' => $oldPrefix,
+                        'oldPrefixLike' => Helper::escapeLike($oldPrefix) . '%',
+                    ]
+                );
             }
 
             $this->db->commit();

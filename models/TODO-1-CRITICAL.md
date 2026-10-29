@@ -941,7 +941,7 @@ $this->updateOutputCacheLifetime($outputTimestamp, $nextElement);   // private f
 
 ---
 
-## [ ] C-29 – Moving a root-level tag corrupts the `idPath` of its whole subtree
+## [x] C-29 – Moving a root-level tag corrupts the `idPath` of its whole subtree
 
 **Files:** `models/Element/Tag/Dao.php:51-87` (`:62-65`, `:75-77`); `models/Element/Tag.php:238-245` (`setParentId()`),
 `:325-339` (`correctPath()`)
