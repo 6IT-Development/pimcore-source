@@ -620,7 +620,7 @@ for all elements, so a damaged graph can be repaired.
 
 ---
 
-## [ ] C-18 – `getByKey(…, create: true, returnIdIfEmpty: true)` saves the key itself as the translation text in every language
+## [x] C-18 – `getByKey(…, create: true, returnIdIfEmpty: true)` saves the key itself as the translation text in every language
 
 **Files:** `models/Translation.php:262-294`; `lib/Translation/TranslationEntriesDumper.php:29-40`; caller
 `models/DataObject/QuantityValue/Service.php:77-82`

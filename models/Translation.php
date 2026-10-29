@@ -276,7 +276,9 @@ final class Translation extends AbstractModel
                     $translations[$lang] = '';
                 }
                 $translation->setTranslations($translations);
-                TranslationEntriesDumper::addToSaveQueue($translation);
+                // $returnIdIfEmpty fills the empty languages with the key below, which is for presentation only:
+                // queue a copy, otherwise the key would be saved as the text of every language
+                TranslationEntriesDumper::addToSaveQueue($returnIdIfEmpty ? clone $translation : $translation);
             }
         }
 
