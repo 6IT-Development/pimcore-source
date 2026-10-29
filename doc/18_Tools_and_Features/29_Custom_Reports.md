@@ -27,6 +27,25 @@ are available:
 - `Visible to users`: Custom report is visible to all listed users.  
 - `Visible to roles`: Custom report is visible to all listed roles. 
 
+## Security of SQL Reports
+Users with the `reports_config` permission write the SQL of a report, so this permission equals read access to the
+database. The SQL adapter only accepts a single `SELECT` statement (statements and functions such as `INSERT`, `DELETE`,
+`INTO OUTFILE`, `LOAD_FILE()` or `SLEEP()` are rejected) and runs the report queries in a read-only transaction.
+
+For a real separation, let the reports run on a dedicated connection whose database user only has `SELECT` grants on
+the tables and views the reports need:
+
+```yaml
+doctrine:
+    dbal:
+        connections:
+            custom_reports:
+                url: '%env(CUSTOM_REPORTS_DATABASE_URL)%'
+
+pimcore_custom_reports:
+    connection: custom_reports
+```
+
 ## Custom Data Source Adapters
 It is easily possible to implement custom source adapters for special use cases. To do so following steps are necessary: 
 

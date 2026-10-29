@@ -71,6 +71,10 @@ class Configuration implements ConfigurationInterface
             ->prototype('scalar')
             ->end()
             ->end()
+            ->scalarNode('connection')
+            ->info('Name of the Doctrine DBAL connection SQL reports run on, ideally a DB user with SELECT grants only. Defaults to the Pimcore connection.')
+            ->defaultNull()
+            ->end()
             ->end()
             ->end();
 

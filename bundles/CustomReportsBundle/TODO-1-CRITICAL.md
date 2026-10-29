@@ -22,7 +22,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – SQL keyword blacklist is trivially bypassable → arbitrary SQL (incl. writes) against the Pimcore DB
+## [x] C-01 – SQL keyword blacklist is trivially bypassable → arbitrary SQL (incl. writes) against the Pimcore DB
 
 **Files:** `src/Tool/Adapter/Sql.php:64`, `:185`, `src/Controller/Reports/CustomReportController.php:189-233`
 

@@ -17,7 +17,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CustomReportsBundle\Tool\Adapter;
 
+use Doctrine\DBAL\Connection;
 use Exception;
+use Pimcore;
 use Pimcore\Db;
 use stdClass;
 
@@ -26,16 +28,25 @@ use stdClass;
  */
 class Sql extends AbstractAdapter
 {
+    /**
+     * Statements, clauses and functions a report query must not contain. This check only gives early feedback, the
+     * protection against writes is the read-only transaction (and the optional read-only connection) in runReadOnly().
+     */
+    private const array FORBIDDEN_KEYWORDS = [
+        'ALTER', 'CREATE', 'DROP', 'RENAME', 'TRUNCATE', 'UPDATE', 'DELETE', 'INSERT', 'INTO', 'GRANT', 'REVOKE',
+        'CALL', 'HANDLER', 'LOAD', 'LOCK', 'UNLOCK', 'PREPARE', 'EXECUTE', 'DEALLOCATE', 'FLUSH', 'KILL', 'SHUTDOWN',
+        'OUTFILE', 'DUMPFILE', 'LOAD_FILE', 'SLEEP', 'BENCHMARK', 'GET_LOCK',
+    ];
+
     public function getData(?array $filters, ?string $sort, ?string $dir, ?int $offset, ?int $limit, ?array $fields = null, ?array $drillDownFilters = null): array
     {
-        $db = Db::get();
+        $db = $this->getDb();
 
         $baseQuery = $this->getBaseQuery($filters ?? [], $fields ?? [], false, $drillDownFilters ?? []);
         $data = [];
         $total = 0;
 
         if ($baseQuery) {
-            $total = $db->fetchOne($baseQuery['count']);
 
             $order = '';
             if ($sort && $dir) {
@@ -48,7 +59,10 @@ class Sql extends AbstractAdapter
                 $sql .= " LIMIT $offset,$limit";
             }
 
-            $data = $db->fetchAllAssociative($sql);
+            [$total, $data] = $this->runReadOnly(static fn (Connection $db): array => [
+                $db->fetchOne($baseQuery['count']),
+                $db->fetchAllAssociative($sql),
+            ]);
         }
 
         return ['data' => $data, 'total' => $total];
@@ -61,18 +75,98 @@ class Sql extends AbstractAdapter
             $sql = $this->buildQueryString($configuration);
         }
 
-        if (!preg_match('/(ALTER|CREATE|DROP|RENAME|TRUNCATE|UPDATE|DELETE) /i', $sql, $matches)) {
-            $sql .= ' LIMIT 0,1';
-            $db = Db::get();
-            $res = $db->fetchAssociative($sql);
-            if ($res) {
-                return array_keys($res);
-            }
+        $this->validateQuery($sql);
 
-            return [];
+        $sql .= ' LIMIT 0,1';
+        $res = $this->runReadOnly(static fn (Connection $db): array|false => $db->fetchAssociative($sql));
+        if ($res) {
+            return array_keys($res);
         }
 
-        throw new Exception("Only 'SELECT' statements are allowed! You've used '" . $matches[0] . "'");
+        return [];
+    }
+
+    /**
+     * Rejects everything but a single SELECT statement.
+     *
+     * @throws Exception
+     */
+    protected function validateQuery(string $sql): void
+    {
+        // check the query with and without backslash escapes in string literals, so the result does not depend on
+        // the NO_BACKSLASH_ESCAPES SQL mode
+        foreach ([true, false] as $backslashEscapes) {
+            $code = $this->stripLiteralsAndComments($sql, $backslashEscapes);
+
+            if (str_contains($code, ';')) {
+                throw new Exception('Only a single SELECT statement is allowed!');
+            }
+
+            if (preg_match('/\\b(' . implode('|', self::FORBIDDEN_KEYWORDS) . ')\\b/i', $code, $matches)) {
+                throw new Exception("Only 'SELECT' statements are allowed! You've used '" . $matches[1] . "'");
+            }
+        }
+    }
+
+    /**
+     * Replaces string literals, quoted identifiers and comments by a space. The content of executable comments
+     * (/*! ... *\/, /*M! ... *\/) is kept, as MySQL and MariaDB run it.
+     */
+    private function stripLiteralsAndComments(string $sql, bool $backslashEscapes): string
+    {
+        // a character inside a quoted literal: anything but the quote and, with escapes, a backslash plus any character
+        $char = static fn (string $quote): string => $backslashEscapes ? '[^' . $quote . '\\\\]|\\\\.' : '[^' . $quote . ']';
+        $pattern = '~'
+            . "'(?:" . $char("'") . "|'')*'"
+            . '|"(?:' . $char('"') . '|"")*"'
+            . '|`(?:[^`]|``)*`'
+            . '|/\\*(M?!\\d*)?(.*?)\\*/'
+            . '|(?:--\\s|#)[^\\n]*'
+            . '~s';
+
+        return (string) preg_replace_callback(
+            $pattern,
+            static fn (array $match): string => ($match[1] ?? '') !== '' ? ' ' . $match[2] . ' ' : ' ',
+            $sql
+        );
+    }
+
+    /**
+     * Runs the report queries inside a read-only transaction, so a query that slips through validateQuery() cannot
+     * change data.
+     */
+    protected function runReadOnly(callable $callback): mixed
+    {
+        $db = $this->getDb();
+
+        if ($db->isTransactionActive()) {
+            // START TRANSACTION would implicitly commit the transaction of the caller
+            return $callback($db);
+        }
+
+        $db->executeStatement('START TRANSACTION READ ONLY');
+
+        try {
+            return $callback($db);
+        } finally {
+            $db->executeStatement('ROLLBACK');
+        }
+    }
+
+    /**
+     * The connection the report queries run on: the one configured in pimcore_custom_reports.connection (ideally a DB
+     * user with SELECT grants only), otherwise the default connection.
+     */
+    protected function getDb(): Connection
+    {
+        $container = Pimcore::getContainer();
+        $connectionName = $container->getParameter('pimcore_custom_reports.connection');
+
+        if ($connectionName) {
+            return $container->get('doctrine')->getConnection($connectionName);
+        }
+
+        return Db::get();
     }
 
     protected function buildQueryString(stdClass $config, bool $ignoreSelectAndGroupBy = false, ?array $drillDownFilters = null, ?string $selectField = null): string
@@ -85,7 +179,7 @@ class Sql extends AbstractAdapter
             }
             $sql .= "\n" . $config['sql'];
         } elseif ($selectField) {
-            $db = Db::get();
+            $db = $this->getDb();
             $sql .= 'SELECT ' . $db->quoteIdentifier($selectField);
         } else {
             $sql .= 'SELECT *';
@@ -113,7 +207,7 @@ class Sql extends AbstractAdapter
 
         if ($drillDownFilters) {
             $havingParts = [];
-            $db = Db::get();
+            $db = $this->getDb();
             foreach ($drillDownFilters as $field => $value) {
                 if ($value !== '' && $value !== null) {
                     $havingParts[] = ($db->quoteIdentifier($field) . ' = ' . $db->quote($value));
@@ -130,7 +224,7 @@ class Sql extends AbstractAdapter
 
     protected function getBaseQuery(array $filters, array $fields, bool $ignoreSelectAndGroupBy = false, ?array $drillDownFilters = null, ?string $selectField = null): ?array
     {
-        $db = Db::get();
+        $db = $this->getDb();
         $condition = ['1 = 1'];
 
         $sql = $this->buildQueryString($this->config, $ignoreSelectAndGroupBy, $drillDownFilters, $selectField);
@@ -182,18 +276,20 @@ class Sql extends AbstractAdapter
             }
         }
 
-        if (!preg_match('/(ALTER|CREATE|DROP|RENAME|TRUNCATE|UPDATE|DELETE) /i', $sql)) {
-            $condition = implode(' AND ', $condition);
-
-            $total = 'SELECT COUNT(*) FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
-
-            if ($fields && !$extractAllFields) {
-                $data = 'SELECT `' . implode('`,`', $fields) . '` FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
-            } else {
-                $data = 'SELECT * FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
-            }
-        } else {
+        try {
+            $this->validateQuery($sql);
+        } catch (Exception) {
             return null;
+        }
+
+        $condition = implode(' AND ', $condition);
+
+        $total = 'SELECT COUNT(*) FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
+
+        if ($fields && !$extractAllFields) {
+            $data = 'SELECT `' . implode('`,`', $fields) . '` FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
+        } else {
+            $data = 'SELECT * FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
         }
 
         return [
@@ -204,12 +300,12 @@ class Sql extends AbstractAdapter
 
     public function getAvailableOptions(array $filters, string $field, array $drillDownFilters): array
     {
-        $db = Db::get();
+        $db = $this->getDb();
         $baseQuery = $this->getBaseQuery($filters, [$field], false, $drillDownFilters);
         $data = [];
         if ($baseQuery) {
             $sql = $baseQuery['data'] . ' GROUP BY ' . $db->quoteIdentifier($field);
-            $data = $db->fetchAllAssociative($sql);
+            $data = $this->runReadOnly(static fn (Connection $db): array => $db->fetchAllAssociative($sql));
         }
 
         $filteredData = [];
