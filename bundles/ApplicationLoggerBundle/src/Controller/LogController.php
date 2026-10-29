@@ -22,6 +22,7 @@ use DateMalformedStringException;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
@@ -114,7 +115,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         }
 
         if (0 !== $pid = $requestSource->getInt('pid')) {
-            $qb->andWhere('pid LIKE ' . $qb->createNamedParameter('%' . $pid . '%'));
+            $qb->andWhere('pid = ' . $qb->createNamedParameter($pid, ParameterType::INTEGER));
         }
 
         $totalQb = clone $qb;

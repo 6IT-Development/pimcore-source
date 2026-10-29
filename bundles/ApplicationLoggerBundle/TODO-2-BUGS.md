@@ -21,7 +21,7 @@ wrong.
 **Fix direction:** interpret the input in the admin user's/browser TZ (send offset from JS or use the user's TZ setting),
 convert to UTC before binding.
 
-### [ ] B-02 – PID filter uses `LIKE '%pid%'`
+### [x] B-02 – PID filter uses `LIKE '%pid%'`
 **Lines:** 113-115
 Filtering for PID `12` also returns `112`, `1203`, … and cannot use an index. PID is an integer → use `pid = :pid`.
 
