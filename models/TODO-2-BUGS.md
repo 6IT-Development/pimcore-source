@@ -275,7 +275,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** remove the flag before `update()`.
 
-## [ ] B-09 – `getChecksum()` writes the whole in-memory `customSettings` to DB on a read
+## [x] B-09 – `getChecksum()` writes the whole in-memory `customSettings` to DB on a read
 
 **File:** `models/Asset.php:1163-1189`
 

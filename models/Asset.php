@@ -761,8 +761,11 @@ class Asset extends Element\AbstractElement
                     }
                 }
 
-                //generate & save checksum in custom settings
-                $this->generateChecksum();
+                // the checksum is saved together with the other custom settings by the Dao
+                $checksum = $this->computeChecksum();
+                if ($checksum !== null) {
+                    $this->setCustomSetting('checksum', $checksum);
+                }
 
                 // delete old legacy file if exists
                 $dbPath = $this->getDao()->getCurrentFullPath();
@@ -1187,16 +1190,27 @@ class Asset extends Element\AbstractElement
      */
     public function generateChecksum(): void
     {
+        $checksum = $this->computeChecksum();
+        if ($checksum === null) {
+            return;
+        }
+
+        $this->setCustomSetting('checksum', $checksum);
+        // only persist the checksum, not other unsaved changes of the custom settings
+        $this->getDao()->updateCustomSetting('checksum', $checksum);
+    }
+
+    private function computeChecksum(): ?string
+    {
         try {
-            $this->setCustomSetting('checksum', Storage::get('asset')->checksum($this->getRealFullPath()));
+            return Storage::get('asset')->checksum($this->getRealFullPath());
         } catch (UnableToProvideChecksum $e) {
             // There are circumstances in which the adapter is unable to calculate the checksum for a given file.
             // In those cases, we ignore the exception.
             Logger::error((string)$e);
 
-            return;
+            return null;
         }
-        $this->getDao()->updateCustomSettings();
     }
 
     /**

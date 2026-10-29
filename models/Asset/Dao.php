@@ -26,6 +26,7 @@ use Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Data;
 use Pimcore\Model\User;
 use Pimcore\Tool\Admin;
 use Pimcore\Tool\Serialize;
+use stdClass;
 
 /**
  * @internal
@@ -522,6 +523,26 @@ class Dao extends Model\Element\Dao
     {
         $customSettingsData = Serialize::serialize($this->model->getCustomSettings());
         $this->db->update('assets', ['customSettings' => $customSettingsData], ['id' => $this->model->getId()]);
+    }
+
+    /**
+     * Persists a single custom setting on top of the stored ones, without writing other (unsaved) changes of the model.
+     *
+     * @internal
+     */
+    public function updateCustomSetting(string $key, mixed $value): void
+    {
+        $customSettings = $this->getCustomSettings();
+        $customSettings = $customSettings ? Serialize::unserialize($customSettings) : [];
+        if ($customSettings instanceof stdClass) {
+            $customSettings = (array)$customSettings;
+        }
+        if (!is_array($customSettings)) {
+            $customSettings = [];
+        }
+
+        $customSettings[$key] = $value;
+        $this->db->update('assets', ['customSettings' => Serialize::serialize($customSettings)], ['id' => $this->model->getId()]);
     }
 
     public function getCustomSettings(): ?string
