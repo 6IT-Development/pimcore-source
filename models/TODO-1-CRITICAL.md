@@ -504,7 +504,7 @@ result as `UNKNOWN`/unsafe unless the PDF is actually parsed; return the `PdfSca
 
 ---
 
-## [ ] C-15 – Website settings are cached by id/name and never invalidated: deleted or overridden settings keep being served (same request, messenger workers, and every later request in worker runtimes)
+## [x] C-15 – Website settings are cached by id/name and never invalidated: deleted or overridden settings keep being served (same request, messenger workers, and every later request in worker runtimes)
 
 **Files:** `models/WebsiteSetting.php:59`, `:66-85`, `:95-126`, `:273-289`; `lib/Config.php:157-165`, `:173-262`, `:270-273`
 (related: CoreBundle **C-08** – request state on shared services in worker runtimes)

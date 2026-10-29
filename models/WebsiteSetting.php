@@ -20,6 +20,7 @@ namespace Pimcore\Model;
 use Exception;
 use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\Config;
 use Pimcore\Event\Model\WebsiteSettingEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Event\WebsiteSettingEvents;
@@ -52,11 +53,10 @@ final class WebsiteSetting extends AbstractModel
     protected ?int $modificationDate = null;
 
     /**
-     * this is a small per request cache to know which website setting is which is, this info is used in self::getByName()
-     *
-     * @var array<string, int>
+     * RuntimeCache key of the small per request cache to know which website setting is which, used in self::getByName().
+     * It lives in the RuntimeCache (not in a static property), so it is cleared together with it, e.g. in workers.
      */
-    protected static array $nameIdMappingCache = [];
+    private const string NAME_ID_MAPPING_CACHE_KEY = 'website_setting_name_id_mapping';
 
     protected static function getCacheKey(string $name, ?int $siteId = null, ?string $language = null): string
     {
@@ -96,9 +96,19 @@ final class WebsiteSetting extends AbstractModel
     {
         $nameCacheKey = WebsiteSetting::getCacheKey($name, $siteId, $language);
 
+        $nameIdMapping = RuntimeCache::isRegistered(self::NAME_ID_MAPPING_CACHE_KEY)
+            ? RuntimeCache::get(self::NAME_ID_MAPPING_CACHE_KEY)
+            : [];
+
         // check if pimcore already knows the id for this $name, if yes just return it
-        if (array_key_exists($nameCacheKey, self::$nameIdMappingCache)) {
-            return self::getById(self::$nameIdMappingCache[$nameCacheKey]);
+        if (array_key_exists($nameCacheKey, $nameIdMapping)) {
+            if ($setting = self::getById($nameIdMapping[$nameCacheKey])) {
+                return $setting;
+            }
+
+            // the setting was deleted in the meantime, resolve the name again
+            unset($nameIdMapping[$nameCacheKey]);
+            RuntimeCache::set(self::NAME_ID_MAPPING_CACHE_KEY, $nameIdMapping);
         }
 
         // create a tmp object to obtain the id
@@ -117,7 +127,8 @@ final class WebsiteSetting extends AbstractModel
         // to have a singleton in a way. like all instances of Element\ElementInterface do also, like DataObject\AbstractObject
         if ($setting->getId() > 0) {
             // add it to the mini-per request cache
-            self::$nameIdMappingCache[$nameCacheKey] = $setting->getId();
+            $nameIdMapping[$nameCacheKey] = $setting->getId();
+            RuntimeCache::set(self::NAME_ID_MAPPING_CACHE_KEY, $nameIdMapping);
 
             return self::getById($setting->getId());
         }
@@ -268,17 +279,23 @@ final class WebsiteSetting extends AbstractModel
     public function clearDependentCache(): void
     {
         Cache::clearTag('website_config');
+
+        $runtimeCache = RuntimeCache::getInstance();
+        if ($this->getId() && $runtimeCache->offsetExists('website_setting_' . $this->getId())) {
+            $runtimeCache->offsetUnset('website_setting_' . $this->getId());
+        }
+
+        // the mapping is keyed by the requested site/language, so a changed, added or deleted setting can affect
+        // any of its entries: flush it as a whole
+        if ($runtimeCache->offsetExists(self::NAME_ID_MAPPING_CACHE_KEY)) {
+            $runtimeCache->offsetUnset(self::NAME_ID_MAPPING_CACHE_KEY);
+        }
+
+        Config::clearWebsiteConfigRuntimeCache();
     }
 
     public function delete(): void
     {
-        $nameCacheKey = self::getCacheKey($this->getName(), $this->getSiteId(), $this->getLanguage());
-
-        // Remove cached element to avoid returning it with e.g. getByName() after if it is deleted
-        if (array_key_exists($nameCacheKey, self::$nameIdMappingCache)) {
-            unset(self::$nameIdMappingCache[$nameCacheKey]);
-        }
-
         $event = new WebsiteSettingEvent($this);
 
         $this->dispatchEvent($event, WebsiteSettingEvents::PRE_DELETE);

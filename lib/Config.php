@@ -32,6 +32,8 @@ use Symfony\Component\Yaml\Yaml;
 
 final class Config implements ArrayAccess
 {
+    private const string WEBSITE_CONFIG_RUNTIME_CACHE_KEY = 'pimcore_config_website';
+
     /**
      * @var array<string, string>
      */
@@ -154,15 +156,55 @@ final class Config implements ArrayAccess
     /**
      * @internal
      */
-    public static function getWebsiteConfigRuntimeCacheKey(?string $language = null): string
+    public static function getWebsiteConfigRuntimeCacheKey(?string $language = null, ?int $siteId = null): string
     {
-        $cacheKey = 'pimcore_config_website';
+        $cacheKey = self::WEBSITE_CONFIG_RUNTIME_CACHE_KEY;
 
         if ($language) {
             $cacheKey .= '_' . $language;
         }
 
+        // the config differs per site, so the site has to be part of the key
+        if ($siteId) {
+            $cacheKey .= '_site_' . $siteId;
+        }
+
         return $cacheKey;
+    }
+
+    /**
+     * Removes the resolved website configs of all languages and sites from the runtime cache.
+     *
+     * @internal
+     */
+    public static function clearWebsiteConfigRuntimeCache(): void
+    {
+        $runtimeCache = RuntimeCache::getInstance();
+        foreach (array_keys($runtimeCache->getArrayCopy()) as $key) {
+            if (str_starts_with((string)$key, self::WEBSITE_CONFIG_RUNTIME_CACHE_KEY)) {
+                $runtimeCache->offsetUnset($key);
+            }
+        }
+    }
+
+    private static function getWebsiteConfigSiteId(): int
+    {
+        $siteId = 0;
+        if (Model\Site::isSiteRequest()) {
+            $siteId = Model\Site::getCurrentSite()->getId();
+        } elseif (Tool::isFrontendRequestByAdmin()) {
+            // this is necessary to set the correct settings in editmode/preview (using the main domain)
+            // we cannot use the document resolver service here, because we need the document on the main request
+            $originDocument = Pimcore::getContainer()->get('request_stack')->getMainRequest()->attributes->get(DynamicRouter::CONTENT_KEY);
+            if ($originDocument) {
+                $site = Tool\Frontend::getSiteForDocument($originDocument);
+                if ($site) {
+                    $siteId = $site->getId();
+                }
+            }
+        }
+
+        return $siteId;
     }
 
     /**
@@ -172,27 +214,15 @@ final class Config implements ArrayAccess
      */
     public static function getWebsiteConfig(?string $language = null): array
     {
-        if (RuntimeCache::isRegistered(self::getWebsiteConfigRuntimeCacheKey($language))) {
-            $config = RuntimeCache::get(self::getWebsiteConfigRuntimeCacheKey($language));
+        $siteId = self::getWebsiteConfigSiteId();
+        $runtimeCacheKey = self::getWebsiteConfigRuntimeCacheKey($language, $siteId);
+
+        if (RuntimeCache::isRegistered($runtimeCacheKey)) {
+            $config = RuntimeCache::get($runtimeCacheKey);
         } else {
             $cacheKey = 'website_config';
             if ($language) {
                 $cacheKey .= '_' . $language;
-            }
-
-            $siteId = 0;
-            if (Model\Site::isSiteRequest()) {
-                $siteId = Model\Site::getCurrentSite()->getId();
-            } elseif (Tool::isFrontendRequestByAdmin()) {
-                // this is necessary to set the correct settings in editmode/preview (using the main domain)
-                // we cannot use the document resolver service here, because we need the document on the main request
-                $originDocument = Pimcore::getContainer()->get('request_stack')->getMainRequest()->attributes->get(DynamicRouter::CONTENT_KEY);
-                if ($originDocument) {
-                    $site = Tool\Frontend::getSiteForDocument($originDocument);
-                    if ($site) {
-                        $siteId = $site->getId();
-                    }
-                }
             }
 
             if ($siteId) {
@@ -256,7 +286,7 @@ final class Config implements ArrayAccess
                 }
             }
 
-            self::setWebsiteConfig($config, $language);
+            self::setWebsiteConfig($config, $language, $siteId);
         }
 
         return $config;
@@ -267,9 +297,9 @@ final class Config implements ArrayAccess
      *
      * @internal
      */
-    public static function setWebsiteConfig(?array $config, ?string $language = null): void
+    public static function setWebsiteConfig(?array $config, ?string $language = null, ?int $siteId = null): void
     {
-        RuntimeCache::set(self::getWebsiteConfigRuntimeCacheKey($language), $config);
+        RuntimeCache::set(self::getWebsiteConfigRuntimeCacheKey($language, $siteId ?? self::getWebsiteConfigSiteId()), $config);
     }
 
     /**
