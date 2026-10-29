@@ -17,13 +17,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Asset\WebDAV;
 
-use Exception;
+use Pimcore\Db;
 use Pimcore\Logger;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element;
 use Pimcore\Model\User;
 use Pimcore\Tool\Admin;
 use Sabre\DAV;
+use Throwable;
 
 /**
  * @internal
@@ -39,6 +40,7 @@ class Tree extends DAV\Tree
      * @throws DAV\Exception\Forbidden
      * @throws DAV\Exception\NotFound
      * @throws DAV\Exception\Conflict
+     * @throws DAV\Exception
      */
     public function move($sourcePath, $destinationPath): void
     {
@@ -61,6 +63,9 @@ class Tree extends DAV\Tree
         }
         $this->assertAllowed($sourceAsset, 'view', $user);
 
+        // the source is only deleted after the overwritten target was saved
+        $sourceToDelete = null;
+
         try {
             if (dirname($sourcePath) == dirname($destinationPath)) {
                 if ($asset = Asset::getByPath('/' . $destinationPath)) {
@@ -69,7 +74,7 @@ class Tree extends DAV\Tree
                     $this->assertAllowed($sourceAsset, 'delete', $user);
 
                     $asset->setData($sourceAsset->getData());
-                    $sourceAsset->delete();
+                    $sourceToDelete = $sourceAsset;
                 } elseif ($asset = Asset\WebDAV\Service::getFromDeleteLog('/' . $destinationPath)) {
                     // see: Asset\WebDAV\File::delete() why this is necessary
                     // the deleted asset is restored with the data of the source asset
@@ -77,7 +82,7 @@ class Tree extends DAV\Tree
                     $this->assertAllowed($sourceAsset, 'delete', $user);
 
                     $asset->setData($sourceAsset->getData());
-                    $sourceAsset->delete();
+                    $sourceToDelete = $sourceAsset;
                 } else {
                     $this->assertAllowed($sourceAsset, 'rename', $user);
 
@@ -99,11 +104,30 @@ class Tree extends DAV\Tree
             }
 
             $asset->setUserModification($user->getId());
-            $asset->save();
+
+            $db = Db::get();
+            $db->beginTransaction();
+
+            try {
+                $asset->save();
+                $sourceToDelete?->delete();
+                $db->commit();
+            } catch (Throwable $e) {
+                $db->rollBack();
+
+                throw $e;
+            }
         } catch (DAV\Exception $e) {
             throw $e;
-        } catch (Exception $e) {
+        } catch (Element\DuplicateFullPathException $e) {
             Logger::error((string)$e);
+
+            throw new DAV\Exception\Conflict('Destination already exists: ' . $destinationPath);
+        } catch (Throwable $e) {
+            // Sabre answers 201/204 unless move() throws, so a failure must not be swallowed
+            Logger::error((string)$e);
+
+            throw new DAV\Exception('Unable to move ' . $sourcePath . ' to ' . $destinationPath);
         }
     }
 

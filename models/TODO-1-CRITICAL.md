@@ -368,7 +368,7 @@ next to the asset; on failure remove the temp file.
 
 ---
 
-## [ ] C-08 – WebDAV `MOVE` reports success after a failed move, and deletes the source before the target is saved
+## [x] C-08 – WebDAV `MOVE` reports success after a failed move, and deletes the source before the target is saved
 
 **File:** `models/Asset/WebDAV/Tree.php:39-87` (catch-all at `:84-86`; overwrite branches `:51-56`, `:59-66`)
 (Related to CoreBundle **C-13** – that item is the missing permission check; this one is error handling / ordering.)
