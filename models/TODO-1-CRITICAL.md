@@ -1398,7 +1398,7 @@ C-38, B-218.
 
 ---
 
-## [ ] C-40 – `UserRole::getById()` / `AbstractUser::getById()` cache a `User` object for role ids: afterwards `Role::getById()` returns `null`, permission checks crash and roles silently disappear
+## [x] C-40 – `UserRole::getById()` / `AbstractUser::getById()` cache a `User` object for role ids: afterwards `Role::getById()` returns `null`, permission checks crash and roles silently disappear
 
 **Files:** `models/User/AbstractUser.php:44-82`, `:288-296`; `models/User.php:276`, `:288`, `:301`, `:535`, `:592`,
 `:633`; `models/Element/PermissionChecker.php:203-204`; `lib/Security/User/User.php:63-67`;

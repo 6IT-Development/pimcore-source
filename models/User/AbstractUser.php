@@ -19,6 +19,7 @@ namespace Pimcore\Model\User;
 
 use Exception;
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\Db;
 use Pimcore\Event\Model\UserRoleEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Event\UserRoleEvents;
@@ -55,18 +56,19 @@ abstract class AbstractUser extends Model\AbstractModel implements AbstractUserI
             } else {
                 $reflectionClass = new ReflectionClass(static::class);
                 if ($reflectionClass->isAbstract()) {
-                    $user = new Model\User();
-                    $user->setType('');
+                    // resolve the class from the row: the cache entry is shared by all user classes, so it must
+                    // never hold e.g. a role row hydrated into a User
+                    $type = Db::get()->fetchOne('SELECT `type` FROM users WHERE id = ?', [$id]);
+                    $className = is_string($type) ? Service::getClassNameForType($type) : null;
+                    if (!$className) {
+                        return null;
+                    }
+                    /** @var AbstractUser $user */
+                    $user = new $className();
                 } else {
                     $user = new static();
                 }
                 $user->getDao()->getById($id);
-                $className = Service::getClassNameForType($user->getType());
-
-                if (get_class($user) !== $className && is_a($className, Model\Element\ElementInterface::class, true)) {
-                    /** @var AbstractUser $user */
-                    $user = $className::getById($user->getId());
-                }
 
                 RuntimeCache::set($cacheKey, $user);
             }

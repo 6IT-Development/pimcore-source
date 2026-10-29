@@ -531,8 +531,8 @@ final class User extends User\UserRole implements UserInterface
         if (null === $this->mergedPerspectives) {
             $this->mergedPerspectives = $this->getPerspectives();
             foreach ($this->getRoles() as $role) {
-                /** @var User\UserRole $userRole */
-                $userRole = User\UserRole::getById($role);
+                /** @var User\Role $userRole */
+                $userRole = User\Role::getById($role);
                 $this->mergedPerspectives = array_merge($this->mergedPerspectives, $userRole->getPerspectives());
             }
             $this->mergedPerspectives = array_values($this->mergedPerspectives);
@@ -588,8 +588,8 @@ final class User extends User\UserRole implements UserInterface
         if (null === $this->mergedWebsiteTranslationLanguagesEdit) {
             $this->mergedWebsiteTranslationLanguagesEdit = $this->getWebsiteTranslationLanguagesEdit();
             foreach ($this->getRoles() as $role) {
-                /** @var User\UserRole $userRole */
-                $userRole = User\UserRole::getById($role);
+                /** @var User\Role $userRole */
+                $userRole = User\Role::getById($role);
                 $this->mergedWebsiteTranslationLanguagesEdit = array_merge($this->mergedWebsiteTranslationLanguagesEdit, $userRole->getWebsiteTranslationLanguagesEdit());
             }
             $this->mergedWebsiteTranslationLanguagesEdit = array_values(array_unique($this->mergedWebsiteTranslationLanguagesEdit));
@@ -629,8 +629,8 @@ final class User extends User\UserRole implements UserInterface
         if (null === $this->mergedWebsiteTranslationLanguagesView) {
             $this->mergedWebsiteTranslationLanguagesView = $this->getWebsiteTranslationLanguagesView();
             foreach ($this->getRoles() as $role) {
-                /** @var User\UserRole $userRole */
-                $userRole = User\UserRole::getById($role);
+                /** @var User\Role $userRole */
+                $userRole = User\Role::getById($role);
                 $this->mergedWebsiteTranslationLanguagesView = array_merge($this->mergedWebsiteTranslationLanguagesView, $userRole->getWebsiteTranslationLanguagesView());
             }
 
