@@ -21,6 +21,7 @@ use Pimcore;
 use Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model\Document;
+use Pimcore\Model\Element;
 use Pimcore\Model\Site;
 
 final class Frontend
@@ -79,6 +80,8 @@ final class Frontend
 
         if (!$siteMapping) {
             $siteMapping = [];
+            // the mapping depends on the sites and on the paths of their root documents
+            $tags = ['system', 'resource', 'site'];
             $sites = new Site\Listing();
             $sites->setOrderKey(
                 '(SELECT LENGTH(CONCAT(`path`, `key`)) FROM documents WHERE documents.id = sites.rootId) DESC',
@@ -87,8 +90,9 @@ final class Frontend
             $sites = $sites->load();
             foreach ($sites as $site) {
                 $siteMapping[$site->getRootPath()] = $site->getId();
+                $tags[] = Element\Service::getElementCacheTag('document', $site->getRootId());
             }
-            Pimcore\Cache::save($siteMapping, $cacheKey, ['system', 'resource'], null, 997);
+            Pimcore\Cache::save($siteMapping, $cacheKey, $tags, null, 997);
         }
         RuntimeCache::set($cacheKey, $siteMapping);
 

@@ -219,6 +219,11 @@ final class Site extends AbstractModel
 
     public function getRootDocument(): ?Document\Page
     {
+        // loaded lazily: the site is cached without it, the page has its own (correctly tagged) cache
+        if (!$this->rootDocument && $this->rootId) {
+            $this->rootDocument = Document\Page::getById($this->rootId);
+        }
+
         return $this->rootDocument;
     }
 
@@ -265,8 +270,10 @@ final class Site extends AbstractModel
      */
     public function setRootId(int $rootId): Site
     {
+        if ($this->rootDocument?->getId() !== $rootId) {
+            $this->rootDocument = null;
+        }
         $this->rootId = $rootId;
-        $this->rootDocument = Document\Page::getById($this->rootId);
 
         return $this;
     }
@@ -350,6 +357,12 @@ final class Site extends AbstractModel
     public function getRedirectToMainDomain(): bool
     {
         return $this->redirectToMainDomain;
+    }
+
+    public function __sleep(): array
+    {
+        // never cache a copy of the root page (path, key, properties, ...), it would outlive renames and moves
+        return array_diff(parent::__sleep(), ['rootDocument']);
     }
 
     /**

@@ -769,7 +769,7 @@ found" (B-108) and rethrow everything else. Save only changed languages in `Dao:
 
 ---
 
-## [ ] C-23 – The persistent site cache stores a serialized copy of the root page and is only cleared by the `site` tag: renaming or moving a site root makes the whole site answer 404
+## [x] C-23 – The persistent site cache stores a serialized copy of the root page and is only cleared by the `site` tag: renaming or moving a site root makes the whole site answer 404
 
 **Files:** `models/Site.php:68-92`, `:109-134`, `:256-262`, `:285-292`, `:348-356`; `lib/Tool/Frontend.php:70-95`;
 `bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:111-124`; `models/Document.php:516-526`
