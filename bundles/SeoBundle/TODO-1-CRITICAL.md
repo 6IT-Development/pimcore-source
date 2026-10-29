@@ -42,7 +42,7 @@ document id/path and skip only that attribute. Use `null !== $priority && '' !==
 
 ---
 
-## [ ] C-02 – Default status code `300 Multiple Choices` produces a "redirect" without `Location` header
+## [x] C-02 – Default status code `300 Multiple Choices` produces a "redirect" without `Location` header
 
 **Files:** `config/pimcore/default.yaml:10-15`, `src/Redirect/RedirectHandler.php:219-226`
 

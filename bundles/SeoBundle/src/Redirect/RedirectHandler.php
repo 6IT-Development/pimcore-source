@@ -217,11 +217,16 @@ final class RedirectHandler
         }
 
         $statusCode = $redirect->getStatusCode() ?: Response::HTTP_MOVED_PERMANENTLY;
-        $response = new Response(null, $statusCode);
-
-        if ($response->isRedirect()) {
-            $response = new RedirectResponse($url, $statusCode);
+        if (!new Response(null, $statusCode)->isRedirect()) {
+            // e.g. 300 Multiple Choices: browsers and crawlers do not follow its Location header
+            $this->logger->warning('Redirect {id} has the status code {statusCode} that is not followed by clients, responding with 302 instead', [
+                'id' => $redirect->getId(),
+                'statusCode' => $statusCode,
+            ]);
+            $statusCode = Response::HTTP_FOUND;
         }
+
+        $response = new RedirectResponse($url, $statusCode);
 
         $response->headers->set(self::RESPONSE_HEADER_NAME_ID, (string)$redirect->getId());
 

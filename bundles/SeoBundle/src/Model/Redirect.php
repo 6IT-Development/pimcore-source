@@ -31,6 +31,7 @@ use Pimcore\Model\Document;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Site;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * @method Dao getDao()
@@ -246,7 +247,7 @@ final class Redirect extends AbstractModel
             $statusCode = '301';
         }
 
-        return 'HTTP/1.1 ' . $statusCode . ' ' . Redirect::getStatusCodes()[$statusCode];
+        return 'HTTP/1.1 ' . $statusCode . ' ' . (Redirect::getStatusCodes()[$statusCode] ?? Response::$statusTexts[$statusCode] ?? '');
     }
 
     public function clearDependentCache(): void
