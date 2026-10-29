@@ -18,7 +18,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – One invalid `sitemaps_priority` / `sitemaps_changefreq` property aborts the whole sitemap
+## [x] C-01 – One invalid `sitemaps_priority` / `sitemaps_changefreq` property aborts the whole sitemap
 
 **File:** `src/Sitemap/Element/Processor/PropertiesProcessor.php:35-52`
 
