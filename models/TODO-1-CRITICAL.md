@@ -966,7 +966,7 @@ migration that recomputes every `idPath` from `parentId`.
 
 ---
 
-## [ ] C-30 – Encrypted fields: a decryption failure loads `null`, and the next save overwrites the ciphertext
+## [x] C-30 – Encrypted fields: a decryption failure loads `null`, and the next save overwrites the ciphertext
 
 **Files:** `models/DataObject/ClassDefinition/Data/EncryptedField.php:112-150` (`:119-125`, `:139-144`), `:66-86`,
 strict-mode default `:42-50`, `:315-323`; write path `models/DataObject/Concrete/Dao.php:230-259`

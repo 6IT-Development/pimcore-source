@@ -37,6 +37,11 @@ class EncryptedField implements OwnerAwareFieldInterface
 
     protected mixed $encrypted = null;
 
+    /**
+     * The stored ciphertext if it could not be decrypted on load (non-strict mode), see getUndecryptableValue()
+     */
+    protected ?string $undecryptableValue = null;
+
     public function __construct(Data $delegate, mixed $plain)
     {
         $this->plain = $plain;
@@ -62,7 +67,28 @@ class EncryptedField implements OwnerAwareFieldInterface
     public function setPlain(mixed $plain): void
     {
         $this->plain = $plain;
+        // an explicitly set value replaces the value that could not be decrypted
+        $this->undecryptableValue = null;
         $this->markMeDirty();
+    }
+
+    /**
+     * The stored ciphertext when the value could not be decrypted on load (missing or different key). It is written
+     * back unchanged on save as long as no new value is set.
+     *
+     * @internal
+     */
+    public function getUndecryptableValue(): ?string
+    {
+        return $this->undecryptableValue;
+    }
+
+    /**
+     * @internal
+     */
+    public function setUndecryptableValue(?string $undecryptableValue): void
+    {
+        $this->undecryptableValue = $undecryptableValue;
     }
 
     /**
@@ -71,6 +97,11 @@ class EncryptedField implements OwnerAwareFieldInterface
      */
     public function __sleep(): array
     {
+        if ($this->undecryptableValue !== null) {
+            // already encrypted, keep it so a cached object still writes it back
+            return ['undecryptableValue', '_owner'];
+        }
+
         if ($this->plain) {
             try {
                 $key = Pimcore::getContainer()->getParameter('pimcore.encryption.secret');

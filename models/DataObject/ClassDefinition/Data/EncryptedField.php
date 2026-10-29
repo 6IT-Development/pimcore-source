@@ -65,6 +65,12 @@ class EncryptedField extends Data implements ResourcePersistenceAwareInterface, 
      */
     public function getDataForResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): mixed
     {
+        if ($data instanceof Model\DataObject\Data\EncryptedField && $data->getUndecryptableValue() !== null) {
+            // the value could not be decrypted when it was loaded (non-strict mode), write the stored ciphertext back
+            // unchanged instead of NULL; there is no plain value for unencrypted output
+            return empty($params['skipEncryption']) ? $data->getUndecryptableValue() : null;
+        }
+
         if ($data) {
             /** @var ResourcePersistenceAwareInterface|null $fd */
             $fd = $this->getDelegateDatatypeDefinition();
@@ -107,41 +113,28 @@ class EncryptedField extends Data implements ResourcePersistenceAwareInterface, 
     }
 
     /**
-     * @throws Exception
+     * @throws Exception if the key cannot be loaded or the data cannot be decrypted
      */
     private function decrypt(?string $data, ?Model\DataObject\Concrete $object, array $params): mixed
     {
         if ($data) {
+            $key = Pimcore::getContainer()->getParameter('pimcore.encryption.secret');
+
             try {
-                $key = Pimcore::getContainer()->getParameter('pimcore.encryption.secret');
-
-                try {
-                    $key = Key::loadFromAsciiSafeString($key);
-                } catch (Exception) {
-                    if (!self::isStrictMode()) {
-                        Logger::error('failed to load key');
-
-                        return null;
-                    }
-
-                    throw new Exception('could not load key');
-                }
-
-                if (empty($params['skipDecryption'])) {
-                    $data = Crypto::decrypt($data, $key, empty($params['asString']));
-                }
-
-                if ($this->delegate instanceof AfterDecryptionUnmarshallerInterface || method_exists($this->delegate, 'unmarshalAfterDecryption')) {
-                    $data = $this->delegate->unmarshalAfterDecryption($data, $object, $params);
-                }
-
-                return $data;
-            } catch (Exception $e) {
-                Logger::error((string)$e);
-                if (self::isStrictMode()) {
-                    throw new Exception('encrypted field ' . $this->getName() . ' cannot be decoded');
-                }
+                $key = Key::loadFromAsciiSafeString($key);
+            } catch (Exception) {
+                throw new Exception('could not load key');
             }
+
+            if (empty($params['skipDecryption'])) {
+                $data = Crypto::decrypt($data, $key, empty($params['asString']));
+            }
+
+            if ($this->delegate instanceof AfterDecryptionUnmarshallerInterface || method_exists($this->delegate, 'unmarshalAfterDecryption')) {
+                $data = $this->delegate->unmarshalAfterDecryption($data, $object, $params);
+            }
+
+            return $data;
         }
 
         return null;
@@ -155,10 +148,27 @@ class EncryptedField extends Data implements ResourcePersistenceAwareInterface, 
         /** @var ResourcePersistenceAwareInterface|null $fd */
         $fd = $this->getDelegateDatatypeDefinition();
         if ($fd) {
-            $data = $this->decrypt($data, $object, $params);
-            $data = $fd->getDataFromResource($data, $object, $params);
+            $undecryptableValue = null;
 
-            $field = new Model\DataObject\Data\EncryptedField($this->delegate, $data);
+            try {
+                $plain = $this->decrypt($data, $object, $params);
+            } catch (Exception $e) {
+                Logger::error((string)$e);
+                if (self::isStrictMode()) {
+                    throw new Exception('encrypted field ' . $this->getName() . ' cannot be decoded');
+                }
+
+                // keep the ciphertext, otherwise the next save of the object would overwrite it with NULL
+                $plain = null;
+                $undecryptableValue = $data;
+            }
+
+            $plain = $fd->getDataFromResource($plain, $object, $params);
+
+            $field = new Model\DataObject\Data\EncryptedField($this->delegate, $plain);
+            if ($undecryptableValue !== null) {
+                $field->setUndecryptableValue($undecryptableValue);
+            }
 
             if (isset($params['owner'])) {
                 $field->_setOwner($params['owner']);
