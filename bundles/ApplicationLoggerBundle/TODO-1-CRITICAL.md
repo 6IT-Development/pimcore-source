@@ -84,7 +84,7 @@ phishing links, tracking pixels, CSS-based content spoofing in a trusted "Error 
 
 ---
 
-## [ ] C-05 – A failing DB write in the handler crashes the calling code
+## [x] C-05 – A failing DB write in the handler crashes the calling code
 
 **File:** `src/Handler/ApplicationLoggerDb.php:42-55`
 

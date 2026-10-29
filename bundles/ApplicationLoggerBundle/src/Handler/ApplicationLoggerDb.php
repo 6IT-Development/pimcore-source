@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Handler;
 
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
@@ -61,17 +62,35 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
 
     protected function write(LogRecord $record): void
     {
-        $this->db->insert(self::TABLE_NAME, [
-            'pid' => getmypid(),
-            'priority' => $record->level->toPsrLogLevel(),
-            'message' => $record->message,
-            'timestamp' => $record->datetime->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
-            'component' => $record->context['component'] ?? $record->channel,
-            'fileobject' => $record->context['fileObject'] ?? null,
-            'relatedobject' => $record->context['relatedObject'] ?? null,
-            'relatedobjecttype' => $record->context['relatedObjectType'] ?? null,
-            'source' => $record->context['source'] ?? null,
-        ]);
+        // a log call must not turn into an application error, e.g. when the bundle is not installed,
+        // the database is gone or a value does not fit its column in strict mode
+        try {
+            $this->db->insert(self::TABLE_NAME, [
+                'pid' => getmypid(),
+                'priority' => $record->level->toPsrLogLevel(),
+                // TEXT holds 65535 bytes
+                'message' => mb_strcut($record->message, 0, 65535, 'UTF-8'),
+                'timestamp' => $record->datetime->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+                'component' => $this->truncate($record->context['component'] ?? $record->channel, 190),
+                'fileobject' => $this->truncate($record->context['fileObject'] ?? null, 1024),
+                'relatedobject' => $record->context['relatedObject'] ?? null,
+                'relatedobjecttype' => $record->context['relatedObjectType'] ?? null,
+                'source' => $this->truncate($record->context['source'] ?? null, 190),
+            ]);
+        } catch (Exception $e) {
+            error_log(sprintf(
+                'Could not write to %s: %s. Log entry: [%s] %s',
+                self::TABLE_NAME,
+                $e->getMessage(),
+                $record->level->toPsrLogLevel(),
+                $record->message
+            ));
+        }
+    }
+
+    private function truncate(mixed $value, int $length): mixed
+    {
+        return is_string($value) ? mb_substr($value, 0, $length, 'UTF-8') : $value;
     }
 
     /**
