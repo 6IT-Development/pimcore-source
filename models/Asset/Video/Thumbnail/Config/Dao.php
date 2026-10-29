@@ -75,6 +75,11 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function save(): void
     {
+        // the name is used in the config file name and in the thumbnail storage paths
+        if (!preg_match('/^[a-zA-Z0-9_\-]+$/D', $this->model->getName())) {
+            throw new Exception('Invalid thumbnail name, only letters, digits, "_" and "-" are allowed: ' . $this->model->getName());
+        }
+
         $ts = time();
         if (!$this->model->getCreationDate()) {
             $this->model->setCreationDate($ts);

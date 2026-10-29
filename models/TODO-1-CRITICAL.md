@@ -387,7 +387,7 @@ next to the asset; on failure remove the temp file.
 
 ---
 
-## [ ] C-09 – Thumbnail config name is unvalidated and goes into YAML file paths (path traversal on write and delete)
+## [x] C-09 – Thumbnail config name is unvalidated and goes into YAML file paths (path traversal on write and delete)
 
 **Files:** `models/Asset/Image/Thumbnail/Config.php:391-396` (`setName()`), `Image/Thumbnail/Config/Dao.php:104`
 (`saveData`), `:140` (`deleteData`) → `lib/Config/LocationAwareConfigRepository.php:236-240` (`$directory . '/' . $key . '.yaml'`,

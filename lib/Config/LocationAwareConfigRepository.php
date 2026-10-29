@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Config;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\ConfigurationHelper;
 use Pimcore\Helper\StopMessengerWorkersTrait;
@@ -235,6 +236,11 @@ class LocationAwareConfigRepository
 
     private function getVarConfigFile(string $key): string
     {
+        // the key becomes a file name, it must not leave the config directory
+        if ($key === '' || $key === '.' || $key === '..' || strpbrk($key, "/\\\0") !== false) {
+            throw new InvalidArgumentException(sprintf('Invalid configuration key "%s"', $key));
+        }
+
         $directory = rtrim($this->storageConfig[self::WRITE_TARGET][self::OPTIONS][self::DIRECTORY], '/\\');
 
         return $directory . '/' . $key . '.yaml';
