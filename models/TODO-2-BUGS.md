@@ -284,7 +284,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** separate computing from persisting; inside `update()` only set the value in memory.
 
-## [ ] B-10 – `delete()`: file-system errors after `commit()` roll back nothing and fire `POST_DELETE_FAILURE`
+## [x] B-10 – `delete()`: file-system errors after `commit()` roll back nothing and fire `POST_DELETE_FAILURE`
 
 **File:** `models/Asset.php:1024-1053`
 

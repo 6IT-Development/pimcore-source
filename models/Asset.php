@@ -1036,21 +1036,6 @@ class Asset extends Element\AbstractElement
             $this->getDao()->delete();
 
             $this->commit();
-
-            // remove file on filesystem
-            if (!$isNested) {
-                $fullPath = $this->getRealFullPath();
-                if ($fullPath != '/..' && !strpos($fullPath,
-                        '/../') && $this->getKey() !== '.' && $this->getKey() !== '..') {
-                    $this->deletePhysicalFile();
-                }
-
-                //remove target parent folder preview thumbnails
-                $this->clearFolderThumbnails($this);
-            }
-
-            $this->clearThumbnails(true);
-
         } catch (Throwable $e) {
             try {
                 $this->rollBack();
@@ -1065,6 +1050,25 @@ class Asset extends Element\AbstractElement
             Logger::crit((string)$e);
 
             throw $e;
+        }
+
+        // the DB rows are gone at this point, so storage errors cannot be rolled back and must not fail the delete
+        try {
+            // remove file on filesystem
+            if (!$isNested) {
+                $fullPath = $this->getRealFullPath();
+                if ($fullPath != '/..' && !strpos($fullPath,
+                        '/../') && $this->getKey() !== '.' && $this->getKey() !== '..') {
+                    $this->deletePhysicalFile();
+                }
+
+                //remove target parent folder preview thumbnails
+                $this->clearFolderThumbnails($this);
+            }
+
+            $this->clearThumbnails(true);
+        } catch (Throwable $e) {
+            Logger::error(sprintf('Asset %d was deleted, but cleaning up its files failed: %s', $this->getId(), $e));
         }
 
         // empty asset cache
