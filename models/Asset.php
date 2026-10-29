@@ -1590,16 +1590,24 @@ class Asset extends Element\AbstractElement
             $language = Pimcore::getContainer()->get(LocaleServiceInterface::class)->findLocale();
         }
 
+        $fallback = null;
         foreach ($metadata as $md) {
             $md = (array)$md;
             if ($md['name'] == $name) {
-                if ($language == $md['language'] || (empty($md['language']) && !$strictMatchLanguage)) {
+                if ($language == $md['language']) {
                     $data = $md;
 
                     break;
                 }
+
+                // the language-neutral entry is only used when there is no entry for the requested language
+                if ($fallback === null && empty($md['language']) && !$strictMatchLanguage) {
+                    $fallback = $md;
+                }
             }
         }
+
+        $data ??= $fallback;
 
         if ($data) {
             $result = $raw ? $data : $this->transformMetadata($data);

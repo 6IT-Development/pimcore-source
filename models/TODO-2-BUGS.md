@@ -238,7 +238,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** apply the event result only to the returned value; let the Dao read raw `$this->metadata`.
 
-## [ ] B-05 – `getMetadataByName()` returns the first match, not the localized one
+## [x] B-05 – `getMetadataByName()` returns the first match, not the localized one
 
 **File:** `models/Asset.php:1563-1571`
 
