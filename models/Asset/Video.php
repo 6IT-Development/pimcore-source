@@ -25,6 +25,7 @@ use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Tool;
 use RuntimeException;
+use SimpleXMLElement;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Throwable;
 
@@ -278,51 +279,62 @@ class Video extends Model\Asset
             $chunkSize = 1024;
             $file_pointer = $this->getStream();
 
-            $tag = '<rdf:SphericalVideo';
-            $tagLength = strlen($tag);
-            $buffer = false;
-
-            // find open tag
-            $overlapString = '';
-            while ($buffer === false && ($chunk = fread($file_pointer, $chunkSize)) !== false) {
-                if (strlen($chunk) <= $tagLength) {
-                    break;
-                }
-
-                $chunk = $overlapString . $chunk;
-
-                if (($position = strpos($chunk, $tag)) === false) {
-                    // if open tag not found, back up just in case the open tag is on the split.
-                    $overlapString = substr($chunk, $tagLength * -1);
-                } else {
-                    $buffer = substr($chunk, $position);
-                }
-            }
-
-            if ($buffer !== false) {
-                $tag = '</rdf:SphericalVideo>';
+            try {
+                $tag = '<rdf:SphericalVideo';
                 $tagLength = strlen($tag);
-                $offset = 0;
-                while (($position = strpos($buffer, $tag, $offset)) === false && ($chunk = fread($file_pointer,
-                        $chunkSize)) !== false && !empty($chunk)) {
-                    $offset = strlen($buffer) - $tagLength; //subtract the tag size for case it's split between chunks
-                    $buffer .= $chunk;
+                $buffer = false;
+
+                // find open tag
+                $overlapString = '';
+                while ($buffer === false && ($chunk = fread($file_pointer, $chunkSize)) !== false) {
+                    if (strlen($chunk) <= $tagLength) {
+                        break;
+                    }
+
+                    $chunk = $overlapString . $chunk;
+
+                    if (($position = strpos($chunk, $tag)) === false) {
+                        // if open tag not found, back up just in case the open tag is on the split.
+                        $overlapString = substr($chunk, $tagLength * -1);
+                    } else {
+                        $buffer = substr($chunk, $position);
+                    }
                 }
 
-                if ($position === false) {
-                    // this would mean the open tag was found, but the close tag was not.  Maybe file corruption?
-                    throw new RuntimeException('No close tag found.  Possibly corrupted file.');
+                if ($buffer !== false) {
+                    $tag = '</rdf:SphericalVideo>';
+                    $tagLength = strlen($tag);
+                    $offset = 0;
+                    while (($position = strpos($buffer, $tag, $offset)) === false && ($chunk = fread($file_pointer,
+                            $chunkSize)) !== false && !empty($chunk)) {
+                        $offset = strlen($buffer) - $tagLength; //subtract the tag size for case it's split between chunks
+                        $buffer .= $chunk;
+                    }
+
+                    if ($position === false) {
+                        // this would mean the open tag was found, but the close tag was not.  Maybe file corruption?
+                        throw new RuntimeException('No close tag found.  Possibly corrupted file.');
+                    }
+
+                    $buffer = substr($buffer, 0, $position + $tagLength);
+                    $buffer = preg_replace('/xmlns[^=]*="[^"]*"/i', '', $buffer);
+                    $buffer = preg_replace('@<(/)?([a-zA-Z]+):([a-zA-Z]+)@', '<$1$2____$3', $buffer);
+
+                    $xml = @simplexml_load_string($buffer);
+                    if (!$xml instanceof SimpleXMLElement) {
+                        throw new RuntimeException('Unable to parse the spherical video XMP data.');
+                    }
+                    $data = object2array($xml);
                 }
-
-                $buffer = substr($buffer, 0, $position + $tagLength);
-                $buffer = preg_replace('/xmlns[^=]*="[^"]*"/i', '', $buffer);
-                $buffer = preg_replace('@<(/)?([a-zA-Z]+):([a-zA-Z]+)@', '<$1$2____$3', $buffer);
-
-                $xml = @simplexml_load_string($buffer);
-                $data = object2array($xml);
+            } catch (Throwable $e) {
+                // a crafted or corrupt file must not abort the asset processing
+                Logger::warning('Unable to read the spherical meta data of video asset ' . $this->getId() . ': ' . $e->getMessage());
+                $data = [];
+            } finally {
+                if (is_resource($file_pointer)) {
+                    fclose($file_pointer);
+                }
             }
-
-            fclose($file_pointer);
         }
 
         // remove namespace prefixes if possible
