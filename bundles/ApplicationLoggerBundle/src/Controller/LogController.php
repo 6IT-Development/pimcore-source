@@ -26,7 +26,6 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use League\Flysystem\FilesystemException;
 use League\Flysystem\PathTraversalDetected;
-use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Controller\KernelControllerEventInterface;
 use Pimcore\Controller\Traits\JsonHelperTrait;
@@ -50,6 +49,10 @@ class LogController extends UserAwareController implements KernelControllerEvent
     private const int DEFAULT_LIMIT = 50;
 
     private const int MAX_LIMIT = 1000;
+
+    private const array SORTABLE_COLUMNS = [
+        'id', 'pid', 'timestamp', 'priority', 'component', 'relatedobject', 'source', 'message', 'fileobject',
+    ];
 
     private const string DATE_TIME_PATTERN = '/^(?P<date>\d{4}\-\d{2}\-\d{2})T(?P<time>\d{2}:\d{2}:\d{2})$/';
 
@@ -76,15 +79,11 @@ class LogController extends UserAwareController implements KernelControllerEvent
             ->setMaxResults(min(max(1, $requestSource->getInt('limit', self::DEFAULT_LIMIT)), self::MAX_LIMIT))
             ->orderBy('id', 'DESC');
 
-        if (class_exists(QueryParams::class)) {
-            $sortingSettings = QueryParams::extractSortingSettings(array_merge(
-                $request->request->all(),
-                $request->query->all()
-            ));
-
-            if ($sortingSettings['orderKey']) {
-                $qb->orderBy($db->quoteIdentifier($sortingSettings['orderKey']), $sortingSettings['order']);
-            }
+        // ExtJS sends the sorters as JSON: [{"property": "...", "direction": "ASC|DESC"}]
+        $sorters = json_decode($request->query->getString('sort') ?: $request->request->getString('sort'), true);
+        if (is_array($sorters) && in_array($sorters[0]['property'] ?? null, self::SORTABLE_COLUMNS, true)) {
+            $direction = 'DESC' === strtoupper((string)($sorters[0]['direction'] ?? '')) ? 'DESC' : 'ASC';
+            $qb->orderBy($db->quoteIdentifier($sorters[0]['property']), $direction);
         }
 
         if ('' !== $priority = $requestSource->getString('priority')) {

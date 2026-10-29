@@ -42,7 +42,7 @@ parent already handles `null` correctly – the event listener should use it (se
 Negative `start` produces `OFFSET -n` → SQL syntax error (500). `limit` is unbounded (`limit=10000000` loads the
 whole table into memory). Clamp `start >= 0` and `1 <= limit <= max` (e.g. 1000).
 
-### [ ] B-06 – Sorting by arbitrary/unknown column produces SQL errors; silently disabled without AdminBundle
+### [x] B-06 – Sorting by arbitrary/unknown column produces SQL errors; silently disabled without AdminBundle
 **Lines:** 75-84
 `orderKey` comes straight from the request; it is quoted (no injection) but any unknown column → SQL error 500. Should be
 whitelisted against the known grid columns (`id`, `pid`, `timestamp`, `priority`, `component`, `relatedobject`,
