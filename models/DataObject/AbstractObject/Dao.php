@@ -162,15 +162,7 @@ class Dao extends Model\Element\Dao
                 $userId = $user->getId();
             }
 
-            //update object child paths
-            // we don't update the modification date here, as this can have side-effects when there's an unpublished version for an element
-            $this->db->executeQuery('update objects set `path` = replace(`path`,' . $this->db->quote($oldPath . '/') . ',' . $this->db->quote($this->model->getRealFullPath() . '/') . "), userModification = '" . $userId . "' where `path` like " . $this->db->quote(Helper::escapeLike($oldPath) . '/%') . ';');
-
-            //update object child permission paths
-            $this->db->executeQuery('update users_workspaces_object set cpath = replace(cpath,' . $this->db->quote($oldPath . '/') . ',' . $this->db->quote($this->model->getRealFullPath() . '/') . ') where cpath like ' . $this->db->quote(Helper::escapeLike($oldPath) . '/%') . ';');
-
-            //update object child properties paths
-            $this->db->executeQuery('update properties set cpath = replace(cpath,' . $this->db->quote($oldPath . '/') . ',' . $this->db->quote($this->model->getRealFullPath() . '/') . ') where cpath like ' . $this->db->quote(Helper::escapeLike($oldPath) . '/%') . ';');
+            $this->updateChildPathPrefixes('object', 'objects', $oldPath, $userId);
 
             return $objects;
         }

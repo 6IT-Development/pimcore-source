@@ -55,6 +55,39 @@ abstract class Dao extends Model\Dao\AbstractDao
         return $parentIds;
     }
 
+    /**
+     * Rewrites the leading old path of the children, their workspaces and their properties after a move / rename.
+     * Only the prefix is replaced: REPLACE() would also rewrite later occurrences of the old path.
+     *
+     * @param string $elementType asset, document or object
+     * @param string $table the element table (assets, documents, objects)
+     */
+    protected function updateChildPathPrefixes(string $elementType, string $table, string $oldPath, int|string $userId): void
+    {
+        $params = [
+            'oldPath' => $oldPath . '/',
+            'newPath' => $this->model->getRealFullPath() . '/',
+            'oldPathLike' => Helper::escapeLike($oldPath) . '/%',
+        ];
+
+        // we don't update the modification date here, as this can have side-effects when there's an unpublished version for an element
+        $this->db->executeStatement(
+            'UPDATE ' . $table . ' SET `path` = CONCAT(:newPath, SUBSTRING(`path`, CHAR_LENGTH(:oldPath) + 1)), userModification = :userId WHERE `path` LIKE :oldPathLike',
+            $params + ['userId' => $userId]
+        );
+
+        $this->db->executeStatement(
+            'UPDATE users_workspaces_' . $elementType . ' SET cpath = CONCAT(:newPath, SUBSTRING(cpath, CHAR_LENGTH(:oldPath) + 1)) WHERE cpath LIKE :oldPathLike',
+            $params
+        );
+
+        // properties of the other element types below the same path must stay untouched
+        $this->db->executeStatement(
+            'UPDATE properties SET cpath = CONCAT(:newPath, SUBSTRING(cpath, CHAR_LENGTH(:oldPath) + 1)) WHERE ctype = :ctype AND cpath LIKE :oldPathLike',
+            $params + ['ctype' => $elementType]
+        );
+    }
+
     protected function extractKeyAndPath(string $fullpath): array
     {
         $key = '';

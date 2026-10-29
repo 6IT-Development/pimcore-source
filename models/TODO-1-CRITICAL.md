@@ -839,7 +839,7 @@ CONSTRAINT `fk_sites_documents` FOREIGN KEY (`rootId`) REFERENCES `documents` (`
 
 ## Document / Element / DataObject (Scope 6)
 
-## [ ] C-25 – Document and object move/rename rewrites every occurrence of the old path in DB (children, workspaces, and *other element types'* properties)
+## [x] C-25 – Document and object move/rename rewrites every occurrence of the old path in DB (children, workspaces, and *other element types'* properties)
 
 **Files:** `models/Document/Dao.php:196-217` (`:208`, `:211`, `:214`); `models/DataObject/AbstractObject/Dao.php:154-179`
 (`:167`, `:170`, `:173`); callers `models/Document.php:328-341`, `models/DataObject/AbstractObject.php:540-548`

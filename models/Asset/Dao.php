@@ -216,31 +216,7 @@ class Dao extends Model\Element\Dao
             $userId = $user->getId();
         }
 
-        // replace only the leading old path; REPLACE() would also rewrite later occurrences of it
-        $params = [
-            'oldPath' => $oldPath . '/',
-            'newPath' => $this->model->getRealFullPath() . '/',
-            'oldPathLike' => Helper::escapeLike($oldPath) . '/%',
-        ];
-
-        //update assets child paths
-        // we don't update the modification date here, as this can have side-effects when there's an unpublished version for an element
-        $this->db->executeStatement(
-            'UPDATE assets SET `path` = CONCAT(:newPath, SUBSTRING(`path`, CHAR_LENGTH(:oldPath) + 1)), userModification = :userId WHERE `path` LIKE :oldPathLike',
-            $params + ['userId' => $userId]
-        );
-
-        //update assets child permission paths
-        $this->db->executeStatement(
-            'UPDATE users_workspaces_asset SET cpath = CONCAT(:newPath, SUBSTRING(cpath, CHAR_LENGTH(:oldPath) + 1)) WHERE cpath LIKE :oldPathLike',
-            $params
-        );
-
-        //update assets child properties paths
-        $this->db->executeStatement(
-            "UPDATE properties SET cpath = CONCAT(:newPath, SUBSTRING(cpath, CHAR_LENGTH(:oldPath) + 1)) WHERE ctype = 'asset' AND cpath LIKE :oldPathLike",
-            $params
-        );
+        $this->updateChildPathPrefixes('asset', 'assets', $oldPath, $userId);
 
         return $assets;
     }
