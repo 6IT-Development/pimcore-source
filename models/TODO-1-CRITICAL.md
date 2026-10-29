@@ -582,7 +582,7 @@ decide literal vs. regex matching (B-94). Build the three near-identical queries
 
 ---
 
-## [ ] C-17 – `Dependency\Dao::save()` is not atomic: a failure mid-way silently drops dependency rows ("not used" → editor deletes a referenced element)
+## [x] C-17 – `Dependency\Dao::save()` is not atomic: a failure mid-way silently drops dependency rows ("not used" → editor deletes a referenced element)
 
 **Files:** `models/Dependency/Dao.php:222-283`; caller `lib/Messenger/Handler/ElementDependenciesHandler.php:73`;
 `models/Asset.php:611`, `models/Document.php:386`, `models/DataObject/AbstractObject.php:609`

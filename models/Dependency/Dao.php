@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\Dependency;
 
+use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Exception;
 use Pimcore;
@@ -228,8 +229,34 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * Save to database
      *
+     * The delta (delete + insert) is written in one transaction: a failure in between must not leave the source with
+     * fewer rows than it really requires, since that makes referenced elements look unused.
      */
     public function save(): void
+    {
+        // a retry is only possible if we own the transaction, a deadlock rolls back an outer one as well
+        $maxRetries = $this->db->isTransactionActive() ? 1 : 5;
+
+        for ($retries = 0; $retries < $maxRetries; $retries++) {
+            try {
+                $this->db->transactional(function (): void {
+                    $this->saveDelta();
+                });
+
+                return;
+            } catch (RetryableException $e) {
+                if ($retries >= $maxRetries - 1) {
+                    throw $e;
+                }
+
+                $waitTime = random_int(1, 5) * 100000; // microseconds
+                Logger::warning('Unable to save dependencies of ' . $this->model->getSourceType() . ' ' . $this->model->getSourceId() . " because of the following reason '" . $e->getMessage() . "'. --> Retrying in " . $waitTime . ' microseconds ...');
+                usleep($waitTime);
+            }
+        }
+    }
+
+    private function saveDelta(): void
     {
         // get existing dependencies
         $existingDependenciesRaw = $this->db->fetchAllAssociative('SELECT id, targetType, targetId FROM dependencies WHERE sourceType= ? AND sourceId = ?',
