@@ -1300,6 +1300,10 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         if ($name === null || $name === '') {
             return true;
         }
+        // the name ends up in generated getters / setters and in column names
+        if (!preg_match('/^[a-zA-Z]\w*$/D', $name)) {
+            return true;
+        }
         $lowerCasedName = strtolower($name);
         if (
             !$this instanceof DataObject\ClassDefinition\Data\Localizedfields &&

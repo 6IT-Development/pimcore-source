@@ -28,6 +28,7 @@ use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\File;
+use Pimcore\Helper\ReservedWordsHelper;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
@@ -352,11 +353,13 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             $this->setId((string)$maxId);
         }
 
-        if (!preg_match('/[a-zA-Z]\w+/', $this->getName())) {
+        // the name becomes a PHP class name and file name, the id part of table names and DDL
+        if (!preg_match('/^[a-zA-Z]\w+$/D', $this->getName()) || strlen($this->getName()) > 190
+            || (new ReservedWordsHelper())->isReservedWord($this->getName())) {
             throw new Exception(sprintf('Invalid name for class definition: %s', $this->getName()));
         }
 
-        if (!preg_match('/[a-zA-Z0-9]([a-zA-Z0-9_]+)?/', $this->getId())) {
+        if (!preg_match('/^[a-zA-Z0-9]\w*$/D', $this->getId()) || strlen($this->getId()) > 50) {
             throw new Exception(sprintf('Invalid ID `%s` for class definition %s', $this->getId(), $this->getName()));
         }
 

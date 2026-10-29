@@ -1008,7 +1008,7 @@ answer 404); move the cleanup to class save / a maintenance task; cache the reso
 
 ---
 
-## [ ] C-32 – Class names, class ids, field names and select-option ids are not validated with anchored patterns: they reach generated PHP code, file paths and DDL
+## [x] C-32 – Class names, class ids, field names and select-option ids are not validated with anchored patterns: they reach generated PHP code, file paths and DDL
 
 **Files:** `models/DataObject/ClassDefinition.php:331-367` (`:350`, `:355`, `:359`), `getDefinitionFile()` `:576-579`,
 `getPhpClassFile()` `:584-587`; `models/DataObject/ClassDefinition/Data.php:1297-1312` (`isForbiddenName()`, no

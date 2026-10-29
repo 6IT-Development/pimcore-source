@@ -336,6 +336,22 @@ class Localizedfields extends Data implements CustomResourcePersistingInterface,
         return $dataString;
     }
 
+    public function isForbiddenName(): bool
+    {
+        if (parent::isForbiddenName()) {
+            return true;
+        }
+
+        // the localized fields get their own getters / setters on the object
+        foreach ($this->getFieldDefinitions() as $fd) {
+            if ($fd->isForbiddenName()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function getChildren(): array
     {
         return $this->children;

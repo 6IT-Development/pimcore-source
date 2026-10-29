@@ -77,6 +77,13 @@ final class Config extends AbstractModel implements JsonSerializable
      */
     public function setId(string $id): Config
     {
+        // the id becomes the enum class name and file name
+        if (!preg_match('/^[a-zA-Z]\w*$/D', $id)) {
+            throw new InvalidArgumentException(
+                'ID must start with a letter and contain only letters, digits and underscores'
+            );
+        }
+
         $reservedWordsHelper = new ReservedWordsHelper();
         if ($reservedWordsHelper->isReservedWord($id)) {
             throw new InvalidArgumentException(
