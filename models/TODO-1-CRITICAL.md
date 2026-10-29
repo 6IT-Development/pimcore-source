@@ -1335,7 +1335,7 @@ load / restore / delete tests for every adapter (I-109). Related: C-39, B-219, B
 
 ---
 
-## [ ] C-39 – Version storage writes are not atomic: an aborted binary write leaves a 1-byte placeholder `.bin` that later versions reuse
+## [x] C-39 – Version storage writes are not atomic: an aborted binary write leaves a 1-byte placeholder `.bin` that later versions reuse
 
 **Files:** `models/Version/Adapter/FileSystemVersionStorageAdapter.php:85-110` (`:91-92`, `:99`, `:102-107`);
 `models/Version.php:171-189`; `models/Version/Dao.php:96-104`; `models/Asset.php:839-890`

@@ -37,6 +37,7 @@ use Pimcore\Model\Version\Adapter\VersionStorageAdapterInterface;
 use Pimcore\Model\Version\Dao;
 use Pimcore\Model\Version\SetDumpStateFilter;
 use Pimcore\Tool\Serialize;
+use Throwable;
 
 /**
  * @method Dao getDao()
@@ -183,10 +184,20 @@ final class Version extends AbstractModel
             $this->setBinaryFileId($this->getDao()->getBinaryFileIdForHash($this->getBinaryFileHash()));
         }
 
+        $isNew = !$this->getId();
         $id = $this->getDao()->save();
         $this->setId($id);
 
-        $this->storageAdapter->save($this, $dataString, $isAsset ? $data->getStream() : null);
+        try {
+            $this->storageAdapter->save($this, $dataString, $isAsset ? $data->getStream() : null);
+        } catch (Throwable $e) {
+            // a version row without its data would be offered for restore, and its binary hash reused by later versions
+            if ($isNew) {
+                $this->getDao()->delete();
+            }
+
+            throw $e;
+        }
 
         $this->dispatchEvent(new VersionEvent($this), VersionEvents::POST_SAVE);
     }
