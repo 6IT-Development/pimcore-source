@@ -1446,7 +1446,7 @@ class Asset extends Element\AbstractElement
     {
         if ($name && $type) {
             $tmp = [];
-            $name = str_replace('~', '---', $name);
+            $name = self::normalizeMetadataName($name);
 
             foreach ($this->metadata as $item) {
                 if ($item['name'] != $name || $language != $item['language']) {
@@ -1487,7 +1487,7 @@ class Asset extends Element\AbstractElement
     {
         if ($name) {
             $tmp = [];
-            $name = str_replace('~', '---', $name);
+            $name = self::normalizeMetadataName($name);
 
             foreach ($this->metadata as $item) {
                 if ($item['name'] === $name && ($language == $item['language'] || $language === '*')) {
@@ -1550,6 +1550,14 @@ class Asset extends Element\AbstractElement
         return $result;
     }
 
+    /**
+     * Metadata names are stored with `~` replaced by `---`, so every lookup has to use the same form.
+     */
+    private static function normalizeMetadataName(string $name): string
+    {
+        return str_replace('~', '---', $name);
+    }
+
     private function transformMetadata(array $metaData): mixed
     {
         $loader = Pimcore::getContainer()->get('pimcore.implementation_loader.asset.metadata.data');
@@ -1590,6 +1598,7 @@ class Asset extends Element\AbstractElement
             $language = Pimcore::getContainer()->get(LocaleServiceInterface::class)->findLocale();
         }
 
+        $name = self::normalizeMetadataName($name);
         $fallback = null;
         foreach ($metadata as $md) {
             $md = (array)$md;

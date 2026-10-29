@@ -247,7 +247,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** exact language match first, empty-language entry as fallback.
 
-## [ ] B-06 – Metadata names containing `~` cannot be read back
+## [x] B-06 – Metadata names containing `~` cannot be read back
 
 **File:** `models/Asset.php:1430`, `:1471` vs `:1564`
 
