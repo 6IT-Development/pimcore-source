@@ -208,7 +208,7 @@ B-206–B-209, **Schedule** B-210–B-214, **Version** B-215–B-221, **Version 
 **Fix direction:** `createLock($id, $ttl, autoRelease: false)`; pass the serialized `Key` in the message, or let the TTL
 expire instead of releasing from a different key.
 
-## [ ] B-02 – `relocateThumbnails()` fallback works on the asset path instead of the thumbnail directory
+## [x] B-02 – `relocateThumbnails()` fallback works on the asset path instead of the thumbnail directory
 
 **File:** `models/Asset.php:1788`
 

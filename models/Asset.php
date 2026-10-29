@@ -25,6 +25,7 @@ use League\Flysystem\StorageAttributes;
 use League\Flysystem\UnableToMoveFile;
 use League\Flysystem\UnableToProvideChecksum;
 use League\Flysystem\UnableToRetrieveMetadata;
+use LogicException;
 use Pimcore;
 use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
@@ -1707,15 +1708,20 @@ class Asset extends Element\AbstractElement
 
         try {
             $movedFiles = [];
-            $children = $storage->listContents($oldPath, true);
-            $totalChildren = iterator_count($children);
+            // the listing wraps a single generator, counting it would exhaust it before the loop
+            $children = $storage->listContents($oldPath, true)->toArray();
+            $totalChildren = count($children);
+            $oldPrefix = rtrim($oldPath, '/') . '/';
 
             if ($totalChildren > 0) {
                 /** @var StorageAttributes $child */
                 foreach ($children as $child) {
                     if ($child instanceof FileAttributes) {
                         $src = $child['path'];
-                        $dest = str_replace($oldPath, $newPath, '/' . $src);
+                        if (!str_starts_with('/' . $src, $oldPrefix)) {
+                            throw new LogicException(sprintf('File %s is not located below %s', $src, $oldPath));
+                        }
+                        $dest = rtrim($newPath, '/') . '/' . substr('/' . $src, strlen($oldPrefix));
                         $storage->move($src, $dest);
                         $movedFiles[$dest] = $src;
                     }
@@ -1786,7 +1792,7 @@ class Asset extends Element\AbstractElement
                 } catch (UnableToMoveFile) {
                     //update children, if unable to move parent
                     //if there is an error, we can ignore it
-                    $this->updateChildPaths($storage, $oldPath, null, true);
+                    $this->updateChildPaths($storage, $oldThumbnailsPath, $newThumbnailsPath, true);
                 }
             }
         }
