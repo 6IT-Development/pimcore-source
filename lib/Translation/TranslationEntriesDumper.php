@@ -34,7 +34,9 @@ class TranslationEntriesDumper
     public function dumpToDb(): void
     {
         foreach (self::$translations as $translation) {
-            $translation->save();
+            // the queued objects are snapshots taken when the key was missing in the catalogue,
+            // texts saved in the meantime (or not loaded due to a DB error) must not be overwritten
+            $translation->saveMissingLanguages();
         }
         self::$translations = [];
     }

@@ -385,9 +385,25 @@ final class Translation extends AbstractModel
 
     public function save(): void
     {
+        $this->doSave(false);
+    }
+
+    /**
+     * Inserts the languages of this translation that are not in the DB yet, existing texts are left untouched.
+     * Used for auto-created (missing) translations, which are saved from a possibly stale snapshot.
+     *
+     * @internal
+     */
+    public function saveMissingLanguages(): void
+    {
+        $this->doSave(true);
+    }
+
+    private function doSave(bool $onlyMissing): void
+    {
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::PRE_SAVE);
 
-        $this->getDao()->save();
+        $this->getDao()->save($onlyMissing);
 
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::POST_SAVE);
 

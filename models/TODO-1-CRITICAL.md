@@ -724,7 +724,7 @@ Never create tables as a side effect of a lookup; create them for the configured
 
 ---
 
-## [ ] C-22 – Missing-translation auto-create overwrites existing texts: a stale snapshot of all languages is saved at `kernel.terminate`, and after a swallowed DB error a blank one
+## [x] C-22 – Missing-translation auto-create overwrites existing texts: a stale snapshot of all languages is saved at `kernel.terminate`, and after a swallowed DB error a blank one
 
 **Files:** `lib/Translation/Translator.php:240-267`; `models/Translation.php:246-297`;
 `models/Translation/Dao.php:99-123`; `lib/Translation/TranslationEntriesDumper.php:34-40`

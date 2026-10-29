@@ -79,8 +79,10 @@ class Dao extends Model\Dao\AbstractDao
 
     /**
      * Save object to database
+     *
+     * @param bool $onlyMissing insert only the languages that have no row yet, never overwrite existing texts
      */
-    public function save(): void
+    public function save(bool $onlyMissing = false): void
     {
         //Create Domain table if doesn't exist
         $this->createOrUpdateTable();
@@ -124,9 +126,26 @@ class Dao extends Model\Dao\AbstractDao
                     'userOwner' => $this->model->getUserOwner(),
                     'userModification' => $this->model->getUserModification(),
                 ];
-                Helper::upsert($this->db, $this->getDatabaseTableName(), $data, $this->getPrimaryKey($this->getDatabaseTableName()));
+                if ($onlyMissing) {
+                    $this->insertIfMissing($data);
+                } else {
+                    Helper::upsert($this->db, $this->getDatabaseTableName(), $data, $this->getPrimaryKey($this->getDatabaseTableName()));
+                }
             }
         }
+    }
+
+    private function insertIfMissing(array $data): void
+    {
+        $columns = array_map(fn (string $column) => $this->db->quoteIdentifier($column), array_keys($data));
+
+        // a no-op update on duplicate keys (unlike INSERT IGNORE, other errors are still reported)
+        $this->db->executeStatement(
+            'INSERT INTO ' . $this->db->quoteIdentifier($this->getDatabaseTableName())
+            . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')'
+            . ' ON DUPLICATE KEY UPDATE `key` = `key`',
+            array_values($data)
+        );
     }
 
     /**
