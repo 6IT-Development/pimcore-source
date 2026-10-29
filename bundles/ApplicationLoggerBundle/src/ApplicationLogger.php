@@ -216,43 +216,48 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
             'alert', 'warning', 'notice', 'info', 'debug',
         ];
 
-        $previousCall = null;
-        $logCall = null;
-
-        // look for the first call to this class calling one of the logging methods
+        // look for the first call to this class calling one of the logging methods,
+        // is_a() also matches subclasses overriding them
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+        $index = 0;
         for ($i = count($backtrace) - 1; $i >= 0; $i--) {
-            $previousCall = $logCall;
-            $logCall = $backtrace[$i];
+            if (isset($backtrace[$i]['class'])
+                && is_a($backtrace[$i]['class'], self::class, true)
+                && in_array($backtrace[$i]['function'], $validMethods, true)
+            ) {
+                $index = $i;
 
-            if (!empty($logCall['class']) && $logCall['class'] === __CLASS__) {
-                if (in_array($logCall['function'], $validMethods)) {
-                    break;
-                }
+                break;
             }
         }
+
+        // a logging method called by PHP internals (array_map(), call_user_func(), ...) has no file and line,
+        // the next frame is the internal function called from the statement we are looking for
+        while (!isset($backtrace[$index]['file']) && isset($backtrace[$index + 1])) {
+            $index++;
+        }
+
+        $logCall = $backtrace[$index];
+        $previousCall = $backtrace[$index + 1] ?? null;
+        $file = isset($logCall['file']) ? $this->normalizeFilename($logCall['file']) : '[internal]';
+        $line = $logCall['line'] ?? 0;
 
         if (null === $previousCall) {
             // we don't have a previous call when the logger was directly called
             // from a standalone PHP file (e.g. from a CLI script)
             // filename.php:line
-            return sprintf('%s:%d', $this->normalizeFilename($logCall['file']), $logCall['line']);
+            return sprintf('%s:%d', $file, $line);
         }
 
         if (isset($previousCall['class'])) {
             // called from a class method
             // ClassName->methodName():line
-            return sprintf('%s::%s:%d', $previousCall['class'], $previousCall['function'], $logCall['line']);
+            return sprintf('%s::%s:%d', $previousCall['class'], $previousCall['function'], $line);
         }
 
         // called from a function
         // filename.php::functionName():line
-        return sprintf(
-            '%s::%s:%d',
-            $this->normalizeFilename($previousCall['file']),
-            $previousCall['function'],
-            $logCall['line']
-        );
+        return sprintf('%s::%s:%d', $file, $previousCall['function'], $line);
     }
 
     private function normalizeFilename(string $filename): string

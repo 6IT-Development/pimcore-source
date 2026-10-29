@@ -79,7 +79,7 @@ mutating shared instances in `getInstance()`.
 - Default `$initDbHandler = false` creates a logger **without any writer** → all messages are silently dropped.
 - `$container->set()` on the compiled container is a runtime mutation (fails for private/removed ids).
 
-### [ ] B-10 – `resolveLoggingSource()` reports wrong file and can crash
+### [x] B-10 – `resolveLoggingSource()` reports wrong file and can crash
 **Lines:** 161-205
 - Function branch prints `$previousCall['file']`, which is the file **where the enclosing function was called**, not
   the file containing the log statement (`$logCall['file']`).
