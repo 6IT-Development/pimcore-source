@@ -127,18 +127,18 @@ class ApplicationLogger implements LoggerInterface
             }
         }
 
-        $relatedObject = null;
-        if (isset($context['relatedObject'])) {
-            $relatedObject = $context['relatedObject'];
-        }
+        $relatedObject = $context['relatedObject'] ?? null;
+        $relatedObjectType = $context['relatedObjectType'] ?? null;
 
+        // the instance type belongs to the instance object only
         if (!$relatedObject && $this->relatedObject) {
             $relatedObject = $this->relatedObject;
+            $relatedObjectType = $this->relatedObjectType;
         }
 
         if (is_numeric($relatedObject)) {
             $context['relatedObject'] = $relatedObject;
-            $context['relatedObjectType'] = $this->relatedObjectType;
+            $context['relatedObjectType'] = in_array($relatedObjectType, ['object', 'document', 'asset'], true) ? $relatedObjectType : 'object';
         } elseif ($relatedObject instanceof ElementInterface) {
             $context['relatedObject'] = $relatedObject->getId();
             $context['relatedObjectType'] = Service::getElementType($relatedObject);

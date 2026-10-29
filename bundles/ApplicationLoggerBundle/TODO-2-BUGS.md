@@ -53,7 +53,7 @@ the sort request is ignored without notice (relevant since the branch is removin
 
 ## ApplicationLogger (`src/ApplicationLogger.php`)
 
-### [ ] B-07 – Wrong / stale `relatedObjectType` for numeric related objects
+### [x] B-07 – Wrong / stale `relatedObjectType` for numeric related objects
 **Lines:** 130-145
 When `$context['relatedObject']` is numeric, the type is taken from `$this->relatedObjectType`, which belongs to the
 *instance-level* related object set earlier via `setRelatedObject()` (possibly `'asset'` from a previous call).
