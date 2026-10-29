@@ -293,7 +293,7 @@ end of `create()` (see also B-11).
 
 ---
 
-## [ ] C-04 – `checkMaxPixels()` deletes the caller's original source file
+## [x] C-04 – `checkMaxPixels()` deletes the caller's original source file
 
 **File:** `models/Asset.php:425-439` (`unlink($localPath)` at `:433`), inputs from `:354` and `:373`
 
