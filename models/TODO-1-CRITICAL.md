@@ -891,7 +891,7 @@ parameters; the same for both `cpath` updates, plus `AND ctype = :ctype` on `pro
 
 ---
 
-## [ ] C-27 – `Document\Service::getNearestDocumentByPath()` caches its result without the path: the shared service returns the first document for every later lookup
+## [x] C-27 – `Document\Service::getNearestDocumentByPath()` caches its result without the path: the shared service returns the first document for every later lookup
 
 **Files:** `models/Document/Service.php:461-526` (`:467`, `:470-471`, `:488`, `:502`); service definition
 `bundles/CoreBundle/config/documents.yaml:49-50` (shared, public, no reset); callers

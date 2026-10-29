@@ -36,6 +36,7 @@ use Pimcore\Tool;
 use Pimcore\Tool\Serialize;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * @method \Pimcore\Model\Document\Service\Dao getDao()
@@ -45,7 +46,7 @@ use Symfony\Component\HttpFoundation\Request;
  * @method int getTranslationSourceId(Document $document)
  * @method void removeTranslationLink(Document $document, Document $targetDocument)
  */
-class Service extends Model\Element\Service
+class Service extends Model\Element\Service implements ResetInterface
 {
     /**
      * @internal
@@ -58,9 +59,14 @@ class Service extends Model\Element\Service
     protected array $_copyRecursiveIds = [];
 
     /**
+     * Results of getNearestDocumentByPath() by path, site and options; the service is shared and survives requests
+     * in long-running processes, see reset()
+     *
      * @var Document[]
      */
-    protected array $nearestPathCache;
+    protected array $nearestPathCache = [];
+
+    private const int NEAREST_PATH_CACHE_SIZE = 100;
 
     public function __construct(?Model\User $user = null)
     {
@@ -454,6 +460,14 @@ class Service extends Model\Element\Service
     }
 
     /**
+     * @internal
+     */
+    public function reset(): void
+    {
+        $this->nearestPathCache = [];
+    }
+
+    /**
      * Get the nearest document by path. Used to match nearest document for a static route.
      *
      * @internal
@@ -464,8 +478,13 @@ class Service extends Model\Element\Service
             $path = urldecode($path->getPathInfo());
         }
 
-        $cacheKey = $ignoreHardlinks . implode('-', $types);
+        $siteId = Model\Site::isSiteRequest() ? Model\Site::getCurrentSite()->getId() : 0;
+        $cacheKey = $siteId . '|' . (int)$ignoreHardlinks . '|' . implode('-', $types) . '|' . $path;
         $document = null;
+
+        if (count($this->nearestPathCache) >= self::NEAREST_PATH_CACHE_SIZE) {
+            $this->nearestPathCache = [];
+        }
 
         if (isset($this->nearestPathCache[$cacheKey])) {
             $document = $this->nearestPathCache[$cacheKey];
