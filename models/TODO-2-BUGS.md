@@ -218,7 +218,7 @@ expire instead of releasing from a different key.
 
 **Fix direction:** pass `$oldThumbnailsPath` / `$newThumbnailsPath`.
 
-## [ ] B-03 – `updateChildPaths()` never deletes the old directory when it has subdirectories
+## [x] B-03 – `updateChildPaths()` never deletes the old directory when it has subdirectories
 
 **File:** `models/Asset.php:1710`, `:1723-1726`, `:1745-1746`
 

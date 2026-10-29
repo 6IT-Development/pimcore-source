@@ -1738,33 +1738,34 @@ class Asset extends Element\AbstractElement
             $movedFiles = [];
             // the listing wraps a single generator, counting it would exhaust it before the loop
             $children = $storage->listContents($oldPath, true)->toArray();
-            $totalChildren = count($children);
             $oldPrefix = rtrim($oldPath, '/') . '/';
 
-            if ($totalChildren > 0) {
-                /** @var StorageAttributes $child */
-                foreach ($children as $child) {
-                    if ($child instanceof FileAttributes) {
-                        $src = $child['path'];
-                        if (!str_starts_with('/' . $src, $oldPrefix)) {
-                            throw new LogicException(sprintf('File %s is not located below %s', $src, $oldPath));
-                        }
-                        $dest = rtrim($newPath, '/') . '/' . substr('/' . $src, strlen($oldPrefix));
-                        $storage->move($src, $dest);
-                        $movedFiles[$dest] = $src;
+            if ($children !== []) {
+                // only files are moved, directories are removed together with the old path
+                $files = array_filter($children, static fn (StorageAttributes $child) => $child instanceof FileAttributes);
+                $totalFiles = count($files);
+
+                /** @var FileAttributes $file */
+                foreach ($files as $file) {
+                    $src = $file['path'];
+                    if (!str_starts_with('/' . $src, $oldPrefix)) {
+                        throw new LogicException(sprintf('File %s is not located below %s', $src, $oldPath));
                     }
+                    $dest = rtrim($newPath, '/') . '/' . substr('/' . $src, strlen($oldPrefix));
+                    $storage->move($src, $dest);
+                    $movedFiles[$dest] = $src;
                 }
 
                 $movedCount = count($movedFiles);
 
-                if ($movedCount === $totalChildren) {
+                if ($movedCount === $totalFiles) {
                     $storage->deleteDirectory($oldPath);
                 } else {
                     Logger::info(
                         sprintf(
                             'Moved %d/%d files from %s to %s. No exception was thrown for %d files,
                             so the source directory was not deleted.',
-                            $movedCount, $totalChildren, $oldPath, $newPath, $totalChildren - $movedCount
+                            $movedCount, $totalFiles, $oldPath, $newPath, $totalFiles - $movedCount
                         )
                     );
                 }
@@ -1777,8 +1778,8 @@ class Asset extends Element\AbstractElement
             }
 
             // rollback moved files
-            foreach ($movedFiles as $src => $dest) {
-                $storage->move($src, $dest);
+            foreach ($movedFiles as $movedTo => $movedFrom) {
+                $storage->move($movedTo, $movedFrom);
             }
 
             // trigger database rollback
