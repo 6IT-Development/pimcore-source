@@ -20,6 +20,7 @@ namespace Pimcore\Routing\Dynamic;
 use Exception;
 use Pimcore\Http\Request\Resolver\SiteResolver;
 use Pimcore\Http\RequestHelper;
+use Pimcore\Logger;
 use Pimcore\Model\DataObject;
 use Pimcore\Routing\DataObjectRoute;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
@@ -51,7 +52,10 @@ final class DataObjectRouteHandler implements DynamicRouteHandlerInterface
                 /** @var DataObject\Concrete $object * */
                 $object = DataObject::getById((int)$match[1]);
                 if ($object instanceof DataObject\Concrete && $object->isPublished()) {
-                    return $this->buildRouteForFromSlug($slug, $object);
+                    $route = $this->buildRouteForFromSlugOrNull($slug, $object);
+                    if ($route) {
+                        return $route;
+                    }
                 }
             }
         }
@@ -70,10 +74,26 @@ final class DataObjectRouteHandler implements DynamicRouteHandlerInterface
                 $doBuildRoute = $object->isPublished() || $this->requestHelper->isObjectPreviewRequestByAdmin($context->getRequest());
 
                 if ($doBuildRoute) {
-                    $route = $this->buildRouteForFromSlug($slug, $object);
-                    $collection->add($route->getRouteKey(), $route);
+                    $route = $this->buildRouteForFromSlugOrNull($slug, $object);
+                    if ($route) {
+                        $collection->add($route->getRouteKey(), $route);
+                    }
                 }
             }
+        }
+    }
+
+    /**
+     * A slug whose field definition cannot be resolved answers 404 instead of failing the request.
+     */
+    private function buildRouteForFromSlugOrNull(DataObject\Data\UrlSlug $slug, DataObject\Concrete $object): ?DataObjectRoute
+    {
+        try {
+            return $this->buildRouteForFromSlug($slug, $object);
+        } catch (Exception $e) {
+            Logger::warning('Could not build route for slug "' . $slug->getSlug() . '": ' . $e->getMessage());
+
+            return null;
         }
     }
 

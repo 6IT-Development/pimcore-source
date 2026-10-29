@@ -248,9 +248,36 @@ class UrlSlug implements OwnerAwareFieldInterface
      */
     public function getAction(): string
     {
-        $fd = null;
+        $fd = $this->resolveFieldDefinition(ClassDefinition::getById($this->getClassId()));
 
+        if (!$fd instanceof ClassDefinition\Data\UrlSlug) {
+            // never delete the slug here: this runs on every frontend request for the slug, and a failed lookup
+            // can be temporary (e.g. a class definition that cannot be loaded during a deployment)
+            throw new Exception('Could not resolve field definition for slug: ' . $this->getSlug());
+        }
+
+        return $fd->getAction();
+    }
+
+    /**
+     * True if the class of the slug exists but no longer has the slug field at the stored place,
+     * i.e. the data model changed and the slug row is left over.
+     *
+     * @internal
+     */
+    public function isOrphaned(): bool
+    {
         $classDefinition = ClassDefinition::getById($this->getClassId());
+        if (!$classDefinition) {
+            return false;
+        }
+
+        return !$this->resolveFieldDefinition($classDefinition) instanceof ClassDefinition\Data\UrlSlug;
+    }
+
+    private function resolveFieldDefinition(?ClassDefinition $classDefinition): ?ClassDefinition\Data
+    {
+        $fd = null;
 
         if ($classDefinition) {
             // reverse look up the field definition ...
@@ -278,8 +305,9 @@ class UrlSlug implements OwnerAwareFieldInterface
                                     $lfDef = $brickDef->getFieldDefinition('localizedfields');
                                     if ($lfDef instanceof Localizedfields) {
                                         $fd = $lfDef->getFieldDefinition($this->getFieldname());
-
-                                        break;
+                                        if ($fd instanceof ClassDefinition\Data\UrlSlug) {
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -323,28 +351,22 @@ class UrlSlug implements OwnerAwareFieldInterface
                 // fieldcollection type. alternative: store the fc type as well (similar to class id)
                 $object = Concrete::getById($this->getObjectId());
 
-                if (method_exists($object, $getter)) {
+                if ($object && method_exists($object, $getter)) {
                     $fcValue = $object->$getter();
                     if ($fcValue instanceof Fieldcollection) {
-                        // https://github.com/pimcore/pimcore/issues/13435#issuecomment-1287052907
-                        $item = $fcValue->get(0);
-                        $fcType = $item->getType();
-                        if ($fcDef = Fieldcollection\Definition::getByKey($fcType)) {
-                            $fd = $fcDef->getFieldDefinition($this->getFieldname());
+                        // the slug row stores the index of the item it belongs to
+                        $item = $fcValue->get((int)$this->getPosition());
+                        if ($item instanceof AbstractData) {
+                            if ($fcDef = Fieldcollection\Definition::getByKey($item->getType())) {
+                                $fd = $fcDef->getFieldDefinition($this->getFieldname());
+                            }
                         }
                     }
                 }
             }
         }
 
-        if (!$fd instanceof ClassDefinition\Data\UrlSlug) {
-            // slug could not be resolved which means that the data model has changed in the meantime, delete me.
-            $this->delete();
-
-            throw new Exception('Could not resolve field definition for slug: ' . $this->getSlug() . '. Remove it!');
-        }
-
-        return $fd->getAction();
+        return $fd;
     }
 
     /**

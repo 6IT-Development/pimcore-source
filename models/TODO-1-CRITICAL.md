@@ -985,7 +985,7 @@ the default.
 
 ---
 
-## [ ] C-31 – Frontend slug resolution deletes slug rows when the field definition lookup fails; the field-collection branch always inspects item 0
+## [x] C-31 – Frontend slug resolution deletes slug rows when the field definition lookup fails; the field-collection branch always inspects item 0
 
 **Files:** `models/DataObject/Data/UrlSlug.php:249-346` (`:318-336`, `:340-344`); callers
 `lib/Routing/Dynamic/DataObjectRouteHandler.php:91`, `models/DataObject/ClassDefinition/Data/UrlSlug.php:207-212`

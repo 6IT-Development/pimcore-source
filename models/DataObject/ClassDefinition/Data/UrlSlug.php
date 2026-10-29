@@ -206,14 +206,12 @@ class UrlSlug extends Data implements CustomResourcePersistingInterface, LazyLoa
 
                             $existingSlug = Model\DataObject\Data\UrlSlug::resolveSlug($slug['slug'], $slug['siteId']);
                             if ($existingSlug) {
-                                // this will also remove an invalid slug and throw an exception.
-                                // retrying the transaction should success the next time
-                                try {
-                                    $existingSlug->getAction();
-                                } catch (Exception) {
+                                // a slug left over from a removed field can be taken over
+                                if ($existingSlug->isOrphaned()) {
+                                    $existingSlug->delete();
                                     $db->insert(Model\DataObject\Data\UrlSlug::TABLE_NAME, $slug);
 
-                                    return;
+                                    continue;
                                 }
 
                                 // if now exception is thrown then the slug is owned by a diffrent object/field
