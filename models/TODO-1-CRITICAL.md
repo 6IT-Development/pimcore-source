@@ -222,7 +222,7 @@ Scope 25: `77fe3d674a`).
 
 ---
 
-## [ ] C-01 – Folder rename/move rewrites every occurrence of the old path in DB (assets, workspaces, and *other element types'* properties)
+## [x] C-01 – Folder rename/move rewrites every occurrence of the old path in DB (assets, workspaces, and *other element types'* properties)
 
 **File:** `models/Asset/Dao.php:218`, `:221`, `:224`
 

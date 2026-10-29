@@ -213,15 +213,31 @@ class Dao extends Model\Element\Dao
             $userId = $user->getId();
         }
 
+        // replace only the leading old path; REPLACE() would also rewrite later occurrences of it
+        $params = [
+            'oldPath' => $oldPath . '/',
+            'newPath' => $this->model->getRealFullPath() . '/',
+            'oldPathLike' => Helper::escapeLike($oldPath) . '/%',
+        ];
+
         //update assets child paths
         // we don't update the modification date here, as this can have side-effects when there's an unpublished version for an element
-        $this->db->executeQuery('update assets set `path` = replace(`path`,' . $this->db->quote($oldPath . '/') . ',' . $this->db->quote($this->model->getRealFullPath() . '/') . "), userModification = '" . $userId . "' where `path` like " . $this->db->quote(Helper::escapeLike($oldPath) . '/%') . ';');
+        $this->db->executeStatement(
+            'UPDATE assets SET `path` = CONCAT(:newPath, SUBSTRING(`path`, CHAR_LENGTH(:oldPath) + 1)), userModification = :userId WHERE `path` LIKE :oldPathLike',
+            $params + ['userId' => $userId]
+        );
 
         //update assets child permission paths
-        $this->db->executeQuery('update users_workspaces_asset set cpath = replace(cpath,' . $this->db->quote($oldPath . '/') . ',' . $this->db->quote($this->model->getRealFullPath() . '/') . ') where cpath like ' . $this->db->quote(Helper::escapeLike($oldPath) . '/%') . ';');
+        $this->db->executeStatement(
+            'UPDATE users_workspaces_asset SET cpath = CONCAT(:newPath, SUBSTRING(cpath, CHAR_LENGTH(:oldPath) + 1)) WHERE cpath LIKE :oldPathLike',
+            $params
+        );
 
         //update assets child properties paths
-        $this->db->executeQuery('update properties set cpath = replace(cpath,' . $this->db->quote($oldPath . '/') . ',' . $this->db->quote($this->model->getRealFullPath() . '/') . ') where cpath like ' . $this->db->quote(Helper::escapeLike($oldPath) . '/%') . ';');
+        $this->db->executeStatement(
+            "UPDATE properties SET cpath = CONCAT(:newPath, SUBSTRING(cpath, CHAR_LENGTH(:oldPath) + 1)) WHERE ctype = 'asset' AND cpath LIKE :oldPathLike",
+            $params
+        );
 
         return $assets;
     }
