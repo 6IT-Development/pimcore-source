@@ -11,7 +11,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 
 ## Controller (`src/Controller/LogController.php`)
 
-### [ ] B-01 – Date filters ignore time zones (stored UTC vs. server/browser local time)
+### [x] B-01 – Date filters ignore time zones (stored UTC vs. server/browser local time)
 **Lines:** 91-99, 198-209
 Rows are written in **UTC** (`ApplicationLoggerDb::write()`), but `parseDateObject()` builds `new DateTime(...)` in the
 server's default time zone and binds it with `Types::DATETIME_MUTABLE` without converting to UTC. The values come from

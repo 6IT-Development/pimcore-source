@@ -424,6 +424,8 @@ pimcore.bundle.applicationlogger.log.admin = Class.create({
         this.searchParams.fromTime = this.fromTime.getValue();
         this.searchParams.toDate = this.toDate.getValue();
         this.searchParams.toTime = this.toTime.getValue();
+        // the dates are sent in local time without an offset
+        this.searchParams.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         this.searchParams.priority = formValues.priority;
         this.searchParams.component = formValues.component;
         if (!this.config.localMode) {

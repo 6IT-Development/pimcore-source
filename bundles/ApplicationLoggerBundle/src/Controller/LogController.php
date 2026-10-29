@@ -19,7 +19,8 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Controller;
 
 use Carbon\Carbon;
 use DateMalformedStringException;
-use DateTime;
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
@@ -88,14 +89,16 @@ class LogController extends UserAwareController implements KernelControllerEvent
             $qb->setParameter('priority', $priority);
         }
 
-        if ($fromDate = $this->parseDateObject($requestSource->getString('fromDate'), $requestSource->getString('fromTime'))) {
+        $timeZone = $this->resolveTimeZone($requestSource->getString('timezone'));
+
+        if ($fromDate = $this->parseDateObject($requestSource->getString('fromDate'), $requestSource->getString('fromTime'), $timeZone)) {
             $qb->andWhere('timestamp > :fromDate');
-            $qb->setParameter('fromDate', $fromDate, Types::DATETIME_MUTABLE);
+            $qb->setParameter('fromDate', $fromDate, Types::DATETIME_IMMUTABLE);
         }
 
-        if ($toDate = $this->parseDateObject($requestSource->getString('toDate'), $requestSource->getString('toTime'))) {
+        if ($toDate = $this->parseDateObject($requestSource->getString('toDate'), $requestSource->getString('toTime'), $timeZone)) {
             $qb->andWhere('timestamp <= :toDate');
-            $qb->setParameter('toDate', $toDate, Types::DATETIME_MUTABLE);
+            $qb->setParameter('toDate', $toDate, Types::DATETIME_IMMUTABLE);
         }
 
         if ('' !== $component = $requestSource->getString('component')) {
@@ -193,18 +196,34 @@ class LogController extends UserAwareController implements KernelControllerEvent
     }
 
     /**
+     * The date/time fields send the browser's local time without an offset, the client sends its time zone along
+     */
+    private function resolveTimeZone(string $timeZone): DateTimeZone
+    {
+        if (in_array($timeZone, DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC), true)) {
+            return new DateTimeZone($timeZone);
+        }
+
+        return new DateTimeZone(date_default_timezone_get());
+    }
+
+    /**
+     * Returns the date in UTC, the time zone the log entries are stored in
+     *
      * @throws DateMalformedStringException
      */
-    private function parseDateObject(string $date, string $time): ?DateTime
+    private function parseDateObject(string $date, string $time, DateTimeZone $timeZone): ?DateTimeImmutable
     {
         if (!preg_match(self::DATE_TIME_PATTERN, $date, $dateMatches)) {
             return null;
         }
 
         if ('' !== $time && preg_match(self::DATE_TIME_PATTERN, $time, $timeMatches)) {
-            return new DateTime(sprintf('%sT%s', $dateMatches['date'], $timeMatches['time']));
+            $dateTime = new DateTimeImmutable(sprintf('%sT%s', $dateMatches['date'], $timeMatches['time']), $timeZone);
+        } else {
+            $dateTime = new DateTimeImmutable($date, $timeZone);
         }
 
-        return new DateTime($date);
+        return $dateTime->setTimezone(new DateTimeZone('UTC'));
     }
 }
