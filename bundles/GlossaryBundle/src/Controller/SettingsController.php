@@ -110,8 +110,12 @@ class SettingsController extends UserAwareController
 
             $sortingSettings = QueryParams::extractSortingSettings(array_merge($request->request->all(), $request->query->all()));
             if ($sortingSettings['orderKey']) {
-                $list->setOrderKey($sortingSettings['orderKey']);
-                $list->setOrder($sortingSettings['order']);
+                try {
+                    $list->setOrderKey($sortingSettings['orderKey']);
+                    $list->setOrder($sortingSettings['order']);
+                } catch (InvalidArgumentException $e) {
+                    return $this->jsonResponse(['success' => false, 'message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+                }
             }
 
             if ($request->request->has('filter')) {

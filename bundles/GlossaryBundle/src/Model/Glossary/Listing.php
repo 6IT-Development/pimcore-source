@@ -30,6 +30,16 @@ use Pimcore\Model\Listing\AbstractListing;
 class Listing extends AbstractListing
 {
     /**
+     * Columns of the glossary table; any other order key would only fail in the query.
+     */
+    private const array ORDER_KEYS = ['id', 'language', 'casesensitive', 'exactmatch', 'text', 'link', 'abbr', 'site', 'creationDate', 'modificationDate'];
+
+    public function isValidOrderKey(string $key): bool
+    {
+        return in_array($key, self::ORDER_KEYS, true);
+    }
+
+    /**
      * @return Glossary[]
      */
     public function getGlossary(): array

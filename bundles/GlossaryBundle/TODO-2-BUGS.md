@@ -195,7 +195,7 @@ outside the class → protected properties are invisible → `data: []`. The cre
 everything starting with `100`). Not an injection (value is quoted).
 **Fix:** `$list->escapeLike($filter)` and a bound parameter instead of `quote()`.
 
-### [ ] B-22 – Unknown sort property from the grid → SQL error instead of a validation error
+### [x] B-22 – Unknown sort property from the grid → SQL error instead of a validation error
 **Files:** `src/Controller/SettingsController.php:114-118`, `lib/Model/Listing/AbstractListing.php:78-81`
 `isValidOrderKey()` returns `true` for anything, the key is only identifier-quoted → `?sort=[{"property":"foo"}]`
 produces `Unknown column 'foo'`, which `getTotalCount()` swallows (`total: 0`) while `load()` throws → 500.
