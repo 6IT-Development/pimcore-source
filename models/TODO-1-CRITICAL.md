@@ -1860,7 +1860,7 @@ whether open bounds / a missing unit are valid; reject them in `checkValidity()`
 **Fix direction:** handle a missing unit consistently in all three types (keep the value and the raw unit id, log),
 and refuse or cascade unit deletion while the unit is referenced.
 
-## [ ] C-51 – `Table` with column config stores keyed rows by position: values swap or shift on reload
+## [x] C-51 – `Table` with column config stores keyed rows by position: values swap or shift on reload
 
 **Files:** `models/DataObject/ClassDefinition/Data/Table.php:182-194`, `:201-214`, `:222-254` (`:239-251`)
 

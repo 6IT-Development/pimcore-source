@@ -25,7 +25,7 @@ use Pimcore\Model\DataObject\Fieldcollection\Definition;
 use Pimcore\Normalizer\NormalizerInterface;
 use Pimcore\Tool\Serialize;
 
-class Table extends Data implements ResourcePersistenceAwareInterface, QueryResourcePersistenceAwareInterface, EqualComparisonInterface, VarExporterInterface, NormalizerInterface
+class Table extends Data implements ResourcePersistenceAwareInterface, QueryResourcePersistenceAwareInterface, EqualComparisonInterface, VarExporterInterface, NormalizerInterface, DataContainerAwareInterface
 {
     use DataObject\Traits\SimpleComparisonTrait;
     use DataObject\Traits\SimpleNormalizerTrait;
@@ -194,6 +194,37 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
     }
 
     /**
+     * Rows are stored by position and get the configured column keys on load, so keyed rows
+     * (as returned by getDataFromResource()) are put into column order, missing cells as ''.
+     */
+    protected function orderRowsByColumnConfig(array $data): array
+    {
+        $columnConfig = $this->getColumnConfig();
+        if (!$this->isColumnConfigActivated() || !$columnConfig) {
+            return $data;
+        }
+
+        foreach ($data as $rowIndex => $row) {
+            if (!is_array($row) || array_is_list($row)) {
+                continue;
+            }
+
+            $orderedRow = [];
+            foreach ($columnConfig as $index => $column) {
+                $key = $column['key'] ?? null;
+                if ($key !== null && array_key_exists($key, $row)) {
+                    $orderedRow[] = $row[$key];
+                } else {
+                    $orderedRow[] = $row[$index] ?? '';
+                }
+            }
+            $data[$rowIndex] = $orderedRow;
+        }
+
+        return $data;
+    }
+
+    /**
      *
      *
      * @see ResourcePersistenceAwareInterface::getDataForResource
@@ -207,7 +238,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
 
         if (is_array($data)) {
             //make sure only array values are stored to DB
-            $data = $this->convertDataToValueArray($data);
+            $data = $this->convertDataToValueArray($this->orderRowsByColumnConfig($data));
         }
 
         return Serialize::serialize($data);
@@ -263,7 +294,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
         if (!empty($data)) {
             $tmpLine = [];
             if (is_array($data)) {
-                foreach ($data as $row) {
+                foreach ($this->orderRowsByColumnConfig($data) as $row) {
                     if (is_array($row)) {
                         $tmpLine[] = implode('|', $row);
                     }
@@ -286,7 +317,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
     {
         if (is_array($data)) {
             //make sure only array values are used of edit mode (other wise ext stores do not work anymore)
-            return $this->convertDataToValueArray($data);
+            return $this->convertDataToValueArray($this->orderRowsByColumnConfig($data));
         }
 
         return $data;
@@ -372,7 +403,7 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
         if (!empty($data)) {
             $tmpLine = [];
             if (is_array($data)) {
-                foreach ($data as $row) {
+                foreach ($this->orderRowsByColumnConfig($data) as $row) {
                     if (is_array($row)) {
                         $tmpLine[] = implode(' ', $row);
                     }
@@ -647,5 +678,32 @@ class Table extends Data implements ResourcePersistenceAwareInterface, QueryReso
     public function getFieldType(): string
     {
         return 'table';
+    }
+
+    /**
+     * Loaded rows are keyed by the configured column keys, so empty or duplicate keys would drop or merge cells.
+     */
+    public function preSave(mixed $containerDefinition, array $params = []): void
+    {
+        if (!$this->isColumnConfigActivated()) {
+            return;
+        }
+
+        $keys = [];
+        foreach ($this->getColumnConfig() as $column) {
+            $key = is_array($column) ? (string)($column['key'] ?? '') : '';
+            if ($key === '') {
+                throw new \Exception(sprintf('Table field %s: every column needs a key', $this->getName()));
+            }
+            if (isset($keys[$key])) {
+                throw new \Exception(sprintf('Table field %s: duplicate column key %s', $this->getName(), $key));
+            }
+            $keys[$key] = true;
+        }
+    }
+
+    public function postSave(mixed $containerDefinition, array $params = []): void
+    {
+        // nothing to do
     }
 }
