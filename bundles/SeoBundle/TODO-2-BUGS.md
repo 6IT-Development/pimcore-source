@@ -37,7 +37,7 @@ hash; truncate explicitly; `utf8mb4` (I-24).
 date = VALUES(date), code = VALUES(code)`; use `$request->query->all()` (and `json_encode` instead of `serialize`,
 see B-04).
 
-### [ ] B-03 – 404s that are resolved by a redirect are still logged as HTTP errors
+### [x] B-03 – 404s that are resolved by a redirect are still logged as HTTP errors
 **Files:** `src/EventListener/ResponseExceptionListener.php:49`, `src/EventListener/RoutingListener.php:44`,
 `config/event_listeners.yaml:6-11`
 - Both listeners subscribe to `kernel.exception` with priority `64`. With equal priority the order is the service

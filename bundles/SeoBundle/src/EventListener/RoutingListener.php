@@ -40,8 +40,9 @@ class RoutingListener implements EventSubscriberInterface
             // run with high priority as we need to set the site early
             KernelEvents::REQUEST => ['onKernelRequest', 256],
 
-            // run with high priority before handling real errors
-            KernelEvents::EXCEPTION => ['onKernelException', 64],
+            // run with high priority before handling real errors and before ResponseExceptionListener (64), setting a
+            // redirect response stops the propagation, so that a redirected URI is not logged as HTTP error
+            KernelEvents::EXCEPTION => ['onKernelException', 65],
         ];
     }
 
