@@ -159,7 +159,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
             'name' => $this->model->getName(),
         ]);
 
-        Model\Asset\Dao::$thumbnailStatusCache = [];
+        Model\Asset\Dao::resetThumbnailStatusCache();
     }
 
     protected function autoClearTempFiles(): void

@@ -514,7 +514,7 @@ and `setExpires()` (GMT), `NO_AUTO_CACHE_CONTROL_HEADER` on both paths, the stre
 original stream is closed before the copy with the requested extension is read, and a missing stream returns `null`. A
 missing file size omits `Content-Length`.
 
-## [ ] B-27 – `Asset\Dao::$thumbnailStatusCache` is a never-reset static (unbounded growth, stale in workers)
+## [x] B-27 – `Asset\Dao::$thumbnailStatusCache` is a never-reset static (unbounded growth, stale in workers)
 
 **File:** `models/Asset/Dao.php:43`, `:549-570`; only reset in `Image/Thumbnail/Config/Dao.php:157`
 
@@ -523,6 +523,11 @@ missing file size omits `Content-Length`.
   a path that no longer exists – image broken and never regenerated.
 
 **Fix direction:** move it into a service implementing `ResetInterface`; reset in the long-running helper.
+
+**Done:** the cache stays a static (it must survive serialized assets) but gets `Dao::resetThumbnailStatusCache()`,
+which `LongRunningHelper::cleanUp()` (kernel shutdown, `Pimcore::collectGarbage()`) and
+`MessengerClearRuntimeCacheListener` (every consumed message, like the runtime cache) call. Request-loop runtimes
+(FrankenPHP / RoadRunner worker mode) reset it only through the kernel shutdown, the same as `RuntimeCache`.
 
 ## [ ] B-28 – Listing permission SQL uses unanchored prefix matching (`/foo` matches `/foobar`)
 

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\EventListener;
 
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\Model\Asset;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Event\WorkerMessageReceivedEvent;
 
@@ -36,5 +37,6 @@ class MessengerClearRuntimeCacheListener implements EventSubscriberInterface
     public function handle(WorkerMessageReceivedEvent $event): void
     {
         RuntimeCache::clear();
+        Asset\Dao::resetThumbnailStatusCache();
     }
 }

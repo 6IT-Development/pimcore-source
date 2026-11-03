@@ -23,6 +23,7 @@ use Exception;
 use LogicException;
 use Monolog\Handler\HandlerInterface;
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\Model\Asset;
 use Psr\Log\LoggerAwareTrait;
 
 final class LongRunningHelper
@@ -64,7 +65,13 @@ final class LongRunningHelper
         $this->cleanupDoctrine();
         $this->cleanupMonolog();
         $this->cleanupPimcoreRuntimeCache($options);
+        $this->cleanupAssetThumbnailStatusCache();
         $this->triggerPhpGarbageCollector();
+    }
+
+    protected function cleanupAssetThumbnailStatusCache(): void
+    {
+        Asset\Dao::resetThumbnailStatusCache();
     }
 
     protected function cleanupDoctrine(): void

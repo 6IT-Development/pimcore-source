@@ -44,6 +44,17 @@ class Dao extends Model\Element\Dao
     public static array $thumbnailStatusCache = [];
 
     /**
+     * Forgets the thumbnail status of all assets, long-running processes have to call this regularly because other
+     * processes can change the thumbnails (and the cache grows with every asset)
+     *
+     * @internal
+     */
+    public static function resetThumbnailStatusCache(): void
+    {
+        self::$thumbnailStatusCache = [];
+    }
+
+    /**
      * Get the data for the object by id from database and assign it to the object (model)
      *
      *
