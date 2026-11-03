@@ -1560,7 +1560,7 @@ sending (and log as "suppressed") when no recipient is left; add a test (I-128).
 
 ---
 
-## [ ] C-43 – Classification store `password` keys are saved in plain text unless the key is the first changed value of a clean, loaded store
+## [x] C-43 – Classification store `password` keys are saved in plain text unless the key is the first changed value of a clean, loaded store
 
 **Files:** `models/DataObject/Classificationstore.php:178-206` (`:183`, `:185`, `:194-195`), `:216-217`;
 `models/DataObject/Classificationstore/Dao.php:126-147` (save), `:267` (load); `models/DataObject/ClassDefinition/Data/Password.php:135-160`;

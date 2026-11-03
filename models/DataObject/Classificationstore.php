@@ -179,6 +179,11 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         /** @var Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface $dataDefinition */
         $dataDefinition = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
 
+        // hash here and not only in the dirty check below, which is skipped once the store is dirty or has no object
+        if ($dataDefinition instanceof Model\DataObject\ClassDefinition\Data\Password) {
+            $value = $dataDefinition->getDataForResource($value, $this->object, ['owner' => $this]);
+        }
+
         // set the given group to active groups
         $this->setActiveGroups($this->activeGroups + [$groupId => true]);
 
@@ -191,9 +196,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
                 }
 
                 $newData = $dataDefinition->getDataForResource($value, $this->object, ['owner' => $this]);
-                if ($dataDefinition instanceof Model\DataObject\ClassDefinition\Data\Password) {
-                    $value = $newData;
-                } else {
+                if (!$dataDefinition instanceof Model\DataObject\ClassDefinition\Data\Password) {
                     $newData = serialize($newData);
                 }
 
