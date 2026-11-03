@@ -51,21 +51,33 @@ class Sql extends AbstractAdapter
 
         $baseQuery = $this->getBaseQuery($filters ?? [], $fields ?? [], false, $drillDownFilters ?? []);
 
-        $order = '';
+        $order = [];
         if ($sort && $dir) {
-            $dir = ((strtoupper($dir) === 'ASC') ? 'ASC' : 'DESC');
-            $order = ' ORDER BY ' . $db->quoteIdentifier($sort) . ' ' . $dir;
+            $order[] = $db->quoteIdentifier($sort) . ' ' . ((strtoupper($dir) === 'ASC') ? 'ASC' : 'DESC');
         }
 
-        $sql = $baseQuery['data'] . $order;
-        if ($offset !== null && $limit) {
-            $sql .= " LIMIT $offset,$limit";
-        }
+        $isPaged = $offset !== null && $limit;
 
-        [$total, $data] = $this->runReadOnly(static fn (Connection $db): array => [
-            $db->fetchOne($baseQuery['count']),
-            $db->fetchAllAssociative($sql),
-        ]);
+        [$total, $data] = $this->runReadOnly(static function (Connection $db) use ($baseQuery, $order, $isPaged, $fields, $offset, $limit): array {
+            $sql = $baseQuery['data'];
+
+            if ($isPaged) {
+                // pages are separate queries, without a total order rows could repeat or go missing between them. All
+                // columns by position, as the names can be expressions that do not survive identifier quoting.
+                $columnCount = $fields ? count($fields) : $db->executeQuery($sql . ' LIMIT 0')->columnCount();
+                $order = array_merge($order, range(1, $columnCount));
+            }
+
+            if ($order) {
+                $sql .= ' ORDER BY ' . implode(', ', $order);
+            }
+
+            if ($isPaged) {
+                $sql .= " LIMIT $offset,$limit";
+            }
+
+            return [$db->fetchOne($baseQuery['count']), $db->fetchAllAssociative($sql)];
+        });
 
         return ['data' => $data, 'total' => $total];
     }

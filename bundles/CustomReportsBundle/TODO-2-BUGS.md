@@ -93,7 +93,7 @@ contain it → shifted/misaligned CSV. Filtering on an exported column selects i
 **Fix:** the outer `WHERE` on the derived table does not need the column in the select list – stop appending filter
 properties to `$fields` (or `array_unique` + keep header in sync).
 
-### [ ] B-09 – Paged reads without a deterministic `ORDER BY` → CSV export may duplicate or skip rows
+### [x] B-09 – Paged reads without a deterministic `ORDER BY` → CSV export may duplicate or skip rows
 **File:** `src/Tool/Adapter/Sql.php:40-49`, `src/Controller/Reports/CustomReportController.php:377-380`
 The CSV export fetches 5000-row chunks with `LIMIT offset,limit` in separate HTTP requests. Without `ORDER BY` (no
 sort given and no `orderby` in the data source) MySQL does not guarantee a stable order between requests → rows can
