@@ -578,7 +578,7 @@ when `Asset::create()` / `save()` throws.
 `MOVE`. A failing `unserialize()` returns `null`. `allowed_classes` is not restricted, because a serialized asset
 contains metadata, property and element classes that cannot be listed; the data is written by the server only.
 
-## [ ] B-31 – Folder preview collage caches partial images and fatals on corrupt tiles
+## [x] B-31 – Folder preview collage caches partial images and fatals on corrupt tiles
 
 **File:** `models/Asset/Folder.php:353-366`, `:375-390`
 
@@ -588,6 +588,10 @@ contains metadata, property and element classes that cannot be listed; the data 
   breaking the preview permanently. Tile streams (`:353`) are never closed.
 
 **Fix direction:** `continue` instead of `break`; check `false`; size the canvas by tiles actually drawn.
+
+**Done:** a tile without dimensions, stream or decodable image data is left out (`continue`, warning logged for
+undecodable data) and the following tiles move up; the canvas is cropped to the rows actually drawn. Tile streams are
+closed after reading.
 
 ## [ ] B-32 – Folder preview freshness check does not match the collage contents
 

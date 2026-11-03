@@ -160,19 +160,28 @@ class Folder extends Model\Asset
                         break;
                     }
 
-                    $stream = $tileThumb->getStream();
-
-                    if (null === $stream) {
-                        break;
-                    }
-
+                    // a broken tile is left out, the other tiles move up
                     $width = $tileThumb->getWidth();
                     $height = $tileThumb->getHeight();
                     if (!$width || !$height) {
-                        break;
+                        continue;
                     }
 
-                    $tile = imagecreatefromstring(stream_get_contents($stream));
+                    $stream = $tileThumb->getStream();
+                    if (null === $stream) {
+                        continue;
+                    }
+
+                    $tileData = stream_get_contents($stream);
+                    fclose($stream);
+
+                    $tile = $tileData ? @imagecreatefromstring($tileData) : false;
+                    if (false === $tile) {
+                        Logger::warning('Thumbnail of asset ' . $asset->getRealFullPath() . ' is broken and left out of the folder preview');
+
+                        continue;
+                    }
+
                     imagecopyresampled($collage, $tile, $offsetLeft, $offsetTop, 0, 0, $squareDimension, $squareDimension, $width, $height);
 
                     $count++;
@@ -183,6 +192,13 @@ class Folder extends Model\Asset
             }
 
             if ($count && !$skipped) {
+                // the canvas was sized for all assets, remove the rows of left out tiles
+                $collageHeight = (int)ceil($count / $colums) * ($squareDimension + $gutter);
+                if ($collageHeight < imagesy($collage)
+                    && $croppedCollage = imagecrop($collage, ['x' => 0, 'y' => 0, 'width' => imagesx($collage), 'height' => $collageHeight])) {
+                    $collage = $croppedCollage;
+                }
+
                 $localFile = File::getLocalTempFilePath('jpg');
                 if (false === imagejpeg($collage, $localFile, 60)) {
                     Logger::info('Creation of collage file of asset folder ' . $this->getRealFullPath() . ' is failed.');
