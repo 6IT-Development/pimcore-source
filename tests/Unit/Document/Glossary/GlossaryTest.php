@@ -366,4 +366,25 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossarySkipsExistingLinksAndAbbreviationsOnly(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Glossary');
+        $entry->setLink('/glossary');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse(
+            "<div><a href=\"/q\">The\nGlossary</a><abbr title=\"G\">Glossary</abbr><aside>Glossary</aside><audio></audio></div>", [],
+            'en',
+            null,
+            null
+        );
+
+        $expect = "<div><a href=\"/q\">The\nGlossary</a><abbr title=\"G\">Glossary</abbr>"
+            . '<aside><a class="pimcore_glossary" href="/glossary">Glossary</a></aside><audio></audio></div>';
+
+        $this->assertSame($expect, $result);
+    }
 }

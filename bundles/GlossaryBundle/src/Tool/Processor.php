@@ -111,10 +111,10 @@ class Processor
         }
 
         // only text nodes are searched, so terms are never replaced inside tag names, attribute values or markup
-        // inserted for another term, and existing links are never nested
+        // inserted for another term, and existing links and abbreviations are never nested, whatever blocked_tags says
         $html = new DomCrawler($content);
         $root = $html->getNode(0);
-        $textNodes = (new \DOMXPath($root->ownerDocument))->query('//text()[normalize-space()][not(ancestor::a)]');
+        $textNodes = (new \DOMXPath($root->ownerDocument))->query('//text()[normalize-space()][not(ancestor::a or ancestor::abbr)]');
 
         foreach (iterator_to_array($textNodes) as $textNode) {
             if ($this->hasBlockedAncestor($textNode)) {

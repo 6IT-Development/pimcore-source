@@ -44,7 +44,7 @@ No `u` modifier: `\w` is ASCII-only and `i` folds only ASCII. Entry `Glossar` wi
 **Fix:** add `u` (and use `(?<![\p{L}\p{N}_])…(?![\p{L}\p{N}_])` boundaries); guard against invalid UTF-8 input
 (`preg_*` returns `null` with `u`, see B-07).
 
-### [ ] B-05 – The `<a…/a>` skip pattern is wrong: no `s` flag, matches `<abbr>`/`<aside>`/`<audio>`… *(reproduced)*
+### [x] B-05 – The `<a…/a>` skip pattern is wrong: no `s` flag, matches `<abbr>`/`<aside>`/`<audio>`… *(reproduced)*
 **File:** `src/Tool/Processor.php:244`, `:246`
 - Without `s`, `.` does not match newlines → an existing multi-line link is not skipped:
   `<a href="/q">The\nGlossary</a>` → nested `<a>` inside `<a>` (invalid HTML).
