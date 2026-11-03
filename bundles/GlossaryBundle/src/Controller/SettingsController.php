@@ -71,13 +71,7 @@ class SettingsController extends UserAwareController
                     return $this->jsonResponse(['success' => false, 'message' => $e->getMessage()]);
                 }
 
-                if ($link = $glossary->getLink()) {
-                    if ((int)$link > 0) {
-                        if ($doc = Document::getById((int)$link)) {
-                            $glossary->setLink($doc->getRealFullPath());
-                        }
-                    }
-                }
+                $this->showDocumentPath($glossary);
 
                 return $this->jsonResponse(['data' => $glossary, 'success' => true]);
             } elseif ($request->query->getString('xaction') == 'create') {
@@ -102,13 +96,7 @@ class SettingsController extends UserAwareController
                     return $this->jsonResponse(['success' => false, 'message' => $e->getMessage()]);
                 }
 
-                if ($link = $glossary->getLink()) {
-                    if ((int)$link > 0) {
-                        if ($doc = Document::getById((int)$link)) {
-                            $glossary->setLink($doc->getRealFullPath());
-                        }
-                    }
-                }
+                $this->showDocumentPath($glossary);
 
                 return $this->jsonResponse(['data' => $glossary->getObjectVars(), 'success' => true]);
             }
@@ -135,13 +123,7 @@ class SettingsController extends UserAwareController
 
             $glossaries = [];
             foreach ($list->getGlossary() as $glossary) {
-                if ($link = $glossary->getLink()) {
-                    if ((int)$link > 0) {
-                        if ($doc = Document::getById((int)$link)) {
-                            $glossary->setLink($doc->getRealFullPath());
-                        }
-                    }
-                }
+                $this->showDocumentPath($glossary);
 
                 $glossaries[] = $glossary->getObjectVars();
             }
@@ -150,6 +132,17 @@ class SettingsController extends UserAwareController
         }
 
         return $this->jsonResponse(['success' => false]);
+    }
+
+    /**
+     * The grid shows and edits the path of the target document instead of its stored id.
+     */
+    private function showDocumentPath(Glossary $glossary): void
+    {
+        $documentId = Glossary::getDocumentId($glossary->getLink());
+        if ($documentId !== null && $doc = Document::getById($documentId)) {
+            $glossary->setLink($doc->getRealFullPath());
+        }
     }
 
     /**

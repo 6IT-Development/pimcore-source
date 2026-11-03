@@ -337,8 +337,8 @@ class Processor
                 $linkType = 'external';
                 $linkTarget = $d['link'];
 
-                if ((int)$d['link']) {
-                    if ($doc = Document::getById($d['link'])) {
+                if (($documentId = Glossary::getDocumentId($d['link'])) !== null) {
+                    if ($doc = Document::getById($documentId)) {
                         // the cached entries embed the path and published state of the target, so moving, renaming,
                         // (un)publishing or deleting it invalidates them
                         $tags[] = $doc->getCacheTag();

@@ -522,4 +522,23 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryKeepsExternalLinksStartingWithADigit(): void
+    {
+        $this->assertSame(12, Glossary::getDocumentId('12'));
+        $this->assertNull(Glossary::getDocumentId('2024-sale'));
+        $this->assertNull(Glossary::getDocumentId('3dprint.example.com'));
+        $this->assertNull(Glossary::getDocumentId('0'));
+        $this->assertNull(Glossary::getDocumentId(null));
+
+        $entry = new Glossary();
+        $entry->setText('Sale');
+        $entry->setLink('2024-sale');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse('<p>Sale</p>', [], 'en', null, null);
+
+        $this->assertSame('<p><a class="pimcore_glossary" href="2024-sale">Sale</a></p>', $result);
+    }
 }

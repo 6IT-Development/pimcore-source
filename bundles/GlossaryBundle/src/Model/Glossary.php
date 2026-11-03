@@ -125,6 +125,19 @@ class Glossary extends AbstractModel
         return in_array(strtolower($matches[1]), self::ALLOWED_LINK_SCHEMES, true);
     }
 
+    /**
+     * Internal links are stored as the id of the target document; a link that only starts with a digit
+     * (3dprint.example.com, 2024-sale) is not one.
+     */
+    public static function getDocumentId(?string $link): ?int
+    {
+        if ($link === null || !preg_match('/^[1-9][0-9]*$/', $link)) {
+            return null;
+        }
+
+        return (int)$link;
+    }
+
     public static function create(): Glossary
     {
         $glossary = new self();

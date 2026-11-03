@@ -137,7 +137,7 @@ If `link` contains a document id and `Document::getById()` returns `null`, `$d['
 `<a href="123">` (relative URL → 404) with `linkType = 'external'`.
 **Fix:** skip the link (keep abbr only) and log; optionally clean up dangling ids on `document.postDelete`.
 
-### [ ] B-15 – Admin heuristic `(int)$link > 0` corrupts links that start with a digit
+### [x] B-15 – Admin heuristic `(int)$link > 0` corrupts links that start with a digit
 **Files:** `src/Controller/SettingsController.php:70-76`, `:95-101`, `:128-134`, `src/Tool/Processor.php:230-231`
 `(int)'3dprint.example.com' === 3`, `(int)'2024-sale' === 2024`. The grid displays the path of **document 3** instead
 of the stored external link; the next edit of that row sends the path back, `Document::getByPath()` resolves it and
