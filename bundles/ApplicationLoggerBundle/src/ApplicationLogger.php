@@ -27,7 +27,6 @@ use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
-use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Stringable;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException as ContainerInvalidArgumentException;
@@ -174,7 +173,9 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
             } elseif ($context['fileObject'] instanceof FileObject) {
                 $context['fileObject'] = $context['fileObject']->getFilename();
             } else {
-                throw new InvalidArgumentException('fileObject must either be the path to a file as string or an instance of FileObject');
+                // a log call must not turn into an application error
+                error_log('Application Logger dropped the fileObject: it must be a file path or an instance of FileObject, got ' . get_debug_type($context['fileObject']));
+                unset($context['fileObject']);
             }
         }
 
@@ -193,6 +194,11 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         } elseif ($relatedObject instanceof ElementInterface) {
             $context['relatedObject'] = $relatedObject->getId();
             $context['relatedObjectType'] = Service::getElementType($relatedObject);
+        } else {
+            if (null !== $relatedObject) {
+                error_log('Application Logger dropped the relatedObject: it must be an element or an ID, got ' . get_debug_type($relatedObject));
+            }
+            unset($context['relatedObject'], $context['relatedObjectType']);
         }
 
         if (!isset($context['source'])) {

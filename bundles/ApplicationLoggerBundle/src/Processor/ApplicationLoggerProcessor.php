@@ -19,9 +19,8 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Processor;
 
 use Monolog\LogRecord;
 use Pimcore\Bundle\ApplicationLoggerBundle\FileObject;
-use Pimcore\Model\Asset;
-use Pimcore\Model\DataObject\AbstractObject;
-use Pimcore\Model\Document;
+use Pimcore\Model\Element\ElementInterface;
+use Pimcore\Model\Element\Service;
 
 /**
  * Make sure you add this processor when using the ApplicationLoggerDb handler as it
@@ -49,6 +48,10 @@ class ApplicationLoggerProcessor
                 $context['fileObject'] = str_replace(PIMCORE_PROJECT_ROOT, '', $context['fileObject']);
             } elseif ($context['fileObject'] instanceof FileObject) {
                 $context['fileObject'] = str_replace(PIMCORE_PROJECT_ROOT, '', $context['fileObject']->getFilename());
+            } else {
+                // DBAL cannot bind it and a log call must not turn into an application error
+                error_log('Application Logger dropped the fileObject: it must be a file path or an instance of FileObject, got ' . get_debug_type($context['fileObject']));
+                unset($context['fileObject']);
             }
         }
 
@@ -70,17 +73,22 @@ class ApplicationLoggerProcessor
         $relatedObject = $context['relatedObject'];
         $relatedObjectType = $context['relatedObjectType'] ?? null;
 
-        if (is_object($relatedObject)) {
-            if ($relatedObject instanceof AbstractObject) {
-                $relatedObject = $relatedObject->getId();
-                $relatedObjectType = 'object';
-            } elseif ($relatedObject instanceof Asset) {
-                $relatedObject = $relatedObject->getId();
-                $relatedObjectType = 'asset';
-            } elseif ($relatedObject instanceof Document) {
-                $relatedObject = $relatedObject->getId();
-                $relatedObjectType = 'document';
-            }
+        if ($relatedObject instanceof ElementInterface) {
+            $relatedObjectType = Service::getElementType($relatedObject);
+            $relatedObject = $relatedObject->getId();
+        } elseif (is_numeric($relatedObject) && (int)$relatedObject > 0) {
+            $relatedObject = (int)$relatedObject;
+            $relatedObjectType = in_array($relatedObjectType, ['object', 'document', 'asset'], true) ? $relatedObjectType : 'object';
+        } else {
+            error_log('Application Logger dropped the relatedObject: it must be an element or an ID, got ' . get_debug_type($relatedObject));
+            $relatedObject = null;
+        }
+
+        // also true for an element which has not been saved yet
+        if (null === $relatedObject || null === $relatedObjectType) {
+            unset($context['relatedObject'], $context['relatedObjectType']);
+
+            return $record->with(context: $context);
         }
 
         $context['relatedObject'] = $relatedObject;

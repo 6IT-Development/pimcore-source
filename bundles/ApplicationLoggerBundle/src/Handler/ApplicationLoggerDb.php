@@ -24,6 +24,7 @@ use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Pimcore\Db;
+use Stringable;
 
 class ApplicationLoggerDb extends AbstractProcessingHandler
 {
@@ -73,8 +74,9 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
                 'timestamp' => $record->datetime->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
                 'component' => $this->truncate($record->context['component'] ?? $record->channel, 190),
                 'fileobject' => $this->truncate($record->context['fileObject'] ?? null, 1024),
-                'relatedobject' => $record->context['relatedObject'] ?? null,
-                'relatedobjecttype' => $record->context['relatedObjectType'] ?? null,
+                // the handler can be used without ApplicationLoggerProcessor
+                'relatedobject' => is_numeric($record->context['relatedObject'] ?? null) ? (int)$record->context['relatedObject'] : null,
+                'relatedobjecttype' => $this->truncate($record->context['relatedObjectType'] ?? null, 8),
                 'source' => $this->truncate($record->context['source'] ?? null, 190),
             ]);
         } catch (Exception $e) {
@@ -88,9 +90,9 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
         }
     }
 
-    private function truncate(mixed $value, int $length): mixed
+    private function truncate(mixed $value, int $length): ?string
     {
-        return is_string($value) ? mb_substr($value, 0, $length, 'UTF-8') : $value;
+        return is_scalar($value) || $value instanceof Stringable ? mb_substr((string)$value, 0, $length, 'UTF-8') : null;
     }
 
     /**

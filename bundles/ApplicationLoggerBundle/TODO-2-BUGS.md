@@ -106,7 +106,7 @@ The recursive call passes `$includePrevious` as default `false`, so chains deepe
 `?AbstractObject $relatedObject` rejects `Asset`/`Document`/`int` with `TypeError`, although the rest of the class
 supports all element types. Should be `ElementInterface|int|null`.
 
-### [ ] B-14 – Unsupported context values reach the DB insert
+### [x] B-14 – Unsupported context values reach the DB insert
 **Files:** `src/ApplicationLogger.php:139-145`, `src/Processor/ApplicationLoggerProcessor.php:47-53, 73-87`
 A non-numeric string or a non-element object as `relatedObject`, or a non-string/non-`FileObject` `fileObject` (in the
 processor path) are passed through unchanged → DBAL cannot bind an object → exception (see C-05). Behaviour is also
