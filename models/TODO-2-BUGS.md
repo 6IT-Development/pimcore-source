@@ -819,13 +819,17 @@ file below 50 bytes is not stored, and the deferred reference is returned as bef
 checked or deleted, which drops the two remote calls and the risk of deleting a file another process is writing, so no
 temp key is needed. Not covered any more: a PNG that the asynchronous image optimizer empties later.
 
-## [ ] B-49 – Focal point at `0` ignored; `null` → `0` does not clear thumbnails
+## [x] B-49 – Focal point at `0` ignored; `null` → `0` does not clear thumbnails
 
 **File:** `models/Asset/Image/Thumbnail/Processor.php:461`; `models/Asset/Image.php:335`
 
 - Truthiness check / loose `!=` (`null != 0` is false).
 
 **Fix direction:** `!== null` and strict comparison.
+
+**Done:** the Processor injects the focal point when both coordinates are numeric, so `0` counts.
+`Image::setCustomSetting()` treats a change between `null` and a value as a change and compares values numerically, so
+`'50'` against `50` does not clear the thumbnails.
 
 ## [ ] B-50 – Case-sensitive SVG / vector detection
 

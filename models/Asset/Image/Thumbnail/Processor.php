@@ -487,7 +487,7 @@ class Processor
                                 }
 
                                 // inject the focal point
-                                if ($transformation['method'] == 'cover' && $key == 'positioning' && $asset->getCustomSetting('focalPointX')) {
+                                if ($transformation['method'] == 'cover' && $key == 'positioning' && is_numeric($asset->getCustomSetting('focalPointX')) && is_numeric($asset->getCustomSetting('focalPointY'))) {
                                     $value = [
                                         'x' => $asset->getCustomSetting('focalPointX'),
                                         'y' => $asset->getCustomSetting('focalPointY'),

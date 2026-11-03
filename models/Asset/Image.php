@@ -332,7 +332,9 @@ EOT;
     {
         if (in_array($key, ['focalPointX', 'focalPointY'])) {
             // if the focal point changes we need to clean all thumbnails on save
-            if ($this->getCustomSetting($key) != $value) {
+            // (strict for null, as 0 is a valid coordinate; numerically, as the value may come as a string)
+            $oldValue = $this->getCustomSetting($key);
+            if (($oldValue === null) !== ($value === null) || (float)$oldValue != (float)$value) {
                 $this->clearThumbnailsOnSave = true;
             }
         }
