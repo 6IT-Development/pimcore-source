@@ -256,10 +256,6 @@ class Processor
                 continue;
             }
 
-            if (!($d['link'] || $d['abbr'])) {
-                continue;
-            }
-
             $linkType = '';
             $linkTarget = '';
 
@@ -275,6 +271,17 @@ class Processor
                         $linkTarget = $doc->getId();
                     }
                 }
+
+                // never render javascript:, data: … links, even if they were stored before the save validation
+                if (!Glossary::isAllowedLink($d['link'])) {
+                    $d['link'] = null;
+                    $linkType = '';
+                    $linkTarget = '';
+                }
+            }
+
+            if (!($d['link'] || $d['abbr'])) {
+                continue;
             }
 
             // add PCRE delimiter and modifiers

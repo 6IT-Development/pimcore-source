@@ -68,6 +68,12 @@ pimcore.bundle.glossary.settings = Class.create({
             itemsPerPage
         );
 
+        // show save errors (e.g. a rejected link scheme) instead of silently keeping the row dirty
+        this.store.getProxy().on('exception', function (proxy, response) {
+            var data = Ext.decode(response.responseText, true);
+            pimcore.helpers.showNotification(t('error'), data && data.message ? data.message : t('error'), 'error');
+        });
+
         this.filterField = Ext.create("Ext.form.TextField", {
             width: 200,
             style: "margin: 0 10px 0 0;",

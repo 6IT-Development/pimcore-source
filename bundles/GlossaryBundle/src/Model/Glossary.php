@@ -30,6 +30,11 @@ use Pimcore\Model\Site;
 class Glossary extends AbstractModel
 {
     /**
+     * URL schemes a glossary link may use; links without a scheme (paths, document ids) are always allowed.
+     */
+    public const array ALLOWED_LINK_SCHEMES = ['http', 'https', 'mailto', 'tel'];
+
+    /**
      * @internal
      *
      */
@@ -100,6 +105,24 @@ class Glossary extends AbstractModel
         } catch (NotFoundException) {
             return null;
         }
+    }
+
+    /**
+     * Rejects links with a scheme outside ALLOWED_LINK_SCHEMES, e.g. javascript: or data:.
+     */
+    public static function isAllowedLink(?string $link): bool
+    {
+        if ($link === null || $link === '') {
+            return true;
+        }
+
+        // browsers ignore leading spaces / control characters and tabs or newlines inside the scheme
+        $normalized = preg_replace('/[\x00-\x20\x7F]+/', '', $link);
+        if (!preg_match('/^([a-z][a-z0-9+.\-]*):/i', $normalized, $matches)) {
+            return true;
+        }
+
+        return in_array(strtolower($matches[1]), self::ALLOWED_LINK_SCHEMES, true);
     }
 
     public static function create(): Glossary

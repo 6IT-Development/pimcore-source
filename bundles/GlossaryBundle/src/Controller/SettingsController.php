@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GlossaryBundle\Controller;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 use Pimcore\Cache;
@@ -65,7 +66,11 @@ class SettingsController extends UserAwareController
 
                 $glossary->setValues($data);
 
-                $glossary->save();
+                try {
+                    $glossary->save();
+                } catch (InvalidArgumentException $e) {
+                    return $this->jsonResponse(['success' => false, 'message' => $e->getMessage()]);
+                }
 
                 if ($link = $glossary->getLink()) {
                     if ((int)$link > 0) {
@@ -90,7 +95,11 @@ class SettingsController extends UserAwareController
 
                 $glossary->setValues($data);
 
-                $glossary->save();
+                try {
+                    $glossary->save();
+                } catch (InvalidArgumentException $e) {
+                    return $this->jsonResponse(['success' => false, 'message' => $e->getMessage()]);
+                }
 
                 if ($link = $glossary->getLink()) {
                     if ((int)$link > 0) {

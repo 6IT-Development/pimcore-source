@@ -240,4 +240,37 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryEscapesAbbreviationAndLink(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Escaped');
+        $entry->setAbbr('5" display');
+        $entry->setLink('https://example.com/?a=1&b=2');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse('<p>Escaped</p>', [], 'en', null, null);
+
+        $expect = '<p><a class="pimcore_glossary" href="https://example.com/?a=1&amp;b=2">'
+            . '<abbr class="pimcore_glossary" title=\'5" display\'>Escaped</abbr></a></p>';
+
+        $this->assertSame($expect, $result);
+    }
+
+    public function testGlossaryRejectsScriptLinks(): void
+    {
+        $this->assertTrue(Glossary::isAllowedLink('/relative/path'));
+        $this->assertTrue(Glossary::isAllowedLink('mailto:info@example.com'));
+        $this->assertFalse(Glossary::isAllowedLink(" java\tscript:alert(1)"));
+        $this->assertFalse(Glossary::isAllowedLink('data:text/html,x'));
+
+        $entry = new Glossary();
+        $entry->setText('Script');
+        $entry->setLink('javascript:alert(document.cookie)');
+        $entry->setLanguage('en');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $entry->save();
+    }
 }

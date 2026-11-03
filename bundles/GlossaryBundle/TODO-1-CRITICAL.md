@@ -22,7 +22,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – Stored XSS: `abbr`, `link` and `text` are concatenated into HTML without escaping
+## [x] C-01 – Stored XSS: `abbr`, `link` and `text` are concatenated into HTML without escaping
 
 **File:** `src/Tool/Processor.php:218-240`
 

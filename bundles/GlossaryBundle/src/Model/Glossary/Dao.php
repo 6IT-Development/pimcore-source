@@ -16,6 +16,7 @@
 namespace Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 use Pimcore\Model\Dao\AbstractDao;
 use Pimcore\Model\Exception\NotFoundException;
@@ -49,10 +50,18 @@ class Dao extends AbstractDao
     }
 
     /**
+     * @throws InvalidArgumentException if the link uses a scheme that is not allowed
      * @throws Exception
      */
     public function save(): void
     {
+        if (!Glossary::isAllowedLink($this->model->getLink())) {
+            throw new InvalidArgumentException(sprintf(
+                'Glossary links may only use the schemes %s or be relative.',
+                implode(', ', Glossary::ALLOWED_LINK_SCHEMES)
+            ));
+        }
+
         if (!$this->model->getId()) {
             $this->create();
         }
