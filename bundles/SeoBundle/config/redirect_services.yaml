@@ -6,6 +6,9 @@ services:
     # redirect handler used to handle redirects before/after routing
     Pimcore\Bundle\SeoBundle\Redirect\RedirectHandler: ~
 
+    # deletes/deactivates expired redirects (maintenance task and admin cleanup)
+    Pimcore\Bundle\SeoBundle\Redirect\RedirectExpiryService: ~
+
     #
     # REDIRECTS Export
     #

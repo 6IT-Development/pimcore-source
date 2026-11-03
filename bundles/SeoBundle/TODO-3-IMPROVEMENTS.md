@@ -179,11 +179,11 @@ once (each `save()` clears it now).
 
 ## Logic / consistency
 
-### [ ] I-22 – One service for expiry handling
+### [x] I-22 – One service for expiry handling
 **Files:** `src/Controller/RedirectsController.php:233-254`, `src/Maintenance/RedirectCleanupTask.php`
 Duplicated expiry queries with interpolated `time()` (`"expiry < $now"`, `'expiry < ' . time()`), `expiry != ''`
 on an int column. Extract a `RedirectExpiryService` (bound parameters, bulk `UPDATE`/`DELETE`, one cache clear) used by
-controller and maintenance task. Resolves B-16.
+controller and maintenance task. Resolves B-16. Done with B-16.
 
 ### [ ] I-23 – Shared auto-redirect factory
 **Files:** `src/EventListener/DocumentListener.php:62-165`, `src/EventListener/UrlSlugUpdateListener.php:37-85`,

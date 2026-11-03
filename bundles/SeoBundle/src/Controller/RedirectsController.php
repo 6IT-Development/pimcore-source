@@ -21,6 +21,7 @@ use Exception;
 use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\SeoBundle\Model\Redirect;
 use Pimcore\Bundle\SeoBundle\Redirect\Csv;
+use Pimcore\Bundle\SeoBundle\Redirect\RedirectExpiryService;
 use Pimcore\Bundle\SeoBundle\Redirect\RedirectHandler;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
@@ -266,19 +267,12 @@ class RedirectsController extends UserAwareController
     }
 
     #[Route('/cleanup', name: 'pimcore_bundle_seo_redirects_cleanup', methods: [Request::METHOD_DELETE])]
-    public function cleanupAction(): JsonResponse
+    public function cleanupAction(RedirectExpiryService $redirectExpiryService): JsonResponse
     {
         $this->checkPermission('redirects');
 
         try {
-            $now = time();
-            $expiredRedirects = new Redirect\Listing();
-            $expiredRedirects->setCondition("expiry IS NOT NULL AND expiry < $now");
-            $expiredRedirects = $expiredRedirects->load();
-
-            foreach ($expiredRedirects as $expiredRedirect) {
-                $expiredRedirect->delete();
-            }
+            $redirectExpiryService->deleteExpired();
 
             return $this->jsonResponse(['success' => true]);
         } catch (Exception $e) {

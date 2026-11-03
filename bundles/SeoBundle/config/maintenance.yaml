@@ -9,8 +9,6 @@ services:
     # Configure all maintenance tasks
 
     Pimcore\Bundle\SeoBundle\Maintenance\RedirectCleanupTask:
-        arguments:
-            - '@logger'
         tags:
             - { name: pimcore.maintenance.task, type: redirectcleanup }
 

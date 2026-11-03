@@ -165,7 +165,7 @@ accept only `int|DateTimeInterface|null`.
 **Fix direction:** `if (!$file instanceof UploadedFile || !$file->isValid()) throw new BadRequestHttpException(
 $file?->getErrorMessage() ?? 'Missing file');` + size/extension check.
 
-### [ ] B-16 – Expired redirects: controller deletes, maintenance only deactivates → table grows forever
+### [x] B-16 – Expired redirects: controller deletes, maintenance only deactivates → table grows forever
 **Files:** `src/Controller/RedirectsController.php:233-254`, `src/Maintenance/RedirectCleanupTask.php:28-38`,
 `src/EventListener/DocumentListener.php:154`, `src/EventListener/UrlSlugUpdateListener.php:72`
 - Auto-created redirects are commented "removed automatically after 1 year", but the maintenance task only sets

@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\SeoBundle\Maintenance;
 
-use Pimcore\Bundle\SeoBundle\Model\Redirect;
+use Pimcore\Bundle\SeoBundle\Redirect\RedirectExpiryService;
 use Pimcore\Maintenance\TaskInterface;
 
 /**
@@ -25,15 +25,12 @@ use Pimcore\Maintenance\TaskInterface;
  */
 class RedirectCleanupTask implements TaskInterface
 {
+    public function __construct(private readonly RedirectExpiryService $redirectExpiryService)
+    {
+    }
+
     public function execute(): void
     {
-        $list = new Redirect\Listing();
-        $list->setCondition('active = 1 AND expiry < ' . time() . " AND expiry IS NOT NULL AND expiry != ''");
-        $list->load();
-
-        foreach ($list->getRedirects() as $redirect) {
-            $redirect->setActive(false);
-            $redirect->save();
-        }
+        $this->redirectExpiryService->cleanup();
     }
 }
