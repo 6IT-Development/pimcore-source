@@ -48,7 +48,7 @@ save (controller/model validation) and on render.
 
 ---
 
-## [ ] C-02 – `html_entity_decode()` on the whole output un-escapes all content → XSS / markup injection
+## [x] C-02 – `html_entity_decode()` on the whole output un-escapes all content → XSS / markup injection
 
 **File:** `src/Tool/Processor.php:143-154`
 

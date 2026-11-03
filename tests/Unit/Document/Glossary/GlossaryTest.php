@@ -168,4 +168,25 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryKeepsEscapedContentEscaped(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('here');
+        $entry->setLink('/here');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse(
+            '<div><p>Code: &lt;div&gt; &amp;amp;</p><p>Use &lt;script&gt;alert(1)&lt;/script&gt; here</p></div>', [],
+            'en',
+            null,
+            null
+        );
+
+        $expect = '<div><p>Code: &lt;div&gt; &amp;amp;</p>'
+            . '<p>Use &lt;script&gt;alert(1)&lt;/script&gt; <a class="pimcore_glossary" href="/here">here</a></p></div>';
+
+        $this->assertSame($expect, $result);
+    }
 }

@@ -141,17 +141,21 @@ class Processor
                 }
 
                 if ($originalText !== $text) {
+                    // parse the modified inner HTML as HTML and import its nodes, so that escaped content stays
+                    // escaped and the serialized document never has to be entity-decoded as a whole
                     $domNode = $parentNode->getNode(0);
-                    $fragment = $domNode->ownerDocument->createDocumentFragment();
-                    $fragment->appendXML(htmlentities($text, ENT_XML1));
+                    $replacement = new DomCrawler($text);
                     $clone = $domNode->cloneNode();
-                    $clone->appendChild($fragment);
+                    foreach ($replacement->filter(DomCrawler::FRAGMENT_WRAPPER_TAG)->getNode(0)->childNodes as $child) {
+                        $clone->appendChild($domNode->ownerDocument->importNode($child, true));
+                    }
+                    $replacement->clear();
                     $domNode->parentNode->replaceChild($clone, $domNode);
                 }
             }
         });
 
-        $result = html_entity_decode($html->html(), ENT_XML1);
+        $result = $html->html();
         $html->clear();
         unset($html);
 
