@@ -831,13 +831,15 @@ temp key is needed. Not covered any more: a PNG that the asynchronous image opti
 `Image::setCustomSetting()` treats a change between `null` and a value as a change and compares values numerically, so
 `'50'` against `50` does not clear the thumbnails.
 
-## [ ] B-50 – Case-sensitive SVG / vector detection
+## [x] B-50 – Case-sensitive SVG / vector detection
 
 **File:** `models/Asset/Image.php:346`; `models/Asset/Image/Thumbnail.php:105`
 
 - `LOGO.SVG` is rasterised despite `rasterizeSVG = false`; `isVectorGraphic()` false → wrong estimates.
 
 **Fix direction:** add the `i` flag (or compare lowercased MIME type).
+
+**Done:** both extension checks use the `i` flag.
 
 ## [ ] B-51 – Stale thumbnail config in the same process after save/delete
 

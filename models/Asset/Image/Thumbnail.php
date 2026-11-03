@@ -103,7 +103,7 @@ final class Thumbnail implements ThumbnailInterface
 
     protected function useOriginalFile(string $filename): bool
     {
-        return $this->getConfig() && preg_match('@\.svgz?$@', $filename) && !$this->getConfig()->isRasterizeSVG();
+        return $this->getConfig() && preg_match('@\.svgz?$@i', $filename) && !$this->getConfig()->isRasterizeSVG();
     }
 
     /**

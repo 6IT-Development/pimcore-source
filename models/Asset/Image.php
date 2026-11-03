@@ -345,7 +345,7 @@ EOT;
     public function isVectorGraphic(): bool
     {
         // we use a simple file-extension check, for performance reasons
-        if (preg_match('@\.(svgz?|eps|pdf|ps|ai|indd)$@', $this->getFilename())) {
+        if (preg_match('@\.(svgz?|eps|pdf|ps|ai|indd)$@i', $this->getFilename())) {
             return true;
         }
 
