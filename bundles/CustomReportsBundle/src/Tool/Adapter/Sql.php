@@ -17,7 +17,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CustomReportsBundle\Tool\Adapter;
 
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use Exception;
 use PDO;
 use Pimcore;
 use Pimcore\Db;
@@ -250,12 +252,9 @@ class Sql extends AbstractAdapter
             $fields[] = $property;
 
             if ($type === 'date' && $operator !== 'like') {
-                if ($operator === 'eq') {
-                    $condition[] = $column . ' BETWEEN ' . $db->quote((string) strtotime($value)) . ' AND ' . $db->quote((string) strtotime($value . '+23 hours 59 minutes'));
+                $condition[] = $this->buildDateCondition($db, $column, $operator, $this->parseFilterDate($value));
 
-                    continue;
-                }
-                $value = (string) strtotime($value);
+                continue;
             }
 
             if ($operator === 'like') {
@@ -300,6 +299,48 @@ class Sql extends AbstractAdapter
         $type = $filter['type'] ?? null;
 
         return [$property, is_string($type) ? $type : null, $operator, $this->normalizeFilterValue($filter['value'] ?? null)];
+    }
+
+    /**
+     * @throws InvalidReportFilterException
+     */
+    private function parseFilterDate(string $value): DateTimeImmutable
+    {
+        try {
+            $date = new DateTimeImmutable($value);
+        } catch (Exception) {
+            throw new InvalidReportFilterException('Invalid report filter date');
+        }
+
+        // an overflowing date like 02/30/2026 is only a warning of the parser
+        if ($value === '' || DateTimeImmutable::getLastErrors()) {
+            throw new InvalidReportFilterException('Invalid report filter date');
+        }
+
+        return $date;
+    }
+
+    /**
+     * Builds the condition of a date filter. "eq" means the whole calendar day. The type of the column is not known
+     * here, it can hold unix timestamps or be a DATE, DATETIME or date string, so the type is decided per value.
+     */
+    private function buildDateCondition(Connection $db, string $column, string $operator, DateTimeImmutable $date): string
+    {
+        if ($operator === 'eq' || $operator === '=') {
+            $startOfDay = $date->setTime(0, 0);
+
+            return $this->compareDate($db, $column, '>=', $startOfDay) . ' AND ' . $this->compareDate($db, $column, '<', $startOfDay->modify('+1 day'));
+        }
+
+        return $this->compareDate($db, $column, self::FILTER_OPERATORS[$operator], $date);
+    }
+
+    private function compareDate(Connection $db, string $column, string $comparison, DateTimeImmutable $date): string
+    {
+        return 'IF(CAST(' . $column . " AS CHAR) REGEXP '^[0-9]+$'"
+            . ', CAST(' . $column . ' AS SIGNED) ' . $comparison . ' ' . $date->getTimestamp()
+            . ', CAST(' . $column . ' AS DATETIME) ' . $comparison . ' ' . $db->quote($date->format('Y-m-d H:i:s'))
+            . ')';
     }
 
     /**

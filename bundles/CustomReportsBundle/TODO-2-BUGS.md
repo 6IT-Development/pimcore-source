@@ -73,7 +73,7 @@ does not filter for `NULL`/empty values – `buildQueryString()` skips `null`/`'
 - Unknown operators are silently ignored (filter not applied, no error).
 **Fix:** validate/normalise filters into a typed value object (see I-10/I-12) and return `400` for malformed input.
 
-### [ ] B-07 – Date filters: invalid dates crash, "equals" range misses the last minute
+### [x] B-07 – Date filters: invalid dates crash, "equals" range misses the last minute
 **File:** `src/Tool/Adapter/Sql.php:144-149`, `:166-171`
 - `strtotime()` returns `false` for unparsable input → `$db->quote(false)` → `TypeError` (strict types).
 - `eq` uses `strtotime($value . '+23 hours 59 minutes')` + `BETWEEN` → records in the last 59 seconds of the day are
