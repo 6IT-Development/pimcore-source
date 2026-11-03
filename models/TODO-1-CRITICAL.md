@@ -2108,7 +2108,7 @@ key in both folders.
 
 ---
 
-## [ ] C-56 – Select-option values and labels are written unescaped into the generated enum: a backslash breaks out of the string (PHP code injection), duplicate values break every `from()`
+## [x] C-56 – Select-option values and labels are written unescaped into the generated enum: a backslash breaks out of the string (PHP code injection), duplicate values break every `from()`
 
 **Files:** `models/DataObject/SelectOptions/Config/Dao.php:80-86`, `:110-120`; `models/DataObject/SelectOptions/Config.php:165-183`,
 `:367-370`; `models/DataObject/SelectOptions/Data/SelectOption.php:30-36`, `:118-125`;

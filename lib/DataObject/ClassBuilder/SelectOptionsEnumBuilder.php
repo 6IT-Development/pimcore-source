@@ -110,8 +110,15 @@ class SelectOptionsEnumBuilder implements SelectOptionsEnumBuilderInterface
     {
         $template = 'case %caseName% = \'%optionValue%\';';
 
-        $cases = $caseNames = [];
+        $cases = $caseNames = $values = [];
         foreach ($config->getSelectOptions() as $selectOption) {
+            // a duplicate backing value compiles, but makes every from() / tryFrom() of the enum throw
+            $value = $selectOption->getValue();
+            if (isset($values[$value])) {
+                throw new Exception(sprintf('Value \'%s\' is used by more than one option', $value));
+            }
+            $values[$value] = true;
+
             $caseName = $this->generateCaseName($selectOption);
             if (isset($caseNames[$caseName])) {
                 throw new Exception(
@@ -126,7 +133,6 @@ class SelectOptionsEnumBuilder implements SelectOptionsEnumBuilderInterface
             }
 
             // Store value for unique check
-            $value = $selectOption->getValue();
             $caseNames[$caseName] = $value;
 
             $cases[] = strtr(
@@ -179,9 +185,13 @@ class SelectOptionsEnumBuilder implements SelectOptionsEnumBuilderInterface
         return str_repeat(' ', $spaces);
     }
 
+    /**
+     * Escapes a value for a single-quoted PHP string literal: both ' and \ (a trailing or unescaped \ would end
+     * the literal early and turn the rest of the value into code)
+     */
     protected function escapeSingleQuote(string $value): string
     {
-        return str_replace("'", "\\'", $value);
+        return addcslashes($value, "\\'");
     }
 
     protected function generateCaseName(SelectOption $selectOption): string
@@ -189,7 +199,7 @@ class SelectOptionsEnumBuilder implements SelectOptionsEnumBuilderInterface
         $selectOptionName = $this->getSelectOptionName($selectOption);
 
         // Start with a letter or underscore, followed by zero or more alphanumeric and underscore characters
-        if (!preg_match('/^[A-Z-a-z_][A-Za-z0-9_]*$/', $selectOptionName)) {
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $selectOptionName) || strtolower($selectOptionName) === 'class') {
             throw new Exception(
                 sprintf(
                     'Invalid name \'%s\' for option with value \'%s\'. Must be alphanumeric and start with a letter (underscores allowed). Configure a name or use a different value.',

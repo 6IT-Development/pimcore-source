@@ -17,7 +17,9 @@ declare(strict_types=1);
 
 namespace Pimcore\DataObject\ClassBuilder;
 
+use ParseError;
 use Pimcore\Model\DataObject\SelectOptions\Config;
+use RuntimeException;
 use Symfony\Component\Filesystem\Filesystem;
 
 class PHPSelectOptionsEnumDumper implements PHPSelectOptionsEnumDumperInterface
@@ -33,6 +35,13 @@ class PHPSelectOptionsEnumDumper implements PHPSelectOptionsEnumDumperInterface
     {
         $filePath = $config->getPhpClassFile();
         $enum = $this->enumBuilder->buildEnum($config);
+
+        // never replace a working enum with a file that does not parse (every request using it would fail)
+        try {
+            token_get_all($enum, TOKEN_PARSE);
+        } catch (ParseError $e) {
+            throw new RuntimeException(sprintf('Generated enum %s is not valid PHP: %s', $config->getEnumName(), $e->getMessage()), 0, $e);
+        }
 
         $this->filesystem->dumpFile($filePath, $enum);
     }

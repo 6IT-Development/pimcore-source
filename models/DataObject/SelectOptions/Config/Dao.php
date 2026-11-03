@@ -81,8 +81,10 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     {
         $this->validateId();
 
-        $this->saveConfiguration();
+        // generate the enum first: a definition the enum cannot be built from (duplicate values, invalid case
+        // names, unknown traits) is rejected before it is stored and breaks every later classes-rebuild
         $this->model->generateEnumFiles();
+        $this->saveConfiguration();
     }
 
     protected function saveConfiguration(): void
