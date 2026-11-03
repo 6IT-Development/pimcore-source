@@ -793,7 +793,7 @@ applied, and every step uses it, so the `goto` restart is gone. The check still 
 one factor for all steps the current image is the 1× pipeline scaled by that factor, so the source size decides only
 whether the source can supply the extra pixels.
 
-## [ ] B-47 – Unknown transformation method → warning / `TypeError`
+## [x] B-47 – Unknown transformation method → warning / `TypeError`
 
 **File:** `models/Asset/Image/Thumbnail/Processor.php:423`, `:427`
 
@@ -801,6 +801,9 @@ whether the source can supply the extra pixels.
   `array_search($key, null)` → `TypeError`.
 
 **Fix direction:** `?? null` and `continue` with a log entry.
+
+**Done:** a method without argument mapping is skipped. It is logged as a warning, except for the `tifforiginal` marker,
+which `process()` evaluates for TIFF output and which is otherwise expected to reach the loop.
 
 ## [ ] B-48 – Valid thumbnails < 50 bytes are deleted and regenerated forever
 

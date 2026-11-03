@@ -465,9 +465,17 @@ class Processor
                 if (!empty($transformation)) {
                     $arguments = [];
 
-                    $mapping = self::$argumentMapping[$transformation['method']];
+                    $mapping = self::$argumentMapping[$transformation['method']] ?? null;
+                    if ($mapping === null) {
+                        // 'tifforiginal' is only a marker, evaluated in process()
+                        if ($transformation['method'] !== 'tifforiginal') {
+                            Logger::warning('Unknown image thumbnail transformation "' . $transformation['method'] . '" in thumbnail config ' . $config->getName() . ' skipped');
+                        }
 
-                    if (is_array($transformation['arguments'])) {
+                        continue;
+                    }
+
+                    if (is_array($transformation['arguments'] ?? null)) {
                         foreach ($transformation['arguments'] as $key => $value) {
                             $position = array_search($key, $mapping);
                             if ($position !== false) {
