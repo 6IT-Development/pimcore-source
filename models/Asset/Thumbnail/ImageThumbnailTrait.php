@@ -126,6 +126,7 @@ trait ImageThumbnailTrait
         $this->height = null;
         $this->realHeight = null;
         $this->realWidth = null;
+        $this->mimetype = null;
     }
 
     public function getWidth(): ?int

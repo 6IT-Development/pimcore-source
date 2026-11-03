@@ -706,13 +706,15 @@ for a TmpStore config it does not apply the auto-format quality, which closes th
 processor always deletes the TmpStore entry after generating, because the route may have changed the config before
 passing it on. A high-resolution factor is not compared: the route rebuilds the configured factors from the file name.
 
-## [ ] B-40 – `getAsFormat()` returns a clone with a stale MIME type
+## [x] B-40 – `getAsFormat()` returns a clone with a stale MIME type
 
 **File:** `models/Asset/Thumbnail/ImageThumbnailTrait.php:122-129`, `:425-431`
 
 - `reset()` does not clear `$mimetype`: `$t->getMimeType(); $t->getAsFormat('webp')->getMimeType()` → `image/jpeg`.
 
 **Fix direction:** `$this->mimetype = null` in `reset()`.
+
+**Done:** `reset()` clears the cached MIME type.
 
 ## [ ] B-41 – `existsOnStorage()` without argument always returns `false`
 
