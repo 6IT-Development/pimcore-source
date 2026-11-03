@@ -139,7 +139,7 @@ for every record (`config/services.yaml:32-46`), although `source` is already se
 processor (skip partial already configured) or skip it when `source` exists. Also `debug_backtrace()` without a limit on
 deep stacks is costly.
 
-### [ ] I-17 – Document processor ordering
+### [x] I-17 – Document processor ordering
 **File:** `config/services.yaml:43-46`
 `pushProcessor()` prepends, so execution order is the *reverse* of the listed order (introspection → app processor →
 psr message). This is correct but non-obvious; add a comment or use `priority` via `#[AsMonologProcessor]`.
