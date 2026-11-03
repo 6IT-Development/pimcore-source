@@ -679,8 +679,10 @@ final class Config extends Model\AbstractModel
         }
 
         // ensure we return int's, sometimes $arg[...] contain strings
-        $dimensions['width'] = (int)$dimensions['width'] * ($this->getHighResolution() ?: 1);
-        $dimensions['height'] = (int)$dimensions['height'] * ($this->getHighResolution() ?: 1);
+        // round up after multiplying with the factor the Processor applies, as the Processor does
+        $highResFactor = Processor::getHighResolutionFactor($asset, $this);
+        $dimensions['width'] = (int)ceil((float)$dimensions['width'] * $highResFactor);
+        $dimensions['height'] = (int)ceil((float)$dimensions['height'] * $highResFactor);
 
         return $dimensions;
     }

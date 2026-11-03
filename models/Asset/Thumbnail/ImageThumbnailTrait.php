@@ -24,6 +24,7 @@ use Pimcore\Helper\TemporaryFileHelperTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\Asset\Image\Thumbnail\Config;
+use Pimcore\Model\Asset\Image\Thumbnail\Processor;
 use Pimcore\Tool;
 use Pimcore\Tool\Storage;
 use Symfony\Component\Mime\MimeTypes;
@@ -237,12 +238,14 @@ trait ImageThumbnailTrait
             $this->width = $this->realWidth = ($width !== null ? (int)$width : null);
             $height = $dimensions['height'] ?? null;
             $this->height = $this->realHeight = ($height !== null ? (int)$height : null);
-            if ($config && $config->getHighResolution() > 1) {
+            // the factor the Processor applied, it is lowered when the source image is too small
+            $highResFactor = $config ? Processor::getHighResolutionFactor($asset, $config) : 1.0;
+            if ($highResFactor > 1) {
                 if ($this->width) {
-                    $this->width = (int)floor($this->realWidth / $config->getHighResolution());
+                    $this->width = (int)floor($this->realWidth / $highResFactor);
                 }
                 if ($this->height) {
-                    $this->height = (int)floor($this->realHeight / $config->getHighResolution());
+                    $this->height = (int)floor($this->realHeight / $highResFactor);
                 }
             }
         }

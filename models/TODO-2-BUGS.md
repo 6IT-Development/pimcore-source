@@ -765,7 +765,7 @@ temp file cannot be opened instead of passing `false` to `writeStream()`.
 **Done:** `scaleByWidth`, `scaleByHeight` and `contain` return `[]` (unknown dimensions, as for `rotate`/`trim`) when a
 size they divide by is missing or zero.
 
-## [ ] B-45 – Hi-res width/height attributes wrong when the source is smaller than requested
+## [x] B-45 – Hi-res width/height attributes wrong when the source is smaller than requested
 
 **File:** `models/Asset/Thumbnail/ImageThumbnailTrait.php:239-245`; `Processor.php:438-454`; `Config.php:669-670`
 
@@ -773,6 +773,11 @@ size they divide by is missing or zero.
   → reports 250 instead of 400; attributes change after generation. At @1.5, cast-before-multiply gives off-by-one.
 
 **Fix direction:** cache the effective factor or derive CSS size from the estimate; round after multiplying.
+
+**Done:** `getDimensions()` divides the real size by `Processor::getHighResolutionFactor()` (from B-46), the factor the
+Processor actually applied, so a 500 px source with `scaleByWidth 400 @2` reports 400 before and after generation.
+`getEstimatedDimensions()` multiplies by the same factor and rounds up afterwards, as the Processor does. A configured
+factor ≤ 1 is no longer applied to the estimate, because the Processor ignores it too.
 
 ## [x] B-46 – Hi-res `goto` restart applies the factor inconsistently across steps
 
