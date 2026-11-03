@@ -805,7 +805,7 @@ whether the source can supply the extra pixels.
 **Done:** a method without argument mapping is skipped. It is logged as a warning, except for the `tifforiginal` marker,
 which `process()` evaluates for TIFF output and which is otherwise expected to reach the loop.
 
-## [ ] B-48 – Valid thumbnails < 50 bytes are deleted and regenerated forever
+## [x] B-48 – Valid thumbnails < 50 bytes are deleted and regenerated forever
 
 **File:** `models/Asset/Image/Thumbnail/Processor.php:378-386`
 
@@ -813,6 +813,11 @@ which `process()` evaluates for TIFF output and which is otherwise expected to r
   may delete a file another process is still writing (unverified).
 
 **Fix direction:** only check PNGs generated in this call; write to a temp key and move.
+
+**Done:** the check now runs on the local temp file of a PNG generated in this call, before it is written to storage. A
+file below 50 bytes is not stored, and the deferred reference is returned as before. Existing thumbnails are no longer
+checked or deleted, which drops the two remote calls and the risk of deleting a file another process is writing, so no
+temp key is needed. Not covered any more: a PNG that the asynchronous image optimizer empties later.
 
 ## [ ] B-49 – Focal point at `0` ignored; `null` → `0` does not clear thumbnails
 

@@ -353,6 +353,21 @@ class Processor
 
                 $tmpFsPath = File::getLocalTempFilePath($fileExtension);
                 $image->save($tmpFsPath, $format, $config->getQuality());
+
+                // quick bugfix / workaround, it seems that imagemagick creates sometimes empty PNG chunks (total size 33 bytes)
+                // no clue why it does so as this is not continuous reproducible, and this is the only fix we can do for now
+                // if the file is corrupted it is not stored and is created on the fly when requested by the browser
+                // only PNGs generated here are checked, other formats can be valid below 50 bytes (e.g. a 1x1 GIF)
+                if ((str_starts_with($format, 'png') || $fileExtension === 'png') && filesize($tmpFsPath) < 50) {
+                    Logger::warning('Generated thumbnail ' . $storagePath . ' is smaller than 50 bytes, discarded');
+                    $lock->release();
+
+                    return [
+                        'src' => $storagePath,
+                        'type' => 'deferred',
+                    ];
+                }
+
                 $stream = fopen($tmpFsPath, 'rb');
                 if ($stream === false) {
                     throw new Exception('Unable to read the generated thumbnail file ' . $tmpFsPath);
@@ -383,19 +398,6 @@ class Processor
                 Logger::debug('Thumbnail ' . $storagePath . ' already generated, waiting on lock for ' . (microtime(true) - $startTime) . ' seconds');
             }
             $lock->release();
-        }
-
-        // quick bugfix / workaround, it seems that imagemagick / image optimizers creates sometimes empty PNG chunks (total size 33 bytes)
-        // no clue why it does so as this is not continuous reproducible, and this is the only fix we can do for now
-        // if the file is corrupted the file will be created on the fly when requested by the browser (because it's deleted here)
-        if ($storage->fileExists($storagePath) && $storage->fileSize($storagePath) < 50) {
-            $storage->delete($storagePath);
-            $asset->getDao()->deleteFromThumbnailCache($config->getName(), $filename);
-
-            return [
-                'src' => $storagePath,
-                'type' => 'deferred',
-            ];
         }
 
         return [
