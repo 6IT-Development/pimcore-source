@@ -370,7 +370,7 @@ are regenerated).
 `openStream(true)`, which rethrows it, so a missing binary fails the save instead of being written as 0 bytes. A handle
 that cannot be rewound is closed before it is replaced.
 
-## [ ] B-17 – Version deletion dispatched inside the delete transaction
+## [x] B-17 – Version deletion dispatched inside the delete transaction
 
 **File:** `models/Asset.php:1007-1009`
 
@@ -379,6 +379,9 @@ that cannot be rewound is closed before it is replaced.
   dependency unverified per project.)
 
 **Fix direction:** dispatch after `commit()`.
+
+**Done:** `delete()` collects the ids of the deleted asset and its nested children and dispatches their
+`VersionDeleteMessage`s after the outermost commit; a dispatch error is logged, as the asset is already deleted.
 
 ## [ ] B-18 – `setParent()` keeps a stale `parentId` for `null` / non-asset parents
 

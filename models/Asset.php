@@ -180,6 +180,13 @@ class Asset extends Element\AbstractElement
      */
     protected array $storageBackups = [];
 
+    /**
+     * Ids of the assets deleted by the running outermost delete(); their versions are deleted once it is committed
+     *
+     * @var list<int>|null
+     */
+    private static ?array $deletedAssetIds = null;
+
     public function getDataModificationDate(): ?int
     {
         return $this->dataModificationDate;
@@ -1055,6 +1062,11 @@ class Asset extends Element\AbstractElement
 
         $this->dispatchEvent(new AssetEvent($this), AssetEvents::PRE_DELETE);
 
+        $isOutermostDelete = self::$deletedAssetIds === null;
+        if ($isOutermostDelete) {
+            self::$deletedAssetIds = [];
+        }
+
         $this->beginTransaction();
 
         try {
@@ -1067,10 +1079,8 @@ class Asset extends Element\AbstractElement
                 }
             }
 
-            // Dispatch Symfony Message Bus to delete versions
-            Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
-                new VersionDeleteMessage(Service::getElementType($this), $this->getId())
-            );
+            // the versions are deleted after the commit, a non-transactional transport would not roll back with it
+            self::$deletedAssetIds[] = $this->getId();
 
             // remove all properties
             $this->getDao()->deleteAllProperties();
@@ -1087,6 +1097,10 @@ class Asset extends Element\AbstractElement
 
             $this->commit();
         } catch (Throwable $e) {
+            if ($isOutermostDelete) {
+                self::$deletedAssetIds = null;
+            }
+
             try {
                 $this->rollBack();
             } catch (Exception $er) {
@@ -1100,6 +1114,22 @@ class Asset extends Element\AbstractElement
             Logger::crit((string)$e);
 
             throw $e;
+        }
+
+        if ($isOutermostDelete) {
+            $deletedAssetIds = self::$deletedAssetIds;
+            self::$deletedAssetIds = null;
+
+            foreach ($deletedAssetIds as $deletedAssetId) {
+                try {
+                    // Dispatch Symfony Message Bus to delete versions
+                    Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
+                        new VersionDeleteMessage('asset', $deletedAssetId)
+                    );
+                } catch (Throwable $e) {
+                    Logger::error(sprintf('Asset %d was deleted, but deleting its versions failed: %s', $deletedAssetId, $e));
+                }
+            }
         }
 
         // the DB rows are gone at this point, so storage errors cannot be rolled back and must not fail the delete
