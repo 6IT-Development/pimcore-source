@@ -40,6 +40,8 @@ final class FileObject
             $storage->write($this->filename, $this->data);
         } catch (FilesystemException|UnableToWriteFile) {
             Logger::warn('Application Logger could not write File Object:' . $this->filename);
+            // the log entry must not link to a file which does not exist
+            $this->filename = null;
         }
     }
 
@@ -48,8 +50,15 @@ final class FileObject
         return $this->filename;
     }
 
-    public function getFilename(): string
+    /**
+     * Returns null if the file could not be written
+     */
+    public function getFilename(): ?string
     {
+        if (null === $this->filename) {
+            return null;
+        }
+
         return preg_replace('/^' . preg_quote(PIMCORE_PROJECT_ROOT, '/') . '/', '', $this->filename);
     }
 
@@ -60,6 +69,6 @@ final class FileObject
 
     public function __toString(): string
     {
-        return $this->getFilename();
+        return (string)$this->getFilename();
     }
 }

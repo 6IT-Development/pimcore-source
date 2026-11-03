@@ -117,7 +117,7 @@ inconsistent: `ApplicationLogger` throws `InvalidArgumentException` for a bad `f
 
 ## FileObject (`src/FileObject.php`)
 
-### [ ] B-15 – Failed write still produces a log row pointing to a non-existent file
+### [x] B-15 – Failed write still produces a log row pointing to a non-existent file
 **Lines:** 37-43
 The write error is only logged as a warning; the object keeps `filename`, so the log row links to a missing file
 (→ B-04 500 in the UI). Expose the failure (e.g. `filename = null`) so callers/handler store `NULL`.

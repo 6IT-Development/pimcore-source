@@ -47,7 +47,8 @@ class ApplicationLoggerProcessor
             if (is_string($context['fileObject'])) {
                 $context['fileObject'] = str_replace(PIMCORE_PROJECT_ROOT, '', $context['fileObject']);
             } elseif ($context['fileObject'] instanceof FileObject) {
-                $context['fileObject'] = str_replace(PIMCORE_PROJECT_ROOT, '', $context['fileObject']->getFilename());
+                $filename = $context['fileObject']->getFilename();
+                $context['fileObject'] = null === $filename ? null : str_replace(PIMCORE_PROJECT_ROOT, '', $filename);
             } else {
                 // DBAL cannot bind it and a log call must not turn into an application error
                 error_log('Application Logger dropped the fileObject: it must be a file path or an instance of FileObject, got ' . get_debug_type($context['fileObject']));

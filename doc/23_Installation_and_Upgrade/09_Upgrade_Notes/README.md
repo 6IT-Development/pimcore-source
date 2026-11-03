@@ -7,6 +7,8 @@
   and the protected `ApplicationLogger::handleLog()`. Extra arguments are ignored now, pass `fileObject` and `component`
   in the `$context` array. Passing an element as second argument has been throwing a `TypeError` since `$context` is
   typed as `array`, use `$context['relatedObject']`.
+- `FileObject::getFilename()` and `FileObject::getSystemPath()` return `null` if the file could not be written, and the
+  log entry is stored without a file object.
 #### [Cache]
 - Fixed: if `cache.app` uses the default filesystem adapter, Pimcore stores it in `pimcore.cache.pool`. Every pool
   derived from `cache.app` (`framework.cache.pools.*` with the default adapter, Symfony's own child pools) used to
