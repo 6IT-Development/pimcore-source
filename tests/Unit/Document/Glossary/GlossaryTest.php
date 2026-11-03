@@ -387,4 +387,25 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryKeepsTheDoctypeAndHtmlElementOfFullDocuments(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Glossary');
+        $entry->setLink('/glossary');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse(
+            '<!DOCTYPE html><html lang="de" class="no-js"><head><title>Glossary</title></head><body><p>Glossary</p></body></html>', [],
+            'en',
+            null,
+            null
+        );
+
+        $expect = '<!DOCTYPE html><html lang="de" class="no-js"><head><title>Glossary</title></head>'
+            . '<body><p><a class="pimcore_glossary" href="/glossary">Glossary</a></p></body></html>';
+
+        $this->assertSame($expect, $result);
+    }
 }

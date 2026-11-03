@@ -111,10 +111,12 @@ class Processor
         }
 
         // only text nodes are searched, so terms are never replaced inside tag names, attribute values or markup
-        // inserted for another term, and existing links and abbreviations are never nested, whatever blocked_tags says
+        // inserted for another term, and existing links and abbreviations are never nested, whatever blocked_tags says;
+        // the <head> of a full document (e.g. its <title>) is never processed
         $html = new DomCrawler($content);
         $root = $html->getNode(0);
-        $textNodes = (new \DOMXPath($root->ownerDocument))->query('//text()[normalize-space()][not(ancestor::a or ancestor::abbr)]');
+        $textNodes = (new \DOMXPath($root->ownerDocument))
+            ->query('//text()[normalize-space()][not(ancestor::a or ancestor::abbr or ancestor::head)]');
 
         foreach (iterator_to_array($textNodes) as $textNode) {
             if ($this->hasBlockedAncestor($textNode)) {
@@ -124,10 +126,24 @@ class Processor
             $this->replaceInTextNode($textNode, $entries, (int)$options['limit']);
         }
 
-        $result = $html->html();
+        $result = preg_match('@</html>@i', $content) ? $this->serializeDocument($content, $root) : $html->html();
         $html->clear();
 
         return $result;
+    }
+
+    /**
+     * DomCrawler::html() returns the inner HTML of the <html> element, which drops the doctype (quirks mode) and the
+     * attributes of <html> (lang, dir, class) when the filter is applied around a whole layout.
+     */
+    private function serializeDocument(string $content, \DOMNode $root): string
+    {
+        $doctype = '';
+        if (preg_match('/^(?:\xEF\xBB\xBF)?\s*(<!doctype[^>]*>)/i', $content, $matches)) {
+            $doctype = $matches[1];
+        }
+
+        return $doctype . $root->ownerDocument->saveHTML($root);
     }
 
     /**

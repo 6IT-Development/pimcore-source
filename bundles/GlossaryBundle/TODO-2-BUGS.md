@@ -53,7 +53,7 @@ No `u` modifier: `\w` is ASCII-only and `i` folds only ASCII. Entry `Glossar` wi
 - Existing `<abbr>` elements (incl. glossary-generated ones) are not skipped at all.
 **Fix:** obsolete with I-13 (ancestor check). Short-term: `~<a\b[^>]*>.*?</a>(*SKIP)(*FAIL)|…~is`.
 
-### [ ] B-06 – Passing a full HTML document drops `<!DOCTYPE>` and the `<html>` element *(reproduced)*
+### [x] B-06 – Passing a full HTML document drops `<!DOCTYPE>` and the `<html>` element *(reproduced)*
 **Files:** `src/Tool/Processor.php:87`, `:154`, `lib/Tool/DomCrawler.php:33-52`
 `DomCrawler` only wraps fragments; for input containing `</body>`/`</html>` `Crawler::html()` returns the
 **inner** HTML of `<html>`. `<!DOCTYPE html><html lang="de"><head>…</head><body>…</body></html>` comes back as
