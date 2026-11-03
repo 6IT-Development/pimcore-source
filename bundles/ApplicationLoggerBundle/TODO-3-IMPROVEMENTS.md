@@ -54,10 +54,14 @@ Makes archive/retention logic testable and removes mixing of `time()`, `DateTime
 `executeQuery()` is meant for result sets; use `executeStatement()` (returns affected rows) for `CREATE`, `DROP`,
 `INSERT … SELECT`, `DELETE`, `UPDATE`.
 
-### [ ] I-08 – `ResetInterface` for the shared logger service
+### [x] I-08 – `ResetInterface` for the shared logger service
 **File:** `src/ApplicationLogger.php`
 Implement `Symfony\Contracts\Service\ResetInterface` (`reset()` clears component override, fileObject, relatedObject),
 tag `kernel.reset`. Required for correct behaviour in Messenger workers (complements B-08).
+**Outcome:** `ResetInterface` came with B-08 and FrameworkBundle autoconfigures the `kernel.reset` tag. `reset()` deliberately keeps
+the component: nothing tells a component set by a `calls:` entry of a service definition from one set at runtime, and
+clearing it would lose the configuration of those services. `getInstance()` no longer changes the shared service, and
+`__clone()` now keeps pending state of the original out of the clones it returns.
 
 ---
 

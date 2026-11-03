@@ -150,6 +150,12 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         $this->relatedObjectType = 'object';
     }
 
+    public function __clone()
+    {
+        // what was set on the original is meant for the next log call of the original
+        $this->reset();
+    }
+
     public function log(mixed $level, string|Stringable $message, array $context = []): void
     {
         // the file object and related object set on the instance apply to the next log call only,
