@@ -178,6 +178,8 @@ class Definition extends Model\DataObject\Fieldcollection\Definition
             }
         }
 
+        $this->checkFieldNamesAgainstBaseClass(DataObject\Objectbrick\Data\AbstractData::class);
+
         $newClassDefinitions = [];
         $classDefinitionsToDelete = [];
 

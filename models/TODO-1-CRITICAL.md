@@ -1636,7 +1636,7 @@ plain-text rows (`type = 'password'` and `password_get_info(value)['algo'] === n
 
 ---
 
-## [ ] C-44 – A field-collection field named `objectId` or `loadedLazyKeys` generates a class that is a PHP compile-time fatal: every object using the collection crashes
+## [x] C-44 – A field-collection field named `objectId` or `loadedLazyKeys` generates a class that is a PHP compile-time fatal: every object using the collection crashes
 
 **Files:** `lib/DataObject/ClassBuilder/FieldCollectionClassBuilder.php:67-71`;
 `models/DataObject/Fieldcollection/Data/AbstractData.php:41`; `models/DataObject/Traits/LazyLoadedRelationTrait.php:27`;

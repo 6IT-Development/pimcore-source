@@ -29,6 +29,7 @@ use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\FieldDefinitionEnrichmentInterface;
+use ReflectionClass;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -157,6 +158,8 @@ class Definition extends Model\AbstractModel
             }
         }
 
+        $this->checkFieldNamesAgainstBaseClass(DataObject\Fieldcollection\Data\AbstractData::class);
+
         $this->generateClassFiles($saveDefinitionFile);
 
         // update classes
@@ -178,6 +181,33 @@ class Definition extends Model\AbstractModel
             $this->dispatchEvent(new FieldcollectionDefinitionEvent($this), FieldcollectionDefinitionEvents::POST_ADD);
         } else {
             $this->dispatchEvent(new FieldcollectionDefinitionEvent($this), FieldcollectionDefinitionEvents::POST_UPDATE);
+        }
+    }
+
+    /**
+     * The generated class declares an untyped property per field. A field that redeclares a property of the base
+     * class makes the class a PHP compile-time fatal, so every object that uses the definition would crash.
+     *
+     * @throws Exception
+     */
+    protected function checkFieldNamesAgainstBaseClass(string $defaultBaseClass): void
+    {
+        $baseClass = $this->getParentClass() ? ltrim($this->getParentClass(), '\\') : $defaultBaseClass;
+        if (!class_exists($baseClass)) {
+            return;
+        }
+
+        $baseProperties = [];
+        foreach ((new ReflectionClass($baseClass))->getProperties() as $property) {
+            if (!$property->isPrivate()) {
+                $baseProperties[$property->getName()] = true;
+            }
+        }
+
+        foreach ($this->getFieldDefinitions() as $key => $fd) {
+            if (isset($baseProperties[$key])) {
+                throw new Exception(sprintf('Forbidden name used for field definition: %s (property of %s)', $key, $baseClass));
+            }
         }
     }
 
