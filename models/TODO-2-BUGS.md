@@ -456,7 +456,7 @@ extension or a dotfile gets it appended (`README_1`, `.htaccess_1`).
 **Done:** a `video` thumbnail request for an asset that is not an `Asset\Video` returns `null` (404) before any config
 lookup. The `image` type stays valid for all asset classes, since videos and documents have image thumbnails too.
 
-## [ ] B-23 – Undefined `status_cache` key for video thumbnails
+## [x] B-23 – Undefined `status_cache` key for video thumbnails
 
 **File:** `models/Asset/Service.php:390`
 
@@ -464,6 +464,9 @@ lookup. The `image` type stays valid for all asset classes, since videos and doc
   anonymous request for an unknown video thumbnail name raises "Undefined array key" (`ErrorException` in debug).
 
 **Fix direction:** `?? false`, or only for `type === 'image'`.
+
+**Done:** the `status_cache` lookup falls back to `false`, so video thumbnail requests with an unknown name no longer
+raise "Undefined array key". Video thumbnails have no status cache.
 
 ## [ ] B-24 – Unknown thumbnail name → DB `DELETE` and status-cache wipe on every anonymous request
 

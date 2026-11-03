@@ -407,7 +407,7 @@ class Service extends Model\Element\Service
                     if (!$thumbnailConfig instanceof $thumbnailConfigClass) {
                         throw new Exception('Deferred thumbnail config file doesn\'t contain a valid ' . $thumbnailConfigClass . ' object');
                     }
-                } elseif (Config::getSystemConfiguration()['assets'][$config['type']]['thumbnails']['status_cache']) {
+                } elseif (Config::getSystemConfiguration()['assets'][$config['type']]['thumbnails']['status_cache'] ?? false) {
                     // Delete Thumbnail Name from Cache so the next call can generate a new TmpStore entry
                     // because otherwise it's getting directly delivered from the cache by Processor:process()
                     // without having the actual thumbnail file on the storage
