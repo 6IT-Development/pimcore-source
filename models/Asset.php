@@ -761,7 +761,9 @@ class Asset extends Element\AbstractElement
 
         if ($this->getType() != 'folder') {
             if ($this->getDataChanged()) {
-                $src = $this->getStream();
+                // without a new stream the binary is read back from the storage; if that fails, the file must not be
+                // rewritten as an empty one
+                $src = $this->openStream(true);
 
                 $fileExists = $storage->fileExists($path);
                 if (!$fileExists || !stream_is_local($storage->readStream($path))) {
@@ -1207,18 +1209,35 @@ class Asset extends Element\AbstractElement
      */
     public function getStream()
     {
+        return $this->openStream(false);
+    }
+
+    /**
+     * @param bool $failOnMissingBinary throw instead of substituting an empty stream when the binary cannot be read
+     *
+     * @return resource|null
+     *
+     * @throws FilesystemException
+     */
+    private function openStream(bool $failOnMissingBinary)
+    {
         if ($this->stream) {
             if (get_resource_type($this->stream) !== 'stream') {
                 $this->stream = null;
             } elseif (!@rewind($this->stream)) {
-                $this->stream = null;
+                $this->closeStream();
             }
         }
 
         if (!$this->stream && $this->getType() !== 'folder') {
             try {
                 $this->stream = Storage::get('asset')->readStream($this->getRealFullPath());
-            } catch (Exception) {
+            } catch (Exception $e) {
+                if ($failOnMissingBinary) {
+                    throw $e;
+                }
+
+                Logger::error('Unable to read the binary of asset ' . $this->getId() . ' (' . $this->getRealFullPath() . '), using an empty stream: ' . $e->getMessage());
                 $this->stream = tmpfile();
             }
         }

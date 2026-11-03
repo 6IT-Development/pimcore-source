@@ -356,7 +356,7 @@ removed legacy file are kept as hidden `.backup_*` files next to them until the 
 the asset move and the thumbnail relocation are moved back. Thumbnails cleared by the relocation are not restored (they
 are regenerated).
 
-## [ ] B-16 – `getStream()` silently substitutes an empty stream for a missing binary
+## [x] B-16 – `getStream()` silently substitutes an empty stream for a missing binary
 
 **File:** `models/Asset.php:1142-1158`
 
@@ -365,6 +365,10 @@ are regenerated).
   without `fclose()`.
 
 **Fix direction:** log (or rethrow outside read-only contexts) and close the old handle.
+
+**Done:** `getStream()` logs the read error before substituting the empty stream; `update()` uses the new private
+`openStream(true)`, which rethrows it, so a missing binary fails the save instead of being written as 0 bytes. A handle
+that cannot be rewound is closed before it is replaced.
 
 ## [ ] B-17 – Version deletion dispatched inside the delete transaction
 
