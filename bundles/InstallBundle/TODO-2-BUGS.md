@@ -169,7 +169,7 @@ nothing is recommended and adapt the confirm text.
 **Fix direction:** per-option `allow-empty` flag (mysql-password, mysql-ssl-cert-path), validate with
 `'' === trim((string) $answer)` / `null === $answer`.
 
-### [ ] B-13 – Required bundles are skipped in non-interactive mode without `--install-bundles` and when the user declines
+### [x] B-13 – Required bundles are skipped in non-interactive mode without `--install-bundles` and when the user declines
 **Files:** `src/Command/InstallCommand.php:214-226`, `:327-333`, docs `README.md:50-52`, `:88`
 - `setBundlesToInstall()` is only called when `--install-bundles` is given or the user answers "yes" to "Do you want to
   install bundles?". Bundles added via `addRequiredBundle()` (e.g. the skeleton's `PimcoreAdminBundle`) are therefore

@@ -411,15 +411,22 @@ class InstallCommand extends Command
         $bundleQuestion = 'Do you want to install bundles?'
             . ([] !== $recommendedBundles ? sprintf(' We recommend %s.', implode(', ', $recommendedBundles)) : '');
 
-        if (!empty($bundleSetupEvent->getBundles()) && false === $input->getOption('install-bundles') && $input->isInteractive() && $this->io->confirm($bundleQuestion, false)) {
-            $defaultBundles = $this->getRecommendBundles($bundleSetupEvent);
-            $bundles = $this->io->choice(
-                'Which bundle(s) do you want to install? You can choose multiple e.g. 0,1,2,3'
-                    . (null !== $defaultBundles ? ' or just hit enter to install recommended bundles' : ''),
-                array_keys($bundleSetupEvent->getBundles()),
-                $defaultBundles,
-                true
-            );
+        // the --install-bundles option has already been evaluated in initialize()
+        if (false === $input->getOption('install-bundles')) {
+            $bundles = [];
+
+            if (!empty($bundleSetupEvent->getBundles()) && $input->isInteractive() && $this->io->confirm($bundleQuestion, false)) {
+                $defaultBundles = $this->getRecommendBundles($bundleSetupEvent);
+                $bundles = $this->io->choice(
+                    'Which bundle(s) do you want to install? You can choose multiple e.g. 0,1,2,3'
+                        . (null !== $defaultBundles ? ' or just hit enter to install recommended bundles' : ''),
+                    array_keys($bundleSetupEvent->getBundles()),
+                    $defaultBundles,
+                    true
+                );
+            }
+
+            // required bundles are always installed, the prompt only selects the optional ones
             $installableBundles = $bundleSetupEvent->getInstallableBundles($bundles);
             $this->installer->setBundlesToInstall($installableBundles, $bundleSetupEvent->getAvailableBundles(), $bundleSetupEvent->getExcludeBundlesFromPhpBundles());
         }

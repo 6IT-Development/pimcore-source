@@ -58,8 +58,8 @@ bundles: **Recommended Bundles** and **Required Bundles**.
     - These are the bundles users can specify when using the `--install-bundles=commaSeparatedBundleList` option.
 
 - **Required Bundles**:
-    - These bundles will automatically be installed in interactive mode, if the user choses to install bundles.
-    - They are installed whenever the `--install-bundles` option is set.
+    - These bundles are always installed, in interactive and non-interactive mode, with or without the
+      `--install-bundles` option. The option and the prompt only select the additional (recommended) bundles.
 
 #### Default Recommended Bundles
 
@@ -95,7 +95,7 @@ activates all required bundles and any specified bundles, provided they are part
 The `BundleSetupEvent` is triggered under two circumstances:
 
 1. To preset the installable (recommended) and automatically installed (required) bundles for the `--install-bundles` option.
-2. To modify a list of recommended bundles in interactive mode. Required bundles are not installed if the user declines to install bundles.
+2. To modify a list of recommended bundles in interactive mode. Required bundles are installed even if the user declines to install bundles.
 
 By subscribing or listening to the `BundleSetupEvent`, you can add or remove bundles from the required or recommended lists.
 
