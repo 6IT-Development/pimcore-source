@@ -212,11 +212,13 @@ Use `iterateAssociative()` / chunking and `WHERE fileobject IS NOT NULL` instead
 also needs the ids of rows without a file object to move them, so `fileobject IS NOT NULL` does not apply, and
 `deleteFileObjects()` skips the empty paths.
 
-### [ ] I-28 – ARCHIVE engine availability
+### [x] I-28 – ARCHIVE engine availability
 **File:** `src/Maintenance/LogArchiveTask.php:62-75`
 The `ARCHIVE` storage engine is not available on all MySQL/MariaDB setups (managed DBs, some Galera builds); with
 `NO_ENGINE_SUBSTITUTION` the `CREATE TABLE` fails. Make the engine configurable or detect support
 (`information_schema.ENGINES`).
+**Outcome:** Detected through `information_schema.ENGINES` with `InnoDB` as the fallback, no setting needed. Tables that already exist
+keep their engine.
 
 ### [ ] I-29 – Installer via Doctrine Schema / migrations
 **File:** `src/Installer.php:45-69`

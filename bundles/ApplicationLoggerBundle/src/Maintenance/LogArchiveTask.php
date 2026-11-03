@@ -79,7 +79,7 @@ readonly class LogArchiveTask implements TaskInterface
                 $columnDefinitions[] = $db->quoteIdentifier($name) . ' ' . $definition;
             }
 
-            $db->executeStatement('CREATE TABLE IF NOT EXISTS ' . $tablename . ' (' . implode(', ', $columnDefinitions) . ') ENGINE = ARCHIVE ROW_FORMAT = DEFAULT DEFAULT CHARSET=utf8mb4;');
+            $db->executeStatement('CREATE TABLE IF NOT EXISTS ' . $tablename . ' (' . implode(', ', $columnDefinitions) . ') ENGINE = ' . $this->getArchiveEngine() . ' ROW_FORMAT = DEFAULT DEFAULT CHARSET=utf8mb4;');
             $this->widenLegacyArchiveTable($archiveTableName, $tablename);
 
             $this->logger->debug('Archiving application_logs and deleting their referenced FileObjects which are older than ' . $this->archiveThreshold . ' days');
@@ -119,6 +119,22 @@ readonly class LogArchiveTask implements TaskInterface
                 }
             }
         }
+    }
+
+    /**
+     * The ARCHIVE engine is not available on all servers, e.g. managed databases and some Galera builds
+     */
+    private function getArchiveEngine(): string
+    {
+        $support = $this->db->fetchOne('SELECT SUPPORT FROM information_schema.ENGINES WHERE ENGINE = ?', ['ARCHIVE']);
+
+        if (is_string($support) && in_array(strtoupper($support), ['YES', 'DEFAULT'], true)) {
+            return 'ARCHIVE';
+        }
+
+        $this->logger->info('The ARCHIVE storage engine is not available, creating archive tables with InnoDB');
+
+        return 'InnoDB';
     }
 
     /**
