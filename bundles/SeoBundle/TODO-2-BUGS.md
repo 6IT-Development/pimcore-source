@@ -73,7 +73,7 @@ when `$event->hasResponse()`/`$event->isPropagationStopped()`; verify with `debu
 
 ## Redirect handling (`src/Redirect/*`, `src/EventListener/RoutingListener.php`, `src/Model/*`)
 
-### [ ] B-06 – Unescaped site root path used as regex in `buildRedirectResponse()`
+### [x] B-06 – Unescaped site root path used as regex in `buildRedirectResponse()`
 **File:** `src/Redirect/RedirectHandler.php:182`
 ```php
 $url = preg_replace('@^' . $targetSite->getRootPath() . '/@', '/', $url);

@@ -179,7 +179,10 @@ final class RedirectHandler
                 if ($targetSite = Site::getById($redirect->getTargetSite())) {
                     // if the target site is specified and and the target-path is starting at root (not absolute to site)
                     // the root-path will be replaced so that the page can be shown
-                    $url = preg_replace('@^' . $targetSite->getRootPath() . '/@', '/', $url);
+                    $rootPath = (string)$targetSite->getRootPath();
+                    if (str_starts_with($url, $rootPath . '/')) {
+                        $url = substr($url, strlen($rootPath));
+                    }
                     $url = $request->getScheme() . '://' . $targetSite->getMainDomain() . $url;
                 } else {
                     $this->logger->error('Site with ID {targetSite} not found', [
