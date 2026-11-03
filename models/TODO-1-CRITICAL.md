@@ -2079,7 +2079,7 @@ collection tables). Until that ships, reject a brick definition that is assigned
 
 ---
 
-## [ ] C-55 – `classes-rebuild` also drops object-brick columns for definitions shadowed in the other definition directory (C-45 for bricks)
+## [x] C-55 – `classes-rebuild` also drops object-brick columns for definitions shadowed in the other definition directory (C-45 for bricks)
 
 **Files:** `models/DataObject/Objectbrick/Definition/Listing.php:57-77`; `models/DataObject/Objectbrick/Definition.php:66-92`,
 `:144-214`, `:351-387`, `:413-449`; `Objectbrick/Definition/Dao.php:61-149` (`:147-148`);

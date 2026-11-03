@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\DataObject\Objectbrick\Definition;
 
+use Pimcore\Logger;
 use Pimcore\Model\DataObject\Objectbrick\Definition;
 
 class Listing
@@ -63,16 +64,21 @@ class Listing
             PIMCORE_CUSTOM_CONFIGURATION_CLASS_DEFINITION_DIRECTORY . '/objectbricks',
         ])));
 
+        // one file per key: like Definition::getByKey(), the custom configuration directory (listed last) wins
         foreach ($objectBricksFolders as $objectBricksFolder) {
             $files = glob($objectBricksFolder . '/*.php');
             foreach ($files as $file) {
                 $realFile = realpath($file);
                 if ($realFile) {
-                    $filenames[] = $realFile;
+                    $key = basename($realFile, '.php');
+                    if (isset($filenames[$key])) {
+                        Logger::warning(sprintf('Object-brick definition %s is shadowed by %s and ignored', $filenames[$key], $realFile));
+                    }
+                    $filenames[$key] = $realFile;
                 }
             }
         }
 
-        return array_unique($filenames);
+        return array_values($filenames);
     }
 }
