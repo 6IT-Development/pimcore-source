@@ -1902,7 +1902,7 @@ reject duplicate / empty column keys when the definition is saved. Add a round-t
 >   was checked with `php -r` on PHP 8.4.27. Nothing else was executed.
 > - Critical items: C-52. Bugs: B-300–B-315. Improvements: I-161–I-169.
 
-## [ ] C-52 – Advanced-relation metadata columns named like a real method bypass `__call`: crashes on save/load, or all metadata of the item silently stored under another field name
+## [x] C-52 – Advanced-relation metadata columns named like a real method bypass `__call`: crashes on save/load, or all metadata of the item silently stored under another field name
 
 **Files:** `models/DataObject/Data/ObjectMetadata.php:78-105` (`__call`), `:123-134`, `:57-70`, `:153-158`, `:186-205`;
 `models/DataObject/Data/ElementMetadata.php:67-94`, `:114-125`, `:130-144`, `:186-195`;

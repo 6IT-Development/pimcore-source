@@ -44,10 +44,9 @@ class Dao extends DataObject\Data\AbstractMetadata\Dao
             'type' => $type ?: 'object',];
 
         foreach ($this->model->getColumns() as $column) {
-            $getter = 'get' . ucfirst($column);
             $data = $dataTemplate;
             $data['column'] = $column;
-            $data['data'] = $this->model->$getter();
+            $data['data'] = $this->model->getColumnValue($column);
             Helper::upsert($this->db, $table, $data, parent::UNIQUE_COLUMNS);
         }
     }
@@ -69,8 +68,7 @@ class Dao extends DataObject\Data\AbstractMetadata\Dao
             $columns = $this->model->getColumns();
             foreach ($dataRaw as $row) {
                 if (in_arrayi($row['column'], $columns)) {
-                    $setter = 'set' . ucfirst($row['column']);
-                    $this->model->$setter($row['data']);
+                    $this->model->setColumnValue($row['column'], $row['data']);
                 }
             }
 

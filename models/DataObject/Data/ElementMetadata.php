@@ -59,6 +59,8 @@ class ElementMetadata extends Model\AbstractModel implements DataObject\OwnerAwa
     }
 
     /**
+     * Proxy for getColumnValue() / setColumnValue(). A column named like a real method of this class
+     * (value, data, fieldname, ...) never reaches it, so code handling arbitrary columns uses those methods.
      *
      * @return mixed|void
      *
@@ -67,30 +69,43 @@ class ElementMetadata extends Model\AbstractModel implements DataObject\OwnerAwa
     public function __call(string $method, array $args)
     {
         if (str_starts_with($method, 'get')) {
-            $key = substr($method, 3, strlen($method) - 3);
-            $idx = array_searchi($key, $this->columns);
-
-            if ($idx !== false) {
-                $correctedKey = $this->columns[$idx];
-
-                return $this->data[$correctedKey] ?? null;
-            }
-
-            throw new Exception("Requested data $key not available");
+            return $this->getColumnValue(substr($method, 3));
         }
 
         if (str_starts_with($method, 'set')) {
-            $key = substr($method, 3);
-            $idx = array_searchi($key, $this->columns);
-
-            if ($idx !== false) {
-                $correctedKey = $this->columns[$idx];
-                $this->data[$correctedKey] = $args[0];
-                $this->markMeDirty();
-            } else {
-                throw new Exception("Requested data $key not available");
-            }
+            $this->setColumnValue(substr($method, 3), $args[0]);
         }
+    }
+
+    /**
+     * @throws Exception when $column is not one of the configured columns (compared case-insensitively)
+     */
+    public function getColumnValue(string $column): mixed
+    {
+        $idx = array_searchi($column, $this->columns);
+        if ($idx === false) {
+            throw new Exception("Requested data $column not available");
+        }
+
+        return $this->data[$this->columns[$idx]] ?? null;
+    }
+
+    /**
+     * @return $this
+     *
+     * @throws Exception when $column is not one of the configured columns (compared case-insensitively)
+     */
+    public function setColumnValue(string $column, mixed $value): static
+    {
+        $idx = array_searchi($column, $this->columns);
+        if ($idx === false) {
+            throw new Exception("Requested data $column not available");
+        }
+
+        $this->data[$this->columns[$idx]] = $value;
+        $this->markMeDirty();
+
+        return $this;
     }
 
     public function save(DataObject\Concrete $object, string $ownertype, string $ownername, string $position, int $index): void

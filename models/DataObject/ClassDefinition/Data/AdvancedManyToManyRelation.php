@@ -311,10 +311,8 @@ class AdvancedManyToManyRelation extends ManyToManyRelation implements IdRewrite
                 }
 
                 foreach ($this->getColumns() as $c) {
-                    $getter = 'get' . ucfirst($c['key']);
-
                     try {
-                        $itemData[$c['key']] = $metaObject->$getter();
+                        $itemData[$c['key']] = $metaObject->getColumnValue($c['key']);
                     } catch (Exception) {
                         Logger::debug('Meta column ' . $c['key'] . ' does not exist');
                     }
@@ -373,14 +371,13 @@ class AdvancedManyToManyRelation extends ManyToManyRelation implements IdRewrite
 
                     foreach ($this->getColumns() as $columnConfig) {
                         $key = $columnConfig['key'];
-                        $setter = 'set' . ucfirst($key);
                         $value = $element[$key] ?? null;
 
                         if ($columnConfig['type'] === 'multiselect' && is_array($value)) {
                             $value = implode(',', $value);
                         }
 
-                        $metaData->$setter($value);
+                        $metaData->setColumnValue($key, $value);
                     }
                     $multihrefMetadata[] = $metaData;
 

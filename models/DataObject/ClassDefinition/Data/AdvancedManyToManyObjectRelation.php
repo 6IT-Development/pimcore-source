@@ -222,10 +222,8 @@ class AdvancedManyToManyObjectRelation extends ManyToManyObjectRelation implemen
                 if ($object instanceof DataObject\Concrete) {
                     $columnData = DataObject\Service::gridObjectData($object, $gridFields, null, ['purpose' => 'editmode']);
                     foreach ($this->getColumns() as $c) {
-                        $getter = 'get' . ucfirst($c['key']);
-
                         try {
-                            $columnData[$c['key']] = $metaObject->$getter();
+                            $columnData[$c['key']] = $metaObject->getColumnValue($c['key']);
                         } catch (Exception) {
                             Logger::debug('Meta column ' . $c['key'] . ' does not exist');
                         }
@@ -270,14 +268,13 @@ class AdvancedManyToManyObjectRelation extends ManyToManyObjectRelation implemen
                     $metaData->_setOwnerFieldname($this->getName());
 
                     foreach ($this->getColumns() as $c) {
-                        $setter = 'set' . ucfirst($c['key']);
                         $value = $relation[$c['key']] ?? null;
 
                         if ($c['type'] == 'multiselect' && is_array($value)) {
                             $value = implode(',', $value);
                         }
 
-                        $metaData->$setter($value);
+                        $metaData->setColumnValue($c['key'], $value);
                     }
 
                     $relationsMetadata[] = $metaData;
