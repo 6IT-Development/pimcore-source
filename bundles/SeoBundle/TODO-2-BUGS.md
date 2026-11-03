@@ -181,7 +181,7 @@ implement it once in a service used by both (I-22), and clear the cache tag once
 
 ## Document / slug listeners (`src/EventListener/DocumentListener.php`, `src/EventListener/UrlSlugUpdateListener.php`)
 
-### [ ] B-17 – `onPostMoveAction`: null dereference of current user, evaluated even when the feature is disabled
+### [x] B-17 – `onPostMoveAction`: null dereference of current user, evaluated even when the feature is disabled
 **File:** `src/EventListener/DocumentListener.php:104-106`
 ```php
 if (Pimcore\Tool\Admin::getCurrentUser()->isAllowed('redirects') && $pimcore_seo_redirects['auto_create_redirects']) {

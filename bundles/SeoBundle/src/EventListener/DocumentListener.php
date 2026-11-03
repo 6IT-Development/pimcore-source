@@ -102,42 +102,52 @@ class DocumentListener implements EventSubscriberInterface
     private function createRedirectForFormerPath(Document $document, string $oldPath, Document $oldDocument): void
     {
         $pimcore_seo_redirects = Pimcore::getContainer()->getParameter('pimcore_seo.redirects');
-        if ($document instanceof Document\Page || $document instanceof Document\Hardlink) {
-            if (Pimcore\Tool\Admin::getCurrentUser()->isAllowed('redirects') && $pimcore_seo_redirects['auto_create_redirects']) {
-                $sourceSite = Frontend::getSiteForDocument($oldDocument);
+        if (!$pimcore_seo_redirects['auto_create_redirects']) {
+            return;
+        }
+
+        // an admin user needs the redirects permission, moves without a user (CLI, API, system) create redirects too
+        $user = Pimcore\Tool\Admin::getCurrentUser();
+        if ($user && !$user->isAllowed('redirects')) {
+            return;
+        }
+
+        if (!$document instanceof Document\Page && !$document instanceof Document\Hardlink) {
+            return;
+        }
+
+        $sourceSite = Frontend::getSiteForDocument($oldDocument);
+        if ($sourceSite) {
+            $oldPath = preg_replace('@^' . preg_quote($sourceSite->getRootPath(), '@') . '@', '', $oldPath);
+        }
+
+        $targetSite = Frontend::getSiteForDocument($document);
+
+        $this->doCreateRedirectForFormerPath($oldPath, $document->getId(), $sourceSite, $targetSite);
+
+        if ($document->hasChildren()) {
+            $list = new Document\Listing();
+            $list->setCondition('`path` LIKE :path', [
+                'path' => $list->escapeLike($document->getRealFullPath()) . '/%',
+            ]);
+
+            $childrenList = $list->loadIdPathList();
+
+            $count = 0;
+
+            foreach ($childrenList as $child) {
+                $source = preg_replace('@^' . preg_quote($document->getRealFullPath(), '@') . '@', $oldDocument->getRealFullPath(), $child['path']);
                 if ($sourceSite) {
-                    $oldPath = preg_replace('@^' . preg_quote($sourceSite->getRootPath(), '@') . '@', '', $oldPath);
+                    $source = preg_replace('@^' . preg_quote($sourceSite->getRootPath(), '@') . '@', '', $source);
                 }
 
-                $targetSite = Frontend::getSiteForDocument($document);
+                $target = $child['id'];
 
-                $this->doCreateRedirectForFormerPath($oldPath, $document->getId(), $sourceSite, $targetSite);
+                $this->doCreateRedirectForFormerPath($source, $target, $sourceSite, $targetSite);
 
-                if ($document->hasChildren()) {
-                    $list = new Document\Listing();
-                    $list->setCondition('`path` LIKE :path', [
-                        'path' => $list->escapeLike($document->getRealFullPath()) . '/%',
-                    ]);
-
-                    $childrenList = $list->loadIdPathList();
-
-                    $count = 0;
-
-                    foreach ($childrenList as $child) {
-                        $source = preg_replace('@^' . preg_quote($document->getRealFullPath(), '@') . '@', $oldDocument->getRealFullPath(), $child['path']);
-                        if ($sourceSite) {
-                            $source = preg_replace('@^' . preg_quote($sourceSite->getRootPath(), '@') . '@', '', $source);
-                        }
-
-                        $target = $child['id'];
-
-                        $this->doCreateRedirectForFormerPath($source, $target, $sourceSite, $targetSite);
-
-                        $count++;
-                        if ($count % 10 === 0) {
-                            Pimcore::collectGarbage();
-                        }
-                    }
+                $count++;
+                if ($count % 10 === 0) {
+                    Pimcore::collectGarbage();
                 }
             }
         }
