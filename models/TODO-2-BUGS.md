@@ -618,13 +618,15 @@ listing uses.
 `null` instead of building the path `/`. `strict_types` was not added: the file's other callers were not checked for
 coercions it would turn into `TypeError`s.
 
-## [ ] B-34 – `__isBasedOnLatestData()` reads offsets on `false`
+## [x] B-34 – `__isBasedOnLatestData()` reads offsets on `false`
 
 **File:** `models/Asset/Dao.php:516-517`
 
 - For a deleted/unsaved asset `fetchAssociative()` is `false` → warning (`ErrorException` in debug).
 
 **Fix direction:** `if (!$data) { return false; }`.
+
+**Done:** returns `false` when there is no row.
 
 ## [ ] B-35 – WebDAV `getContentType()` / `getLastModified()` are non-nullable, model getters are nullable
 
