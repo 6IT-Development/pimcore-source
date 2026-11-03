@@ -116,7 +116,7 @@ accept only `int|DateTimeInterface|null`.
 
 **Fix direction:** `is_numeric($this->target) ? Document::getById((int)$this->target) : null`.
 
-### [ ] B-11 – `Listing\Dao::load()` returns unfiltered array; `getTotalCount()` hides SQL errors
+### [x] B-11 – `Listing\Dao::load()` returns unfiltered array; `getTotalCount()` hides SQL errors
 **File:** `src/Model/Redirect/Listing/Dao.php:34-55`
 - `setRedirects(array_filter($redirects))` but `return $redirects;` → `load()` can return `null` entries (row deleted
   between the two queries) although documented as `Redirect[]` → callers like `RedirectsController::cleanupAction()`

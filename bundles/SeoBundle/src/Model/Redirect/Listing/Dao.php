@@ -15,7 +15,6 @@
 
 namespace Pimcore\Bundle\SeoBundle\Model\Redirect\Listing;
 
-use Exception;
 use Pimcore\Bundle\SeoBundle\Model\Redirect;
 use Pimcore\Bundle\SeoBundle\Model\Redirect\Listing;
 use Pimcore\Model;
@@ -37,20 +36,18 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
         $redirects = [];
         foreach ($redirectsData as $redirectData) {
-            $redirects[] = Redirect::getById($redirectData);
+            $redirects[] = Redirect::getById((int)$redirectData);
         }
 
-        $this->model->setRedirects(array_filter($redirects));
+        // a redirect deleted between the two queries is skipped
+        $redirects = array_values(array_filter($redirects));
+        $this->model->setRedirects($redirects);
 
         return $redirects;
     }
 
     public function getTotalCount(): int
     {
-        try {
-            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM redirects ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception) {
-            return 0;
-        }
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM redirects ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }
