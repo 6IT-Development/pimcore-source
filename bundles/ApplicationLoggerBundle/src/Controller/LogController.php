@@ -25,13 +25,15 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use League\Flysystem\FilesystemException;
+use League\Flysystem\FilesystemOperator;
 use League\Flysystem\PathTraversalDetected;
+use Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogRepository;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Bundle\ApplicationLoggerBundle\Request\LogGridRequest;
 use Pimcore\Controller\KernelControllerEventInterface;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
-use Pimcore\Tool\Storage;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -150,12 +152,12 @@ class LogController extends UserAwareController implements KernelControllerEvent
     }
 
     #[Route('/log/priority-json', name: 'pimcore_admin_bundle_applicationlogger_log_priorityjson', methods: [Request::METHOD_GET])]
-    public function priorityJsonAction(): JsonResponse
+    public function priorityJsonAction(ApplicationLogRepository $repository): JsonResponse
     {
         $this->checkPermission(self::PERMISSION);
 
         $priorities = [['key' => '', 'value' => '-']];
-        foreach (ApplicationLoggerDb::getPriorities() as $key => $priority) {
+        foreach ($repository->getPriorities() as $key => $priority) {
             $priorities[] = ['key' => $key, 'value' => $priority];
         }
 
@@ -163,12 +165,12 @@ class LogController extends UserAwareController implements KernelControllerEvent
     }
 
     #[Route('/log/component-json', name: 'pimcore_admin_bundle_applicationlogger_log_componentjson', methods: [Request::METHOD_GET])]
-    public function componentJsonAction(): JsonResponse
+    public function componentJsonAction(ApplicationLogRepository $repository): JsonResponse
     {
         $this->checkPermission(self::PERMISSION);
 
         $components = [['key' => '', 'value' => '-']];
-        foreach (ApplicationLoggerDb::getComponents() as $component) {
+        foreach ($repository->getComponents() as $component) {
             $components[] = ['key' => $component, 'value' => $component];
         }
 
@@ -176,7 +178,11 @@ class LogController extends UserAwareController implements KernelControllerEvent
     }
 
     #[Route('/log/show-file-object', name: 'pimcore_admin_bundle_applicationlogger_log_showfileobject', methods: [Request::METHOD_GET])]
-    public function showFileObjectAction(Request $request): StreamedResponse
+    public function showFileObjectAction(
+        Request            $request,
+        #[Autowire(service: 'pimcore.application_log.storage')]
+        FilesystemOperator $storage
+    ): StreamedResponse
     {
         $this->checkPermission(self::PERMISSION);
 
@@ -184,8 +190,6 @@ class LogController extends UserAwareController implements KernelControllerEvent
         if ('' === $filePath) {
             throw new BadRequestHttpException('Parameter "filePath" is missing.');
         }
-
-        $storage = Storage::get('application_log');
 
         try {
             if (!$storage->fileExists($filePath)) {

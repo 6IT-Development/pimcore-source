@@ -24,6 +24,7 @@ use Doctrine\DBAL\Exception;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
+use Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogRepository;
 use Pimcore\Db;
 use Stringable;
 
@@ -131,31 +132,18 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
     /**
      * @return string[]
      */
+    #[\Deprecated(message: 'Inject ApplicationLogRepository instead')]
     public static function getComponents(): array
     {
-        return Db::get()->fetchFirstColumn('SELECT component FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(component) GROUP BY component;');
+        return new ApplicationLogRepository(Db::get())->getComponents();
     }
 
     /**
      * @return string[]
      */
+    #[\Deprecated(message: 'Inject ApplicationLogRepository instead')]
     public static function getPriorities(): array
     {
-        $priorities = [];
-
-        foreach (Db::get()->fetchFirstColumn('SELECT priority FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(priority) GROUP BY priority;') as $priorityNumber) {
-            $priorities[$priorityNumber] = match (Level::fromName($priorityNumber)) {
-                Level::Debug => 'DEBUG',
-                Level::Info => 'INFO',
-                Level::Notice => 'NOTICE',
-                Level::Warning => 'WARN',
-                Level::Error => 'ERR',
-                Level::Critical => 'CRIT',
-                Level::Alert => 'ALERT',
-                Level::Emergency => 'EMERG',
-            };
-        }
-
-        return $priorities;
+        return new ApplicationLogRepository(Db::get())->getPriorities();
     }
 }

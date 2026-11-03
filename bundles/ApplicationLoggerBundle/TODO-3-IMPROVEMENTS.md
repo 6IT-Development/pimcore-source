@@ -113,13 +113,16 @@ batches stay as they are: `array_chunk()` would need all rows in memory, which B
 
 ## Architecture / logic
 
-### [ ] I-14 – Remove static `Pimcore::getContainer()` / `Db::get()` / `Storage::get()` usage
+### [x] I-14 – Remove static `Pimcore::getContainer()` / `Db::get()` / `Storage::get()` usage
 **Files:** `ApplicationLogger::getInstance()`, `ApplicationLoggerDb::getComponents()/getPriorities()` (static,
 use `Db::get()` even though the instance has an injected `$db`), `Installer`, `FileObject`, `LogArchiveTask:47`,
 `LogController:177`.
 Inject `Connection` / `FilesystemOperator` (`#[Autowire(service: 'pimcore.application_log.storage')]`). Move the read
 queries out of the handler into a small `ApplicationLogRepository` used by the controller and tasks.
 Mark `getInstance()` as `#[\Deprecated]` in favour of DI.
+**Outcome:** The read queries of the grid filters moved to `ApplicationLogRepository`, the queries of the maintenance tasks stay in
+the tasks because they belong to their write logic. `getInstance()` and `logExceptionObject()` still use the container:
+both are static public API without an instance to inject into.
 
 ### [ ] I-15 – Deduplicate logic between `ApplicationLogger` and `ApplicationLoggerProcessor`
 Both implement file-object normalisation, related-object resolution, and `normalizeFilename()` separately and

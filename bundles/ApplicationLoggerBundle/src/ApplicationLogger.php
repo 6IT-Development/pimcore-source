@@ -51,6 +51,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
     /**
      * Without $initDbHandler the logger has no writer until one is added with addWriter()
      */
+    #[\Deprecated(message: 'Inject the logger or define a service for the component instead')]
     public static function getInstance(string $component = 'default', bool $initDbHandler = true): ApplicationLogger
     {
         $container = Pimcore::getContainer();

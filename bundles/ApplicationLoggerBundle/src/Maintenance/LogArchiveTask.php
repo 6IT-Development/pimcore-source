@@ -21,10 +21,10 @@ use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemException;
+use League\Flysystem\FilesystemOperator;
 use Monolog\Attribute\WithMonologChannel;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Maintenance\TaskInterface;
-use Pimcore\Tool\Storage;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
@@ -40,15 +40,17 @@ readonly class LogArchiveTask implements TaskInterface
     private const int ARCHIVE_CHUNK_SIZE = 1000;
 
     public function __construct(
-        private Connection      $db,
-        private LoggerInterface $logger,
-        private ClockInterface  $clock,
+        private Connection         $db,
+        private LoggerInterface    $logger,
+        private ClockInterface     $clock,
+        #[Autowire(service: 'pimcore.application_log.storage')]
+        private FilesystemOperator $storage,
         #[Autowire(param: 'pimcore_application_logger.archive_threshold')]
-        private int             $archiveThreshold,
+        private int                $archiveThreshold,
         #[Autowire(param: 'pimcore_application_logger.archive_alternative_database')]
-        private string          $archiveAlternativeDatabase,
+        private string             $archiveAlternativeDatabase,
         #[Autowire(param: 'pimcore_application_logger.delete_archive_threshold')]
-        private int             $deleteArchiveThreshold
+        private int                $deleteArchiveThreshold
     )
     {
     }
@@ -110,10 +112,9 @@ readonly class LogArchiveTask implements TaskInterface
 
                     // the folder of the archived month, not of the month the archive expires
                     $folderName = $archiveLogDate->format('Y/m');
-                    $storage = Storage::get('application_log');
 
-                    if ($storage->directoryExists($folderName)) {
-                        $storage->deleteDirectory($folderName);
+                    if ($this->storage->directoryExists($folderName)) {
+                        $this->storage->deleteDirectory($folderName);
                     }
                 }
             }
@@ -160,12 +161,10 @@ readonly class LogArchiveTask implements TaskInterface
      */
     private function deleteFileObjects(array $filePaths): void
     {
-        $storage = Storage::get('application_log');
-
         foreach (array_filter($filePaths) as $filePath) {
             try {
-                if ($storage->fileExists($filePath)) {
-                    $storage->delete($filePath);
+                if ($this->storage->fileExists($filePath)) {
+                    $this->storage->delete($filePath);
                 }
             } catch (FilesystemException $e) {
                 $this->logger->warning('Could not delete FileObject ' . $filePath . ': ' . $e->getMessage());

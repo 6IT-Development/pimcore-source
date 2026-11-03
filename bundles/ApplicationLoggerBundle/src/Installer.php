@@ -17,11 +17,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
+use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemException;
+use League\Flysystem\FilesystemOperator;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
-use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
-use Pimcore\Tool\Storage;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 
@@ -33,6 +33,9 @@ class Installer extends SettingsStoreAwareInstaller
 
     public function __construct(
         BundleInterface $bundle,
+        private readonly Connection $db,
+        #[Autowire(service: 'pimcore.application_log.storage')]
+        private readonly FilesystemOperator $storage,
         #[Autowire(param: 'pimcore_application_logger.archive_alternative_database')]
         private readonly string $archiveAlternativeDatabase
     )
@@ -62,14 +65,12 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function createApplicationLogTable(): void
     {
-        $db = Db::get();
-
         $columns = [];
         foreach (ApplicationLoggerDb::COLUMNS as $name => $definition) {
-            $columns[] = $db->quoteIdentifier($name) . ' ' . $definition . ($name === 'id' ? ' AUTO_INCREMENT' : '');
+            $columns[] = $this->db->quoteIdentifier($name) . ' ' . $definition . ($name === 'id' ? ' AUTO_INCREMENT' : '');
         }
 
-        $db->executeStatement('CREATE TABLE IF NOT EXISTS ' . $db->quoteIdentifier(ApplicationLoggerDb::TABLE_NAME) . ' (
+        $this->db->executeStatement('CREATE TABLE IF NOT EXISTS ' . $this->db->quoteIdentifier(ApplicationLoggerDb::TABLE_NAME) . ' (
           ' . implode(",\n          ", $columns) . ',
           PRIMARY KEY (`id`),
           KEY `component` (`component`),
@@ -82,9 +83,7 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function dropApplicationLogTable(): void
     {
-        $db = Db::get();
-
-        $db->executeStatement('DROP TABLE IF EXISTS `application_logs`;');
+        $this->db->executeStatement('DROP TABLE IF EXISTS `application_logs`;');
     }
 
     /**
@@ -92,17 +91,15 @@ class Installer extends SettingsStoreAwareInstaller
      */
     private function dropArchiveTables(): void
     {
-        $db = Db::get();
-
-        foreach (array_unique(array_filter([$db->getDatabase(), $this->archiveAlternativeDatabase])) as $database) {
-            $tables = $db->fetchFirstColumn(
+        foreach (array_unique(array_filter([$this->db->getDatabase(), $this->archiveAlternativeDatabase])) as $database) {
+            $tables = $this->db->fetchFirstColumn(
                 'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
                 [$database, ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_%']
             );
 
             foreach ($tables as $table) {
                 if (preg_match('/^' . ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_\d{4}_\d{2}$/', $table)) {
-                    $db->executeStatement('DROP TABLE IF EXISTS ' . $db->quoteIdentifier($database) . '.' . $db->quoteIdentifier($table));
+                    $this->db->executeStatement('DROP TABLE IF EXISTS ' . $this->db->quoteIdentifier($database) . '.' . $this->db->quoteIdentifier($table));
                 }
             }
         }
@@ -110,14 +107,12 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function deleteFileObjects(): void
     {
-        $storage = Storage::get('application_log');
-
         try {
-            foreach ($storage->listContents('/') as $item) {
+            foreach ($this->storage->listContents('/') as $item) {
                 if ($item->isDir()) {
-                    $storage->deleteDirectory($item->path());
+                    $this->storage->deleteDirectory($item->path());
                 } else {
-                    $storage->delete($item->path());
+                    $this->storage->delete($item->path());
                 }
             }
         } catch (FilesystemException $e) {
@@ -128,11 +123,9 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function addUserPermission(): void
     {
-        $db = Db::get();
-
         foreach (self::USER_PERMISSIONS as $permission) {
             // the permission can already exist after a partially failed install or when it was added by hand
-            $db->executeStatement(
+            $this->db->executeStatement(
                 'INSERT INTO `users_permission_definitions` (`key`, `category`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `category` = VALUES(`category`)',
                 [$permission, self::USER_PERMISSIONS_CATEGORY]
             );
@@ -141,11 +134,9 @@ class Installer extends SettingsStoreAwareInstaller
 
     private function removeUserPermission(): void
     {
-        $db = Db::get();
-
         foreach (self::USER_PERMISSIONS as $permission) {
-            $db->delete('users_permission_definitions', [
-                $db->quoteIdentifier('key') => $permission,
+            $this->db->delete('users_permission_definitions', [
+                $this->db->quoteIdentifier('key') => $permission,
             ]);
         }
     }

@@ -44,6 +44,8 @@ services:
             - [ pushProcessor, [ '@Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor' ] ]
             - [ pushProcessor, [ '@pimcore.app_logger.introspection_processor' ] ]
 
+    Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogRepository: ~
+
     # public for the static ApplicationLogger::logExceptionObject()
     Pimcore\Bundle\ApplicationLoggerBundle\FileObjectWriter:
         public: true

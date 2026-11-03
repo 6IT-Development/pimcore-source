@@ -278,10 +278,18 @@ ApplicationLogger::logExceptionObject($logger, 'Oh no!', $exception, 'alert', $r
 
 Adds a console logger and sets the minimum logging level to *INFO* (overwrites log level in Pimcore system settings):
 
-```php
-$logger = \Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger::getInstance("SAP_exporter", true); 
-// returns a PSR-3 compatible logger, registers a custom app logger as `pimcore.app_logger.SAP_exporter` on the service container
-$logger->addWriter(new \Monolog\Handler\StreamHandler('php://output', \Monolog\Logger::INFO));
+```yaml
+services:
+    app.logger.sap_exporter:
+        class: Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger
+        calls:
+            - [ setComponent, [ 'SAP_exporter' ] ]
+            - [ addWriter, [ '@Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb' ] ]
+            - [ addWriter, [ '@app.logger.sap_exporter.console' ] ]
+
+    app.logger.sap_exporter.console:
+        class: Monolog\Handler\StreamHandler
+        arguments: [ 'php://output', 'info' ]
 ```
 
 ## Configuration
