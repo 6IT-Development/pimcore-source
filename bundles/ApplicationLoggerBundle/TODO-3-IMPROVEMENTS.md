@@ -188,7 +188,7 @@ the callback.
 **Outcome:** A read that fails after the existence check now happens while the response is sent, so it can no longer become a 404. It
 reaches the error handler instead. Missing and invalid paths still get their 404 and 400.
 
-### [ ] I-24 – Escape LIKE wildcards in message search
+### [x] I-24 – Escape LIKE wildcards in message search
 **File:** `src/Controller/LogController.php:109-111`
 `%` and `_` in the user's search text act as wildcards. Use `addcslashes($message, '%_\\')`.
 
