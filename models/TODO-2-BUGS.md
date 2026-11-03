@@ -328,7 +328,7 @@ falls back to `application/octet-stream`, so the type mapping resolves it by ext
 
 **Done:** `update()` skips the legacy-file deletion when the lookup returns `null` or `''`.
 
-## [ ] B-14 – `ValidationException` message embeds the raw upload filename in HTML
+## [x] B-14 – `ValidationException` message embeds the raw upload filename in HTML
 
 **File:** `models/Asset.php:435-437`
 
@@ -337,6 +337,8 @@ falls back to `application/octet-stream`, so the type mapping resolves it by ext
   outside this repo.)
 
 **Fix direction:** `htmlspecialchars($data['filename'])`.
+
+**Done:** `checkMaxPixels()` escapes the filename with `htmlspecialchars(…, ENT_QUOTES)`.
 
 ## [ ] B-15 – Storage writes / moves are not compensated when the transaction fails
 
