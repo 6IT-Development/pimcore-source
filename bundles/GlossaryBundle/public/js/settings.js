@@ -63,7 +63,7 @@ pimcore.bundle.glossary.settings = Class.create({
         this.store = pimcore.helpers.grid.buildDefaultStore(
             Routing.generate('pimcore_bundle_glossary_settings_glossary'),
             [
-                'id', {name: 'text', allowBlank: false}, 'language', 'casesensitive', 'exactmatch',
+                'id', {name: 'text', validators: 'presence'}, 'language', 'casesensitive', 'exactmatch',
                 'site', 'link', 'abbr', 'creationDate', 'modificationDate'
             ],
             itemsPerPage
@@ -85,7 +85,8 @@ pimcore.bundle.glossary.settings = Class.create({
                         var input = field;
                         var proxy = this.store.getProxy();
                         proxy.extraParams.filter = input.getValue();
-                        this.store.load();
+                        // a narrower result may have fewer pages than the current page number
+                        this.store.loadPage(1);
                     }
                 }.bind(this)
             }
@@ -111,6 +112,19 @@ pimcore.bundle.glossary.settings = Class.create({
             }
         });
 
+        // site 0 is stored as "no site": the entry is used on all sites, the main site included
+        var siteData = [{id: 0, domain: t('glossary_all_sites')}];
+        pimcore.globalmanager.get("sites").each(function (site) {
+            if (site.get("id")) {
+                siteData.push({id: site.get("id"), domain: site.get("domain")});
+            }
+        });
+        var siteStore = Ext.create('Ext.data.Store', {fields: ['id', 'domain'], data: siteData});
+
+        var dateRenderer = function (d) {
+            return d ? Ext.Date.format(new Date(d * 1000), "Y-m-d H:i:s") : "";
+        };
+
         var typesColumns = [
             {text: t("text"), flex: 200, sortable: true, dataIndex: 'text', editor: new Ext.form.TextField({})},
             {text: t("link"), flex: 200, sortable: true, dataIndex: 'link',
@@ -131,39 +145,22 @@ pimcore.bundle.glossary.settings = Class.create({
             casesensitiveCheck,
             exactmatchCheck,
             {text: t("site"), flex: 200, sortable:true, dataIndex: "site", editor: new Ext.form.ComboBox({
-                    store: pimcore.globalmanager.get("sites"),
+                    store: siteStore,
                     valueField: "id",
                     displayField: "domain",
                     editable: false,
                     triggerAction: "all"
                 }), renderer: function (siteId) {
-                    var store = pimcore.globalmanager.get("sites");
-                    var pos = store.findExact("id", siteId);
-                    if(pos >= 0) {
-                        return store.getAt(pos).get("domain");
-                    }
+                    var pos = siteStore.findExact("id", siteId || 0);
+                    return pos >= 0 ? Ext.util.Format.htmlEncode(siteStore.getAt(pos).get("domain")) : "";
                 }},
             {text: t("creationDate"), sortable: true, dataIndex: 'creationDate', editable: false,
                 hidden: true,
-                renderer: function(d) {
-                    if (d !== undefined) {
-                        var date = new Date(d * 1000);
-                        return Ext.Date.format(date, "Y-m-d H:i:s");
-                    } else {
-                        return "";
-                    }
-                }
+                renderer: dateRenderer
             },
             {text: t("modificationDate"), sortable: true, dataIndex: 'modificationDate', editable: false,
                 hidden: true,
-                renderer: function(d) {
-                    if (d !== undefined) {
-                        var date = new Date(d * 1000);
-                        return Ext.Date.format(date, "Y-m-d H:i:s");
-                    } else {
-                        return "";
-                    }
-                }
+                renderer: dateRenderer
             },
             {
                 xtype: 'actioncolumn',
@@ -174,7 +171,7 @@ pimcore.bundle.glossary.settings = Class.create({
                     icon: "/bundles/pimcoreadmin/img/flat-color-icons/delete.svg",
                     handler: function (grid, rowIndex) {
                         let data = grid.getStore().getAt(rowIndex);
-                        pimcore.helpers.deleteConfirm(t('glossary'), data.data.id, function () {
+                        pimcore.helpers.deleteConfirm(t('glossary'), Ext.util.Format.htmlEncode(data.data.text), function () {
                             grid.getStore().removeAt(rowIndex);
                         }.bind(this));
 
@@ -195,7 +192,13 @@ pimcore.bundle.glossary.settings = Class.create({
                         });
                     }
                 }.bind(this),
-                delay: 1
+                delay: 1,
+                // a new row that was never saved is dropped again
+                canceledit: function (plugin, context) {
+                    if (context.record.phantom) {
+                        context.store.remove(context.record);
+                    }
+                }
             }
         });
 
@@ -294,8 +297,8 @@ pimcore.bundle.glossary.settings = Class.create({
     },
 
     onAdd: function (btn, ev) {
-        this.grid.store.insert(0,{
-            name: t('/')
-        });
+        // the row is saved once a text was entered
+        this.grid.store.insert(0, {});
+        this.rowEditing.startEdit(0, 0);
     }
 });

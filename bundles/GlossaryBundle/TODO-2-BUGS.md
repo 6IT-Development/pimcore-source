@@ -264,7 +264,7 @@ Any element (`ddGroup: "element"`) is accepted; an object path (`/Products/Shoe`
 the full public URL when a CDN/thumbnail prefix is used).
 **Fix:** accept only `elementType === 'document'` (or resolve asset URLs explicitly on the server).
 
-### [ ] B-29 – Site cannot be reset to "all sites"; several small grid defects
+### [x] B-29 – Site cannot be reset to "all sites"; several small grid defects
 **File:** `public/js/settings.js:126-138`, `:139-160`, `:76-82`, `:170`, `:314-317`
 - Site combobox has no empty option → once assigned, the entry can never be made global again (only by
   deleting/recreating it).
