@@ -841,7 +841,7 @@ temp key is needed. Not covered any more: a PNG that the asynchronous image opti
 
 **Done:** both extension checks use the `i` flag.
 
-## [ ] B-51 – Stale thumbnail config in the same process after save/delete
+## [x] B-51 – Stale thumbnail config in the same process after save/delete
 
 **File:** `models/Asset/Image/Thumbnail/Config/Dao.php:84-114`, `:138-149`; `Config.php:200-212`, `:227-233`
 
@@ -850,6 +850,10 @@ temp key is needed. Not covered any more: a PNG that the asynchronous image opti
   until reset.
 
 **Fix direction:** remove the key in `Dao::save()` / `delete()`.
+
+**Done:** `Dao::save()` and `delete()` remove the RuntimeCache entry through the new internal
+`Config::clearRuntimeCache()`. This covers the saving process. Other long-running workers keep their cached copy until
+their runtime cache is reset, as before.
 
 ## [ ] B-52 – `Image\Thumbnail\Config\Dao::exists(string $name)` ignores its argument
 

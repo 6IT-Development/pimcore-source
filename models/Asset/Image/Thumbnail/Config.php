@@ -227,6 +227,19 @@ final class Config extends Model\AbstractModel
         return 'imagethumb_' . crc32($name);
     }
 
+    /**
+     * Removes the definition cached by getByName(), to be called when it is saved or deleted.
+     *
+     * @internal
+     */
+    public static function clearRuntimeCache(string $name): void
+    {
+        $cacheKey = self::getCacheKey($name);
+        if (RuntimeCache::isRegistered($cacheKey)) {
+            RuntimeCache::getInstance()->offsetUnset($cacheKey);
+        }
+    }
+
     public static function exists(string $name): bool
     {
         $cacheKey = self::getCacheKey($name);

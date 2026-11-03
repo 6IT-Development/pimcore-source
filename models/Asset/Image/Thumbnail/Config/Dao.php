@@ -107,6 +107,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         }
 
         $this->saveData($this->model->getName(), $data);
+        Model\Asset\Image\Thumbnail\Config::clearRuntimeCache($this->model->getName());
 
         if ($forceClearTempFiles) {
             $this->model->clearTempFiles();
@@ -143,6 +144,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     public function delete(bool $forceClearTempFiles = false): void
     {
         $this->deleteData($this->model->getName());
+        Model\Asset\Image\Thumbnail\Config::clearRuntimeCache($this->model->getName());
 
         if ($forceClearTempFiles) {
             $this->model->clearTempFiles();
