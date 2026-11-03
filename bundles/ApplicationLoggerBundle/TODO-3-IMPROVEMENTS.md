@@ -168,7 +168,7 @@ still throws `Psr\Log\InvalidArgumentException`, because PSR-3 requires it.
 **Outcome:** The loop variable and `$archive_threshold` went away with earlier fixes. The `info` column is only removed from new tables,
 the bundle has no migrations to drop it from existing ones. The archive task names its columns, so it works with both.
 
-### [ ] I-21 – Single permission check in the controller
+### [x] I-21 – Single permission check in the controller
 **File:** `src/Controller/LogController.php`
 Permission is checked in `onKernelControllerEvent()` **and** again in every action. Keep one (the event, implemented
 via `checkPermission()` – fixes B-03), remove the per-action calls.

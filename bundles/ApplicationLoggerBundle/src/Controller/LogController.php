@@ -55,6 +55,9 @@ class LogController extends UserAwareController implements KernelControllerEvent
         'id', 'pid', 'timestamp', 'priority', 'component', 'relatedobject', 'source', 'message', 'fileobject',
     ];
 
+    /**
+     * The only permission check, it runs for every action of this controller and before their arguments are resolved
+     */
     #[\Override]
     public function onKernelControllerEvent(ControllerEvent $event): void
     {
@@ -71,8 +74,6 @@ class LogController extends UserAwareController implements KernelControllerEvent
         ?LogGridRequest $payload = null
     ): JsonResponse
     {
-        $this->checkPermission(self::PERMISSION);
-
         $params = ($request->isMethod(Request::METHOD_GET) ? $query : $payload) ?? new LogGridRequest();
 
         $qb = $db->createQueryBuilder();
@@ -154,8 +155,6 @@ class LogController extends UserAwareController implements KernelControllerEvent
     #[Route('/log/priority-json', name: 'pimcore_admin_bundle_applicationlogger_log_priorityjson', methods: [Request::METHOD_GET])]
     public function priorityJsonAction(ApplicationLogRepository $repository): JsonResponse
     {
-        $this->checkPermission(self::PERMISSION);
-
         $priorities = [['key' => '', 'value' => '-']];
         foreach ($repository->getPriorities() as $key => $priority) {
             $priorities[] = ['key' => $key, 'value' => $priority];
@@ -167,8 +166,6 @@ class LogController extends UserAwareController implements KernelControllerEvent
     #[Route('/log/component-json', name: 'pimcore_admin_bundle_applicationlogger_log_componentjson', methods: [Request::METHOD_GET])]
     public function componentJsonAction(ApplicationLogRepository $repository): JsonResponse
     {
-        $this->checkPermission(self::PERMISSION);
-
         $components = [['key' => '', 'value' => '-']];
         foreach ($repository->getComponents() as $component) {
             $components[] = ['key' => $component, 'value' => $component];
@@ -184,8 +181,6 @@ class LogController extends UserAwareController implements KernelControllerEvent
         FilesystemOperator $storage
     ): StreamedResponse
     {
-        $this->checkPermission(self::PERMISSION);
-
         $filePath = $request->query->getString('filePath');
         if ('' === $filePath) {
             throw new BadRequestHttpException('Parameter "filePath" is missing.');
