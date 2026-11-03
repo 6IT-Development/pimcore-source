@@ -1966,7 +1966,7 @@ collide with a method of `ObjectMetadata` / `ElementMetadata` (case-insensitive,
 >   by `0.0` and `ucfirst()` were checked with `php -r` on PHP 8.4.27. Nothing else was executed.
 > - Critical items: C-53. Bugs: B-316–B-323. Improvements: I-170–I-174.
 
-## [ ] C-53 – Unit import with `--override` deletes units before re-creating them: derived units outside the file lose their base unit, any failure leaves units missing
+## [x] C-53 – Unit import with `--override` deletes units before re-creating them: derived units outside the file lose their base unit, any failure leaves units missing
 
 **Files:** `models/DataObject/QuantityValue/Service.php:27-64` (`:36-42`, `:56-58`, `:59-61`); `Unit.php:112-119`;
 `Unit/Dao.php:117-120`; `bundles/InstallBundle/dump/install.sql:708`; caller

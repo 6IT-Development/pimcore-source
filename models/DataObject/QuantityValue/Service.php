@@ -19,44 +19,106 @@ namespace Pimcore\Model\DataObject\QuantityValue;
 
 use Exception;
 use Pimcore\Cache;
+use Pimcore\Db;
 use Pimcore\Logger;
 use Pimcore\Model\Translation;
+use Throwable;
 
 class Service
 {
+    /**
+     * Imports a unit export. With $override, units that already exist are updated in place (never deleted, so
+     * units outside the file keep their base unit); without it they are skipped. The whole file is validated
+     * first and written in one transaction, so a failed import leaves the units unchanged.
+     */
     public function importDefinitionFromJson(string $json, bool $override = false): bool
     {
+        $db = Db::get();
+
         try {
             $unitsArray = json_decode($json, true);
-            $baseUnitsArray = array_column($unitsArray, 'baseunit');
-            $units = []; //array of units to be imported;
-            $baseUnits = []; //array of base units to be imported first;
+            if (!is_array($unitsArray) || !array_is_list($unitsArray)) {
+                throw new Exception('Unit definition must be a list of units');
+            }
 
+            $existingUnits = self::getQuantityValueUnitsTable();
+            if ($existingUnits === null) {
+                throw new Exception('Existing units could not be loaded');
+            }
+
+            /** @var array<string, Unit> $units */
+            $units = [];
+            /** @var array<string, string|null> $baseUnitIds */
+            $baseUnitIds = [];
             foreach ($unitsArray as $unitArray) {
-                if ($unit = Unit::getById($unitArray['id'])) {
-                    if ($override) { // override the existing unit definition
-                        $unit->delete();
-                    } else { //skip the import if delete flag is not set
-                        continue;
-                    }
+                if (!is_array($unitArray) || !is_scalar($unitArray['id'] ?? null) || (string)$unitArray['id'] === '') {
+                    throw new Exception('Every unit needs an id');
                 }
+                $id = (string)$unitArray['id'];
+                if (isset($units[$id])) {
+                    throw new Exception(sprintf('Unit %s is defined twice', $id));
+                }
+                $unitArray['id'] = $id;
+                if (isset($unitArray['baseunit']) && $unitArray['baseunit'] !== '') {
+                    $unitArray['baseunit'] = (string)$unitArray['baseunit'];
+                } else {
+                    $unitArray['baseunit'] = null;
+                }
+
                 $unit = new Unit();
                 $unit->setValues($unitArray, true);
-                // we need to organize the units such that parent row are inserted before child row in db
-                // to avoid the foreign key constraint error
+                $units[$id] = $unit;
+                $baseUnitIds[$id] = $unitArray['baseunit'];
+            }
 
-                if (!$unitArray['baseunit']) {
-                    $baseUnits[] = $unit;
-                } elseif (in_array($unitArray['id'], $baseUnitsArray)) {
-                    array_unshift($units, $unit);
-                } else {
-                    $units[] = $unit;
+            foreach ($baseUnitIds as $id => $baseUnitId) {
+                if ($baseUnitId !== null && !isset($units[$baseUnitId]) && !isset($existingUnits[$baseUnitId])) {
+                    throw new Exception(sprintf('Base unit %s of unit %s does not exist', $baseUnitId, $id));
                 }
             }
-            foreach (array_merge($baseUnits, $units) as $unit) {
-                $unit->save();
+
+            if (!$override) {
+                $units = array_diff_key($units, $existingUnits);
             }
-        } catch (Exception) {
+
+            // base units are written before the units that reference them (foreign key)
+            $sortedUnits = [];
+            $visiting = [];
+            $visit = function (string $id) use (&$visit, &$sortedUnits, &$visiting, $units, $baseUnitIds): void {
+                if (isset($sortedUnits[$id]) || !isset($units[$id])) {
+                    return;
+                }
+                if (isset($visiting[$id])) {
+                    throw new Exception(sprintf('Base unit cycle at unit %s', $id));
+                }
+                $visiting[$id] = true;
+                if ($baseUnitIds[$id] !== null) {
+                    $visit($baseUnitIds[$id]);
+                }
+                $sortedUnits[$id] = $units[$id];
+            };
+            foreach (array_keys($units) as $id) {
+                $visit((string)$id);
+            }
+
+            $db->beginTransaction();
+
+            try {
+                foreach ($sortedUnits as $unit) {
+                    $unit->save();
+                }
+                $db->commit();
+            } catch (Throwable $e) {
+                $db->rollBack();
+
+                throw $e;
+            } finally {
+                Cache\RuntimeCache::set(Unit::CACHE_KEY, null);
+                Cache::remove(Unit::CACHE_KEY);
+            }
+        } catch (Throwable $e) {
+            Logger::error('Quantity value unit import failed: ' . $e->getMessage());
+
             return false;
         }
 
