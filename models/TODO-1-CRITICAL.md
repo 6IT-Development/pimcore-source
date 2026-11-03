@@ -2449,7 +2449,7 @@ I-198.
 >   verified**. Nothing was executed.
 > - Critical items: C-60. Bugs: B-348–B-350. Improvements: I-199–I-204.
 
-## [ ] C-60 – Wysiwyg editable: the HTML sanitizer runs only in `save()`, so drafts, versions, previews and pre-sanitizer content are rendered unsanitized (stored XSS)
+## [x] C-60 – Wysiwyg editable: the HTML sanitizer runs only in `save()`, so drafts, versions, previews and pre-sanitizer content are rendered unsanitized (stored XSS)
 
 **Files:** `models/Document/Editable/Wysiwyg.php:71-93`, `:134-141`; `models/Document/PageSnippet.php:138-158`
 (`update()` → `$editable->save()`), `:164-200` (`saveVersion()` – no editable `save()`); `lib/Tool/Text.php:41-46`

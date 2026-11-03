@@ -62,7 +62,8 @@ class Wysiwyg extends Model\Document\Editable implements IdRewriterInterface, Ed
     {
         $document = $this->getDocument();
 
-        return Text::wysiwygText($this->text, [
+        // editmode runs in the admin origin: also covers texts stored before the sanitizer existed
+        return Text::wysiwygText($this->sanitize($this->text), [
             'document' => $document,
             'context' => $this,
         ]);
@@ -85,11 +86,24 @@ class Wysiwyg extends Model\Document\Editable implements IdRewriterInterface, Ed
         return $this;
     }
 
+    /**
+     * Sanitized here and not only in save(): drafts, autosaves and previews are rendered from the editmode data
+     * without save() ever running.
+     */
     public function setDataFromEditmode(mixed $data): static
     {
-        $this->text = $data;
+        $this->text = $this->sanitize($data);
 
         return $this;
+    }
+
+    private function sanitize(mixed $text): mixed
+    {
+        if (is_string($text)) {
+            return self::getWysiwygSanitizer()->sanitizeFor('body', $text);
+        }
+
+        return $text;
     }
 
     public function isEmpty(): bool
@@ -133,10 +147,8 @@ class Wysiwyg extends Model\Document\Editable implements IdRewriterInterface, Ed
 
     public function save(): void
     {
-        if (is_string($this->text)) {
-            $helper = self::getWysiwygSanitizer();
-            $this->text = $helper->sanitizeFor('body', $this->text);
-        }
+        // second line of defence for texts set through setDataFromResource() (imports, copies)
+        $this->text = $this->sanitize($this->text);
         $this->getDao()->save();
     }
 }
