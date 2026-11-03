@@ -68,6 +68,12 @@ class InheritanceHelper
 
     protected ?string $queryIdField = null;
 
+    /**
+     * Additional key columns of the store / query rows (column => value), for tables that hold more than one
+     * row per object, e.g. object bricks (`fieldname`)
+     */
+    protected array $rowFilter = [];
+
     public function __construct(string $classId, ?string $idField = null, ?string $storetable = null, ?string $querytable = null, ?string $relationtable = null, ?string $queryIdField = null)
     {
         $this->db = Db::get();
@@ -121,6 +127,25 @@ class InheritanceHelper
         self::$runtimeCache = [];
     }
 
+    public function setRowFilter(array $rowFilter): void
+    {
+        $this->rowFilter = $rowFilter;
+    }
+
+    /**
+     * SQL condition for the row filter, starting with " AND " (empty without filter)
+     */
+    protected function getRowFilterCondition(string $tableAlias = ''): string
+    {
+        $condition = '';
+        foreach ($this->rowFilter as $column => $value) {
+            $condition .= ' AND ' . ($tableAlias !== '' ? $tableAlias . '.' : '') . $this->db->quoteIdentifier($column)
+                . ' = ' . $this->db->quote((string)$value);
+        }
+
+        return $condition;
+    }
+
     public function resetFieldsToCheck(): void
     {
         $this->fields = [];
@@ -167,7 +192,7 @@ class InheritanceHelper
                 $fields = ', `' . $fields . '`';
             }
 
-            $result = $this->db->fetchAssociative('SELECT ' . $this->idField . ' AS id' . $fields . ' FROM ' . $this->storetable . ' WHERE ' . $this->idField . ' = ?', [$oo_id]);
+            $result = $this->db->fetchAssociative('SELECT ' . $this->idField . ' AS id' . $fields . ' FROM ' . $this->storetable . ' WHERE ' . $this->idField . ' = ?' . $this->getRowFilterCondition(), [$oo_id]);
             $o = [
                 'id' => $result['id'],
                 'values' => $result,
@@ -229,7 +254,7 @@ class InheritanceHelper
                         INNER JOIN cte on (p.parentid = cte.id)
                     ) select x.id
                     FROM cte x
-                    LEFT JOIN $this->querytable l on (x.id = l.$this->idField)
+                    LEFT JOIN $this->querytable l on (x.id = l.$this->idField{$this->getRowFilterCondition('l')})
                     where x.classId = {$this->db->quote($classId)}
                     AND l.$this->queryIdField is null;
                 ";
@@ -237,7 +262,7 @@ class InheritanceHelper
                 $missingIds = $this->db->fetchFirstColumn($query);
 
                 // create entries for children that don't have an entry yet
-                $originalEntry = Helper::quoteDataIdentifiers($this->db, $this->db->fetchAssociative('SELECT * FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' = ?', [$oo_id]));
+                $originalEntry = Helper::quoteDataIdentifiers($this->db, $this->db->fetchAssociative('SELECT * FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' = ?' . $this->getRowFilterCondition(), [$oo_id]));
 
                 foreach ($missingIds as $id) {
                     $originalEntry[$this->db->quoteIdentifier($this->idField)] = $id;
@@ -307,12 +332,12 @@ class InheritanceHelper
         // remove the query row entirely ...
         if ($affectedIds) {
             $objectsWithBrickIds = [];
-            $objectsWithBricks = $this->db->fetchAllAssociative('SELECT ' . $this->idField . ' FROM ' . $this->storetable . ' WHERE ' . $this->idField . ' IN (' . implode(',', $affectedIds) . ')');
+            $objectsWithBricks = $this->db->fetchAllAssociative('SELECT ' . $this->idField . ' FROM ' . $this->storetable . ' WHERE ' . $this->idField . ' IN (' . implode(',', $affectedIds) . ')' . $this->getRowFilterCondition());
             foreach ($objectsWithBricks as $item) {
                 $objectsWithBrickIds[] = $item[$this->idField];
             }
 
-            $currentQueryItems = $this->db->fetchAllAssociative('SELECT * FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' IN (' . implode(',', $affectedIds) . ')');
+            $currentQueryItems = $this->db->fetchAllAssociative('SELECT * FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' IN (' . implode(',', $affectedIds) . ')' . $this->getRowFilterCondition());
 
             foreach ($currentQueryItems as $queryItem) {
                 $toBeRemoved = true;
@@ -334,7 +359,7 @@ class InheritanceHelper
         }
 
         if ($toBeRemovedItemIds) {
-            $this->db->executeStatement('DELETE FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' IN (' . implode(',', $toBeRemovedItemIds) . ')');
+            $this->db->executeStatement('DELETE FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' IN (' . implode(',', $toBeRemovedItemIds) . ')' . $this->getRowFilterCondition());
         }
     }
 
@@ -377,7 +402,7 @@ class InheritanceHelper
                          x.parentId AS parentId
                          $fields
                     FROM cte x
-                    LEFT JOIN $storeTable l ON x.id = l.$idfield
+                    LEFT JOIN $storeTable l ON x.id = l.$idfield{$this->getRowFilterCondition('l')}
                    WHERE COALESCE(`language`, " . $this->db->quote($language) . ') = ' . $this->db->quote($language) .
                     ' ORDER BY x.path ASC';
             } else {
@@ -395,7 +420,7 @@ class InheritanceHelper
                                x.parentId AS parentId
                                $fields
                         FROM cte x
-                        LEFT JOIN $storeTable a ON x.id = a.$idfield
+                        LEFT JOIN $storeTable a ON x.id = a.$idfield{$this->getRowFilterCondition('a')}
                         GROUP BY x.id
                         ORDER BY x.path ASC";
             }
@@ -575,8 +600,8 @@ class InheritanceHelper
     protected function updateQueryTable(int $oo_id, array $ids, string $fieldname): void
     {
         if (!empty($ids)) {
-            $value = $this->db->fetchOne("SELECT `$fieldname` FROM " . $this->querytable . ' WHERE ' . $this->idField . ' = ?', [$oo_id]);
-            $this->db->executeStatement('UPDATE ' . $this->querytable . ' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')', [$value]);
+            $value = $this->db->fetchOne("SELECT `$fieldname` FROM " . $this->querytable . ' WHERE ' . $this->idField . ' = ?' . $this->getRowFilterCondition(), [$oo_id]);
+            $this->db->executeStatement('UPDATE ' . $this->querytable . ' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')' . $this->getRowFilterCondition(), [$value]);
         }
     }
 
@@ -584,7 +609,7 @@ class InheritanceHelper
     {
         if (!empty($ids)) {
             $value = null;
-            $this->db->executeStatement('UPDATE ' . $this->querytable . ' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')', [$value]);
+            $this->db->executeStatement('UPDATE ' . $this->querytable . ' SET ' . $this->db->quoteIdentifier($fieldname) . '=? WHERE ' . $this->db->quoteIdentifier($this->idField) . ' IN (' . implode(',', $ids) . ')' . $this->getRowFilterCondition(), [$value]);
         }
     }
 }

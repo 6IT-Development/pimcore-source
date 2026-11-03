@@ -135,7 +135,7 @@ class Dao extends Model\DataObject\Fieldcollection\Dao
         foreach ($fieldDef->getAllowedTypes() as $type) {
             if ($definition = DataObject\Objectbrick\Definition::getByKey($type)) {
                 $tableName = $definition->getTableName($object->getClass(), true);
-                $this->db->delete($tableName, ['id' => $object->getId()]);
+                $this->db->delete($tableName, ['id' => $object->getId(), 'fieldname' => $this->model->getFieldname()]);
             }
         }
 

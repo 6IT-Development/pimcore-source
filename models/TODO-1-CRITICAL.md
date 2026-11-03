@@ -2037,7 +2037,7 @@ unchanged.
 >   select-options editor and how the editor sends values was **not verified**. Nothing else was executed.
 > - Critical items: C-54–C-56. Bugs: B-324–B-333. Improvements: I-175–I-182.
 
-## [ ] C-54 – Brick rows are addressed by object id only: two `Objectbricks` fields that allow the same brick overwrite, move and delete each other's data
+## [x] C-54 – Brick rows are addressed by object id only: two `Objectbricks` fields that allow the same brick overwrite, move and delete each other's data
 
 **Files:** `models/DataObject/Objectbrick/Data/Dao.php:39-248` (`:62-69` exists check, `:116-120` store write, `:131`
 old query row, `:143` parent row), `:250-321` (`:254`, `:259-260`); `models/DataObject/Concrete/Dao/InheritanceHelper.php:71-90`,

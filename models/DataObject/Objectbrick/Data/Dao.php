@@ -44,7 +44,10 @@ class Dao extends Model\Dao\AbstractDao
         $storetable = $this->model->getDefinition()->getTableName($object->getClass());
         $querytable = $this->model->getDefinition()->getTableName($object->getClass(), true);
 
+        // the brick tables hold one row per object and Objectbricks field (primary key id, fieldname)
+        $brickFieldname = $this->model->getFieldname();
         $this->inheritanceHelper = new DataObject\Concrete\Dao\InheritanceHelper($object->getClassId(), 'id', $storetable, $querytable, null, 'id');
+        $this->inheritanceHelper->setRowFilter(['fieldname' => $brickFieldname]);
 
         try {
             DataObject::setGetInheritedValues(false);
@@ -61,8 +64,8 @@ class Dao extends Model\Dao\AbstractDao
             } else {
                 // or brick has been added
                 $existsResult = $this->db->fetchOne(
-                    'SELECT id FROM ' . $storetable . ' WHERE id = ? LIMIT 1',
-                    [$object->getId()]
+                    'SELECT id FROM ' . $storetable . ' WHERE id = ? AND fieldname = ? LIMIT 1',
+                    [$object->getId(), $brickFieldname]
                 );
 
                 $isBrickUpdate = (bool)$existsResult; // used to indicate whether we want to consider the default value
@@ -114,7 +117,7 @@ class Dao extends Model\Dao\AbstractDao
             }
 
             if ($isBrickUpdate) {
-                $this->db->update($storetable, Helper::quoteDataIdentifiers($this->db, $data), ['id' => $object->getId()]);
+                $this->db->update($storetable, Helper::quoteDataIdentifiers($this->db, $data), ['id' => $object->getId(), 'fieldname' => $brickFieldname]);
             } else {
                 $this->db->insert($storetable, Helper::quoteDataIdentifiers($this->db, $data));
             }
@@ -128,7 +131,7 @@ class Dao extends Model\Dao\AbstractDao
             $data['fieldname'] = $this->model->getFieldname();
 
             $this->inheritanceHelper->resetFieldsToCheck();
-            $oldData = $this->db->fetchAssociative('SELECT * FROM ' . $querytable . ' WHERE id = ?', [$object->getId()]);
+            $oldData = $this->db->fetchAssociative('SELECT * FROM ' . $querytable . ' WHERE id = ? AND fieldname = ?', [$object->getId(), $brickFieldname]);
 
             $inheritanceEnabled = $object->getClass()->getAllowInherit();
             $parentData = null;
@@ -140,7 +143,7 @@ class Dao extends Model\Dao\AbstractDao
                     // we cannot DataObject::setGetInheritedValues(true); and then $this->model->$method();
                     // so we select the data from the parent object using FOR UPDATE, which causes a lock on this row
                     // so the data of the parent cannot be changed while this transaction is on progress
-                    $parentData = $this->db->fetchAssociative('SELECT * FROM ' . $querytable . ' WHERE id = ? FOR UPDATE', [$parentForInheritance->getId()]);
+                    $parentData = $this->db->fetchAssociative('SELECT * FROM ' . $querytable . ' WHERE id = ? AND fieldname = ? FOR UPDATE', [$parentForInheritance->getId(), $brickFieldname]);
                 }
             }
 
@@ -238,6 +241,8 @@ class Dao extends Model\Dao\AbstractDao
                 $this->inheritanceHelper->doUpdate($object->getId(), true,
                     ['inheritanceRelationContext' => [
                         'ownertype' => 'objectbrick',
+                        'ownername' => $brickFieldname,
+                        'position' => $this->model->getType(),
                     ]]);
             }
             $this->inheritanceHelper->resetFieldsToCheck();
@@ -250,14 +255,15 @@ class Dao extends Model\Dao\AbstractDao
     public function delete(DataObject\Concrete $object): void
     {
         // update data for store table
+        $brickFieldname = $this->model->getFieldname();
         $storeTable = $this->model->getDefinition()->getTableName($object->getClass());
-        $this->db->delete($storeTable, ['id' => $object->getId()]);
+        $this->db->delete($storeTable, ['id' => $object->getId(), 'fieldname' => $brickFieldname]);
 
         // update data for query table
         $queryTable = $this->model->getDefinition()->getTableName($object->getClass(), true);
 
-        $oldData = $this->db->fetchAssociative('SELECT * FROM ' . $queryTable . ' WHERE id = ?', [$object->getId()]);
-        $this->db->delete($queryTable, ['id' => $object->getId()]);
+        $oldData = $this->db->fetchAssociative('SELECT * FROM ' . $queryTable . ' WHERE id = ? AND fieldname = ?', [$object->getId(), $brickFieldname]);
+        $this->db->delete($queryTable, ['id' => $object->getId(), 'fieldname' => $brickFieldname]);
 
         //update data for relations table
         $this->db->delete('object_relations_' . $object->getClassId(), [
@@ -268,6 +274,7 @@ class Dao extends Model\Dao\AbstractDao
         ]);
 
         $this->inheritanceHelper = new DataObject\Concrete\Dao\InheritanceHelper($object->getClassId(), 'id', $storeTable, $queryTable);
+        $this->inheritanceHelper->setRowFilter(['fieldname' => $brickFieldname]);
         $this->inheritanceHelper->resetFieldsToCheck();
 
         $objectVars = $this->model->getObjectVars();
