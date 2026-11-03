@@ -279,7 +279,7 @@ and log a warning; inject a logger (I-04).
 
 ## Configuration / installation
 
-### [ ] B-25 – Sitemap generator config without `generator_id` passes validation and breaks container compile
+### [x] B-25 – Sitemap generator config without `generator_id` passes validation and breaks container compile
 **Files:** `src/DependencyInjection/Configuration.php:62-64`, `src/DependencyInjection/PimcoreSeoExtension.php:73`
 - Verified: `pimcore_seo.sitemaps.generators.x: { priority: 5 }` is accepted (`cannotBeEmpty()` does not imply
   required); the processed config has no `generator_id` key → "Undefined array key" + `new Reference(null)`

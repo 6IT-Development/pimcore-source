@@ -58,6 +58,11 @@ class Configuration implements ConfigurationInterface
             ->end()
             ->addDefaultsIfNotSet()
             ->canBeDisabled()
+            // not isRequired(): a generator can be disabled with `name: false` without repeating its id
+            ->validate()
+            ->ifTrue(fn (array $v): bool => $v['enabled'] && empty($v['generator_id']))
+            ->thenInvalid('An enabled sitemap generator needs a "generator_id": %s')
+            ->end()
             ->children()
             ->scalarNode('generator_id')
             ->cannotBeEmpty()
