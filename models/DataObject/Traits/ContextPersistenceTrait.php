@@ -47,13 +47,7 @@ trait ContextPersistenceTrait
             $context = $params['context'] ?? null;
             if (isset($context['containerType']) &&
                 ($context['containerType'] === 'fieldcollection' || $context['containerType'] === 'objectbrick')) {
-                $fieldname = $context['fieldname'] ?? null;
-                if ($context['containerType'] === 'fieldcollection') {
-                    $index = $context['index'] ?? null;
-                    $filter = '/' . $context['containerType'] . '~' . $fieldname . '/' . $index . '/%';
-                } else {
-                    $filter = '/' . $context['containerType'] . '~' . $fieldname . '/%';
-                }
+                $filter = $this->getLocalizedRelationOwnernamePrefix($context + $object->getContext()) . '%';
                 $relations = $object->getObject()->retrieveRelationData(
                     [
                         'fieldname' => $this->getName(),
@@ -88,6 +82,24 @@ trait ContextPersistenceTrait
     }
 
     /**
+     * Start of the ownername of relations stored by localized fields inside a field-collection item or an object
+     * brick: "/<containerType>~<fieldname>/<index or brick type>/". The write side (enrichDataRow()) and the read
+     * filters (current relations, AbstractRelations::load()) all build it here, so that two brick types of one
+     * Objectbricks field never see each other's relations.
+     */
+    protected function getLocalizedRelationOwnernamePrefix(array $context): string
+    {
+        $prefix = '/' . $context['containerType'] . '~' . ($context['fieldname'] ?? '') . '/';
+        $index = $context['index'] ?? $context['containerKey'] ?? null;
+        if ($index === null) {
+            // without item index / brick type only the container field can be matched
+            return $prefix;
+        }
+
+        return $prefix . $index . '/';
+    }
+
+    /**
      * Enrich relation / slug with type-specific data.
      *
      */
@@ -115,9 +127,7 @@ trait ContextPersistenceTrait
             $row['ownername'] = 'localizedfield';
             $context = $object->getContext();
             if (isset($context['containerType']) && ($context['containerType'] === 'fieldcollection' || $context['containerType'] === 'objectbrick')) {
-                $fieldname = $context['fieldname'];
-                $index = $context['index'] ?? $context['containerKey'] ?? null;
-                $row['ownername'] = '/' . $context['containerType'] . '~' . $fieldname . '/' . $index . '/localizedfield~' . $row['ownername'];
+                $row['ownername'] = $this->getLocalizedRelationOwnernamePrefix($context) . 'localizedfield~' . $row['ownername'];
             }
 
             $row['position'] = $params['language'];

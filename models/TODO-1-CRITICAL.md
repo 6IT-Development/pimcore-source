@@ -2376,7 +2376,7 @@ columns of the target table (field names of the class plus `oo_id` / `ooo_id` / 
 `__id` / `__type` mapping). In the trait quote every identifier with `quoteIdentifier()` and build one statement per
 table (I-192). Robustness gaps without malice are B-347. Tests in I-198.
 
-## [ ] C-59 – Localized relation fields inside object bricks: the current-relations and load filters ignore the brick type, so saving one brick type deletes or takes over the relations of another
+## [x] C-59 – Localized relation fields inside object bricks: the current-relations and load filters ignore the brick type, so saving one brick type deletes or takes over the relations of another
 
 **Files:** `models/DataObject/Traits/ContextPersistenceTrait.php:46-73` (`:55`), `:112-121` (`:119-120`);
 `models/DataObject/ClassDefinition/Data/Relations/AbstractRelations.php:132`, `:195-226`, `:285-287`,
