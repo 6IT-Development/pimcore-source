@@ -77,7 +77,7 @@ final class Redirect extends AbstractModel
 
     protected bool $active = true;
 
-    protected int|string|null $expiry = null;
+    protected ?int $expiry = null;
 
     protected ?int $creationDate = null;
 
@@ -262,9 +262,18 @@ final class Redirect extends AbstractModel
 
     public function setExpiry(int|string|null $expiry): Redirect
     {
-        if (is_string($expiry) && !is_numeric($expiry)) {
-            $expiry = strtotime($expiry);
+        if ($expiry === '') {
+            $expiry = null;
         }
+
+        if (is_string($expiry)) {
+            $timestamp = is_numeric($expiry) ? (int)$expiry : strtotime($expiry);
+            if ($timestamp === false) {
+                throw new InvalidArgumentException(sprintf('Invalid expiry "%s"', $expiry));
+            }
+            $expiry = $timestamp;
+        }
+
         $this->expiry = $expiry;
 
         return $this;

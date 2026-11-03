@@ -100,7 +100,7 @@ $url = preg_replace('@^' . $targetSite->getRootPath() . '/@', '/', $url);
 **Fix direction:** `if (!$event->isMainRequest()) return;` (same for `onKernelException` is not needed – exception
 events are per request, but check `isMainRequest()` there as well for fragments).
 
-### [ ] B-09 – `Redirect::setExpiry()` assigns `false` to `?int` → `TypeError`
+### [x] B-09 – `Redirect::setExpiry()` assigns `false` to `?int` → `TypeError`
 **File:** `src/Model/Redirect.php:262-270`
 - `strtotime()` returns `false` for unparseable strings; the result is assigned to `protected ?int $expiry` inside a
   `strict_types` file → `TypeError`. Reachable from the admin grid (`setValues($data)` with a bad date string) and
