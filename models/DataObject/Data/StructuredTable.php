@@ -141,17 +141,17 @@ class StructuredTable implements OwnerAwareFieldInterface
         $string .= '<tr>';
         $string .= '<th><strong></strong></th>';
         foreach ($colDefs as $c) {
-            $string .= '<th><strong>' . $c['label'] . '</strong></th>';
+            $string .= '<th><strong>' . htmlspecialchars((string) $c['label'], ENT_QUOTES) . '</strong></th>';
         }
         $string .= '</tr>';
 
         foreach ($rowDefs as $r) {
             $dataRow = $this->data[$r['key']];
             $string .= '<tr>';
-            $string .= '<th><strong>' . $r['label'] . '</strong></th>';
+            $string .= '<th><strong>' . htmlspecialchars((string) $r['label'], ENT_QUOTES) . '</strong></th>';
 
             foreach ($dataRow as $c) {
-                $string .= "<td>$c</td>";
+                $string .= '<td>' . htmlspecialchars((string) $c, ENT_QUOTES) . '</td>';
             }
             $string .= '</tr>';
         }

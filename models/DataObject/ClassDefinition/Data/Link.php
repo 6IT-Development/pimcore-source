@@ -159,7 +159,26 @@ class Link extends Data implements ResourcePersistenceAwareInterface, QueryResou
      */
     public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
-        return (string)$data;
+        if (!$data instanceof DataObject\Data\Link) {
+            return '';
+        }
+
+        // not getHtml(): the free-text attributes are written verbatim, and a script URL must not become a link here
+        $href = $data->getHref();
+        $text = htmlspecialchars((string) ($data->getText() ?: $href), ENT_QUOTES);
+        if ($text === '') {
+            return '';
+        }
+
+        // browsers ignore whitespace and control characters in the scheme ("java\tscript:")
+        $scheme = preg_match('/^([a-z][a-z0-9+.-]*):/i', preg_replace('/[\x00-\x20]+/', '', $href), $matches)
+            ? strtolower($matches[1])
+            : null;
+        if ($scheme !== null && !in_array($scheme, ['http', 'https', 'mailto', 'tel'], true)) {
+            return $text . ' (' . htmlspecialchars($href, ENT_QUOTES) . ')';
+        }
+
+        return '<a href="' . htmlspecialchars($href, ENT_QUOTES) . '">' . $text . '</a>';
     }
 
     public function checkValidity(mixed $data, bool $omitMandatoryCheck = false, array $params = []): void

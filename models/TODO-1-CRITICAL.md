@@ -1779,7 +1779,7 @@ same way. Add a test (I-141).
 **Fix direction:** make `resolveGenerator(?string)` nullable in all generator resolvers (as the base class) and/or guard
 the call in `getLinkGenerator()`. Add a test that renders a link to an object of a class without a link generator.
 
-## [ ] C-47 – Stored XSS in the core version preview: StructuredTable cells, advanced-relation metadata, ExternalImage URL, Link
+## [x] C-47 – Stored XSS in the core version preview: StructuredTable cells, advanced-relation metadata, ExternalImage URL, Link
 
 **Files:** `models/DataObject/ClassDefinition/Data/StructuredTable.php:261-268`, `:384-394`;
 `models/DataObject/Data/StructuredTable.php:137-162`; `Data/AdvancedManyToManyObjectRelation.php:324-341`, `:876`;

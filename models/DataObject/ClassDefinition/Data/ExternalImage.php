@@ -162,7 +162,12 @@ class ExternalImage extends Data implements ResourcePersistenceAwareInterface, Q
     public function getVersionPreview(mixed $data, ?DataObject\Concrete $object = null, array $params = []): string
     {
         if ($data instanceof Model\DataObject\Data\ExternalImage && $data->getUrl()) {
-            return '<img style="max-width:200px;max-height:200px" src="' . $data->getUrl() . '" /><br><a href="' . $data->getUrl() . '">' . $data->getUrl() . '</>';
+            $url = htmlspecialchars($data->getUrl(), ENT_QUOTES);
+            if (!self::isAllowedUrl($data->getUrl())) {
+                return $url;
+            }
+
+            return '<img style="max-width:200px;max-height:200px" src="' . $url . '" /><br><a href="' . $url . '">' . $url . '</a>';
         }
 
         return '';
@@ -190,7 +195,11 @@ class ExternalImage extends Data implements ResourcePersistenceAwareInterface, Q
     public function getDiffVersionPreview(string $data, ?Concrete $object = null, array $params = []): string
     {
         if ($data) {
-            return '<img style="max-width:200px;max-height:200px" src="' . $data . '" />';
+            if (!self::isAllowedUrl($data)) {
+                return htmlspecialchars($data, ENT_QUOTES);
+            }
+
+            return '<img style="max-width:200px;max-height:200px" src="' . htmlspecialchars($data, ENT_QUOTES) . '" />';
         }
 
         return $data;
@@ -215,6 +224,29 @@ class ExternalImage extends Data implements ResourcePersistenceAwareInterface, Q
         if ($this->getMandatory() && !$omitMandatoryCheck && $this->isEmpty($data)) {
             throw new Model\Element\ValidationException('Empty mandatory field [ ' . $this->getName() . ' ]');
         }
+
+        if ($data instanceof Model\DataObject\Data\ExternalImage && $data->getUrl() && !self::isAllowedUrl($data->getUrl())) {
+            throw new Model\Element\ValidationException('Invalid URL in field [ ' . $this->getName() . ' ], only http(s) and relative URLs are allowed');
+        }
+    }
+
+    /**
+     * Only http(s), protocol-relative and relative URLs: anything else (javascript:, data:, ...) is not an image URL
+     * and must not end up in the src / href of the preview.
+     */
+    private static function isAllowedUrl(string $url): bool
+    {
+        // browsers ignore whitespace and control characters in the scheme ("java\tscript:")
+        $url = preg_replace('/[\x00-\x20]+/', '', $url);
+        if (str_starts_with($url, '//')) {
+            return true;
+        }
+
+        if (!preg_match('/^([a-z][a-z0-9+.-]*):/i', $url, $matches)) {
+            return true;
+        }
+
+        return in_array(strtolower($matches[1]), ['http', 'https'], true);
     }
 
     public function isEmpty(mixed $data): bool

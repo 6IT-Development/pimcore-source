@@ -405,7 +405,7 @@ class Link implements OwnerAwareFieldInterface
         $attribs = [];
         foreach ($attributes as $a) {
             if ($this->$a) {
-                $attribs[] = $a . '="' . $this->$a . '"';
+                $attribs[] = $a . '="' . htmlspecialchars((string) $this->$a, ENT_QUOTES) . '"';
             }
         }
 
@@ -419,7 +419,7 @@ class Link implements OwnerAwareFieldInterface
             return '';
         }
 
-        return '<a href="' . $this->getHref() . '" ' . implode(' ', $attribs) . '>' . htmlspecialchars($text) . '</a>';
+        return '<a href="' . htmlspecialchars($this->getHref(), ENT_QUOTES) . '" ' . implode(' ', $attribs) . '>' . htmlspecialchars($text) . '</a>';
     }
 
     public function isEmpty(): bool

@@ -327,7 +327,7 @@ class AdvancedManyToManyObjectRelation extends ManyToManyObjectRelation implemen
                         if (!$value) {
                             continue;
                         }
-                        $subItems[] = $key . ': ' . $value;
+                        $subItems[] = htmlspecialchars($key . ': ' . $value, ENT_QUOTES);
                     }
 
                     if (count($subItems)) {
