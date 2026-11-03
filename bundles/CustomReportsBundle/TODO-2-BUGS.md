@@ -260,7 +260,7 @@ The same call also registers the `IndexSettingsListener` service during the *pre
 `Yaml::parseFile()` + `prependExtensionConfig()`), and load the listener service in `loadInternal()` guarded by
 `hasExtension('pimcore_admin')` / the `AdminBundle` class (see I-03).
 
-### [ ] B-27 – Installer fails on systems that already have the permissions
+### [x] B-27 – Installer fails on systems that already have the permissions
 **Files:** `src/Installer.php:44-54`, `bundles/CoreBundle/src/Migrations/Version20221228101109.php:38`
 `users_permission_definitions.key` is the primary key. Systems upgraded from Pimcore 10 still have `reports` /
 `reports_config` (the core migration only re-categorised them), so `pimcore:bundle:install PimcoreCustomReportsBundle`

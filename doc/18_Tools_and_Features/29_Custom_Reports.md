@@ -60,6 +60,16 @@ pimcore_custom_reports:
     chart_row_limit: 50000
 ```
 
+## Uninstalling
+`bin/console pimcore:bundle:uninstall PimcoreCustomReportsBundle` removes the definitions of the `reports` and
+`reports_config` permissions. To keep your data for a later installation, it leaves behind:
+
+- the report definitions in the settings store (scope `pimcore_custom_reports`) and in `var/config/custom_reports/`
+  (or the directory you configured)
+- the permission names in `users.permissions`, which have no effect without their definitions
+
+Remove them by hand if you do not need them anymore.
+
 ## Custom Data Source Adapters
 It is easily possible to implement custom source adapters for special use cases. To do so following steps are necessary: 
 

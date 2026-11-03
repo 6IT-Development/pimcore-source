@@ -46,10 +46,11 @@ class Installer extends SettingsStoreAwareInstaller
         $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
-            $db->insert('users_permission_definitions', [
-                $db->quoteIdentifier('key') => $permission,
-                $db->quoteIdentifier('category') => self::USER_PERMISSIONS_CATEGORY,
-            ]);
+            // systems upgraded from Pimcore 10 already have these permissions
+            $db->executeStatement(
+                'INSERT INTO `users_permission_definitions` (`key`, `category`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `category` = VALUES(`category`)',
+                [$permission, self::USER_PERMISSIONS_CATEGORY]
+            );
         }
     }
 
