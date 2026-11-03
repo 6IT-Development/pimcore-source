@@ -220,10 +220,13 @@ The `ARCHIVE` storage engine is not available on all MySQL/MariaDB setups (manag
 **Outcome:** Detected through `information_schema.ENGINES` with `InnoDB` as the fallback, no setting needed. Tables that already exist
 keep their engine.
 
-### [ ] I-29 – Installer via Doctrine Schema / migrations
+### [x] I-29 – Installer via Doctrine Schema / migrations
 **File:** `src/Installer.php:45-69`
 Replace raw `CREATE TABLE` SQL with a `Schema` definition (shared with the archive table – see C-02) so DBAL handles
 platform differences and the two schemas cannot drift again. Use injected `Connection` instead of `Db::get()`.
+**Outcome:** Not replaced. The schemas cannot drift since C-02 (`ApplicationLoggerDb::COLUMNS`) and I-14 injected the connection. A DBAL
+`Table` would not handle platform differences either, ENUM and ARCHIVE are MySQL/MariaDB only, and tried with DBAL 3.9 it
+changes behaviour: an archive database named `` we.ird`x `` becomes `` `we`.`irdx` `` and new tables get a fixed collation.
 
 ### [ ] I-30 – Minor config file hygiene
 - `config/admin-classic.yaml`, `config/pimcore/routing.yaml`: missing trailing newline.
