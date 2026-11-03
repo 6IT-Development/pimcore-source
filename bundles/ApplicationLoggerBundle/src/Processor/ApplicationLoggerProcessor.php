@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Processor;
 
 use Monolog\LogRecord;
+use Monolog\Processor\ProcessorInterface;
 use Pimcore\Bundle\ApplicationLoggerBundle\FileObject;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
@@ -29,7 +30,7 @@ use Pimcore\Model\Element\Service;
  * in a pure PSR-3 handler context configured as monolog channel handler instead of
  * the ApplicationLogger class.
  */
-class ApplicationLoggerProcessor
+class ApplicationLoggerProcessor implements ProcessorInterface
 {
     public function __invoke(LogRecord $record): LogRecord
     {

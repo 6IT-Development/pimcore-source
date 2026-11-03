@@ -22,15 +22,19 @@ use DateTime;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemException;
+use Monolog\Attribute\WithMonologChannel;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Maintenance\TaskInterface;
 use Pimcore\Tool\Storage;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * @internal
  */
+#[AutoconfigureTag('pimcore.maintenance.task', ['type' => 'archiveLogEntries'])]
+#[WithMonologChannel('maintenance')]
 readonly class LogArchiveTask implements TaskInterface
 {
     private const int ARCHIVE_CHUNK_SIZE = 1000;

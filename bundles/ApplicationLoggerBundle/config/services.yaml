@@ -17,15 +17,14 @@ services:
     # APPLICATION LOGGER
     #
 
-    # Monolog processors for the application logger. Autoconfigure is set to false as we don't
-    # want Symfony to auto-register them for all handlers (this isn't the case at the moment as
-    # there is no interface for a processor, but in case support for autoconfiguration is added,
-    # we want to keep those processors only for the application logger.
+    # Monolog processors for the application logger. Autoconfigure is set to false as Symfony would
+    # otherwise register them for all handlers, we want to keep them only for the application logger.
 
     # ApplicationLoggerProcessor prepares data for the DB handler. This basically
     # mimics the functionality from the ApplicationLogger itself to be used from any
     # monolog handler.
-    Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor: ~
+    Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor:
+        autoconfigure: false
 
     # IntrospectionProcessor adds data regarding a called function / line. The skipClassesPartials makes sure
     # we skip the stack frame when called through ApplicationLogger.
@@ -58,14 +57,6 @@ services:
         public: true
         alias: Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger
 
-    Pimcore\Bundle\ApplicationLoggerBundle\Maintenance\LogArchiveTask:
-        arguments:
-            - '@doctrine.dbal.default_connection'
-        tags:
-            - { name: pimcore.maintenance.task, type: archiveLogEntries }
+    Pimcore\Bundle\ApplicationLoggerBundle\Maintenance\LogArchiveTask: ~
 
-    Pimcore\Bundle\ApplicationLoggerBundle\Maintenance\LogMailMaintenanceTask:
-        arguments:
-            - '@doctrine.dbal.default_connection'
-        tags:
-            - { name: pimcore.maintenance.task, type: logmaintenance }
+    Pimcore\Bundle\ApplicationLoggerBundle\Maintenance\LogMailMaintenanceTask: ~

@@ -18,15 +18,19 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
 
 use Doctrine\DBAL\Connection;
+use Monolog\Attribute\WithMonologChannel;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Mail;
 use Pimcore\Maintenance\TaskInterface;
 use Pimcore\Tool;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Exception\RfcComplianceException;
 
+#[AutoconfigureTag('pimcore.maintenance.task', ['type' => 'logmaintenance'])]
+#[WithMonologChannel('maintenance')]
 readonly class LogMailMaintenanceTask implements TaskInterface
 {
     private const int MAIL_BATCH_SIZE = 100;

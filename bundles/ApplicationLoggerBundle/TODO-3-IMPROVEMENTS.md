@@ -26,7 +26,7 @@ Both tasks read `Pimcore\Config` (ArrayAccess over the whole system config, unty
 `pimcore_application_logger` config tree in this bundle (with BC mapping from `pimcore.applicationlog`), inject typed
 scalars via `%parameters%` / `#[Autowire(param: ...)]`. Fix the `archive_treshold` typo there with a BC alias.
 
-### [ ] I-03 – Attribute-based service configuration
+### [x] I-03 – Attribute-based service configuration
 **File:** `config/services.yaml`
 - Maintenance tasks: `#[AutoconfigureTag('pimcore.maintenance.task', ['type' => '...'])]` (or Pimcore attribute if one
   exists) instead of YAML tags; drop the positional `- '@doctrine.dbal.default_connection'` (autowiring resolves it).
