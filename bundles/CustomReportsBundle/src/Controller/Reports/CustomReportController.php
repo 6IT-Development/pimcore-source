@@ -231,8 +231,12 @@ class CustomReportController extends UserAwareController
         }
         $columnConfiguration = $report->getColumnConfiguration();
 
-        $configuration = json_decode($request->request->getString('configuration'));
-        $configuration = $configuration[0] ?? null;
+        $dataSources = json_decode($request->request->getString('configuration'));
+        // an empty list is a report without data source, the adapter reports that as an error message
+        $configuration = is_array($dataSources) ? ($dataSources[0] ?? null) : false;
+        if ($configuration !== null && !$configuration instanceof stdClass) {
+            throw new BadRequestHttpException('Invalid report configuration');
+        }
 
         $success = false;
         $errorMessage = null;
@@ -244,10 +248,11 @@ class CustomReportController extends UserAwareController
             $columns = $adapter->getColumns($configuration);
 
             foreach ($columnConfiguration as $item) {
-                $name = $item['name'];
-                if (in_array($name, $columns)) {
+                $name = $item['name'] ?? null;
+                $index = array_search($name, $columns, true);
+                if ($index !== false) {
                     $result[] = $name;
-                    array_splice($columns, array_search($name, $columns), 1);
+                    array_splice($columns, $index, 1);
                 }
             }
             foreach ($columns as $remainingColumn) {

@@ -167,7 +167,7 @@ YAML file name (`report\n.yaml`). There is no maximum length (file-name limits, 
 The error is a generic `Exception` → 500 instead of `400`, and the message says "customer report".
 **Fix:** `/^[a-zA-Z0-9_-]{1,190}\z/` (or `D` modifier), `BadRequestHttpException('The custom report name is invalid')`.
 
-### [ ] B-17 – `columnConfigAction`: uncaught `Error` for non-list JSON
+### [x] B-17 – `columnConfigAction`: uncaught `Error` for non-list JSON
 **File:** `src/Controller/Reports/CustomReportController.php:200-201`, `:212-213`
 `json_decode()` without `assoc` returns `stdClass` for a JSON object → `$configuration[0]` throws
 "Cannot use object of type stdClass as array" **outside** the `try` block → 500. `$item['name']` is read without
