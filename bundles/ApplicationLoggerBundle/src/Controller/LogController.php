@@ -27,6 +27,7 @@ use Doctrine\DBAL\Types\Types;
 use League\Flysystem\FilesystemException;
 use League\Flysystem\PathTraversalDetected;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
+use Pimcore\Bundle\ApplicationLoggerBundle\Request\LogGridRequest;
 use Pimcore\Controller\KernelControllerEventInterface;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
@@ -35,6 +36,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Attribute\MapQueryString;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -46,15 +49,9 @@ class LogController extends UserAwareController implements KernelControllerEvent
 
     private const string PERMISSION = 'application_logging';
 
-    private const int DEFAULT_LIMIT = 50;
-
-    private const int MAX_LIMIT = 1000;
-
     private const array SORTABLE_COLUMNS = [
         'id', 'pid', 'timestamp', 'priority', 'component', 'relatedobject', 'source', 'message', 'fileobject',
     ];
-
-    private const string DATE_TIME_PATTERN = '/^(?P<date>\d{4}\-\d{2}\-\d{2})T(?P<time>\d{2}:\d{2}:\d{2})$/';
 
     public function onKernelControllerEvent(ControllerEvent $event): void
     {
@@ -63,60 +60,64 @@ class LogController extends UserAwareController implements KernelControllerEvent
 
     #[Route('/log/show', name: 'pimcore_admin_bundle_applicationlogger_log_show', methods: [Request::METHOD_GET, Request::METHOD_POST])]
     public function showAction(
-        Request    $request,
-        Connection $db
+        Request         $request,
+        Connection      $db,
+        #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)]
+        ?LogGridRequest $query = null,
+        #[MapRequestPayload]
+        ?LogGridRequest $payload = null
     ): JsonResponse
     {
         $this->checkPermission(self::PERMISSION);
 
-        $requestSource = $request->isMethod(Request::METHOD_GET) ? $request->query : $request->request;
+        $params = ($request->isMethod(Request::METHOD_GET) ? $query : $payload) ?? new LogGridRequest();
 
         $qb = $db->createQueryBuilder();
         $qb
             ->select('*')
             ->from(ApplicationLoggerDb::TABLE_NAME)
-            ->setFirstResult(max(0, $requestSource->getInt('start')))
-            ->setMaxResults(min(max(1, $requestSource->getInt('limit', self::DEFAULT_LIMIT)), self::MAX_LIMIT))
+            ->setFirstResult($params->start)
+            ->setMaxResults($params->limit)
             ->orderBy('id', 'DESC');
 
         // ExtJS sends the sorters as JSON: [{"property": "...", "direction": "ASC|DESC"}]
-        $sorters = json_decode($request->query->getString('sort') ?: $request->request->getString('sort'), true);
+        $sorters = json_decode($query?->sort ?: $payload?->sort ?? '', true);
         if (is_array($sorters) && in_array($sorters[0]['property'] ?? null, self::SORTABLE_COLUMNS, true)) {
             $direction = 'DESC' === strtoupper((string)($sorters[0]['direction'] ?? '')) ? 'DESC' : 'ASC';
             $qb->orderBy($db->quoteIdentifier($sorters[0]['property']), $direction);
         }
 
-        if ('' !== $priority = $requestSource->getString('priority')) {
+        if ('' !== $params->priority) {
             $qb->andWhere($qb->expr()->eq('priority', ':priority'));
-            $qb->setParameter('priority', $priority);
+            $qb->setParameter('priority', $params->priority);
         }
 
-        $timeZone = $this->resolveTimeZone($requestSource->getString('timezone'));
+        $timeZone = $this->resolveTimeZone($params->timezone);
 
-        if ($fromDate = $this->parseDateObject($requestSource->getString('fromDate'), $requestSource->getString('fromTime'), $timeZone)) {
+        if ($fromDate = $this->parseDateObject($params->fromDate, $params->fromTime, $timeZone)) {
             $qb->andWhere('timestamp > :fromDate');
             $qb->setParameter('fromDate', $fromDate, Types::DATETIME_IMMUTABLE);
         }
 
-        if ($toDate = $this->parseDateObject($requestSource->getString('toDate'), $requestSource->getString('toTime'), $timeZone)) {
+        if ($toDate = $this->parseDateObject($params->toDate, $params->toTime, $timeZone)) {
             $qb->andWhere('timestamp <= :toDate');
             $qb->setParameter('toDate', $toDate, Types::DATETIME_IMMUTABLE);
         }
 
-        if ('' !== $component = $requestSource->getString('component')) {
-            $qb->andWhere('component = ' . $qb->createNamedParameter($component));
+        if ('' !== $params->component) {
+            $qb->andWhere('component = ' . $qb->createNamedParameter($params->component));
         }
 
-        if ('' !== $relatedObject = $requestSource->getString('relatedobject')) {
-            $qb->andWhere('relatedobject = ' . $qb->createNamedParameter($relatedObject));
+        if ('' !== $params->relatedobject) {
+            $qb->andWhere('relatedobject = ' . $qb->createNamedParameter($params->relatedobject));
         }
 
-        if ('' !== $message = $requestSource->getString('message')) {
-            $qb->andWhere('message LIKE ' . $qb->createNamedParameter('%' . $message . '%'));
+        if ('' !== $params->message) {
+            $qb->andWhere('message LIKE ' . $qb->createNamedParameter('%' . $params->message . '%'));
         }
 
-        if (0 !== $pid = $requestSource->getInt('pid')) {
-            $qb->andWhere('pid = ' . $qb->createNamedParameter($pid, ParameterType::INTEGER));
+        if ($params->pid) {
+            $qb->andWhere('pid = ' . $qb->createNamedParameter($params->pid, ParameterType::INTEGER));
         }
 
         $totalQb = clone $qb;
@@ -226,11 +227,11 @@ class LogController extends UserAwareController implements KernelControllerEvent
      */
     private function parseDateObject(string $date, string $time, DateTimeZone $timeZone): ?DateTimeImmutable
     {
-        if (!preg_match(self::DATE_TIME_PATTERN, $date, $dateMatches)) {
+        if (!preg_match(LogGridRequest::DATE_TIME_PATTERN, $date, $dateMatches)) {
             return null;
         }
 
-        if ('' !== $time && preg_match(self::DATE_TIME_PATTERN, $time, $timeMatches)) {
+        if ('' !== $time && preg_match(LogGridRequest::DATE_TIME_PATTERN, $time, $timeMatches)) {
             $dateTime = new DateTimeImmutable(sprintf('%sT%s', $dateMatches['date'], $timeMatches['time']), $timeZone);
         } else {
             $dateTime = new DateTimeImmutable($date, $timeZone);

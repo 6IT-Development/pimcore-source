@@ -39,7 +39,7 @@ scalars via `%parameters%` / `#[Autowire(param: ...)]`. Fix the `archive_treshol
 Add `Psr\Log\LoggerInterface $applicationLogger: '@pimcore.app_logger'` so services can inject it without referring to
 the concrete class or the static `getInstance()`.
 
-### [ ] I-05 – Request DTO for the log grid
+### [x] I-05 – Request DTO for the log grid
 **File:** `src/Controller/LogController.php:57-143`
 Replace manual `$requestSource->get*()` juggling (GET vs POST bag) with a readonly DTO + `#[MapQueryString]` /
 `#[MapRequestPayload]` and validator constraints (limits, enum priority, date format). Fixes B-05 cleanly.
