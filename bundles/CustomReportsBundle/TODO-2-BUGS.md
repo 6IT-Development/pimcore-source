@@ -46,7 +46,7 @@ but nothing prevents it). Then:
 **Fix:** build the drill-down filter as an outer `WHERE` on the derived table (like the grid filters in
 `getBaseQuery()`), and fetch columns via `SELECT * FROM (<sql>) AS t LIMIT 0` (see B-04).
 
-### [ ] B-04 – `getColumns()` returns no columns when the query has no rows
+### [x] B-04 – `getColumns()` returns no columns when the query has no rows
 **File:** `src/Tool/Adapter/Sql.php:65-72`
 Columns are derived from `array_keys()` of the **first row**. A valid report whose result is currently empty (new
 table, restrictive `WHERE`) yields `[]` – the column configuration dialog shows nothing and the report cannot be

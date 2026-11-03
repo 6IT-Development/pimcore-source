@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CustomReportsBundle\Tool\Adapter;
 
 use Doctrine\DBAL\Connection;
+use PDO;
 use Pimcore;
 use Pimcore\Db;
 use stdClass;
@@ -71,13 +72,37 @@ class Sql extends AbstractAdapter
 
         $this->validateQuery($sql);
 
-        $sql = 'SELECT * FROM (' . $sql . ') AS somerandxyz LIMIT 0,1';
-        $res = $this->runReadOnly(static fn (Connection $db): array|false => $db->fetchAssociative($sql));
-        if ($res) {
-            return array_keys($res);
+        $sql = 'SELECT * FROM (' . $sql . ') AS somerandxyz LIMIT 0';
+
+        return $this->runReadOnly(fn (Connection $db): array => $this->fetchColumnNames($db, $sql));
+    }
+
+    /**
+     * Reads the column names from the result metadata, so they are also known for a result without rows. DBAL 3 has
+     * no API for this, the native connection is a PDO or mysqli instance on the supported drivers.
+     *
+     * @return list<string>
+     */
+    private function fetchColumnNames(Connection $db, string $sql): array
+    {
+        $native = $db->getNativeConnection();
+
+        if ($native instanceof PDO) {
+            $statement = $native->query($sql);
+            $names = [];
+            for ($i = 0, $count = $statement->columnCount(); $i < $count; $i++) {
+                $names[] = $statement->getColumnMeta($i)['name'];
+            }
+
+            return $names;
         }
 
-        return [];
+        $result = $native->query($sql);
+        if ($result === false) {
+            throw new InvalidReportQueryException($native->error);
+        }
+
+        return array_column($result->fetch_fields(), 'name');
     }
 
     /**
