@@ -290,7 +290,9 @@ class Processor
             return Cache\RuntimeCache::get($cacheKey);
         }
 
-        if (!$data = Cache::load($cacheKey)) {
+        // an empty list is a valid result for a locale or site without entries, only false (no array) is a miss
+        $data = Cache::load($cacheKey);
+        if (!is_array($data)) {
             $list = new Glossary\Listing();
             $list->setCondition("(language = ? OR language IS NULL OR language = '') AND (site = ? OR site IS NULL OR site = '')", [$locale, $siteId]);
             $list->setOrderKey('LENGTH(`text`)', false);
@@ -311,8 +313,10 @@ class Processor
             $data = $this->prepareData($data, $tags);
 
             Cache::save($data, $cacheKey, array_unique($tags), null, 995);
-            Cache\RuntimeCache::set($cacheKey, $data);
         }
+
+        // also on a hit of the persistent cache, so further filter blocks on the page do not load it again
+        Cache\RuntimeCache::set($cacheKey, $data);
 
         return $data;
     }

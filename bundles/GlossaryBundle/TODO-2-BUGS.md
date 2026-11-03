@@ -155,7 +155,7 @@ calling `Document::getById()`.
 of one; concurrent readers can see the empty row.
 **Fix:** single `INSERT` with the data (or wrap both in a transaction); `lastInsertId()` afterwards.
 
-### [ ] B-17 – Empty glossary result is never cached → one DB query per request
+### [x] B-17 – Empty glossary result is never cached → one DB query per request
 **File:** `src/Tool/Processor.php:170-187`
 `if (!$data = Cache::load($cacheKey))` treats a cached `[]` as a miss; for locales/sites without entries the listing
 query runs on every request. A persistent-cache **hit** is also not put into `RuntimeCache`, so multiple filter
