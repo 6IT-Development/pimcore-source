@@ -88,11 +88,11 @@ class MiscController extends UserAwareController
         $db = Db::get();
         $data = $db->fetchAssociative('SELECT * FROM http_error_log WHERE uri_hash = ?', [hash('sha256', $request->query->getString('uri'))]);
 
-        foreach ($data as $key => &$value) {
-            if ($key === 'parametersGet') {
-                $value = unserialize($value);
-            }
+        if (!$data) {
+            throw $this->createNotFoundException();
         }
+
+        $data['parametersGet'] = $this->decodeParameters($data['parametersGet']);
 
         return $this->render('@PimcoreSeo/misc/http_error_log_detail.html.twig', ['data' => $data]);
     }
@@ -108,5 +108,31 @@ class MiscController extends UserAwareController
         return $this->jsonResponse([
             'success' => true,
         ]);
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    private function decodeParameters(?string $parameters): array
+    {
+        if (!$parameters) {
+            return [];
+        }
+
+        $decoded = json_decode($parameters, true);
+        if (!is_array($decoded)) {
+            // entries from before the switch to JSON, the maintenance task purges them after a few days
+            $decoded = @unserialize($parameters, ['allowed_classes' => false]);
+        }
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        // nested parameters like a[b]=c cannot be rendered as a table cell
+        return array_map(
+            static fn (mixed $value): mixed => is_array($value) ? json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : $value,
+            $decoded
+        );
     }
 }

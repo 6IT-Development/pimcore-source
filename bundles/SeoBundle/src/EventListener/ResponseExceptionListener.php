@@ -103,7 +103,7 @@ class ResponseExceptionListener implements EventSubscriberInterface
             $this->db->executeStatement(
                 'INSERT INTO http_error_log (uri, uri_hash, code, parametersGet, `date`, `count`) VALUES (?, ?, ?, ?, ?, 1)
                     ON DUPLICATE KEY UPDATE `count` = `count` + 1, `date` = ?, code = ?',
-                [$uri, $uriHash, $statusCode, serialize($request->query->all()), $now, $now, $statusCode]
+                [$uri, $uriHash, $statusCode, json_encode($request->query->all(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), $now, $now, $statusCode]
             );
         } catch (Throwable $e) {
             $this->logger->warning('Could not write to the HTTP error log: {message}', [

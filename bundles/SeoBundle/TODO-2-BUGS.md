@@ -48,7 +48,7 @@ see B-04).
 **Fix direction:** give `RoutingListener::onKernelException` a higher priority (e.g. 65) or let the log listener skip
 when `$event->hasResponse()`/`$event->isPropagationStopped()`; verify with `debug:event-dispatcher kernel.exception`.
 
-### [ ] B-04 – `httpErrorLogDetailAction`: unknown URI, `unserialize(null)`, unrestricted `unserialize()`
+### [x] B-04 – `httpErrorLogDetailAction`: unknown URI, `unserialize(null)`, unrestricted `unserialize()`
 **File:** `src/Controller/MiscController.php:79-98`
 - `fetchAssociative()` returns `false` for an unknown/flushed URI → `foreach (false as …)` warning, template rendered
   with `data = false`. Should be a 404.
