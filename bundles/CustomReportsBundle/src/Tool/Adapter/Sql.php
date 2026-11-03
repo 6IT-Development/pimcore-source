@@ -313,7 +313,7 @@ class Sql extends AbstractAdapter
 
         $filteredData = [];
         foreach ($data as $d) {
-            if (!empty($d[$field]) || $d[$field] === 0) {
+            if ($d[$field] !== null && $d[$field] !== '') {
                 $filteredData[] = ['name' => $d[$field], 'value' => $d[$field]];
             }
         }
@@ -321,7 +321,8 @@ class Sql extends AbstractAdapter
         return [
             'data' => array_merge(
                 [
-                    ['name' => 'empty', 'value' => null],
+                    // no value means no drill-down filter on this column
+                    ['name' => 'all', 'value' => null],
                 ],
                 $filteredData
             ),

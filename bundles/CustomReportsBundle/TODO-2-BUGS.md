@@ -55,7 +55,7 @@ configured.
 (`Result::columnCount()` + `getColumnMeta()` on the native statement, or DBAL `Result::columnName($i)` where
 available).
 
-### [ ] B-05 – Drill-down options drop the value `'0'`; "empty" option is misleading
+### [x] B-05 – Drill-down options drop the value `'0'`; "empty" option is misleading
 **File:** `src/Tool/Adapter/Sql.php:215-229`, `:117-121`
 `!empty($d[$field]) || $d[$field] === 0` – PDO returns strings, so `'0'` is `empty()` and `=== 0` is never true →
 `0` (and `'0'`) can never be selected as drill-down value. The prepended option `['name' => 'empty', 'value' => null]`
