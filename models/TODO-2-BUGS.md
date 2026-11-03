@@ -605,7 +605,7 @@ closed after reading.
 **Done:** the maximum is taken over a derived table of the first 42 descendants by `id`, the same rows the collage
 listing uses.
 
-## [ ] B-33 – `Dao::getCurrentFullPath()` / `getCustomSettings()` return `''` instead of `null` for a missing row
+## [x] B-33 – `Dao::getCurrentFullPath()` / `getCustomSettings()` return `''` instead of `null` for a missing row
 
 **File:** `models/Asset/Dao.php:299-310`, `:509-512`
 
@@ -613,6 +613,10 @@ listing uses.
   `'' . '/'` for a concurrently deleted parent.
 
 **Fix direction:** `return $v === false ? null : $v;` and add `strict_types`.
+
+**Done:** both getters map `false` to `null`. `Asset::update()` throws `ParentID not found.` when the parent's DB path is
+`null` instead of building the path `/`. `strict_types` was not added: the file's other callers were not checked for
+coercions it would turn into `TypeError`s.
 
 ## [ ] B-34 – `__isBasedOnLatestData()` reads offsets on `false`
 

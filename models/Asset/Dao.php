@@ -308,6 +308,10 @@ class Dao extends Model\Element\Dao
 
         try {
             $path = $this->db->fetchOne('SELECT CONCAT(`path`,filename) as `path` FROM assets WHERE id = ?', [$this->model->getId()]);
+            // fetchOne() yields false for a missing row
+            if ($path === false) {
+                $path = null;
+            }
         } catch (Exception) {
             Logger::error('could not get  current asset path from DB');
         }
@@ -534,7 +538,9 @@ class Dao extends Model\Element\Dao
 
     public function getCustomSettings(): ?string
     {
-        return $this->db->fetchOne('SELECT customSettings FROM assets WHERE id = :id', ['id' => $this->model->getId()]);
+        $customSettings = $this->db->fetchOne('SELECT customSettings FROM assets WHERE id = :id', ['id' => $this->model->getId()]);
+
+        return $customSettings === false ? null : $customSettings;
     }
 
     public function __isBasedOnLatestData(): bool

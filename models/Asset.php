@@ -719,7 +719,11 @@ class Asset extends Element\AbstractElement
             //to ensure the path really exists and does not rely on the path
             // that is currently in the parent asset (in memory),
             //because this might have changed but wasn't not saved
-            $this->setPath(str_replace('//', '/', $parent->getCurrentFullPath() . '/'));
+            $parentPath = $parent->getCurrentFullPath();
+            if ($parentPath === null) {
+                throw new Exception('ParentID not found.');
+            }
+            $this->setPath(str_replace('//', '/', $parentPath . '/'));
         } elseif ($this->getId() == 1) {
             // some data in root node should always be the same
             $this->setParentId(0);
@@ -824,7 +828,7 @@ class Asset extends Element\AbstractElement
                     $this->setCustomSetting('checksum', $checksum);
                 }
 
-                // remove old legacy file if exists (deleted on commit); the lookup yields null on a DB error and '' for a missing row
+                // remove old legacy file if exists (deleted on commit); the lookup yields null on a DB error or for a missing row
                 $dbPath = $this->getDao()->getCurrentFullPath();
                 if ($dbPath && $dbPath !== $path && $storage->fileExists($dbPath)) {
                     $this->backupStorageFile($storage, $dbPath, true);
