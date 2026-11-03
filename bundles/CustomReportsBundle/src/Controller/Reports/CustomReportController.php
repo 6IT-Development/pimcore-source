@@ -206,9 +206,12 @@ class CustomReportController extends UserAwareController
             throw new BadRequestHttpException('Invalid report configuration');
         }
 
-        // a single y axis arrives as a plain value, no axis clears the setting
+        // a single y axis arrives as a plain value, an additional axis field left empty as null, no axis clears the setting
         $yAxis = $data['yAxis'] ?? [];
-        $data['yAxis'] = is_string($yAxis) && $yAxis !== '' ? [$yAxis] : $yAxis;
+        if (is_string($yAxis) && $yAxis !== '') {
+            $yAxis = [$yAxis];
+        }
+        $data['yAxis'] = is_array($yAxis) ? array_values(array_filter($yAxis, static fn (mixed $axis): bool => $axis !== null && $axis !== '')) : $yAxis;
 
         foreach ($this->normalizeReportProperties($data) as $key => $value) {
             $report->{'set' . ucfirst($key)}($value);
