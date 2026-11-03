@@ -58,6 +58,8 @@ class SettingsController extends UserAwareController
                 // save glossary
                 $glossary = Glossary::getById($data['id']);
 
+                $data = $this->normalizeEmptyValues($data);
+
                 if (!empty($data['link'])) {
                     if ($doc = Document::getByPath($data['link'])) {
                         $data['link'] = $doc->getId();
@@ -86,6 +88,8 @@ class SettingsController extends UserAwareController
 
                 // save glossary
                 $glossary = new Glossary();
+
+                $data = $this->normalizeEmptyValues($data);
 
                 if (!empty($data['link'])) {
                     if ($doc = Document::getByPath($data['link'])) {
@@ -149,5 +153,20 @@ class SettingsController extends UserAwareController
         }
 
         return $this->jsonResponse(['success' => false]);
+    }
+
+    /**
+     * The grid sends every field back (writeAllFields), with null for the unused one of link / abbreviation and ''
+     * for a cleared one; the setters accept null, and '' is stored as NULL as well.
+     */
+    private function normalizeEmptyValues(array $data): array
+    {
+        foreach (['text', 'link', 'abbr'] as $key) {
+            if (($data[$key] ?? null) === '') {
+                $data[$key] = null;
+            }
+        }
+
+        return $data;
     }
 }

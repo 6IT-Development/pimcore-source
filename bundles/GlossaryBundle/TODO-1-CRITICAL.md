@@ -116,7 +116,7 @@ $es = $html->filterXPath('//*[normalize-space(text())]');
 
 ---
 
-## [ ] C-05 – Admin grid: editing an entry whose `link`, `abbr` or `text` is `NULL` fails with a `TypeError`
+## [x] C-05 – Admin grid: editing an entry whose `link`, `abbr` or `text` is `NULL` fails with a `TypeError`
 
 **Files:** `src/Controller/SettingsController.php:56-68`, `:79-93`, `src/Model/Glossary.php:131-171`,
 admin store config (`pimcore.helpers.grid.buildDefaultStore()` → `writer.writeAllFields: true`)

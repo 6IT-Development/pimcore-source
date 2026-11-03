@@ -273,4 +273,32 @@ class GlossaryTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $entry->save();
     }
+
+    public function testGlossaryAcceptsNullValuesOnUpdate(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Nullable');
+        $entry->setLink('/nullable');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        // the admin grid sends all fields back, including the NULL abbreviation of a link-only entry
+        $reloaded = Glossary::getById($entry->getId());
+        $values = $reloaded->getObjectVars();
+        $values['language'] = 'de';
+        $reloaded->setValues($values);
+        $reloaded->save();
+
+        $saved = Glossary::getById($entry->getId());
+        $this->assertNull($saved->getAbbr());
+        $this->assertSame('/nullable', $saved->getLink());
+        $this->assertSame('de', $saved->getLanguage());
+
+        $saved->setValues(['link' => null, 'abbr' => 'Nullable abbreviation']);
+        $saved->save();
+
+        $saved = Glossary::getById($entry->getId());
+        $this->assertNull($saved->getLink());
+        $this->assertSame('Nullable abbreviation', $saved->getAbbr());
+    }
 }

@@ -151,7 +151,7 @@ class Glossary extends AbstractModel
     /**
      * @return $this
      */
-    public function setText(string $text): static
+    public function setText(?string $text): static
     {
         $this->text = $text;
 
@@ -166,7 +166,7 @@ class Glossary extends AbstractModel
     /**
      * @return $this
      */
-    public function setLink(string $link): static
+    public function setLink(?string $link): static
     {
         $this->link = $link;
 
@@ -181,7 +181,7 @@ class Glossary extends AbstractModel
     /**
      * @return $this
      */
-    public function setAbbr(string $abbr): static
+    public function setAbbr(?string $abbr): static
     {
         $this->abbr = $abbr;
 
