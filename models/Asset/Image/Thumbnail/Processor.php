@@ -405,32 +405,64 @@ class Processor
         ];
     }
 
+    /**
+     * Returns the high-resolution factor for the sizes and offsets of the transformations: the configured factor,
+     * lowered (but not below 1) so that no scaled value exceeds the source image, unless its step forces resizing.
+     *
+     * @internal
+     */
+    public static function getHighResolutionFactor(Asset $asset, Config $config, ?array $transformations = null): float
+    {
+        $highResFactor = (float)$config->getHighResolution();
+        if ($highResFactor <= 1) {
+            return 1.0;
+        }
+
+        $sourceImageWidth = PHP_INT_MAX;
+        $sourceImageHeight = PHP_INT_MAX;
+        if ($asset instanceof Asset\Image) {
+            $sourceImageWidth = $asset->getWidth() ?: PHP_INT_MAX;
+            $sourceImageHeight = $asset->getHeight() ?: PHP_INT_MAX;
+        }
+
+        // lowering the factor only shrinks the values checked before, so a single pass is enough
+        foreach ($transformations ?? $config->getItems() as $transformation) {
+            if (empty($transformation) || !is_array($transformation['arguments'] ?? null)
+                || !empty($transformation['arguments']['forceResize'])) {
+                continue;
+            }
+
+            foreach ($transformation['arguments'] as $key => $value) {
+                if (!is_numeric($value) || !self::isScaledByHighResolution($transformation['method'], $key)) {
+                    continue;
+                }
+
+                $sourceSize = in_array($key, ['width', 'x']) ? $sourceImageWidth : $sourceImageHeight;
+                $scaledValue = ceil($value * $highResFactor);
+                if ($sourceSize < $scaledValue) {
+                    $highResFactor = max(1.0, $highResFactor * $sourceSize / $scaledValue);
+                }
+            }
+        }
+
+        return $highResFactor;
+    }
+
+    private static function isScaledByHighResolution(string $method, string|int $key): bool
+    {
+        return $method !== 'cropPercent'
+            && in_array($key, ['width', 'height', 'x', 'y'], true)
+            && in_array($key, self::$argumentMapping[$method] ?? [], true);
+    }
+
     private static function applyTransformations(Adapter $image, Asset $asset, Config $config, ?array $transformations): void
     {
         if ($transformations) {
-            $sourceImageWidth = PHP_INT_MAX;
-            $sourceImageHeight = PHP_INT_MAX;
-            if ($asset instanceof Asset\Image) {
-                $sourceImageWidth = $asset->getWidth();
-                $sourceImageHeight = $asset->getHeight();
-            }
+            // the same factor for all steps, otherwise e.g. a crop does not match the preceding resize
+            $highResFactor = self::getHighResolutionFactor($asset, $config, $transformations);
 
-            $highResFactor = $config->getHighResolution();
-            $calculateMaxFactor = function ($factor, $original, $new) {
-                $newFactor = $factor * $original / $new;
-                if ($newFactor < 1) {
-                    // don't go below factor 1
-                    $newFactor = 1;
-                }
-
-                return $newFactor;
-            };
-
-            // sorry for the goto/label - but in this case it makes life really easier and the code more readable
-            prepareTransformations:
-
-            foreach ($transformations as &$transformation) {
-                if (!empty($transformation) && !isset($transformation['isApplied'])) {
+            foreach ($transformations as $transformation) {
+                if (!empty($transformation)) {
                     $arguments = [];
 
                     $mapping = self::$argumentMapping[$transformation['method']];
@@ -440,34 +472,8 @@ class Processor
                             $position = array_search($key, $mapping);
                             if ($position !== false) {
                                 // high-res calculations if enabled
-                                if ($transformation['method'] != 'cropPercent' && in_array($key, ['width', 'height', 'x', 'y'])) {
-                                    if ($highResFactor && $highResFactor > 1) {
-                                        $value *= $highResFactor;
-                                        $value = (int)ceil($value);
-
-                                        if (!isset($transformation['arguments']['forceResize']) || !$transformation['arguments']['forceResize']) {
-                                            // check if source image is big enough otherwise adjust the high-res factor
-                                            if (in_array($key, ['width', 'x'])) {
-                                                if ($sourceImageWidth < $value) {
-                                                    $highResFactor = $calculateMaxFactor(
-                                                        $highResFactor,
-                                                        $sourceImageWidth,
-                                                        $value
-                                                    );
-                                                    goto prepareTransformations;
-                                                }
-                                            } elseif (in_array($key, ['height', 'y'])) {
-                                                if ($sourceImageHeight < $value) {
-                                                    $highResFactor = $calculateMaxFactor(
-                                                        $highResFactor,
-                                                        $sourceImageHeight,
-                                                        $value
-                                                    );
-                                                    goto prepareTransformations;
-                                                }
-                                            }
-                                        }
-                                    }
+                                if ($highResFactor > 1 && self::isScaledByHighResolution($transformation['method'], $key)) {
+                                    $value = (int)ceil($value * $highResFactor);
                                 }
 
                                 // inject the focal point
@@ -488,8 +494,6 @@ class Processor
                     if (method_exists($image, $transformation['method'])) {
                         call_user_func_array([$image, $transformation['method']], $arguments);
                     }
-
-                    $transformation['isApplied'] = true;
                 }
             }
         }

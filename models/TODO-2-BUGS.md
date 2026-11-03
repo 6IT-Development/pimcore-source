@@ -774,7 +774,7 @@ size they divide by is missing or zero.
 
 **Fix direction:** cache the effective factor or derive CSS size from the estimate; round after multiplying.
 
-## [ ] B-46 – Hi-res `goto` restart applies the factor inconsistently across steps
+## [x] B-46 – Hi-res `goto` restart applies the factor inconsistently across steps
 
 **File:** `models/Asset/Image/Thumbnail/Processor.php:417-454`
 
@@ -782,6 +782,11 @@ size they divide by is missing or zero.
   → misaligned crop). The size check compares against the original source, not the current image.
 
 **Fix direction:** compute the effective factor in a first pass, apply in a second.
+
+**Done:** the new `Processor::getHighResolutionFactor()` computes the effective factor in one pass before any step is
+applied, and every step uses it, so the `goto` restart is gone. The check still compares against the source image: with
+one factor for all steps the current image is the 1× pipeline scaled by that factor, so the source size decides only
+whether the source can supply the extra pixels.
 
 ## [ ] B-47 – Unknown transformation method → warning / `TypeError`
 
