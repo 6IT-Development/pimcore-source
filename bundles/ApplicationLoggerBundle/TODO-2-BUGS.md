@@ -137,7 +137,7 @@ and the rows are never flagged. Filter empty entries; skip sending if no valid r
 `filter_priority > 7` → undefined array index → `null` → `IN('emergency',...,,)` SQL syntax error. Negative values →
 empty `IN()` → syntax error. Clamp to `0..7`.
 
-### [ ] B-18 – Mail task race condition and failure handling
+### [x] B-18 – Mail task race condition and failure handling
 **File:** `src/Maintenance/LogMailMaintenanceTask.php:70-112`
 - Rows inserted between the `SELECT` and the final `UPDATE` are flagged as checked **without being mailed**.
   Restrict the update to `id <= max(selected id)`.

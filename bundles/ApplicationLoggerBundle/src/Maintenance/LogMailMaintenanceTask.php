@@ -29,6 +29,8 @@ use Symfony\Component\Mime\Exception\RfcComplianceException;
 
 readonly class LogMailMaintenanceTask implements TaskInterface
 {
+    private const int MAIL_BATCH_SIZE = 100;
+
     public function __construct(
         private Connection      $db,
         private Config          $config,
@@ -39,74 +41,84 @@ readonly class LogMailMaintenanceTask implements TaskInterface
 
     public function execute(): void
     {
+        // rows written from now on are left for the next run, they are not part of the mails of this one
+        $maxId = (int)$this->db->fetchOne('SELECT MAX(id) FROM ' . ApplicationLoggerDb::TABLE_NAME);
+        if (!$maxId) {
+            return;
+        }
+
         if (!empty($this->config['applicationlog']['mail_notification']['send_log_summary'])) {
             $receivers = $this->getReceivers();
 
-            // getting the enums from priority
-            $priorityColumnDefinition = $this->db->fetchAllAssociative('SHOW COLUMNS FROM ' . ApplicationLoggerDb::TABLE_NAME . " LIKE 'priority'");
-
-            // type is the actual enum values
-            $columnType = reset($priorityColumnDefinition)['Type'];
-
-            // remove unnecessary noise
-            $enumValue = explode(',', str_replace(['enum(', ')'], '', $columnType));
-
-            $logLevel = (int)($this->config['applicationlog']['mail_notification']['filter_priority'] ?? null);
-
-            // out of range values would produce an invalid IN() list
-            $logLevels = array_slice($enumValue, 0, max(0, $logLevel) + 1);
-
-            $query = 'SELECT * FROM '
-                . ApplicationLoggerDb::TABLE_NAME
-                . ' WHERE maintenanceChecked IS NULL '
-                . 'AND priority IN('
-                . implode(',', $logLevels)
-                . ') '
-                . 'ORDER BY id DESC';
-
-            $rows = $this->db->fetchAllAssociative($query);
-            $limit = 100;
-            $rowsProcessed = 0;
-
-            $rowCount = count($rows);
-            if ($rowCount && $receivers) {
-                while ($rowsProcessed < $rowCount) {
-                    $entries = [];
-
-                    if ($rowCount <= $limit) {
-                        $entries = $rows;
-                    } else {
-                        for ($i = $rowsProcessed; $i < $rowCount && count($entries) < $limit; $i++) {
-                            $entries[] = $rows[$i];
-                        }
-                    }
-
-                    $rowsProcessed += count($entries);
-
-                    // log entries contain user-controlled input, so they must not end up as markup in the mail
-                    $html = htmlspecialchars(var_export($entries, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                    $html = "<pre>$html</pre>";
-                    $mail = new Mail();
-                    $mail->setIgnoreDebugMode(true);
-                    $mail->html($html);
-                    foreach ($receivers as $receiver) {
-                        $mail->addTo($receiver);
-                    }
-                    $mail->subject('Error Log ' . Tool::getHostUrl());
-                    $mail->send();
-                }
+            if ($receivers) {
+                $this->sendSummaryMails($receivers, $maxId);
             }
         }
 
         // flag them as checked, regardless if email notifications are enabled or not
         // otherwise, when activating email notifications, you'll receive all log-messages from the past and not
         // since the point when you enabled the notifications
-        $this->db->executeQuery(
+        $this->flagAsChecked($maxId);
+    }
+
+    /**
+     * @param Address[] $receivers
+     */
+    private function sendSummaryMails(array $receivers, int $maxId): void
+    {
+        // getting the enums from priority
+        $priorityColumnDefinition = $this->db->fetchAllAssociative('SHOW COLUMNS FROM ' . ApplicationLoggerDb::TABLE_NAME . " LIKE 'priority'");
+
+        // type is the actual enum values
+        $columnType = reset($priorityColumnDefinition)['Type'];
+
+        // remove unnecessary noise
+        $enumValue = explode(',', str_replace(['enum(', ')'], '', $columnType));
+
+        $logLevel = (int)($this->config['applicationlog']['mail_notification']['filter_priority'] ?? null);
+
+        // out of range values would produce an invalid IN() list
+        $logLevels = array_slice($enumValue, 0, max(0, $logLevel) + 1);
+
+        $query = 'SELECT * FROM '
+            . ApplicationLoggerDb::TABLE_NAME
+            . ' WHERE maintenanceChecked IS NULL '
+            . 'AND priority IN('
+            . implode(',', $logLevels)
+            . ') '
+            . 'AND id > ? AND id <= ? '
+            . 'ORDER BY id ASC '
+            . 'LIMIT ' . self::MAIL_BATCH_SIZE;
+
+        $lastId = 0;
+        while ($entries = $this->db->fetchAllAssociative($query, [$lastId, $maxId])) {
+            // log entries contain user-controlled input, so they must not end up as markup in the mail
+            $html = htmlspecialchars(var_export($entries, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $html = "<pre>$html</pre>";
+            $mail = new Mail();
+            $mail->setIgnoreDebugMode(true);
+            $mail->html($html);
+            foreach ($receivers as $receiver) {
+                $mail->addTo($receiver);
+            }
+            $mail->subject('Error Log ' . Tool::getHostUrl());
+            $mail->send();
+
+            // the next run must not send this batch again if a later one fails
+            $lastId = (int)$entries[array_key_last($entries)]['id'];
+            $this->flagAsChecked($lastId);
+        }
+    }
+
+    private function flagAsChecked(int $maxId): void
+    {
+        $this->db->executeStatement(
             'UPDATE '
             . ApplicationLoggerDb::TABLE_NAME
             . ' SET maintenanceChecked = 1 '
-            . 'WHERE maintenanceChecked != 1 '
-            . 'OR maintenanceChecked IS NULL'
+            . 'WHERE id <= ? AND (maintenanceChecked != 1 '
+            . 'OR maintenanceChecked IS NULL)',
+            [$maxId]
         );
     }
 
