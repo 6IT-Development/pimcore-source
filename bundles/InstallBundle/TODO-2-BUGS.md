@@ -104,7 +104,7 @@ if ($db instanceof Connection) {                       // always true – parame
 **Fix direction:** DBAL 3: `$db->getNativeConnection()->getAttribute(PDO::ATTR_SERVER_VERSION)`; DBAL 4:
 `$db->getServerVersion()`; drop the `instanceof Connection` check and the `ServerInfoAwareConnection` import.
 
-### [ ] B-07 – Socket detection is fragile and the port is not omitted for sockets
+### [x] B-07 – Socket detection is fragile and the port is not omitted for sockets
 **File:** `src/Installer.php:360-391`, `src/Command/InstallCommand.php:110-115`
 - `file_exists($hostSocketValue)` is evaluated relative to the CWD and is `true` for **directories** too: a host named
   `db` / `mysql` with an equally named directory in the project root (`docker/`, `db/` folders are common) is treated as

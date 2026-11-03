@@ -119,4 +119,30 @@ class InstallerTest extends TestCase
             implode("\n", $this->createInstaller()->install($params + ['admin_username' => 'ad min']))
         );
     }
+
+    public function testUsesOnlyRealSocketsAsUnixSocket(): void
+    {
+        $directory = sys_get_temp_dir() . '/pimcore-installer-test-' . uniqid();
+        mkdir($directory);
+        $socketPath = $directory . '/mysqld.sock';
+        $server = stream_socket_server('unix://' . $socketPath);
+
+        try {
+            $params = ['mysql_username' => 'pimcore', 'mysql_password' => '', 'mysql_database' => 'pimcore', 'mysql_port' => '3307'];
+
+            // a directory is not a socket
+            $dbConfig = $this->createInstaller()->resolveDbConfig($params + ['mysql_host_socket' => $directory]);
+            $this->assertArrayNotHasKey('unix_socket', $dbConfig);
+            $this->assertSame($directory, $dbConfig['host']);
+            $this->assertSame(3307, $dbConfig['port']);
+
+            $dbConfig = $this->createInstaller()->resolveDbConfig($params + ['mysql_host_socket' => $socketPath]);
+            $this->assertSame($socketPath, $dbConfig['unix_socket']);
+            $this->assertArrayNotHasKey('port', $dbConfig);
+        } finally {
+            fclose($server);
+            @unlink($socketPath);
+            rmdir($directory);
+        }
+    }
 }

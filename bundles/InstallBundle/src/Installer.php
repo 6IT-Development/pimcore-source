@@ -461,8 +461,7 @@ class Installer
         $hostSocketValue = $params['mysql_host_socket'] ?? null;
 
         if (null !== $hostSocketValue && '' !== $hostSocketValue) {
-            // use value as unix socket if file exists
-            if (file_exists($hostSocketValue)) {
+            if ($this->isUnixSocket((string) $hostSocketValue)) {
                 $dbConfig['unix_socket'] = $hostSocketValue;
             } else {
                 $dbConfig['host'] = $hostSocketValue;
@@ -472,6 +471,13 @@ class Installer
 
         $dbConfig = array_merge($dbConfig, $this->dbCredentials);
 
+        // the port is not used for socket connections
+        if (isset($dbConfig['unix_socket'])) {
+            unset($dbConfig['port']);
+        } elseif (is_numeric($dbConfig['port'] ?? null)) {
+            $dbConfig['port'] = (int) $dbConfig['port'];
+        }
+
         $mysqlSslCertPath = $params['mysql_ssl_cert_path'] ?? null;
         if (!empty($mysqlSslCertPath)) {
             $dbConfig['driverOptions'] = [
@@ -480,6 +486,19 @@ class Installer
         }
 
         return $dbConfig;
+    }
+
+    /**
+     * Only a socket file (or an absolute, not yet existing *.sock path) is a unix socket; a directory or file in the
+     * current directory that happens to have the name of the host (e.g. "db") is not
+     */
+    private function isUnixSocket(string $value): bool
+    {
+        if ('socket' === @filetype($value)) {
+            return true;
+        }
+
+        return str_starts_with($value, '/') && str_ends_with($value, '.sock') && !file_exists($value);
     }
 
     /**
