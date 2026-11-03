@@ -27,6 +27,12 @@ are available:
 - `Visible to users`: Custom report is visible to all listed users.  
 - `Visible to roles`: Custom report is visible to all listed roles. 
 
+Reports store the names of the users and roles they are shared with, so a definition can be deployed to systems where
+the same user has another ID. This means that a renamed user or role loses access until the report is shared again, and
+that a new user or role with the name of a deleted one gets access to the reports the deleted one had. Update the
+sharing settings of the affected reports when you rename or delete a user or role. Names are compared exactly, including
+upper and lower case.
+
 ## Security of SQL Reports
 Users with the `reports_config` permission write the SQL of a report, so this permission equals read access to the
 database. The SQL adapter only accepts a single `SELECT` statement (statements and functions such as `INSERT`, `DELETE`,

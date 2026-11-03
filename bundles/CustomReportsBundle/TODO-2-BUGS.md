@@ -225,13 +225,16 @@ With `$id === null` (allowed by the signature) `$data['id']` is never set, so `s
 key → `setName(null)` → `TypeError`. `$id != null` is a loose comparison (`''` → treated as "no id").
 **Fix:** use `$id ?? $this->model->getName()` once and `setName($name)`; `!== null` comparisons.
 
-### [ ] B-24 – Sharing is stored by user/role **name** and resolved to ids on every request
+### [x] B-24 – Sharing is stored by user/role **name** and resolved to ids on every request
 **File:** `src/Tool/Config.php:343-377`, `src/Tool/Config/Listing/Dao.php:58-64`
 - Renaming a user/role silently removes their access; deleting a user and creating a new one with the same name
   silently grants the new account access.
 - `in_array($user->getId(), …)` is a loose comparison.
 **Fix:** decide on one identity (ids are stable – migrate `sharedUserNames`→`sharedUserIds`), or at least compare
 names directly (`in_array($user->getName(), $this->sharedUserNames, true)`), see also I-17.
+**Decision:** names stay the identity, because definitions are deployed as YAML to systems where ids differ. User names
+are compared directly and strictly. Rename and re-creation are not solved, the behaviour is documented in
+`doc/18_Tools_and_Features/29_Custom_Reports.md`.
 
 ### [ ] B-25 – Config tree and model types are out of sync → `TypeError` when loading hand-written YAML
 **Files:** `src/DependencyInjection/Configuration.php:39-65`, `src/Tool/Config.php:39-83`, `:273-291`

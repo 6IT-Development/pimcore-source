@@ -417,7 +417,7 @@ class Config extends Model\AbstractModel implements JsonSerializable
             return true;
         }
 
-        if (in_array($user->getId(), $this->getSharedUserIds())) {
+        if (in_array($user->getName(), $this->sharedUserNames, true)) {
             return true;
         }
 

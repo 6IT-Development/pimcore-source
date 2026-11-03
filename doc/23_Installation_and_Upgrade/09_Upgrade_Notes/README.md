@@ -69,6 +69,10 @@
 - `general.valid_languages` / `general.required_languages` given as a string are now trimmed (`"en, de"` gives `de`
   instead of ` de`). To set them from an env var, use `'%env(csv:LANGUAGES)%'`. A plain `'%env(LANGUAGES)%'` is used
   as one single language.
+#### [Custom Reports]
+- User names in the sharing settings of a report are compared exactly with the name of the user. A hand-written
+  `sharedUserNames` entry that differs in upper or lower case no longer grants access, depending on the database
+  collation it did before.
 
 ### Security
 #### [Twig]
