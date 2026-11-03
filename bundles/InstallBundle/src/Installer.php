@@ -151,6 +151,12 @@ class Installer
     private bool $dropExistingTables = false;
 
     /**
+     * Owner of the root asset, document and object of an empty installation (the admin user, 0 = system)
+     *
+     */
+    private int $rootElementOwnerId = 0;
+
+    /**
      * Bundles that will be installed
      *
      */
@@ -949,19 +955,30 @@ class Installer
             $dataFiles = $this->getDataFiles();
 
             try {
-                if (empty($dataFiles) || !$this->importDatabaseDataDump) {
-                    // empty installation
-                    $this->insertDatabaseContents($db);
-                } else {
+                $emptyInstallation = empty($dataFiles) || !$this->importDatabaseDataDump;
+
+                if (!$emptyInstallation) {
                     foreach ($dataFiles as $dbFile) {
                         $this->logger->info('Importing DB file {dbFile}', ['dbFile' => $dbFile]);
                         $this->insertDatabaseDump($db, $dbFile);
                     }
                 }
 
+                // the admin is created before the system user, so it gets the first id of an empty users table
+                $this->createOrUpdateUser($db, $userCredentials);
+
                 // create a system user with id 0 after the dumps, they may already contain it
                 $this->insertSystemUser($db);
-                $this->createOrUpdateUser($db, $userCredentials);
+
+                if ($emptyInstallation) {
+                    // the root elements are owned by the admin user
+                    $this->rootElementOwnerId = (int) $db->fetchOne(
+                        "SELECT id FROM users WHERE type = 'user' AND name = ?",
+                        [$userCredentials['username'] ?? 'admin']
+                    );
+
+                    $this->insertDatabaseContents($db);
+                }
             } catch (Exception $e) {
                 $this->logger->error((string)$e);
                 $errors[] = $e->getMessage();
@@ -1128,8 +1145,8 @@ class Installer
             'path' => '/',
             'creationDate' => time(),
             'modificationDate' => time(),
-            'userOwner' => 1,
-            'userModification' => 1,
+            'userOwner' => $this->rootElementOwnerId,
+            'userModification' => $this->rootElementOwnerId,
         ]));
         $db->insert('documents', Helper::quoteDataIdentifiers($db, [
             'id' => 1,
@@ -1141,8 +1158,8 @@ class Installer
             'published' => 1,
             'creationDate' => time(),
             'modificationDate' => time(),
-            'userOwner' => 1,
-            'userModification' => 1,
+            'userOwner' => $this->rootElementOwnerId,
+            'userModification' => $this->rootElementOwnerId,
         ]));
         $db->insert('documents_page', Helper::quoteDataIdentifiers($db, [
             'id' => 1,
@@ -1161,8 +1178,8 @@ class Installer
             'published' => 1,
             'creationDate' => time(),
             'modificationDate' => time(),
-            'userOwner' => 1,
-            'userModification' => 1,
+            'userOwner' => $this->rootElementOwnerId,
+            'userModification' => $this->rootElementOwnerId,
         ]));
         $userPermissions = [
             'assets',

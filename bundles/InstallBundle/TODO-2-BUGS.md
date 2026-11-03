@@ -218,7 +218,7 @@ lines (or use a `config/bundles.local.php`-style include), `var_export`/`php -l`
 
 ## Seed data / smaller issues
 
-### [ ] B-17 – Seed rows reference a non-existent user id 1
+### [x] B-17 – Seed rows reference a non-existent user id 1
 **File:** `src/Installer.php:807-852`, `:898-909`, `:743-763`
 - Root asset/document/object are inserted with `userOwner = userModification = 1`. The system user is inserted first
   (gets id 1) and is then moved to id 0; `AUTO_INCREMENT` stays at 2, so the admin created afterwards gets **id 2**.
