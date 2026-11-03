@@ -586,6 +586,9 @@ pimcore.bundle.customreports.custom.report = Class.create(pimcore.bundle.customr
                         this.createCsv(btn, response["exportFile"], response["offset"], 0);
                     }
                 }
+            }.bind(this),
+            failure: function () {
+                this.progressWindow.close();
             }.bind(this)
         });
     }

@@ -25,6 +25,7 @@ use Pimcore\Controller\UserAwareController;
 use Pimcore\Extension\Bundle\Exception\AdminClassicBundleNotFoundException;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Exception\ConfigWriteException;
+use RuntimeException;
 use stdClass;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Filesystem;
@@ -380,9 +381,13 @@ class CustomReportController extends UserAwareController
         $columns = $config->getColumnConfiguration();
         $fields = [];
         foreach ($columns as $column) {
-            if ($column['export']) {
+            if (($column['export'] ?? false) && isset($column['name'])) {
                 $fields[] = $column['name'];
             }
+        }
+        // without fields the adapter would select all columns under an empty header
+        if (!$fields) {
+            throw new BadRequestHttpException('The report has no exported columns');
         }
 
         $configuration = $this->getDataSource($config);
@@ -405,7 +410,10 @@ class CustomReportController extends UserAwareController
             }
         }
 
-        $fp = fopen($exportFile, 'a');
+        $fp = @fopen($exportFile, 'a');
+        if ($fp === false) {
+            throw new RuntimeException('The report export file could not be opened for writing');
+        }
 
         if ($includeHeaders) {
             fputcsv($fp, $fields, ';', escape: '\\');

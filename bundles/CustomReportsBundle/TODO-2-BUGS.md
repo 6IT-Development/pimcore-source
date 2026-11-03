@@ -127,7 +127,7 @@ consumers break. **Fix:** `(int) $db->fetchOne(…)`.
 property" warning for data sources saved without that key.
 **Fix:** `404`/`400` (or empty result) when the data source is missing; use `$configuration->orderbydir ?? ''`.
 
-### [ ] B-13 – `createCsvAction`: `TypeError` without `drillDownFilters`, unchecked keys and file handle
+### [x] B-13 – `createCsvAction`: `TypeError` without `drillDownFilters`, unchecked keys and file handle
 **File:** `src/Controller/Reports/CustomReportController.php:354-357`, `:367-369`, `:379`, `:389-400`
 - `getString('drillDownFilters')` returns `''` when the parameter is absent; `''` is passed to
   `getData(?array $drillDownFilters)` → `TypeError`. Same when the JSON decodes to a non-array. (The admin UI always
