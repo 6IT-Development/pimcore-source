@@ -16,6 +16,7 @@
 namespace Pimcore\Security\User;
 
 use Pimcore\Model\User as PimcoreUser;
+use Pimcore\Tool\Authentication;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -41,8 +42,15 @@ class UserProvider implements UserProviderInterface
             throw new UnsupportedUserException();
         }
 
-        /** @var PimcoreUser $refreshedPimcoreUser */
         $refreshedPimcoreUser = PimcoreUser::getById($user->getId());
+
+        // a deleted or deactivated user ends the session instead of being refreshed
+        if (!Authentication::isValidUser($refreshedPimcoreUser)) {
+            $exception = new UserNotFoundException(sprintf('User %s was not found or is inactive', $user->getUserIdentifier()));
+            $exception->setUserIdentifier($user->getUserIdentifier());
+
+            throw $exception;
+        }
 
         return $this->buildUser($refreshedPimcoreUser);
     }

@@ -1447,7 +1447,7 @@ then `Role::getById()` for the same id (I-121). Related: I-115.
 
 ---
 
-## [ ] C-41 – Deactivating a user, changing their password or roles does not end their admin sessions: `isEqualTo()` compares only the id
+## [x] C-41 – Deactivating a user, changing their password or roles does not end their admin sessions: `isEqualTo()` compares only the id
 
 **Files:** `lib/Security/User/User.php:53-70`, `:84-87`; `lib/Security/User/UserProvider.php:37-48`;
 `lib/Security/User/UserChecker.php:31-60`; `lib/Tool/Authentication.php:36-68`, `:181-184`

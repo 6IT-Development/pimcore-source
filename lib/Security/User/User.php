@@ -81,9 +81,34 @@ class User implements UserInterface, EquatableInterface, GoogleTwoFactorInterfac
         // TODO: anything to do here?
     }
 
+    /**
+     * Symfony leaves the whole session refresh check to this method, so it has to cover everything that must end
+     * a session: password change, deactivation and changed admin flag or roles.
+     */
     public function isEqualTo(UserInterface $user): bool
     {
-        return $user instanceof self && $user->getId() === $this->getId();
+        if (!$user instanceof self || $user->getId() !== $this->getId()) {
+            return false;
+        }
+
+        $original = $this->user;
+        $refreshed = $user->getUser();
+
+        return $refreshed->getPassword() === $original->getPassword()
+            && $refreshed->isActive() === $original->isActive()
+            && $refreshed->isAdmin() === $original->isAdmin()
+            && self::sortedRoleIds($refreshed) === self::sortedRoleIds($original);
+    }
+
+    /**
+     * @return int[]
+     */
+    private static function sortedRoleIds(PimcoreUser $user): array
+    {
+        $roleIds = array_map('intval', $user->getRoles());
+        sort($roleIds);
+
+        return $roleIds;
     }
 
     /**

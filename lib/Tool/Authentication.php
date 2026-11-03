@@ -54,7 +54,7 @@ class Authentication
 
         if ($token instanceof TokenInterface) {
             $token = static::refreshUser($token, Pimcore::getContainer()->get(UserProvider::class));
-            $user = $token->getUser();
+            $user = $token?->getUser();
 
             if ($user instanceof Pimcore\Security\User\User && self::isValidUser($user->getUser())) {
                 $pimcoreUser = $user->getUser();
