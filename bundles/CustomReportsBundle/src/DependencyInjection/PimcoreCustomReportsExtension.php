@@ -27,6 +27,8 @@ use Symfony\Component\HttpKernel\DependencyInjection\ConfigurableExtension;
 
 class PimcoreCustomReportsExtension extends ConfigurableExtension implements PrependExtensionInterface
 {
+    private bool $adminClassicAvailable = false;
+
     private function configureAdapterFactories(ContainerBuilder $container, array $factories, string $serviceLocatorId): void
     {
         $serviceLocator = $container->getDefinition($serviceLocatorId);
@@ -42,6 +44,11 @@ class PimcoreCustomReportsExtension extends ConfigurableExtension implements Pre
 
         $loader->load('services.yaml');
 
+        // the container passed here does not know the other extensions, so hasExtension() only works in prepend()
+        if ($this->adminClassicAvailable) {
+            $loader->load('services_admin_classic.yaml');
+        }
+
         $this->configureAdapterFactories($container, $config['adapters'], 'pimcore.custom_report.adapter.factories');
         $container->setParameter('pimcore_custom_reports.definitions', $config['definitions'] ?? []);
         $container->setParameter('pimcore_custom_reports.config_location', $config['config_location'] ?? []);
@@ -52,9 +59,13 @@ class PimcoreCustomReportsExtension extends ConfigurableExtension implements Pre
     public function prepend(ContainerBuilder $container): void
     {
         if ($container->hasExtension('pimcore_admin')) {
+            $this->adminClassicAvailable = true;
+
+            // without prepend the loader appends the config, which then wins over the application's own key bindings
             $loader = new YamlFileLoader(
                 $container,
-                new FileLocator(__DIR__ . '/../../config')
+                new FileLocator(__DIR__ . '/../../config'),
+                prepend: true
             );
 
             $loader->load('admin-classic.yaml');

@@ -77,6 +77,8 @@
   an array and text options with a boolean value fail at container build instead of with a `TypeError` when the report
   is loaded. The `id` option is deprecated, it was never used.
 - `Config::getYAxis()` always returns an array, a single value or `null` set through `Config::setYAxis()` is normalized.
+- The default key bindings `reports` and `custom_reports` no longer override the ones set in the application under
+  `pimcore_admin.user.default_key_bindings`.
 
 ### Security
 #### [Twig]

@@ -250,7 +250,7 @@ for `yAxis`, normalise `yAxis` to `array` in the model, and remove or use `id`.
 
 ## DI / config / installer
 
-### [ ] B-26 – `admin-classic.yaml` is loaded in `prepend()` with a file loader → overrides app config
+### [x] B-26 – `admin-classic.yaml` is loaded in `prepend()` with a file loader → overrides app config
 **Files:** `src/DependencyInjection/PimcoreCustomReportsExtension.php:50-62`, `config/admin-classic.yaml:1-13`
 `YamlFileLoader::load()` registers the `pimcore_admin` section via `$container->loadFromExtension()`, which **appends**
 the bundle's config after the already loaded application config. Later configs win when merging, so a project that
