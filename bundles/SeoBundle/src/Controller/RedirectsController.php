@@ -68,23 +68,14 @@ class RedirectsController extends UserAwareController
             }
             if ($request->query->getString('xaction') === 'update') {
                 // save redirect
-                $redirect = Redirect::getById($data['id']);
+                $id = (int)($data['id'] ?? 0);
+                $redirect = $id ? Redirect::getById($id) : null;
 
                 if (!$redirect) {
                     return $this->jsonResponse(['success' => false]);
                 }
 
-                if ($data['target']) {
-                    if ($doc = Document::getByPath($data['target'])) {
-                        $data['target'] = $doc->getId();
-                    }
-                }
-
-                if (!$data['regex'] && $data['source']) {
-                    $data['source'] = str_replace('+', ' ', $data['source']);
-                }
-
-                $redirect->setValues($data);
+                $redirect->setValues($this->normalizeRedirectData($data));
 
                 $redirect->save();
 
@@ -103,17 +94,7 @@ class RedirectsController extends UserAwareController
                 // save route
                 $redirect = new Redirect();
 
-                if (!empty($data['target'])) {
-                    if ($doc = Document::getByPath($data['target'])) {
-                        $data['target'] = $doc->getId();
-                    }
-                }
-
-                if (isset($data['regex']) && !$data['regex'] && isset($data['source']) && $data['source']) {
-                    $data['source'] = str_replace('+', ' ', $data['source']);
-                }
-
-                $redirect->setValues($data);
+                $redirect->setValues($this->normalizeRedirectData($data));
 
                 $redirect->save();
 
@@ -180,6 +161,24 @@ class RedirectsController extends UserAwareController
         }
 
         return $this->jsonResponse(['success' => false]);
+    }
+
+    /**
+     * Resolves a target path to its document id and decodes `+` in a plain (non-regex) source.
+     */
+    private function normalizeRedirectData(array $data): array
+    {
+        if (!empty($data['target']) && is_string($data['target'])) {
+            if ($doc = Document::getByPath($data['target'])) {
+                $data['target'] = $doc->getId();
+            }
+        }
+
+        if (empty($data['regex']) && !empty($data['source']) && is_string($data['source'])) {
+            $data['source'] = str_replace('+', ' ', $data['source']);
+        }
+
+        return $data;
     }
 
     #[Route('/csv-export', name: 'pimcore_bundle_seo_redirects_csvexport', methods: [Request::METHOD_GET])]

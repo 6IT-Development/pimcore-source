@@ -140,7 +140,7 @@ accept only `int|DateTimeInterface|null`.
 
 ## Redirect admin controller (`src/Controller/RedirectsController.php`)
 
-### [ ] B-13 – `update` branch reads keys without `isset` (create branch does)
+### [x] B-13 – `update` branch reads keys without `isset` (create branch does)
 **File:** `src/Controller/RedirectsController.php:71-85`
 - `$data['id']`, `$data['target']`, `$data['regex']`, `$data['source']` are accessed directly. The ExtJS store sends
   all fields (`writeAllFields: true`), but any other client (API, tests, future UI) sending a partial payload gets
