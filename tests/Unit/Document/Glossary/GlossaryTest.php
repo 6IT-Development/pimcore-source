@@ -21,6 +21,7 @@ use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 use Pimcore\Bundle\GlossaryBundle\Tool\Processor;
 use Pimcore\Tests\Support\Helper\Pimcore;
 use Pimcore\Tests\Support\Test\TestCase;
+use Pimcore\Tests\Support\Util\TestHelper;
 
 class GlossaryTest extends TestCase
 {
@@ -474,5 +475,29 @@ class GlossaryTest extends TestCase
                 $requestStack->push($request);
             }
         }
+    }
+
+    public function testGlossaryDoesNotLinkToUnpublishedDocuments(): void
+    {
+        $published = TestHelper::createEmptyDocumentPage('glossary-published-');
+        $unpublished = TestHelper::createEmptyDocumentPage('glossary-unpublished-', false);
+        $unpublished->setPublished(false);
+        $unpublished->save();
+
+        foreach ([['Published', $published, null], ['Unpublished', $unpublished, 'Not public yet']] as [$text, $document, $abbr]) {
+            $entry = new Glossary();
+            $entry->setText($text);
+            $entry->setLink((string)$document->getId());
+            $entry->setAbbr($abbr);
+            $entry->setLanguage('en');
+            $entry->save();
+        }
+
+        $result = $this->processor->parse('<p>Published, Unpublished</p>', [], 'en', null, null);
+
+        $expect = '<p><a class="pimcore_glossary" href="' . $published->getFullPath() . '">Published</a>, '
+            . '<abbr class="pimcore_glossary" title="Not public yet">Unpublished</abbr></p>';
+
+        $this->assertSame($expect, $result);
     }
 }

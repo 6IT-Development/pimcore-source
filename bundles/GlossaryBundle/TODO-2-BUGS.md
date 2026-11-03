@@ -123,7 +123,7 @@ The listing query throws `TableNotFoundException` when the `glossary` table does
   the cache with the old data between `clearTag()` and `save()`/`delete()` → stale until the next edit.
 **Fix:** clear the tag in `Dao::save()` / `Dao::delete()` (after the write), remove it from the controller.
 
-### [ ] B-13 – Cached entries embed resolved document paths; not invalidated on document move/rename/delete/unpublish
+### [x] B-13 – Cached entries embed resolved document paths; not invalidated on document move/rename/delete/unpublish
 **File:** `src/Tool/Processor.php:183`, `:226-240`
 `prepareData()` resolves internal links to `$doc->getFullPath()` and the result is cached with tag `glossary` only.
 Renaming/moving a target document leaves broken links on all pages (cache priority 995, no lifetime). Unpublished

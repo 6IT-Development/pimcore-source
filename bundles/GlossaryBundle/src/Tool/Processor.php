@@ -307,16 +307,20 @@ class Processor
                 return [];
             }
 
-            $data = $this->prepareData($data);
+            $tags = ['glossary'];
+            $data = $this->prepareData($data, $tags);
 
-            Cache::save($data, $cacheKey, ['glossary'], null, 995);
+            Cache::save($data, $cacheKey, array_unique($tags), null, 995);
             Cache\RuntimeCache::set($cacheKey, $data);
         }
 
         return $data;
     }
 
-    private function prepareData(array $data): array
+    /**
+     * @param string[] $tags receives the cache tags of the documents the entries link to
+     */
+    private function prepareData(array $data, array &$tags): array
     {
         $mappedData = [];
 
@@ -335,10 +339,21 @@ class Processor
 
                 if ((int)$d['link']) {
                     if ($doc = Document::getById($d['link'])) {
-                        $d['link'] = $doc->getFullPath();
+                        // the cached entries embed the path and published state of the target, so moving, renaming,
+                        // (un)publishing or deleting it invalidates them
+                        $tags[] = $doc->getCacheTag();
 
-                        $linkType = 'internal';
-                        $linkTarget = $doc->getId();
+                        if ($doc->isPublished()) {
+                            $d['link'] = $doc->getFullPath();
+
+                            $linkType = 'internal';
+                            $linkTarget = $doc->getId();
+                        } else {
+                            // never link to a page that returns 404, keep the abbreviation only
+                            $d['link'] = null;
+                            $linkType = '';
+                            $linkTarget = '';
+                        }
                     }
                 }
 
