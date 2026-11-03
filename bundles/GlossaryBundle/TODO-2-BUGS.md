@@ -103,7 +103,7 @@ static page generation, PDF rendering) or a test without a pushed request.
 **Fix:** `if (!$this->requestHelper->hasMainRequest()) { return $content; }` (or use the default locale and no
 document), and make `parse()` the public, request-independent API.
 
-### [ ] B-11 – Bundle enabled but not installed → every page using the filter returns 500
+### [x] B-11 – Bundle enabled but not installed → every page using the filter returns 500
 **Files:** `src/Tool/Processor.php:174-180`, `src/Model/Glossary/Listing/Dao.php:54`
 The listing query throws `TableNotFoundException` when the `glossary` table does not exist (bundle registered in
 `bundles.php` but `pimcore:bundle:install` not run, or after uninstall while templates still use the filter).

@@ -17,11 +17,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GlossaryBundle\Tool;
 
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 use Pimcore\Cache;
 use Pimcore\Http\Request\Resolver\DocumentResolver;
 use Pimcore\Http\Request\Resolver\EditmodeResolver;
 use Pimcore\Http\RequestHelper;
+use Pimcore\Logger;
 use Pimcore\Model\Document;
 use Pimcore\Model\Site;
 use Pimcore\Tool\DomCrawler;
@@ -294,7 +296,17 @@ class Processor
             $list->setOrderKey('LENGTH(`text`)', false);
             $list->setOrder('DESC');
 
-            $data = $list->getDataArray();
+            try {
+                $data = $list->getDataArray();
+            } catch (TableNotFoundException $e) {
+                // the bundle is enabled but not installed (or was uninstalled while templates still use the filter);
+                // remembered for the rest of the request, so this is logged once per request instead of per block
+                Logger::warning('Glossary table not found, run pimcore:bundle:install PimcoreGlossaryBundle: ' . $e->getMessage());
+                Cache\RuntimeCache::set($cacheKey, []);
+
+                return [];
+            }
+
             $data = $this->prepareData($data);
 
             Cache::save($data, $cacheKey, ['glossary'], null, 995);
