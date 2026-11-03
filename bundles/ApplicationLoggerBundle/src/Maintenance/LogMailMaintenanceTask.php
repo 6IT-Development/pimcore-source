@@ -144,12 +144,7 @@ readonly class LogMailMaintenanceTask implements TaskInterface
     {
         $receivers = [];
 
-        foreach (preg_split('/,|;/', $this->mailReceiver, -1, PREG_SPLIT_NO_EMPTY) as $receiver) {
-            $receiver = trim($receiver);
-            if ('' === $receiver) {
-                continue;
-            }
-
+        foreach (array_filter(array_map(trim(...), preg_split('/,|;/', $this->mailReceiver))) as $receiver) {
             try {
                 $receivers[] = new Address($receiver, $receiver);
             } catch (RfcComplianceException $e) {

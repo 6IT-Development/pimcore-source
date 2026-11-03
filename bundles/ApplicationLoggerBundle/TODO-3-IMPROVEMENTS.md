@@ -97,7 +97,7 @@ clearing it would lose the configuration of those services. `getInstance()` no l
 **Files:** `ApplicationLogger` (PSR-3 methods), `ApplicationLoggerDb::write()`, `Installer::install()/uninstall()`,
 `PimcoreApplicationLoggerBundle::getPath()/getInstaller()`, maintenance `execute()`.
 
-### [ ] I-13 – Small idiom updates
+### [x] I-13 – Small idiom updates
 - `LogMailMaintenanceTask:42-44` `array_walk` with by-ref closure → `array_filter(array_map(trim(...), ...))`.
 - `LogMailMaintenanceTask:57-60` manual loop → `array_slice($levels, 0, $logLevel + 1)`.
 - `LogMailMaintenanceTask:74-100` hand-rolled batching → `array_chunk($rows, 100)`.
@@ -106,6 +106,8 @@ clearing it would lose the configuration of those services. `getInstance()` no l
 - `ApplicationLogger:131-137` → `$relatedObject = $context['relatedObject'] ?? $this->relatedObject;`.
 - `LogArchiveTask:84-88` nested `if`s → `if ($filePath !== null && $storage->fileExists($filePath))`.
 - `ApplicationLoggerProcessor:63-65` `if (isset(...)) unset(...)` → plain `unset()`.
+**Outcome:** Only the receiver list and the processor `unset()` were still open, the others went away with earlier fixes. The mail
+batches stay as they are: `array_chunk()` would need all rows in memory, which B-18 removed on purpose.
 
 ---
 

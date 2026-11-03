@@ -67,9 +67,7 @@ class ApplicationLoggerProcessor implements ProcessorInterface
         $context = $record->context;
         if (!isset($context['relatedObject'])) {
             // remove related object type if no object is set
-            if (isset($context['relatedObjectType'])) {
-                unset($context['relatedObjectType']);
-            }
+            unset($context['relatedObjectType']);
 
             return $record->with(context: $context);
         }
