@@ -606,6 +606,19 @@ final class Config extends Model\AbstractModel
                         $forceResize = true;
                     }
 
+                    // missing or zero sizes (e.g. a legacy config without height) -> unable to calculate dimensions
+                    $divisors = match ($transformation['method']) {
+                        'scaleByWidth' => [$arg['width'] ?? null, $dimensions['width']],
+                        'scaleByHeight' => [$arg['height'] ?? null, $dimensions['height']],
+                        'contain' => [$arg['width'] ?? null, $arg['height'] ?? null, $dimensions['width'], $dimensions['height']],
+                        default => [],
+                    };
+                    foreach ($divisors as $divisor) {
+                        if (empty($divisor)) {
+                            return [];
+                        }
+                    }
+
                     if (in_array($transformation['method'], ['resize', 'cover', 'frame', 'crop'])) {
                         $dimensions['width'] = $arg['width'];
                         $dimensions['height'] = $arg['height'];

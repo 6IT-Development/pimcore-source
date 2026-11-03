@@ -754,13 +754,16 @@ constructors. Any other name without a definition, including `'0'`, throws `NotF
 `DivisionByZeroError` from a transformation falls back to the error placeholder. The Processor throws when the saved
 temp file cannot be opened instead of passing `false` to `writeStream()`.
 
-## [ ] B-44 – `DivisionByZeroError` in `getEstimatedDimensions()` during HTML rendering
+## [x] B-44 – `DivisionByZeroError` in `getEstimatedDimensions()` during HTML rendering
 
 **File:** `models/Asset/Image/Thumbnail/Config.php:619`, `:624`, `:628-629`
 
 - `getHtml()` → … → `getEstimatedDimensions()`; legacy `['contain' => true, 'width' => 300]` → `$h / null`.
 
 **Fix direction:** guard missing/zero arguments (skip the step or return `[]`).
+
+**Done:** `scaleByWidth`, `scaleByHeight` and `contain` return `[]` (unknown dimensions, as for `rotate`/`trim`) when a
+size they divide by is missing or zero.
 
 ## [ ] B-45 – Hi-res width/height attributes wrong when the source is smaller than requested
 
