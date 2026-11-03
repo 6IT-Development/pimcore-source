@@ -126,7 +126,7 @@ accept only `int|DateTimeInterface|null`.
 
 **Fix direction:** return the filtered array; let exceptions bubble (or log them).
 
-### [ ] B-12 – `Redirect` typed property `$type` is uninitialised; `Redirect::create()` persists an empty redirect
+### [x] B-12 – `Redirect` typed property `$type` is uninitialised; `Redirect::create()` persists an empty redirect
 **File:** `src/Model/Redirect.php:59, 125-131, 182-185`
 - `protected string $type;` has no default → `getType()` on a new, not-yet-typed instance throws
   "must not be accessed before initialization"; `getObjectVars()` silently omits it, so `save()` relies on the MySQL

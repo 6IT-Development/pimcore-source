@@ -57,7 +57,7 @@ final class Redirect extends AbstractModel
 
     protected ?int $id = null;
 
-    protected string $type;
+    protected string $type = self::TYPE_PATH;
 
     protected ?string $source = null;
 
@@ -123,9 +123,19 @@ final class Redirect extends AbstractModel
         }
     }
 
-    public static function create(): Redirect
+    /**
+     * Creates and saves a redirect from $source to $target (path, URL or document id).
+     */
+    public static function create(string $source, string $target, string $type = self::TYPE_PATH): Redirect
     {
+        if ($source === '' || $target === '') {
+            throw new InvalidArgumentException('A redirect needs a source and a target');
+        }
+
         $redirect = new self();
+        $redirect->setType($type);
+        $redirect->setSource($source);
+        $redirect->setTarget($target);
         $redirect->save();
 
         return $redirect;
@@ -191,7 +201,12 @@ final class Redirect extends AbstractModel
      */
     public function setType(string $type): void
     {
-        if (!empty($type) && !in_array($type, self::TYPES)) {
+        // a new grid row is sent without a type, it keeps the default
+        if ($type === '') {
+            return;
+        }
+
+        if (!in_array($type, self::TYPES, true)) {
             throw new InvalidArgumentException(sprintf('Invalid type "%s"', $type));
         }
 
