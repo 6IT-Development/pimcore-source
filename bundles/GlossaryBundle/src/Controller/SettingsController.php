@@ -83,7 +83,7 @@ class SettingsController extends UserAwareController
 
                 $this->showDocumentPath($glossary);
 
-                return $this->jsonResponse(['data' => $glossary, 'success' => true]);
+                return $this->jsonResponse(['data' => $glossary->getObjectVars(), 'success' => true]);
             } elseif ($request->query->getString('xaction') == 'create') {
                 // save glossary
                 $glossary = new Glossary();

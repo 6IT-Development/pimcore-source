@@ -182,7 +182,7 @@ re-set by the DAO, creation date is not), and unexpected keys like `dao` or `val
 **Fix:** whitelist `text, link, abbr, language, casesensitive, exactmatch, site`; validate (required text, max
 lengths, existing site, language in `Tool::getValidLanguages()`, URL scheme – see C-01).
 
-### [ ] B-20 – `update` response serializes the model object → empty `data`
+### [x] B-20 – `update` response serializes the model object → empty `data`
 **File:** `src/Controller/SettingsController.php:78` (vs. `:103`)
 `jsonResponse(['data' => $glossary])` goes through `ReferenceLoopNormalizer`, which uses `get_object_vars()` from
 outside the class → protected properties are invisible → `data: []`. The create action correctly uses
