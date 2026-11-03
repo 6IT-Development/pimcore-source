@@ -804,7 +804,15 @@ class Installer
     {
         $errors = [];
 
-        $this->writeBundlesToConfig();
+        try {
+            $this->writeBundlesToConfig();
+        } catch (Throwable $e) {
+            $this->logger->error((string) $e);
+
+            // the bundles cannot be installed without being registered
+            return [sprintf('Adding the bundles to config/bundles.php failed: %s', $e->getMessage())];
+        }
+
         foreach ($this->bundlesToInstall as $bundle) {
             if (in_array($bundle, $this->availableBundles) && !$this->isBundleInstalled($bundle)) {
                 $error = $this->runCommand([

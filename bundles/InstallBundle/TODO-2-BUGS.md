@@ -182,7 +182,7 @@ nothing is recommended and adapt the confirm text.
 
 ## Files written by the installer
 
-### [ ] B-14 – `BundleWriter` rewrites `config/bundles.php` destructively and can produce invalid PHP
+### [x] B-14 – `BundleWriter` rewrites `config/bundles.php` destructively and can produce invalid PHP
 **File:** `src/BundleConfig/BundleWriter.php:23-62`, `src/Installer.php:586-598`
 - `include`s the existing file and regenerates it from the returned array: comments, conditional entries
   (`class_exists(...) ? ... : ...`, `$_SERVER['APP_ENV']` checks) and any non-array code are lost.
