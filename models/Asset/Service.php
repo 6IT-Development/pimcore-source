@@ -339,9 +339,13 @@ class Service extends Model\Element\Service
             if ($element->getType() == 'folder') {
                 $key = $key . '_' . $nr;
             } else {
-                $keypart = substr($key, 0, strrpos($key, '.'));
-                $extension = str_replace($keypart, '', $key);
-                $key = $keypart . '_' . $nr . $extension;
+                // the number goes before the last extension; a name without one (or a dotfile) gets it appended
+                $extensionPos = strrpos($key, '.');
+                if ($extensionPos === false || $extensionPos === 0) {
+                    $key = $key . '_' . $nr;
+                } else {
+                    $key = substr($key, 0, $extensionPos) . '_' . $nr . substr($key, $extensionPos);
+                }
             }
         }
 

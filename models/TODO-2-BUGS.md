@@ -426,7 +426,7 @@ that cannot be rewound is closed before it is replaced.
 **Done:** the cross-directory branch sets the destination filename too, and the source and destination directories
 are marked dirty after a successful move. The duplicate case already answers `409 Conflict` (C-08).
 
-## [ ] B-21 – `Service::getUniqueKey()` throws `TypeError` for names without an extension and mangles repeated stems
+## [x] B-21 – `Service::getUniqueKey()` throws `TypeError` for names without an extension and mangles repeated stems
 
 **File:** `models/Asset/Service.php:331-333` (`strict_types`)
 
@@ -439,6 +439,9 @@ $extension = str_replace($keypart, '', $key);     // 'data.data' → stem 'data'
   `Element\Service::getUniqueKey()`.
 
 **Fix direction:** `pathinfo()` with `PATHINFO_FILENAME` / `PATHINFO_EXTENSION`; append `.ext` only when present.
+
+**Done:** the number is inserted before the last `.` by position (`data.data` → `data_1.data`); a name without an
+extension or a dotfile gets it appended (`README_1`, `.htaccess_1`).
 
 ## [ ] B-22 – Public thumbnail route: type/asset mismatch → uncaught `TypeError` (anonymous 500)
 
