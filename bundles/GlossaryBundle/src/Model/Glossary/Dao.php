@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GlossaryBundle\Model\Glossary;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
+use Pimcore\Cache;
 use Pimcore\Model\Dao\AbstractDao;
 use Pimcore\Model\Exception\NotFoundException;
 
@@ -67,6 +68,9 @@ class Dao extends AbstractDao
         }
 
         $this->update();
+
+        // after the write, so a concurrent request cannot cache the old entries again
+        Cache::clearTag('glossary');
     }
 
     /**
@@ -75,6 +79,8 @@ class Dao extends AbstractDao
     public function delete(): void
     {
         $this->db->delete('glossary', ['id' => $this->model->getId()]);
+
+        Cache::clearTag('glossary');
     }
 
     /**

@@ -113,7 +113,7 @@ The listing query throws `TableNotFoundException` when the `glossary` table does
 
 ## Cache and data consistency
 
-### [ ] B-12 – Cache is only invalidated by the admin controller (and before the write)
+### [x] B-12 – Cache is only invalidated by the admin controller (and before the write)
 **Files:** `src/Controller/SettingsController.php:48`, `src/Model/Glossary/Dao.php:54-69`, `src/Tool/Processor.php:183`
 - `Glossary::save()` / `delete()` do not clear the `glossary` cache tag → entries created via API, imports,
   migrations, fixtures or `tests/Unit/Document/Glossary/GlossaryTest.php` stay invisible on the frontend until the

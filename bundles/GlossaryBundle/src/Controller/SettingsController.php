@@ -20,7 +20,6 @@ namespace Pimcore\Bundle\GlossaryBundle\Controller;
 use InvalidArgumentException;
 use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\GlossaryBundle\Model\Glossary;
-use Pimcore\Cache;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
 use Pimcore\Extension\Bundle\Exception\AdminClassicBundleNotFoundException;
@@ -45,8 +44,6 @@ class SettingsController extends UserAwareController
 
         if ($request->request->has('data')) {
             $data = $this->decodeJson($request->request->getString('data'));
-
-            Cache::clearTag('glossary');
 
             if ($request->query->getString('xaction') === 'destroy') {
                 $id = $data['id'];
