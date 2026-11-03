@@ -391,8 +391,19 @@ class InstallCommand extends Command
         // dispatch a bundle config event here to manually add/remove bundles/recommendations
         $bundleSetupEvent = $this->installer->dispatchBundleSetupEvent();
 
-        if (!empty($bundleSetupEvent->getBundles()) && false === $input->getOption('install-bundles') && $input->isInteractive() && $this->io->confirm(sprintf('Do you want to install bundles? We recommend %s.', implode(', ', $bundleSetupEvent->getRecommendedBundles())), false)) {
-            $bundles = $this->io->choice('Which bundle(s) do you want to install? You can choose multiple e.g. 0,1,2,3 or just hit enter to install recommended bundles', array_keys($bundleSetupEvent->getBundles()), $this->getRecommendBundles($bundleSetupEvent), true);
+        $recommendedBundles = $this->getRecommendedBundleNames($bundleSetupEvent);
+        $bundleQuestion = 'Do you want to install bundles?'
+            . ([] !== $recommendedBundles ? sprintf(' We recommend %s.', implode(', ', $recommendedBundles)) : '');
+
+        if (!empty($bundleSetupEvent->getBundles()) && false === $input->getOption('install-bundles') && $input->isInteractive() && $this->io->confirm($bundleQuestion, false)) {
+            $defaultBundles = $this->getRecommendBundles($bundleSetupEvent);
+            $bundles = $this->io->choice(
+                'Which bundle(s) do you want to install? You can choose multiple e.g. 0,1,2,3'
+                    . (null !== $defaultBundles ? ' or just hit enter to install recommended bundles' : ''),
+                array_keys($bundleSetupEvent->getBundles()),
+                $defaultBundles,
+                true
+            );
             $installableBundles = $bundleSetupEvent->getInstallableBundles($bundles);
             $this->installer->setBundlesToInstall($installableBundles, $bundleSetupEvent->getAvailableBundles(), $bundleSetupEvent->getExcludeBundlesFromPhpBundles());
         }
@@ -526,14 +537,33 @@ class InstallCommand extends Command
         return implode(',', array_keys(Installer::INSTALLABLE_BUNDLES));
     }
 
-    private function getRecommendBundles(BundleSetupEvent $bundleSetupEvent): string
+    /**
+     * Recommended bundles which are still installable (recommendations of removed bundles are skipped)
+     *
+     * @return string[]
+     */
+    private function getRecommendedBundleNames(BundleSetupEvent $bundleSetupEvent): array
+    {
+        return array_values(array_intersect(
+            array_unique($bundleSetupEvent->getRecommendedBundles()),
+            array_keys($bundleSetupEvent->getBundles())
+        ));
+    }
+
+    /**
+     * Default of the multiselect bundle prompt: the choice indexes of the recommended bundles, null if there are none
+     */
+    private function getRecommendBundles(BundleSetupEvent $bundleSetupEvent): ?string
     {
         $installableBundleKeys = array_keys($bundleSetupEvent->getBundles());
         $recommendedBundles = [];
-        foreach ($bundleSetupEvent->getRecommendedBundles() as $recBundle) {
-            $recommendedBundles[] = array_search($recBundle, $installableBundleKeys);
+        foreach ($this->getRecommendedBundleNames($bundleSetupEvent) as $recBundle) {
+            $index = array_search($recBundle, $installableBundleKeys, true);
+            if (false !== $index) {
+                $recommendedBundles[] = $index;
+            }
         }
 
-        return implode(',', $recommendedBundles);
+        return [] !== $recommendedBundles ? implode(',', $recommendedBundles) : null;
     }
 }

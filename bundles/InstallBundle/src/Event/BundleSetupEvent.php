@@ -46,7 +46,7 @@ class BundleSetupEvent extends Event
     public function addInstallableBundle(string $key, string $class, bool $recommend = false): void
     {
         $this->bundles[$key] = $class;
-        if ($recommend) {
+        if ($recommend && !in_array($key, $this->recommendations, true)) {
             $this->recommendations[] = $key;
         }
     }
@@ -54,9 +54,10 @@ class BundleSetupEvent extends Event
     public function removeInstallableBundle(string $key): void
     {
         unset($this->bundles[$key]);
-        if (($index = array_search($key, $this->recommendations)) !== false) {
-            unset($this->recommendations[$index]);
-        }
+        $this->recommendations = array_values(array_filter(
+            $this->recommendations,
+            static fn ($recommendation) => $recommendation !== $key
+        ));
     }
 
     public function addRequiredBundle(string $key, string $class, bool $excludeFromBundlesPhp = false): void

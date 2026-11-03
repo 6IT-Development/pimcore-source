@@ -147,7 +147,7 @@ for sockets, cast port to `int`.
 **Fix direction:** trim + filter empty entries, report unknown keys as an error (list valid keys), check
 `false !== $input->getOption('install-bundles')` in `execute()`.
 
-### [ ] B-11 – Interactive bundle prompt breaks with empty/stale recommendations
+### [x] B-11 – Interactive bundle prompt breaks with empty/stale recommendations
 **Files:** `src/Command/InstallCommand.php:329-333`, `:445-454`, `src/Event/BundleSetupEvent.php:46-60`
 - `getRecommendBundles()` uses `array_search()` (loose, may return `false`) → `implode(',', [0, false, 3])` = `"0,,3"`
   → Symfony's multiselect `ChoiceQuestion` rejects the default → "Value "0,,3" is invalid", the user cannot just press
