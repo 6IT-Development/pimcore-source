@@ -38,6 +38,11 @@ class Sql extends AbstractAdapter
         'OUTFILE', 'DUMPFILE', 'LOAD_FILE', 'SLEEP', 'BENCHMARK', 'GET_LOCK',
     ];
 
+    /**
+     * The filter operators of the report grid and their SQL operators.
+     */
+    private const array FILTER_OPERATORS = ['like' => 'LIKE', 'lt' => '<', 'gt' => '>', 'eq' => '=', '=' => '='];
+
     public function getData(?array $filters, ?string $sort, ?string $dir, ?int $offset, ?int $limit, ?array $fields = null, ?array $drillDownFilters = null): array
     {
         $db = $this->getDb();
@@ -234,55 +239,29 @@ class Sql extends AbstractAdapter
         // the clauses of the report are free text and may end with ORDER BY or LIMIT, so filters go on the derived table
         foreach ($drillDownFilters ?? [] as $field => $value) {
             if ($value !== '' && $value !== null) {
-                $condition[] = $db->quoteIdentifier((string) $field) . ' = ' . $db->quote($value);
+                $condition[] = $db->quoteIdentifier((string) $field) . ' = ' . $db->quote($this->normalizeFilterValue($value));
             }
         }
 
         $extractAllFields = empty($fields);
         foreach ($filters as $filter) {
-            $value = $filter['value'] ?? null;
-            $type = $filter['type'];
-            $operator = $filter['operator'];
-            $maxValue = null;
-            if ($type == 'date') {
-                if ($operator == 'eq') {
-                    $maxValue = strtotime($value . '+23 hours 59 minutes');
+            [$property, $type, $operator, $value] = $this->normalizeFilter($filter);
+            $column = $db->quoteIdentifier($property);
+            $fields[] = $property;
+
+            if ($type === 'date' && $operator !== 'like') {
+                if ($operator === 'eq') {
+                    $condition[] = $column . ' BETWEEN ' . $db->quote((string) strtotime($value)) . ' AND ' . $db->quote((string) strtotime($value . '+23 hours 59 minutes'));
+
+                    continue;
                 }
-                $value = strtotime($value);
+                $value = (string) strtotime($value);
             }
 
-            switch ($operator) {
-                case 'like':
-                    $fields[] = $filter['property'];
-                    $condition[] = $db->quoteIdentifier($filter['property']) . ' LIKE ' . $db->quote('%' . $value . '%');
-
-                    break;
-                case 'lt':
-                case 'gt':
-                case 'eq':
-                    $compMapping = [
-                        'lt' => '<',
-                        'gt' => '>',
-                        'eq' => '=',
-                    ];
-
-                    if ($type == 'date') {
-                        if ($operator == 'eq') {
-                            $condition[] = $db->quoteIdentifier($filter['property']) . ' BETWEEN ' . $db->quote($value) . ' AND ' . $db->quote($maxValue);
-
-                            break;
-                        }
-                    }
-                    $fields[] = $filter['property'];
-                    $condition[] = $db->quoteIdentifier($filter['property']) . ' ' . $compMapping[$operator] . ' ' . $db->quote($value);
-
-                    break;
-                case '=':
-                    $fields[] = $filter['property'];
-                    $condition[] = $db->quoteIdentifier($filter['property']) . ' = ' . $db->quote($value);
-
-                    break;
+            if ($operator === 'like') {
+                $value = '%' . $value . '%';
             }
+            $condition[] = $column . ' ' . self::FILTER_OPERATORS[$operator] . ' ' . $db->quote($value);
         }
 
         $this->validateQuery($sql);
@@ -302,6 +281,37 @@ class Sql extends AbstractAdapter
             'data' => $data,
             'count' => $total,
         ];
+    }
+
+    /**
+     * @return array{string, string|null, string, string} property, type, operator and value of a grid filter
+     *
+     * @throws InvalidReportFilterException
+     */
+    private function normalizeFilter(mixed $filter): array
+    {
+        $property = is_array($filter) ? ($filter['property'] ?? null) : null;
+        $operator = is_array($filter) ? ($filter['operator'] ?? null) : null;
+
+        if (!is_string($property) || !is_string($operator) || !isset(self::FILTER_OPERATORS[$operator])) {
+            throw new InvalidReportFilterException('Invalid report filter');
+        }
+
+        $type = $filter['type'] ?? null;
+
+        return [$property, is_string($type) ? $type : null, $operator, $this->normalizeFilterValue($filter['value'] ?? null)];
+    }
+
+    /**
+     * @throws InvalidReportFilterException
+     */
+    private function normalizeFilterValue(mixed $value): string
+    {
+        if (!is_scalar($value)) {
+            throw new InvalidReportFilterException('Invalid report filter value');
+        }
+
+        return is_bool($value) ? (string) (int) $value : (string) $value;
     }
 
     public function getAvailableOptions(array $filters, string $field, array $drillDownFilters): array

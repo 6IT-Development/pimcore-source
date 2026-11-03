@@ -63,7 +63,7 @@ does not filter for `NULL`/empty values – `buildQueryString()` skips `null`/`'
 **Fix:** keep every non-`null`, non-`''` value (`$v !== null && $v !== ''`); rename the first option to
 "all"/"no filter" (translation) or implement a real `IS NULL` filter.
 
-### [ ] B-06 – Non-scalar or incomplete filter input causes `TypeError` / warnings
+### [x] B-06 – Non-scalar or incomplete filter input causes `TypeError` / warnings
 **File:** `src/Tool/Adapter/Sql.php:139-183`, `:117-120`, `src/Controller/Reports/CustomReportController.php:296-297`,
 `:353-357`, `:453-454`
 - `filter` is decoded from user JSON without validation: missing `type`/`operator`/`property` keys →

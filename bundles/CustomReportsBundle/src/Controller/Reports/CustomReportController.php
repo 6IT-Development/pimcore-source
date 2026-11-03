@@ -305,7 +305,7 @@ class CustomReportController extends UserAwareController
         $this->checkPermission('reports');
 
         $field = $request->request->getString('field');
-        $filters = ($request->request->getString('filter') ? json_decode($request->request->getString('filter'), true) : null);
+        $filters = $this->decodeJsonParameter($request->request->getString('filter'));
         $drillDownFilters = $request->request->all('drillDownFilters');
 
         $config = $this->getReportForCurrentUser($request->request->getString('name'));
@@ -365,9 +365,8 @@ class CustomReportController extends UserAwareController
 
         $sort = $request->query->getString('sort');
         $dir = $request->query->getString('dir');
-        $filters = $request->query->has('filter') ? json_decode(urldecode($request->query->getString('filter')), true) : null;
-        $drillDownFilters = $request->query->getString('drillDownFilters');
-        $drillDownFilters = $drillDownFilters ? json_decode($drillDownFilters, true) : null;
+        $filters = $this->decodeJsonParameter(urldecode($request->query->getString('filter')));
+        $drillDownFilters = $this->decodeJsonParameter($request->query->getString('drillDownFilters'));
         $includeHeaders = $request->query->getBoolean('headers');
 
         $config = $this->getReportForCurrentUser($request->query->getString('name'));
@@ -472,18 +471,28 @@ class CustomReportController extends UserAwareController
     }
 
     /**
+     * Decodes a filter parameter of the request: nothing, or a JSON array or object.
+     */
+    private function decodeJsonParameter(string $json): ?array
+    {
+        if ($json === '') {
+            return null;
+        }
+
+        $decoded = json_decode($json, true);
+        if (json_last_error() !== JSON_ERROR_NONE || ($decoded !== null && !is_array($decoded))) {
+            throw new BadRequestHttpException('Invalid report filters');
+        }
+
+        return $decoded;
+    }
+
+    /**
      * Rejects column names from the request (filter properties, drill-down filters, sort or option field) that are
      * not columns of the report, they end up as identifiers in the report SQL.
      */
-    private function validateRequestColumns(Tool\Config $config, mixed $filters, mixed $drillDownFilters, array $fields = []): void
+    private function validateRequestColumns(Tool\Config $config, ?array $filters, ?array $drillDownFilters, array $fields = []): void
     {
-        if ($filters !== null && !is_array($filters)) {
-            throw new BadRequestHttpException('Invalid report filters');
-        }
-        if ($drillDownFilters !== null && !is_array($drillDownFilters)) {
-            throw new BadRequestHttpException('Invalid report drill-down filters');
-        }
-
         foreach ($filters ?? [] as $filter) {
             $fields[] = is_array($filter) ? ($filter['property'] ?? null) : null;
         }
@@ -512,7 +521,7 @@ class CustomReportController extends UserAwareController
             $sort = $sortingSettings['orderKey'];
             $dir = $sortingSettings['order'];
         }
-        $filters = ($request->request->has('filter') ? json_decode($request->request->getString('filter'), true) : null);
+        $filters = $this->decodeJsonParameter($request->request->getString('filter'));
         $drillDownFilters = $request->request->all('drillDownFilters');
         $this->validateRequestColumns($config, $filters, $drillDownFilters, $sort !== null ? [$sort] : []);
         if ($sort === null && $dir === null && property_exists($configuration, 'orderby') && $configuration->orderby !== '' && $configuration->orderbydir !== '') {
