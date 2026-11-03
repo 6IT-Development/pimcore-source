@@ -196,7 +196,7 @@ nothing is recommended and adapt the confirm text.
 **Fix direction:** append new entries after existing ones, keep the original file content and only insert missing
 lines (or use a `config/bundles.local.php`-style include), `var_export`/`php -l` the result, handle empty env arrays.
 
-### [ ] B-15 – `config/local/database.yaml` with the plain DB password is written world-readable
+### [x] B-15 – `config/local/database.yaml` with the plain DB password is written world-readable
 **File:** `src/SystemConfig/ConfigWriter.php:35-42`, `src/Installer.php:424-434`, `:471-473`
 - `Filesystem::dumpFile()` creates the file with `0666 & ~umask` (usually `0644`) – readable by every local user /
   other containers sharing the volume. The password is stored in clear text.

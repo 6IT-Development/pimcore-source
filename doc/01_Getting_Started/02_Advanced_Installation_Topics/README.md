@@ -46,6 +46,9 @@ $ PIMCORE_INSTALL_MYSQL_USERNAME=username PIMCORE_INSTALL_MYSQL_PASSWORD=passwor
 
 The env variables can also be defined in the `.env` / `.env.local` files of the project.
 
+The installer writes the database credentials to `config/local/database.yaml` and removes the read permission of other
+users from it (e.g. `0640`). If the web server user only gets access via "other", adjust the owner or group of the file.
+
 ### Installing Bundles
 
 #### Overview of Bundle Lists

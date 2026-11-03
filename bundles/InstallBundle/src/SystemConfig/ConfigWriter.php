@@ -35,9 +35,18 @@ final class ConfigWriter
     public function writeDbConfig(array $config = []): void
     {
         if (count($config)) {
-            $content = Yaml::dump($config);
+            // one key per line instead of inline maps, so the file can be reviewed and edited
+            $content = Yaml::dump($config, 10);
             $configFile = PIMCORE_PROJECT_ROOT . '/config/local/database.yaml';
             $this->filesystem->dumpFile($configFile, $content);
+
+            // the file contains the plain DB password: remove the permissions of other users (usually 0644 → 0640),
+            // the owner and the group (e.g. of the web server) can still read it
+            clearstatcache(true, $configFile);
+            $permissions = fileperms($configFile);
+            if (false !== $permissions) {
+                $this->filesystem->chmod($configFile, $permissions & 0770);
+            }
         }
     }
 }
