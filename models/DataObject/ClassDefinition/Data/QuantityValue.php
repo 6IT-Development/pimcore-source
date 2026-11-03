@@ -243,19 +243,24 @@ class QuantityValue extends AbstractQuantityValue
                 $value = $dataValue;
             }
 
+            $value = $value === null ? null : (float)$value;
+
             try {
-                $quantityValue = new Model\DataObject\Data\QuantityValue($value === null ? null : (float)$value, $dataUnit);
-
-                if (isset($params['owner'])) {
-                    $quantityValue->_setOwner($params['owner']);
-                    $quantityValue->_setOwnerFieldname($params['fieldname']);
-                    $quantityValue->_setOwnerLanguage($params['language'] ?? null);
-                }
-
-                return $quantityValue;
-            } catch (NotFoundException $e) {
-                Logger::warning('QuantityValue could not loaded from resource: ' . $e);
+                $quantityValue = new Model\DataObject\Data\QuantityValue($value, $dataUnit);
+            } catch (NotFoundException) {
+                // a deleted unit: keep the value and the stored unit id instead of loading (and then saving) null
+                Logger::warning(sprintf('Unit %s of field %s was not found, keeping the stored unit id', $dataUnit, $this->getName()));
+                $quantityValue = new Model\DataObject\Data\QuantityValue($value);
+                $quantityValue->setMissingUnitId((string)$dataUnit);
             }
+
+            if (isset($params['owner'])) {
+                $quantityValue->_setOwner($params['owner']);
+                $quantityValue->_setOwnerFieldname($params['fieldname']);
+                $quantityValue->_setOwnerLanguage($params['language'] ?? null);
+            }
+
+            return $quantityValue;
         }
 
         return null;

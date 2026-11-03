@@ -19,9 +19,11 @@ namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 use Exception;
 use Pimcore;
+use Pimcore\Logger;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\Element\ValidationException;
+use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Normalizer\NormalizerInterface;
 
 class QuantityValueRange extends Data implements ResourcePersistenceAwareInterface, QueryResourcePersistenceAwareInterface, EqualComparisonInterface, VarExporterInterface, NormalizerInterface
@@ -140,11 +142,17 @@ class QuantityValueRange extends Data implements ResourcePersistenceAwareInterfa
         $unit = $data[$this->getName() . '__unit'] ?? null;
 
         if ($minimum !== null || $maximum !== null || $unit !== null) {
-            $quantityValueRange = new DataObject\Data\QuantityValueRange(
-                is_string($minimum) ? (float)$minimum : $minimum,
-                is_string($maximum) ? (float)$maximum : $maximum,
-                $unit
-            );
+            $minimum = is_string($minimum) ? (float)$minimum : $minimum;
+            $maximum = is_string($maximum) ? (float)$maximum : $maximum;
+
+            try {
+                $quantityValueRange = new DataObject\Data\QuantityValueRange($minimum, $maximum, $unit);
+            } catch (NotFoundException) {
+                // a deleted unit: keep the range and the stored unit id instead of failing to load the object
+                Logger::warning(sprintf('Unit %s of field %s was not found, keeping the stored unit id', $unit, $this->getName()));
+                $quantityValueRange = new DataObject\Data\QuantityValueRange($minimum, $maximum, null);
+                $quantityValueRange->setMissingUnitId((string)$unit);
+            }
 
             if (isset($params['owner'])) {
                 $quantityValueRange->_setOwner($params['owner']);
@@ -193,7 +201,7 @@ class QuantityValueRange extends Data implements ResourcePersistenceAwareInterfa
     public function getDataFromEditmode(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\QuantityValueRange
     {
         if (is_array($data) && (isset($data['minimum']) || isset($data['maximum']) || isset($data['unit']))) {
-            if ($data['unit'] === -1 || empty($data['unit'])) {
+            if (in_array($data['unit'] ?? null, [-1, '-1'], true) || empty($data['unit'])) {
                 $data['unit'] = null;
             }
 

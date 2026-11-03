@@ -17,11 +17,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
+use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Data\InputQuantityValue as InputQuantityValueDataObject;
 use Pimcore\Model\DataObject\QuantityValue\Unit;
+use Pimcore\Model\Exception\NotFoundException;
 
 /**
  * TODO: Refactor - this class is very similar to the parent one so probably we can try to refactor parent and have better results here also
@@ -50,7 +52,16 @@ class InputQuantityValue extends AbstractQuantityValue
     public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?InputQuantityValueDataObject
     {
         if ($data[$this->getName() . '__value'] || $data[$this->getName() . '__unit']) {
-            $dataObject = $this->getNewDataObject($data[$this->getName() . '__value'], $data[$this->getName() . '__unit']);
+            $dataUnit = $data[$this->getName() . '__unit'];
+
+            try {
+                $dataObject = $this->getNewDataObject($data[$this->getName() . '__value'], $dataUnit);
+            } catch (NotFoundException) {
+                // a deleted unit: keep the value and the stored unit id instead of failing to load the object
+                Logger::warning(sprintf('Unit %s of field %s was not found, keeping the stored unit id', $dataUnit, $this->getName()));
+                $dataObject = $this->getNewDataObject($data[$this->getName() . '__value']);
+                $dataObject->setMissingUnitId((string)$dataUnit);
+            }
 
             if (isset($params['owner'])) {
                 $dataObject->_setOwner($params['owner']);

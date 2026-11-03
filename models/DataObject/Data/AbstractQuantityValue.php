@@ -73,6 +73,18 @@ abstract class AbstractQuantityValue implements OwnerAwareFieldInterface
         $this->markMeDirty();
     }
 
+    /**
+     * Keeps a stored unit id whose unit no longer exists, so that the value stays loadable and the next save does not
+     * drop it.
+     *
+     * @internal
+     */
+    public function setMissingUnitId(string $unitId): void
+    {
+        $this->unit = null;
+        $this->unitId = $unitId;
+    }
+
     public function getUnitId(): string|null
     {
         return $this->unitId;

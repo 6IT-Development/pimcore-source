@@ -1842,7 +1842,7 @@ the call in `getLinkGenerator()`. Add a test that renders a link to an object of
 **Fix direction:** hydrate when any bound column is non-null (as `QuantityValue.php:239` does) and decide explicitly
 whether open bounds / a missing unit are valid; reject them in `checkValidity()` otherwise. Add round-trip tests.
 
-## [ ] C-50 – Deleting a unit makes objects with `QuantityValueRange` / `InputQuantityValue` fields unloadable; `QuantityValue` silently drops the value
+## [x] C-50 – Deleting a unit makes objects with `QuantityValueRange` / `InputQuantityValue` fields unloadable; `QuantityValue` silently drops the value
 
 **Files:** `models/DataObject/ClassDefinition/Data/QuantityValueRange.php:137-142`, `:190-193`; `InputQuantityValue.php:52-53`,
 `:125-128`; `QuantityValue.php:246-258`; `models/DataObject/Data/AbstractQuantityValue.php:42-55`;
