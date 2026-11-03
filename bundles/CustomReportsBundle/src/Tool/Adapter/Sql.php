@@ -168,7 +168,7 @@ class Sql extends AbstractAdapter
         $config = (array)$config;
         $sql = '';
         if (!empty($config['sql']) && !$ignoreSelectAndGroupBy) {
-            if (!str_starts_with(strtoupper(trim($config['sql'])), 'SELECT')) {
+            if (!preg_match('/^\s*SELECT\b/i', $config['sql'])) {
                 $sql .= 'SELECT';
             }
             $sql .= "\n" . $config['sql'];
@@ -179,21 +179,18 @@ class Sql extends AbstractAdapter
             $sql .= 'SELECT *';
         }
         if (!empty($config['from'])) {
-            if (!str_starts_with(strtoupper(trim($config['from'])), 'FROM')) {
+            if (!preg_match('/^\s*FROM\b/i', $config['from'])) {
                 $sql .= "\n" . 'FROM ';
             }
             $sql .= "\n" . $config['from'];
         }
 
         if (!empty($config['where'])) {
-            if (str_starts_with(strtoupper(trim($config['where'])), 'WHERE')) {
-                $config['where'] = preg_replace('/^\s*WHERE\s*/', '', $config['where']);
-            }
-            $sql .= "\n" . 'WHERE (' . $config['where'] . ')';
+            $sql .= "\n" . 'WHERE (' . preg_replace('/^\s*WHERE\b\s*/i', '', $config['where']) . ')';
         }
 
         if (!empty($config['groupby']) && !$ignoreSelectAndGroupBy) {
-            if (!str_starts_with(strtoupper(trim($config['groupby'])), 'GROUP BY')) {
+            if (!preg_match('/^\s*GROUP\s+BY\b/i', $config['groupby'])) {
                 $sql .= ' GROUP BY ';
             }
             $sql .= "\n" . $config['groupby'];

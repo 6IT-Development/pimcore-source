@@ -26,7 +26,7 @@ error; in `getBaseQuery()` it returns `null`, so `getData()` / `getAvailableOpti
 **Fix:** word-boundary keyword check (`/\b(…)\b/i`) as UX-only check (security handled by C-01); throw a domain
 exception in both paths instead of returning `null`.
 
-### [ ] B-02 – Clause prefix detection is case-sensitive / has no word boundary
+### [x] B-02 – Clause prefix detection is case-sensitive / has no word boundary
 **File:** `src/Tool/Adapter/Sql.php:83`, `:94`, `:101-102`, `:108`
 - `where` is detected case-insensitively (`strtoupper`) but stripped case-sensitively
   (`preg_replace('/^\s*WHERE\s*/', …)`): `where a = 1` becomes `WHERE (where a = 1)` → SQL syntax error.
