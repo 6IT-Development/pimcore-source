@@ -19,7 +19,6 @@ namespace Pimcore\Bundle\InstallBundle;
 
 use Doctrine\DBAL\Configuration;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\ServerInfoAwareConnection;
 use Doctrine\DBAL\DriverManager;
 use Exception;
 use InvalidArgumentException;
@@ -611,14 +610,15 @@ class Installer
             }
 
             if (!$this->skipDatabaseConfig && in_array('write_database_config', $stepsToRun)) {
-                // now we're able to write the server version to the database.yaml
-                if ($db instanceof Connection) {
-                    $connection = $db->getWrappedConnection();
-                    if ($connection instanceof ServerInfoAwareConnection) {
-                        $writer = new ConfigWriter();
-                        $doctrineConfig['doctrine']['dbal']['connections']['default']['server_version'] = $connection->getServerVersion();
-                        $writer->writeDbConfig($doctrineConfig);
-                    }
+                // now we're able to write the server version to the database.yaml, so DBAL does not have to connect
+                // to detect the platform
+                $serverVersion = $this->getServerVersion($db);
+                if (null !== $serverVersion) {
+                    $writer = new ConfigWriter();
+                    $doctrineConfig['doctrine']['dbal']['connections']['default']['server_version'] = $serverVersion;
+                    $writer->writeDbConfig($doctrineConfig);
+                } else {
+                    $this->logger->warning('Could not detect the database server version, server_version is not written to database.yaml');
                 }
             }
         }
@@ -670,6 +670,27 @@ class Installer
         }
 
         return $errors;
+    }
+
+    private function getServerVersion(Connection $db): ?string
+    {
+        // DBAL 4
+        if (is_callable([$db, 'getServerVersion'])) {
+            return $db->getServerVersion(); // @phpstan-ignore method.private (private in DBAL 3, public in DBAL 4)
+        }
+
+        // DBAL 3: getWrappedConnection() and ServerInfoAwareConnection are deprecated
+        $native = $db->getNativeConnection();
+
+        if ($native instanceof PDO) {
+            return (string) $native->getAttribute(PDO::ATTR_SERVER_VERSION);
+        }
+
+        if ($native instanceof mysqli) {
+            return $native->server_info;
+        }
+
+        return null;
     }
 
     /**

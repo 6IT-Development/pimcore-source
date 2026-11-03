@@ -89,7 +89,7 @@ $db->delete('users', ['name' => $settings['username']]);   // no type filter
 **Fix direction:** reject reserved names (`system`), filter `delete()`/upsert by `type = 'user'`, validate length/charset
 in `install()` before connecting (see I-14).
 
-### [ ] B-06 – Server version detection uses deprecated DBAL API (fatal on DBAL 4) and the guard is dead code
+### [x] B-06 – Server version detection uses deprecated DBAL API (fatal on DBAL 4) and the guard is dead code
 **File:** `src/Installer.php:22`, `:466-476`
 ```php
 if ($db instanceof Connection) {                       // always true – parameter is typed Connection
