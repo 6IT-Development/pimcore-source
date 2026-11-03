@@ -257,7 +257,7 @@ Zones are never destroyed → memory grows with every interaction, a drop fires 
 (N× `rec.set()` → N× autosync requests).
 **Fix:** one `DropZone` on the grid view (`getTargetFromEvent` → row) created once; destroy it on panel destroy.
 
-### [ ] B-28 – Drag & drop accepts assets and data objects as link targets
+### [x] B-28 – Drag & drop accepts assets and data objects as link targets
 **File:** `public/js/settings.js:195-210`, `:292-305`
 Any element (`ddGroup: "element"`) is accepted; an object path (`/Products/Shoe`) is stored as an "external" link
 (`Document::getByPath()` fails) and rendered as a broken relative URL. Assets work only by accident (path is not

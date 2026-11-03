@@ -261,6 +261,12 @@ pimcore.bundle.glossary.settings = Class.create({
      * @param {Function} [getTarget] resolves the target from the event, the whole element by default
      */
     createLinkDropZone: function (el, setLink, getTarget) {
+        // only documents are stored as internal link; the path of an asset or data object would be stored and
+        // rendered as relative external link
+        var isDocument = function (data) {
+            return data.records.length === 1 && data.records[0].data.elementType === "document";
+        };
+
         return new Ext.dd.DropZone(el, {
             ddGroup: "element",
 
@@ -269,14 +275,14 @@ pimcore.bundle.glossary.settings = Class.create({
             },
 
             onNodeOver: function (target, dd, e, data) {
-                if (data.records.length === 1) {
+                if (isDocument(data)) {
                     return Ext.dd.DropZone.prototype.dropAllowed;
                 }
                 return Ext.dd.DropZone.prototype.dropNotAllowed;
             },
 
             onNodeDrop: function (target, dd, e, data) {
-                if (!pimcore.helpers.dragAndDropValidateSingleItem(data)) {
+                if (!isDocument(data) || !pimcore.helpers.dragAndDropValidateSingleItem(data)) {
                     return false;
                 }
 
