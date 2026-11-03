@@ -641,13 +641,17 @@ coercions it would turn into `TypeError`s.
 defect) return `?int`. Sabre's interfaces document `null` for both and then omit the property, which is better than a
 1970 date from `0`.
 
-## [ ] B-36 – `Dao::unlockPropagate()` builds invalid SQL for unsaved assets
+## [x] B-36 – `Dao::unlockPropagate()` builds invalid SQL for unsaved assets
 
 **File:** `models/Asset/Dao.php:433-434`
 
 - With `getId() === null` the SQL ends in `OR id = ` (syntax error); large trees build huge `IN()` lists.
 
 **Fix direction:** guard on null id; single `DELETE tl FROM tree_locks tl JOIN assets a …`.
+
+**Done:** an asset without id returns `[]`. The locks are deleted by a parameterised `DELETE … JOIN assets` on the same
+condition instead of an `IN()` list. The ids are still selected because `AbstractElement::unlockPropagate()` clears the
+cache of each one. `Document\Dao` and `DataObject\AbstractObject\Dao` have the same code (scope 6).
 
 ---
 

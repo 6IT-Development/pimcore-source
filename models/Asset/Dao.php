@@ -440,8 +440,18 @@ class Dao extends Model\Element\Dao
 
     public function unlockPropagate(): array
     {
-        $lockIds = $this->db->fetchFirstColumn('SELECT id from assets WHERE `path` like ' . $this->db->quote(Helper::escapeLike($this->model->getRealFullPath()) . '/%') . ' OR id = ' . $this->model->getId());
-        $this->db->executeQuery("DELETE FROM tree_locks WHERE `type` = 'asset' AND id IN (" . implode(',', $lockIds) . ')');
+        if (!$this->model->getId()) {
+            return [];
+        }
+
+        $condition = 'a.`path` LIKE :path OR a.id = :id';
+        $params = [
+            'path' => Helper::escapeLike($this->model->getRealFullPath()) . '/%',
+            'id' => $this->model->getId(),
+        ];
+
+        $lockIds = $this->db->fetchFirstColumn('SELECT a.id FROM assets a WHERE ' . $condition, $params);
+        $this->db->executeStatement("DELETE tl FROM tree_locks tl INNER JOIN assets a ON a.id = tl.id WHERE tl.`type` = 'asset' AND (" . $condition . ')', $params);
 
         return $lockIds;
     }
