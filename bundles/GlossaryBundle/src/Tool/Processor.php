@@ -354,6 +354,12 @@ class Processor
                             $linkType = '';
                             $linkTarget = '';
                         }
+                    } else {
+                        // the target document was deleted, the id would be rendered as a relative URL
+                        Logger::warning(sprintf('Glossary entry "%s" links to the missing document %s, the link is not rendered', $d['text'], $d['link']));
+                        $d['link'] = null;
+                        $linkType = '';
+                        $linkTarget = '';
                     }
                 }
 

@@ -500,4 +500,26 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryDoesNotRenderTheIdOfDeletedDocuments(): void
+    {
+        $document = TestHelper::createEmptyDocumentPage('glossary-deleted-');
+
+        foreach ([['Deleted', 'A deleted page'], ['Gone', null]] as [$text, $abbr]) {
+            $entry = new Glossary();
+            $entry->setText($text);
+            $entry->setLink((string)$document->getId());
+            $entry->setAbbr($abbr);
+            $entry->setLanguage('en');
+            $entry->save();
+        }
+
+        $document->delete();
+
+        $result = $this->processor->parse('<p>Deleted, Gone</p>', [], 'en', null, null);
+
+        $expect = '<p><abbr class="pimcore_glossary" title="A deleted page">Deleted</abbr>, Gone</p>';
+
+        $this->assertSame($expect, $result);
+    }
 }

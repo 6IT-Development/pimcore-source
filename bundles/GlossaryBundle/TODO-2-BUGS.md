@@ -131,7 +131,7 @@ documents are linked too (no `isPublished()` check) → links to 404 pages.
 **Fix:** add the document cache tags (`$doc->getCacheTag()`) of every resolved target to `Cache::save()`, skip
 unpublished targets (or resolve paths at render time from a cached id→path map).
 
-### [ ] B-14 – Deleted target document → raw numeric id rendered as `href`
+### [x] B-14 – Deleted target document → raw numeric id rendered as `href`
 **File:** `src/Tool/Processor.php:226-239`
 If `link` contains a document id and `Document::getById()` returns `null`, `$d['link']` stays `"123"` and is emitted as
 `<a href="123">` (relative URL → 404) with `linkType = 'external'`.
