@@ -228,7 +228,7 @@ lines (or use a `config/bundles.local.php`-style include), `var_export`/`php -l`
 
 **Fix direction:** create the admin first (or use `lastInsertId()`) and use its id, or use `0` (system) consistently.
 
-### [ ] B-18 – `formatPrerequisiteMessages()` with an empty filter returns nothing
+### [x] B-18 – `formatPrerequisiteMessages()` with an empty filter returns nothing
 **File:** `src/Installer.php:252-272`
 - `if (empty($filterStates) || !in_array(...)) continue;` – passing `[]` (the natural "no filter") skips **every**
   check. Public method of an `@internal` class, but used as API by demos/tests. `in_array()` is loose.

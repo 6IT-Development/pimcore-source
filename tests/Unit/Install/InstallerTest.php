@@ -20,6 +20,7 @@ namespace Pimcore\Tests\Unit\Install;
 use InvalidArgumentException;
 use Pimcore\Bundle\InstallBundle\Installer;
 use Pimcore\Tests\Support\Test\TestCase;
+use Pimcore\Tool\Requirements\Check;
 use Psr\Log\NullLogger;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
@@ -144,5 +145,19 @@ class InstallerTest extends TestCase
             @unlink($socketPath);
             rmdir($directory);
         }
+    }
+
+    public function testFormatsPrerequisiteMessagesByState(): void
+    {
+        $checks = [
+            new Check(['name' => 'ok', 'state' => Check::STATE_OK, 'message' => 'ok']),
+            new Check(['name' => 'warning', 'state' => Check::STATE_WARNING, 'message' => 'warning']),
+            new Check(['name' => 'error', 'state' => Check::STATE_ERROR, 'message' => 'error']),
+        ];
+        $installer = $this->createInstaller();
+
+        $this->assertSame(['error'], $installer->formatPrerequisiteMessages($checks));
+        $this->assertSame(['warning', 'error'], $installer->formatPrerequisiteMessages($checks, [Check::STATE_WARNING, Check::STATE_ERROR]));
+        $this->assertSame(['ok', 'warning', 'error'], $installer->formatPrerequisiteMessages($checks, []));
     }
 }

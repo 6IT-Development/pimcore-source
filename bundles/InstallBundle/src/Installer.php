@@ -290,13 +290,14 @@ class Installer
 
     /**
      * @param Check[] $checks
+     * @param int[] $filterStates Only checks in one of these states are returned, an empty list returns all checks
      *
      */
     public function formatPrerequisiteMessages(array $checks, array $filterStates = [Check::STATE_ERROR]): array
     {
         $messages = [];
         foreach ($checks as $check) {
-            if (empty($filterStates) || !in_array($check->getState(), $filterStates)) {
+            if ([] !== $filterStates && !in_array($check->getState(), $filterStates, true)) {
                 continue;
             }
 
