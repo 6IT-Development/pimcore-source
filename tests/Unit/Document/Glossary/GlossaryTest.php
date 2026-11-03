@@ -218,4 +218,26 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossarySkipsDescendantsOfBlockedTags(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Blocked');
+        $entry->setLink('/blocked');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse(
+            '<div>Blocked <h2><strong>Blocked</strong></h2><script>var Blocked = 1;</script>'
+            . '<pre><code><span>Blocked</span></code></pre></div>', [],
+            'en',
+            null,
+            null
+        );
+
+        $expect = '<div><a class="pimcore_glossary" href="/blocked">Blocked</a> <h2><strong>Blocked</strong></h2>'
+            . '<script>var Blocked = 1;</script><pre><code><span>Blocked</span></code></pre></div>';
+
+        $this->assertSame($expect, $result);
+    }
 }

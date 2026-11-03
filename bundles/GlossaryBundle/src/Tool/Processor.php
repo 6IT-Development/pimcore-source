@@ -117,7 +117,7 @@ class Processor
         $textNodes = (new \DOMXPath($root->ownerDocument))->query('//text()[normalize-space()][not(ancestor::a)]');
 
         foreach (iterator_to_array($textNodes) as $textNode) {
-            if (in_array(strtolower($textNode->parentNode->nodeName), $this->blockedTags, true)) {
+            if ($this->hasBlockedAncestor($textNode)) {
                 continue;
             }
 
@@ -128,6 +128,20 @@ class Processor
         $html->clear();
 
         return $result;
+    }
+
+    /**
+     * A blocked tag protects its whole subtree, e.g. a <span> inside <pre> or a <strong> inside <h2>.
+     */
+    private function hasBlockedAncestor(\DOMNode $node): bool
+    {
+        for ($parent = $node->parentNode; $parent instanceof \DOMElement; $parent = $parent->parentNode) {
+            if (in_array(strtolower($parent->nodeName), $this->blockedTags, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

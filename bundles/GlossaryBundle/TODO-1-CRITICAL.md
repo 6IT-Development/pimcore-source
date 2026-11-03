@@ -93,7 +93,7 @@ longest first) so replacements of one term are never re-scanned by the next one.
 
 ---
 
-## [ ] C-04 – `blocked_tags` only protects an element itself, not when it is a descendant of a processed element
+## [x] C-04 – `blocked_tags` only protects an element itself, not when it is a descendant of a processed element
 
 **Files:** `src/Tool/Processor.php:88`, `:122-129`, `config/pimcore/default.yaml:2-6`
 
