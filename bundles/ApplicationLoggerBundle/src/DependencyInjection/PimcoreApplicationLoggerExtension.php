@@ -38,9 +38,11 @@ class PimcoreApplicationLoggerExtension extends Extension implements PrependExte
     public function prepend(ContainerBuilder $container): void
     {
         if ($container->hasExtension('pimcore_admin')) {
+            // without prepend the loader appends the config, which then wins over the application's own key bindings
             $loader = new YamlFileLoader(
                 $container,
-                new FileLocator(__DIR__ . '/../../config')
+                new FileLocator(__DIR__ . '/../../config'),
+                prepend: true
             );
 
             $loader->load('admin-classic.yaml');

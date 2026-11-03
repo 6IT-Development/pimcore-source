@@ -168,7 +168,7 @@ chars (`-`, backtick) break the `DROP`; behaviour differs between statements.
 
 ## Config / DI
 
-### [ ] B-22 – `prepend()` appends config → overrides user key bindings
+### [x] B-22 – `prepend()` appends config → overrides user key bindings
 **File:** `src/DependencyInjection/PimcoreApplicationLoggerExtension.php:38-48`, `config/admin-classic.yaml`
 `YamlFileLoader::load()` inside `prepend()` calls `loadFromExtension()`, which **appends** the config after the
 application's own config. The bundle's `default_key_bindings.application_logger` therefore wins over a project-level
