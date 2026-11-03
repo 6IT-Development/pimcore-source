@@ -529,7 +529,7 @@ which `LongRunningHelper::cleanUp()` (kernel shutdown, `Pimcore::collectGarbage(
 `MessengerClearRuntimeCacheListener` (every consumed message, like the runtime cache) call. Request-loop runtimes
 (FrankenPHP / RoadRunner worker mode) reset it only through the kernel shutdown, the same as `RuntimeCache`.
 
-## [ ] B-28 – Listing permission SQL uses unanchored prefix matching (`/foo` matches `/foobar`)
+## [x] B-28 – Listing permission SQL uses unanchored prefix matching (`/foo` matches `/foobar`)
 
 **Files:** `models/Asset/Listing.php:71-85`, `models/Asset/Dao.php:337-351`, `:393-407`; root `models/Element/Dao.php:88`
 
@@ -540,6 +540,11 @@ which `LongRunningHelper::cleanUp()` (kernel shutdown, `Pimcore::collectGarbage(
 - `isAllowed()` (`Dao.php:467`) is correct, so only listings leak (e.g. via WebDAV `getChildren()` after CoreBundle C-13).
 
 **Fix direction:** compare with `'/'` appended on both sides, or use `cid IN (parentIds)`.
+
+**Done:** the three asset listing conditions compare `<path><filename>/` with `<cpath>/` (root trimmed to `/`), and
+`Element\Dao::InheritingPermission()` compares `<cpath>/` with `<full path>/`. The latter is shared, so inherited
+permissions of documents and objects are anchored too; their `hasChildren()` / `getChildAmount()` conditions remain for
+B-167.
 
 ## [ ] B-29 – WebDAV upload writes the body to disk before the permission check and leaks temp files on errors
 

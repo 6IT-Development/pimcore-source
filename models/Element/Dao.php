@@ -118,9 +118,10 @@ abstract class Dao extends Model\Dao\AbstractDao
         if (!$current->getId()) {
             return 0;
         }
-        $fullPath = $current->getPath() . $current->getKey();
+        // compare with a trailing slash on both sides, a workspace on /foo is not an ancestor of /foobar
+        $fullPath = rtrim($current->getPath() . $current->getKey(), '/') . '/';
 
-        $sql = 'SELECT ' . $this->db->quoteIdentifier($type) . ' FROM users_workspaces_' . $tableSuffix . ' WHERE LOCATE(cpath, ?)=1 AND
+        $sql = 'SELECT ' . $this->db->quoteIdentifier($type) . ' FROM users_workspaces_' . $tableSuffix . ' WHERE LOCATE(CONCAT(TRIM(TRAILING \'/\' FROM cpath), \'/\'), ?)=1 AND
         userId IN (' . implode(',', $userIds) . ')
         ORDER BY LENGTH(cpath) DESC, FIELD(userId, ' . end($userIds) . ') DESC, ' . $this->db->quoteIdentifier($type) . ' DESC LIMIT 1';
 
