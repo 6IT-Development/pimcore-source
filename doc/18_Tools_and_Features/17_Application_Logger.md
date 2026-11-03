@@ -267,6 +267,8 @@ $appLogger->logException('Oh no!', $exception, 'alert', $relatedObject, $compone
 ApplicationLogger::logExceptionObject($logger, 'Oh no!', $exception, 'alert', $relatedObject);
 ```
 
+`$relatedObject` can be any element or an ID. An ID is treated as the ID of a data object.
+
 
 ### Setting an individual logger level
 

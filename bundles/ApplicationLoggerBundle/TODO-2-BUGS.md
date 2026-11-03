@@ -101,7 +101,7 @@ reachable only as extra args. Decide: drop the legacy path (and document) or sup
 The recursive call passes `$includePrevious` as default `false`, so chains deeper than one level are lost
 (e.g. `HandlerFailedException → RuntimeException → PDOException` loses the root cause).
 
-### [ ] B-13 – `logException()` / `logExceptionObject()` only accept data objects as related element
+### [x] B-13 – `logException()` / `logExceptionObject()` only accept data objects as related element
 **Lines:** 280-324
 `?AbstractObject $relatedObject` rejects `Asset`/`Document`/`int` with `TypeError`, although the rest of the class
 supports all element types. Should be `ElementInterface|int|null`.

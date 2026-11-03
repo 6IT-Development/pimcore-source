@@ -306,11 +306,11 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
     }
 
     public function logException(
-        string          $message,
-        Throwable       $exceptionObject,
-        ?string         $priority = 'alert',
-        ?AbstractObject $relatedObject = null,
-        ?string         $component = null
+        string                    $message,
+        Throwable                 $exceptionObject,
+        ?string                   $priority = 'alert',
+        ElementInterface|int|null $relatedObject = null,
+        ?string                   $component = null
     ): void
     {
         if (is_null($priority)) {
@@ -333,12 +333,12 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
      * as the logException method to any PSR/monolog logger (e.g. when consumed via DI)
      */
     public static function logExceptionObject(
-        LoggerInterface  $logger,
-        string           $message,
-        Throwable        $exception,
-        int|string|Level $level = Level::Alert,
-        ?AbstractObject  $relatedObject = null,
-        array            $context = []
+        LoggerInterface           $logger,
+        string                    $message,
+        Throwable                 $exception,
+        int|string|Level          $level = Level::Alert,
+        ElementInterface|int|null $relatedObject = null,
+        array                     $context = []
     ): void
     {
         $message .= ' : ' . $exception->getMessage();
