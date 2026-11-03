@@ -244,7 +244,7 @@ auto redirects whose **source** equals the new slug (the new slug is live again)
 
 ## Sitemaps (`src/Sitemap/*`)
 
-### [ ] B-22 – `ModificationDateProcessor`: `null` modification date → `setLastmod(false)` `TypeError`
+### [x] B-22 – `ModificationDateProcessor`: `null` modification date → `setLastmod(false)` `TypeError`
 **File:** `src/Sitemap/Element/Processor/ModificationDateProcessor.php:38`
 - `DateTime::createFromFormat('U', '')` returns `false` → `UrlConcrete::setLastmod(?DateTimeInterface)` `TypeError`
   → whole sitemap fails (same blast radius as C-01). Elements without modification date exist (e.g. freshly imported,
