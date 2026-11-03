@@ -173,7 +173,7 @@ member function … on null` (HTTP 500) when two admins edit the grid or a row w
 that is not an `int` in the JSON payload (`"5"`) raises a `TypeError` under `strict_types`.
 **Fix:** cast/validate the id, return a 404 JSON response (`success: false`) for missing entries.
 
-### [ ] B-19 – Mass assignment through `setValues($data)` with the raw client payload
+### [x] B-19 – Mass assignment through `setValues($data)` with the raw client payload
 **File:** `src/Controller/SettingsController.php:66`, `:91`, `lib/Model/AbstractModel.php:163-190`
 Every key is mapped to a setter: the client can overwrite `creationDate` / `modificationDate` (modification date is
 re-set by the DAO, creation date is not), and unexpected keys like `dao` or `values` call `setDao()` /

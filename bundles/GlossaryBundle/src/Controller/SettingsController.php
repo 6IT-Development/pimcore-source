@@ -24,6 +24,8 @@ use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
 use Pimcore\Extension\Bundle\Exception\AdminClassicBundleNotFoundException;
 use Pimcore\Model\Document;
+use Pimcore\Model\Site;
+use Pimcore\Tool;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,6 +38,16 @@ use Symfony\Component\Routing\Attribute\Route;
 class SettingsController extends UserAwareController
 {
     use JsonHelperTrait;
+
+    /**
+     * Fields the admin grid may set; all others (id, dates) are maintained by the model.
+     */
+    private const array EDITABLE_FIELDS = ['text', 'link', 'abbr', 'language', 'casesensitive', 'exactmatch', 'site'];
+
+    /**
+     * Length of the varchar columns text, link and abbr.
+     */
+    private const int MAX_LENGTH = 255;
 
     #[Route('/glossary', name: 'pimcore_bundle_glossary_settings_glossary', methods: [Request::METHOD_POST])]
     public function glossaryAction(Request $request): JsonResponse
@@ -62,20 +74,8 @@ class SettingsController extends UserAwareController
                     return $this->notFoundResponse();
                 }
 
-                // already loaded, and a string id would fail setId()
-                unset($data['id']);
-
-                $data = $this->normalizeEmptyValues($data);
-
-                if (!empty($data['link'])) {
-                    if ($doc = Document::getByPath($data['link'])) {
-                        $data['link'] = $doc->getId();
-                    }
-                }
-
-                $glossary->setValues($data);
-
                 try {
+                    $glossary->setValues($this->getValidatedValues($data));
                     $glossary->save();
                 } catch (InvalidArgumentException $e) {
                     return $this->jsonResponse(['success' => false, 'message' => $e->getMessage()]);
@@ -85,22 +85,11 @@ class SettingsController extends UserAwareController
 
                 return $this->jsonResponse(['data' => $glossary, 'success' => true]);
             } elseif ($request->query->getString('xaction') == 'create') {
-                unset($data['id']);
-
                 // save glossary
                 $glossary = new Glossary();
 
-                $data = $this->normalizeEmptyValues($data);
-
-                if (!empty($data['link'])) {
-                    if ($doc = Document::getByPath($data['link'])) {
-                        $data['link'] = $doc->getId();
-                    }
-                }
-
-                $glossary->setValues($data);
-
                 try {
+                    $glossary->setValues($this->getValidatedValues($data, true));
                     $glossary->save();
                 } catch (InvalidArgumentException $e) {
                     return $this->jsonResponse(['success' => false, 'message' => $e->getMessage()]);
@@ -175,17 +164,75 @@ class SettingsController extends UserAwareController
     }
 
     /**
+     * Only the editable fields are taken from the client (no id, creation date, dao, …), and they are validated.
+     *
      * The grid sends every field back (writeAllFields), with null for the unused one of link / abbreviation and ''
      * for a cleared one; the setters accept null, and '' is stored as NULL as well.
+     *
+     * @throws InvalidArgumentException
      */
-    private function normalizeEmptyValues(array $data): array
+    private function getValidatedValues(mixed $data, bool $isNew = false): array
     {
-        foreach (['text', 'link', 'abbr'] as $key) {
-            if (($data[$key] ?? null) === '') {
-                $data[$key] = null;
+        if (!is_array($data)) {
+            throw new InvalidArgumentException('Invalid glossary data.');
+        }
+
+        $values = array_intersect_key($data, array_flip(self::EDITABLE_FIELDS));
+
+        foreach (['text', 'link', 'abbr', 'language', 'site'] as $key) {
+            if (($values[$key] ?? null) === '') {
+                $values[$key] = null;
             }
         }
 
-        return $data;
+        foreach (['text', 'link', 'abbr', 'language'] as $key) {
+            if (isset($values[$key])) {
+                if (!is_scalar($values[$key])) {
+                    throw new InvalidArgumentException(sprintf('Invalid value for the glossary field "%s".', $key));
+                }
+                $values[$key] = (string)$values[$key];
+            }
+        }
+
+        // the grid shows the path of internal targets, they are stored as document id
+        if (isset($values['link']) && $doc = Document::getByPath($values['link'])) {
+            $values['link'] = (string)$doc->getId();
+        }
+
+        if (($isNew || array_key_exists('text', $values)) && trim($values['text'] ?? '') === '') {
+            throw new InvalidArgumentException('The glossary text must not be empty.');
+        }
+
+        foreach (['text', 'link', 'abbr'] as $key) {
+            if (isset($values[$key]) && mb_strlen($values[$key]) > self::MAX_LENGTH) {
+                throw new InvalidArgumentException(sprintf('The glossary field "%s" must not be longer than %d characters.', $key, self::MAX_LENGTH));
+            }
+        }
+
+        if (isset($values['language'])) {
+            $validLanguages = Tool::getValidLanguages();
+            if ($validLanguages ? !in_array($values['language'], $validLanguages, true) : strlen($values['language']) > 10) {
+                throw new InvalidArgumentException(sprintf('The language "%s" is not a valid language.', $values['language']));
+            }
+        }
+
+        if (isset($values['site'])) {
+            $siteId = filter_var($values['site'], FILTER_VALIDATE_INT);
+            if ($siteId === 0) {
+                $values['site'] = null;
+            } elseif ($siteId === false || $siteId < 0 || !Site::getById($siteId)) {
+                throw new InvalidArgumentException('The selected site does not exist.');
+            } else {
+                $values['site'] = $siteId;
+            }
+        }
+
+        foreach (['casesensitive', 'exactmatch'] as $key) {
+            if (array_key_exists($key, $values)) {
+                $values[$key] = filter_var($values[$key], FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+
+        return $values;
     }
 }
