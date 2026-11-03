@@ -45,13 +45,27 @@ class CustomReportController extends UserAwareController
     use JsonHelperTrait;
 
     /**
-     * Report properties updateAction() takes from the request. The name and the dates are not among them, the name
-     * becomes a file name.
+     * Report properties updateAction() takes from the request and their types. The name and the dates are not among
+     * them, the name becomes a file name.
      */
     private const array UPDATABLE_PROPERTIES = [
-        'sql', 'dataSourceConfig', 'columnConfiguration', 'niceName', 'group', 'groupIconClass', 'iconClass',
-        'reportClass', 'menuShortcut', 'chartType', 'pieColumn', 'pieLabelColumn', 'xAxis', 'yAxis', 'shareGlobally',
-        'sharedUserNames', 'sharedRoleNames',
+        'sql' => 'string',
+        'dataSourceConfig' => 'array[]',
+        'columnConfiguration' => 'array[]',
+        'niceName' => 'string',
+        'group' => 'string',
+        'groupIconClass' => 'string',
+        'iconClass' => 'string',
+        'reportClass' => 'string',
+        'menuShortcut' => 'bool',
+        'chartType' => 'string',
+        'pieColumn' => '?string',
+        'pieLabelColumn' => '?string',
+        'xAxis' => '?string',
+        'yAxis' => 'string[]',
+        'shareGlobally' => 'bool',
+        'sharedUserNames' => 'string[]',
+        'sharedRoleNames' => 'string[]',
     ];
 
     /**
@@ -187,19 +201,17 @@ class CustomReportController extends UserAwareController
             throw new ConfigWriteException();
         }
 
-        $data = $this->decodeJson($request->request->getString('configuration'));
+        $data = json_decode($request->request->getString('configuration'), true);
         if (!is_array($data)) {
             throw new BadRequestHttpException('Invalid report configuration');
         }
 
-        if (!is_array($data['yAxis'] ?? null)) {
-            $data['yAxis'] = strlen($data['yAxis'] ?? '') ? [$data['yAxis']] : [];
-        }
+        // a single y axis arrives as a plain value, no axis clears the setting
+        $yAxis = $data['yAxis'] ?? [];
+        $data['yAxis'] = is_string($yAxis) && $yAxis !== '' ? [$yAxis] : $yAxis;
 
-        foreach (self::UPDATABLE_PROPERTIES as $key) {
-            if (array_key_exists($key, $data)) {
-                $report->{'set' . ucfirst($key)}($data[$key]);
-            }
+        foreach ($this->normalizeReportProperties($data) as $key => $value) {
+            $report->{'set' . ucfirst($key)}($value);
         }
 
         $report->save();
@@ -481,6 +493,45 @@ class CustomReportController extends UserAwareController
         }
 
         return $report;
+    }
+
+    /**
+     * Picks the updatable properties from the request data. Everything is checked before the first setter runs, as
+     * these are strictly typed. Empty form fields can arrive as null or an empty string.
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeReportProperties(array $data): array
+    {
+        $properties = [];
+
+        foreach (self::UPDATABLE_PROPERTIES as $key => $type) {
+            if (!array_key_exists($key, $data)) {
+                continue;
+            }
+
+            $value = $data[$key];
+            if ($type === 'string') {
+                $value ??= '';
+            } elseif (($type === 'array[]' || $type === 'string[]') && ($value === null || $value === '')) {
+                $value = [];
+            }
+
+            $valid = match ($type) {
+                'string' => is_string($value),
+                '?string' => $value === null || is_string($value),
+                'bool' => is_bool($value),
+                'array[]' => is_array($value) && array_all($value, is_array(...)),
+                'string[]' => is_array($value) && array_all($value, is_string(...)),
+            };
+            if (!$valid) {
+                throw new BadRequestHttpException(sprintf('Invalid report property "%s"', $key));
+            }
+
+            $properties[$key] = $value;
+        }
+
+        return $properties;
     }
 
     /**

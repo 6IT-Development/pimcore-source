@@ -139,7 +139,7 @@ property" warning for data sources saved without that key.
 **Fix:** `$drillDownFilters = json_decode(…, true) ?: []` with `is_array` check; `$column['export'] ?? false`;
 check `fopen`; when no column is exported return `400` or export all columns with a matching header.
 
-### [ ] B-14 – `updateAction`: warnings and `TypeError`s on incomplete or invalid payloads
+### [x] B-14 – `updateAction`: warnings and `TypeError`s on incomplete or invalid payloads
 **File:** `src/Controller/Reports/CustomReportController.php:171-182`
 - `!is_array($data['yAxis'])` reads an undefined key when `yAxis` is not sent → warning (exception in debug).
 - `decodeJson()` on invalid JSON returns `null` → `foreach (null …)`.
