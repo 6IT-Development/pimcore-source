@@ -205,7 +205,7 @@ lines (or use a `config/bundles.local.php`-style include), `var_export`/`php -l`
 
 **Fix direction:** `chmod 0600` (or `0640`) after writing; prefer writing `DATABASE_URL`/env references (I-09).
 
-### [ ] B-16 – `getDataFiles()` picks up unintended files and can return `false`
+### [x] B-16 – `getDataFiles()` picks up unintended files and can return `false`
 **File:** `src/Installer.php:738-741`, `:780`
 - `glob(PIMCORE_PROJECT_ROOT . '/dump/*.sql*')` matches `*.sql.bak`, `*.sql~`, `*.sql.zip`, `*.sql.orig` – they are
   imported (zip as raw bytes → SQL error, and see C-03/C-04).

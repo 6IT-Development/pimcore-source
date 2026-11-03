@@ -979,9 +979,22 @@ class Installer
         return $errors;
     }
 
+    /**
+     * Only *.sql and *.sql.gz files (no backups like *.sql.bak, *.sql~ or other archives), in natural order
+     * (2_x.sql before 10_y.sql)
+     *
+     * @return string[]
+     */
     protected function getDataFiles(): array
     {
-        return glob(PIMCORE_PROJECT_ROOT . '/dump/*.sql*');
+        $files = array_merge(
+            glob(PIMCORE_PROJECT_ROOT . '/dump/*.sql') ?: [],
+            glob(PIMCORE_PROJECT_ROOT . '/dump/*.sql.gz') ?: []
+        );
+
+        usort($files, static fn (string $a, string $b) => strnatcmp(basename($a), basename($b)));
+
+        return $files;
     }
 
     protected function createOrUpdateUser(Connection $db, array $config = []): void
@@ -1019,7 +1032,8 @@ class Installer
 
         // the dump is imported as it is: comments are parsed by the server, stripping them would also
         // change string data that contains comment sequences (CSS, JS, HTML)
-        if (str_contains($file, 'atomic')) {
+        // only the file name decides, not the directory of the project (e.g. /srv/atomic-shop/)
+        if (str_contains(basename($file), 'atomic')) {
             // atomic dumps are sent as one multi-statement query (e.g. for routines without DELIMITER)
             $dumpFile = file_get_contents($file);
             if ($dumpFile === false) {
