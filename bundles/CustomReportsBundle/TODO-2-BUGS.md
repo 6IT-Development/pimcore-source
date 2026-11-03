@@ -219,7 +219,7 @@ empty/falsy (e.g. a YAML definition `my_report: {}` – listed by `fetchAllKeys(
 **Fix:** apply `array_filter($configs, $filter)` and `usort($configs, $order)` in `loadList()` (as other location-aware
 listings do), or drop the interfaces.
 
-### [ ] B-23 – `Dao::getByName()` breaks when called without id
+### [x] B-23 – `Dao::getByName()` breaks when called without id
 **File:** `src/Tool/Config/Dao.php:51-71`
 With `$id === null` (allowed by the signature) `$data['id']` is never set, so `setName($data['id'])` reads an undefined
 key → `setName(null)` → `TypeError`. `$id != null` is a loose comparison (`''` → treated as "no id").

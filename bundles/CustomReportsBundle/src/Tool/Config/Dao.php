@@ -50,25 +50,21 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function getByName(?string $id = null): void
     {
-        if ($id != null) {
-            $this->model->setName($id);
-        }
+        $name = $id ?? $this->model->getName();
+        $this->model->setName($name);
 
-        $data = $this->getDataByName($this->model->getName());
+        $data = $this->getDataByName($name);
 
-        if ($data && $id != null) {
-            $data['id'] = $id;
-        }
-
-        if ($data) {
-            $this->assignVariablesToModel($data);
-            $this->model->setName($data['id']);
-        } else {
+        if (!$data) {
             throw new Model\Exception\NotFoundException(sprintf(
                 'Custom report config with name "%s" does not exist.',
-                $this->model->getName()
+                $name
             ));
         }
+
+        $this->assignVariablesToModel($data);
+        // the key of the definition is the name, whatever the definition itself says
+        $this->model->setName($name);
     }
 
     /**
