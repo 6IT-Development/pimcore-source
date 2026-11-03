@@ -144,7 +144,7 @@ empty `IN()` → syntax error. Clamp to `0..7`.
 - If `send()` throws, the `UPDATE` never runs → next run re-sends all batches already delivered (duplicates).
 - All matching rows are loaded with `SELECT *` into memory (unbounded on first activation / after a flood).
 
-### [ ] B-19 – Archive task is not atomic
+### [x] B-19 – Archive task is not atomic
 **File:** `src/Maintenance/LogArchiveTask.php:61-92`
 `INSERT INTO archive … SELECT`, file deletions and `DELETE FROM application_logs` are separate statements (the ARCHIVE
 engine is non-transactional). A failure after the insert → rows are copied again on the next run (duplicates); a failure

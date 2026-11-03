@@ -21,6 +21,7 @@ use DateInterval;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use League\Flysystem\FilesystemException;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Config;
 use Pimcore\Maintenance\TaskInterface;
@@ -32,6 +33,8 @@ use Psr\Log\LoggerInterface;
  */
 readonly class LogArchiveTask implements TaskInterface
 {
+    private const int ARCHIVE_CHUNK_SIZE = 1000;
+
     public function __construct(
         private Connection      $db,
         private Config          $config,
@@ -43,7 +46,6 @@ readonly class LogArchiveTask implements TaskInterface
     public function execute(): void
     {
         $db = $this->db;
-        $storage = Storage::get('application_log');
 
         $date = new DateTime('now');
         $archiveTableName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_' . $date->format('Y') . '_' . $date->format('m');
@@ -69,22 +71,9 @@ readonly class LogArchiveTask implements TaskInterface
             $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $tablename . ' (' . implode(', ', $columnDefinitions) . ') ENGINE = ARCHIVE ROW_FORMAT = DEFAULT DEFAULT CHARSET=utf8mb4;');
             $this->widenLegacyArchiveTable($archiveTableName, $tablename);
 
-            // explicit column lists, so a column added to the log table cannot shift values into the wrong archive column
-            $db->executeQuery('INSERT INTO ' . $tablename . ' (' . implode(', ', $columns) . ') ' . sprintf($sql, implode(', ', $columns)));
+            $this->logger->debug('Archiving application_logs and deleting their referenced FileObjects which are older than ' . $archive_threshold . ' days');
 
-            $this->logger->debug('Deleting referenced FileObjects of application_logs which are older than ' . $archive_threshold . ' days');
-
-            $fileObjectPaths = $db->fetchAllAssociative(sprintf($sql, 'fileobject'));
-            foreach ($fileObjectPaths as $objectPath) {
-                $filePath = $objectPath['fileobject'];
-                if ($filePath !== null) {
-                    if ($storage->fileExists($filePath)) {
-                        $storage->delete($filePath);
-                    }
-                }
-            }
-
-            $db->executeQuery('DELETE FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $archive_threshold . ' DAY);');
+            $this->archiveRows($tablename, $columns, '`timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $archive_threshold . ' DAY)');
         }
 
         $archiveTables = $db->fetchFirstColumn(
@@ -112,11 +101,65 @@ readonly class LogArchiveTask implements TaskInterface
 
                     // the folder of the archived month, not of the month the archive expires
                     $folderName = $archiveLogDate->format('Y/m');
+                    $storage = Storage::get('application_log');
 
                     if ($storage->directoryExists($folderName)) {
                         $storage->deleteDirectory($folderName);
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * The archive engine has no transactions, so each chunk is moved in an order that a rerun can continue from: copy
+     * (skipping rows a failed run has copied already), delete the rows, then delete the files. A failure can only
+     * leave unreferenced files behind, which are removed with the folder of their month.
+     *
+     * @param string[] $columns
+     */
+    private function archiveRows(string $tablename, array $columns, string $condition): void
+    {
+        $db = $this->db;
+        $columnList = implode(', ', $columns);
+        $archivedUpTo = (int)$db->fetchOne('SELECT MAX(`id`) FROM ' . $tablename);
+        $lastId = 0;
+
+        while ($rows = $db->fetchAllAssociative(
+            'SELECT `id`, `fileobject` FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE ' . $condition . ' AND `id` > ? ORDER BY `id` ASC LIMIT ' . self::ARCHIVE_CHUNK_SIZE,
+            [$lastId]
+        )) {
+            $firstId = (int)$rows[0]['id'];
+            $maxId = (int)$rows[array_key_last($rows)]['id'];
+            $chunk = $condition . ' AND `id` >= ' . $firstId . ' AND `id` <= ' . $maxId;
+
+            // the archive table has no index, only look it up when it can contain rows of this chunk
+            $notArchived = $firstId <= $archivedUpTo ? ' AND `id` NOT IN (SELECT `id` FROM ' . $tablename . ')' : '';
+
+            // explicit column lists, so a column added to the log table cannot shift values into the wrong archive column
+            $db->executeStatement('INSERT INTO ' . $tablename . ' (' . $columnList . ') SELECT ' . $columnList . ' FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE ' . $chunk . $notArchived);
+            $db->executeStatement('DELETE FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE ' . $chunk);
+
+            $this->deleteFileObjects(array_column($rows, 'fileobject'));
+
+            $lastId = $maxId;
+        }
+    }
+
+    /**
+     * @param array<string|null> $filePaths
+     */
+    private function deleteFileObjects(array $filePaths): void
+    {
+        $storage = Storage::get('application_log');
+
+        foreach (array_filter($filePaths) as $filePath) {
+            try {
+                if ($storage->fileExists($filePath)) {
+                    $storage->delete($filePath);
+                }
+            } catch (FilesystemException $e) {
+                $this->logger->warning('Could not delete FileObject ' . $filePath . ': ' . $e->getMessage());
             }
         }
     }
