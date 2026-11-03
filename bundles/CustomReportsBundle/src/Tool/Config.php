@@ -64,7 +64,10 @@ class Config extends Model\AbstractModel implements JsonSerializable
 
     protected ?string $xAxis = null;
 
-    protected null|string|array $yAxis = null;
+    /**
+     * @var string[]
+     */
+    protected array $yAxis = [];
 
     protected ?int $modificationDate = null;
 
@@ -280,12 +283,20 @@ class Config extends Model\AbstractModel implements JsonSerializable
         return $this->xAxis;
     }
 
+    /**
+     * Definitions saved earlier can hold a single value or null.
+     *
+     * @param string[]|string|null $yAxis
+     */
     public function setYAxis(array|string|null $yAxis): void
     {
-        $this->yAxis = $yAxis;
+        $this->yAxis = array_values(array_filter((array) $yAxis, static fn (mixed $axis): bool => $axis !== null && $axis !== ''));
     }
 
-    public function getYAxis(): array|string|null
+    /**
+     * @return string[]
+     */
+    public function getYAxis(): array
     {
         return $this->yAxis;
     }

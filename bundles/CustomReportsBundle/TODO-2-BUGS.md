@@ -236,7 +236,7 @@ names directly (`in_array($user->getName(), $this->sharedUserNames, true)`), see
 are compared directly and strictly. Rename and re-creation are not solved, the behaviour is documented in
 `doc/18_Tools_and_Features/29_Custom_Reports.md`.
 
-### [ ] B-25 – Config tree and model types are out of sync → `TypeError` when loading hand-written YAML
+### [x] B-25 – Config tree and model types are out of sync → `TypeError` when loading hand-written YAML
 **Files:** `src/DependencyInjection/Configuration.php:39-65`, `src/Tool/Config.php:39-83`, `:273-291`
 - `xAxis` is a `variableNode` in the tree, but `Config::setXAxis(?string)` → an array/number in YAML fails on load.
 - `scalarNode` for `name`, `sql`, `niceName`, `group`, `pieColumn`, … accepts `int`/`float`/`bool` (e.g.

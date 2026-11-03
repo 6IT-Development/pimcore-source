@@ -73,6 +73,10 @@
 - User names in the sharing settings of a report are compared exactly with the name of the user. A hand-written
   `sharedUserNames` entry that differs in upper or lower case no longer grants access, depending on the database
   collation it did before.
+- `pimcore_custom_reports.definitions`: numbers in text options (e.g. `pieColumn: 2024`) are read as strings. `xAxis` as
+  an array and text options with a boolean value fail at container build instead of with a `TypeError` when the report
+  is loaded. The `id` option is deprecated, it was never used.
+- `Config::getYAxis()` always returns an array, a single value or `null` set through `Config::setYAxis()` is normalized.
 
 ### Security
 #### [Twig]
