@@ -240,6 +240,16 @@ class InstallCommand extends Command
             $this->installer->setImportDatabaseDataDump(false);
         }
         $bundleOption = $input->getOption('install-bundles');
+
+        // the bundles option is not prompted, so its env var is resolved here instead of in the loop below
+        if (false === $bundleOption) {
+            $env = $this->getEnvValue($this->getOptions()['install-bundles']['env']);
+            if (null !== $env) {
+                $bundleOption = $env;
+                $input->setOption('install-bundles', $env);
+            }
+        }
+
         if (false !== $bundleOption) {
             $bundleSetupEvent = $this->installer->dispatchBundleSetupEvent();
 

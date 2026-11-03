@@ -127,7 +127,7 @@ for sockets, cast port to `int`.
 
 **Fix direction:** `$_SERVER[$name] ?? $_ENV[$name] ?? getenv($name)` and compare with `!== false`/`!== ''`.
 
-### [ ] B-09 – `PIMCORE_INSTALL_INSTALL_BUNDLES` is advertised in `--help` but never read
+### [x] B-09 – `PIMCORE_INSTALL_INSTALL_BUNDLES` is advertised in `--help` but never read
 **File:** `src/Command/InstallCommand.php:122-132`, `:149-152`, `:214-226`, `:230-260`, `:317-319`
 - Every option gets an `env` key and is listed in the help text, but `installerNeedsOption()` returns `false` for the
   `bundles` group, so the env loop skips it; and `--install-bundles` is evaluated (`:214`) **before** the env loop
