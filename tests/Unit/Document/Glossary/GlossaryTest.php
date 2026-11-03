@@ -408,4 +408,22 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryKeepsLargeElementsAndVoidElements(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Glossary');
+        $entry->setLink('/glossary');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        // large elements exceeded the PCRE backtrack limit and void elements failed appendXML(), both lost content
+        $filler = str_repeat('x', 100000);
+        $result = $this->processor->parse('<div><p>' . $filler . ' Glossary</p><p>A<br>Glossary<img src="/a.png"></p></div>', [], 'en', null, null);
+
+        $expect = '<div><p>' . $filler . ' <a class="pimcore_glossary" href="/glossary">Glossary</a></p>'
+            . '<p>A<br><a class="pimcore_glossary" href="/glossary">Glossary</a><img src="/a.png"></p></div>';
+
+        $this->assertSame($expect, $result);
+    }
 }

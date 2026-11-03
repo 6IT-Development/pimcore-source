@@ -61,7 +61,7 @@ No `u` modifier: `\w` is ASCII-only and `i` folds only ASCII. Entry `Glossar` wi
 filter is applied around a whole layout.
 **Fix:** for full documents serialize via `ownerDocument->saveHTML()` (or `outerHtml()` + doctype), add a test.
 
-### [ ] B-07 – PCRE failure or invalid fragment XML loses content or throws `TypeError`
+### [x] B-07 – PCRE failure or invalid fragment XML loses content or throws `TypeError`
 **File:** `src/Tool/Processor.php:132`, `:137`, `:143-150`
 - `preg_replace()` returns `null` on errors (backtrack limit with the lazy `.*?` on large elements, invalid UTF-8
   once `u` is added) → `$originalText !== $text` → `htmlentities(null, …)` → `TypeError` under `strict_types`
