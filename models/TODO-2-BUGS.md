@@ -496,7 +496,7 @@ thumbnail prefix that `Video::enrichThumbnailPath()` adds is stripped before the
 holds: with a prefix the file was never found). Paths rewritten by an `ASSET_VIDEO_THUMBNAIL` listener still cannot be
 mapped back.
 
-## [ ] B-26 – Thumbnail responses: `Expires` in local time, cache headers differ between paths, streams not closed
+## [x] B-26 – Thumbnail responses: `Expires` in local time, cache headers differ between paths, streams not closed
 
 **File:** `models/Asset/Service.php:527`, `:532`, `:535`, `:578-585`
 
@@ -508,6 +508,11 @@ mapped back.
 
 **Fix direction:** one helper: `setPublic()->setMaxAge()->setExpires(new \DateTimeImmutable("+$lifetime seconds"))`,
 header on both paths, `fclose` in the closures.
+
+**Done:** both delivery paths build the response in `Service::createThumbnailResponse()`: `setPublic()`, `setMaxAge()`
+and `setExpires()` (GMT), `NO_AUTO_CACHE_CONTROL_HEADER` on both paths, the stream is closed after `fpassthru()`. The
+original stream is closed before the copy with the requested extension is read, and a missing stream returns `null`. A
+missing file size omits `Content-Length`.
 
 ## [ ] B-27 – `Asset\Dao::$thumbnailStatusCache` is a never-reset static (unbounded growth, stale in workers)
 

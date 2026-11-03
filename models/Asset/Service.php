@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Asset;
 
+use DateTimeImmutable;
 use Exception;
 use League\Flysystem\FilesystemException;
 use Pimcore;
@@ -568,6 +569,9 @@ class Service extends Model\Element\Service
                 }
 
                 //Stream can be closed by writeStream and needs to be reloaded.
+                if (is_resource($thumbnailStream)) {
+                    fclose($thumbnailStream);
+                }
                 $thumbnailStream = $storage->readStream($requestedFile);
             }
         } elseif ($config['type'] === 'video') {
@@ -594,26 +598,41 @@ class Service extends Model\Element\Service
         } else {
             throw new Exception('Cannot determine mime type and file size of ' . $config['type'] . ' thumbnail, see logs for details.');
         }
+
+        if (!$thumbnailStream) {
+            return null;
+        }
+
+        return self::createThumbnailResponse($thumbnailStream, $mime, $fileSize);
+    }
+
+    /**
+     * @param resource $stream
+     */
+    private static function createThumbnailResponse($stream, string $mime, ?int $fileSize): StreamedResponse
+    {
+        $headers = [
+            'Content-Type' => $mime,
+            // keep the public caching headers when a session was started
+            AbstractSessionListener::NO_AUTO_CACHE_CONTROL_HEADER => true,
+        ];
+        if ($fileSize !== null) {
+            $headers['Content-Length'] = $fileSize;
+        }
+
+        $response = new StreamedResponse(function () use ($stream) {
+            fpassthru($stream);
+            fclose($stream);
+        }, 200, $headers);
+
         // set appropriate caching headers
         // see also: https://github.com/pimcore/pimcore/blob/1931860f0aea27de57e79313b2eb212dcf69ef13/.htaccess#L86-L86
         $lifetime = 86400 * 7; // 1 week lifetime, same as direct delivery in .htaccess
+        $response->setPublic();
+        $response->setMaxAge($lifetime);
+        $response->setExpires(new DateTimeImmutable('+' . $lifetime . ' seconds'));
 
-        $headers = [
-            'Cache-Control' => 'public, max-age=' . $lifetime,
-            'Expires' => date('D, d M Y H:i:s T', time() + $lifetime),
-            'Content-Type' => $mime,
-            'Content-Length' => $fileSize,
-        ];
-
-        $headers[AbstractSessionListener::NO_AUTO_CACHE_CONTROL_HEADER] = true;
-
-        if ($thumbnailStream) {
-            return new StreamedResponse(function () use ($thumbnailStream) {
-                fpassthru($thumbnailStream);
-            }, 200, $headers);
-        }
-
-        return $thumbnailStream;
+        return $response;
     }
 
     /**
@@ -652,18 +671,11 @@ class Service extends Model\Element\Service
 
         // thumbnail paths are at least 10 characters long
         if (strlen($storagePath) > 10 && $storage->fileExists($storagePath)) {
-            $stream = $storage->readStream($storagePath);
-
-            $lifetime = 86400 * 7; // 1 week lifetime, same as direct delivery in .htaccess
-
-            return new StreamedResponse(function () use ($stream) {
-                fpassthru($stream);
-            }, 200, [
-                'Cache-Control' => 'public, max-age=' . $lifetime,
-                'Expires' => date('D, d M Y H:i:s T', time() + $lifetime),
-                'Content-Type' => $storage->mimeType($storagePath),
-                'Content-Length' => $storage->fileSize($storagePath),
-            ]);
+            return self::createThumbnailResponse(
+                $storage->readStream($storagePath),
+                $storage->mimeType($storagePath),
+                $storage->fileSize($storagePath)
+            );
         } else {
             $thumbnail = Asset\Service::getImageThumbnailByArrayConfig($config);
             if ($thumbnail) {
