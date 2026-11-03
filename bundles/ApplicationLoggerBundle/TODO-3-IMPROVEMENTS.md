@@ -228,12 +228,14 @@ platform differences and the two schemas cannot drift again. Use injected `Conne
 `Table` would not handle platform differences either, ENUM and ARCHIVE are MySQL/MariaDB only, and tried with DBAL 3.9 it
 changes behaviour: an archive database named `` we.ird`x `` becomes `` `we`.`irdx` `` and new tables get a fixed collation.
 
-### [ ] I-30 – Minor config file hygiene
+### [x] I-30 – Minor config file hygiene
 - `config/admin-classic.yaml`, `config/pimcore/routing.yaml`: missing trailing newline.
 - `config/pimcore/routing.yaml`: `options.expose: true` exposes **all** controller routes to FOSJsRouting; fine today,
   but prefer per-route `options: ['expose' => true]` in the `#[Route]` attributes.
 - `config/services.yaml`: `ApplicationLoggerDb` is `public: true` – check whether anything still fetches it from the
   container directly (only `getInstance()` does); could be private after I-14.
+**Outcome:** `ApplicationLoggerDb` stays public, the static `getInstance()` still fetches it from the container. All four routes are used
+by the admin JS, so each one keeps `expose`.
 
 ### [ ] I-31 – Tests
 No tests exist for this bundle. Minimum set: `LogArchiveTask` date/folder calculation (C-01), archive insert with long

@@ -64,7 +64,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         $this->checkPermission(self::PERMISSION);
     }
 
-    #[Route('/log/show', name: 'pimcore_admin_bundle_applicationlogger_log_show', methods: [Request::METHOD_GET, Request::METHOD_POST])]
+    #[Route('/log/show', name: 'pimcore_admin_bundle_applicationlogger_log_show', methods: [Request::METHOD_GET, Request::METHOD_POST], options: ['expose' => true])]
     public function showAction(
         Request         $request,
         Connection      $db,
@@ -153,7 +153,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         ]);
     }
 
-    #[Route('/log/priority-json', name: 'pimcore_admin_bundle_applicationlogger_log_priorityjson', methods: [Request::METHOD_GET])]
+    #[Route('/log/priority-json', name: 'pimcore_admin_bundle_applicationlogger_log_priorityjson', methods: [Request::METHOD_GET], options: ['expose' => true])]
     public function priorityJsonAction(ApplicationLogRepository $repository): JsonResponse
     {
         $priorities = [['key' => '', 'value' => '-']];
@@ -164,7 +164,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         return $this->jsonResponse(['priorities' => $priorities]);
     }
 
-    #[Route('/log/component-json', name: 'pimcore_admin_bundle_applicationlogger_log_componentjson', methods: [Request::METHOD_GET])]
+    #[Route('/log/component-json', name: 'pimcore_admin_bundle_applicationlogger_log_componentjson', methods: [Request::METHOD_GET], options: ['expose' => true])]
     public function componentJsonAction(ApplicationLogRepository $repository): JsonResponse
     {
         $components = [['key' => '', 'value' => '-']];
@@ -175,7 +175,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         return $this->jsonResponse(['components' => $components]);
     }
 
-    #[Route('/log/show-file-object', name: 'pimcore_admin_bundle_applicationlogger_log_showfileobject', methods: [Request::METHOD_GET])]
+    #[Route('/log/show-file-object', name: 'pimcore_admin_bundle_applicationlogger_log_showfileobject', methods: [Request::METHOD_GET], options: ['expose' => true])]
     public function showFileObjectAction(
         Request            $request,
         #[Autowire(service: 'pimcore.application_log.storage')]
