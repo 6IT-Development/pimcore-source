@@ -50,10 +50,12 @@ class Installer extends SettingsStoreAwareInstaller
         $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
-            $db->insert('users_permission_definitions', [
-                $db->quoteIdentifier('key') => $permission,
-                $db->quoteIdentifier('category') => self::USER_PERMISSIONS_CATEGORY,
-            ]);
+            // the permission can already exist after a partially failed install, from Pimcore 10 or when it was
+            // added by hand
+            $db->executeStatement(
+                'INSERT INTO `users_permission_definitions` (`key`, `category`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `category` = VALUES(`category`)',
+                [$permission, self::USER_PERMISSIONS_CATEGORY]
+            );
         }
     }
 
@@ -65,6 +67,17 @@ class Installer extends SettingsStoreAwareInstaller
             $db->delete('users_permission_definitions', [
                 $db->quoteIdentifier('key') => $permission,
             ]);
+        }
+
+        // users and roles keep their granted permissions as a comma separated list; without this, a re-install would
+        // grant the permission again
+        $rows = $db->fetchAllAssociative("SELECT `id`, `permissions` FROM `users` WHERE `permissions` IS NOT NULL AND `permissions` <> ''");
+        foreach ($rows as $row) {
+            $permissions = explode(',', (string)$row['permissions']);
+            $remaining = array_values(array_diff($permissions, self::USER_PERMISSIONS));
+            if (count($remaining) !== count($permissions)) {
+                $db->update('users', ['permissions' => implode(',', $remaining)], ['id' => $row['id']]);
+            }
         }
     }
 

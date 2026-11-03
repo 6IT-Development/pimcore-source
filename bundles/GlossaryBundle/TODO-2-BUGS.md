@@ -216,7 +216,7 @@ case-sensitively (`'H1'` never matches).
 if replacing is intended, or document additive semantics with a separate `additional_blocked_tags`), lowercase
 values in `beforeNormalization()`; move defaults from `default.yaml` into the tree (I-02).
 
-### [ ] B-24 – Installer is not re-runnable; uninstall leaves stale permissions
+### [x] B-24 – Installer is not re-runnable; uninstall leaves stale permissions
 **File:** `src/Installer.php:34-69`
 - `addUserPermission()` blindly `INSERT`s into `users_permission_definitions` (PK on `key`) → re-install after a
   partial uninstall / manual table drop / environments that kept the Pimcore 10 `glossary` permission fails with
