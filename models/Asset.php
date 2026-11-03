@@ -1754,13 +1754,17 @@ class Asset extends Element\AbstractElement
         return $parent instanceof Asset ? $parent : null;
     }
 
+    /**
+     * @throws InvalidArgumentException if the parent is not an asset
+     */
     public function setParent(?ElementInterface $parent): static
     {
-        /** @var Pimcore\Model\Element\AbstractElement $parent */
-        $this->parent = $parent;
-        if ($parent instanceof Asset) {
-            $this->parentId = $parent->getId();
+        if ($parent !== null && !$parent instanceof Asset) {
+            throw new InvalidArgumentException('The parent of an asset must be an asset, ' . get_debug_type($parent) . ' given');
         }
+
+        $this->setParentId($parent?->getId());
+        $this->parent = $parent;
 
         return $this;
     }

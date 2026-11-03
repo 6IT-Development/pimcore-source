@@ -383,7 +383,7 @@ that cannot be rewound is closed before it is replaced.
 **Done:** `delete()` collects the ids of the deleted asset and its nested children and dispatches their
 `VersionDeleteMessage`s after the outermost commit; a dispatch error is logged, as the asset is already deleted.
 
-## [ ] B-18 – `setParent()` keeps a stale `parentId` for `null` / non-asset parents
+## [x] B-18 – `setParent()` keeps a stale `parentId` for `null` / non-asset parents
 
 **File:** `models/Asset.php:1602-1611`
 
@@ -391,6 +391,9 @@ that cannot be rewound is closed before it is replaced.
   so `save()` uses the stale id.
 
 **Fix direction:** narrow to `?Asset` and set `parentId` consistently.
+
+**Done:** the `ElementInterface` signature is kept (the interface defines it), but a non-asset parent now throws an
+`InvalidArgumentException`; `null` clears `parentId` together with the parent.
 
 ## [ ] B-19 – `delete()` traversal guard is ineffective
 
