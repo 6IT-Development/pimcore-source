@@ -119,7 +119,7 @@ consumers break. **Fix:** `(int) $db->fetchOne(…)`.
 
 ## Controller (`src/Controller/Reports/CustomReportController.php`)
 
-### [ ] B-12 – `dataAction`/`chartAction` crash for reports without data source
+### [x] B-12 – `dataAction`/`chartAction` crash for reports without data source
 **File:** `src/Controller/Reports/CustomReportController.php:278-280`, `:322-324`, `:441`, `:455`
 `Config::getDataSourceConfig()` returns `null` when `dataSourceConfig` is empty (new report, never saved), but
 `getSortAndFilters(Request, stdClass $configuration)` is non-nullable → `TypeError` (500). Additionally

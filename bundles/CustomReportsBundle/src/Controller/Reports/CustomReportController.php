@@ -292,7 +292,7 @@ class CustomReportController extends UserAwareController
         $offset = max(0, $request->request->getInt('start'));
         $limit = max(1, min(self::MAX_PAGE_SIZE, $request->request->getInt('limit', 40)));
         $config = $this->getReportForCurrentUser($request->request->getString('name'));
-        $configuration = $config->getDataSourceConfig();
+        $configuration = $this->getDataSource($config);
         $adapter = Tool\Config::getAdapter($configuration, $config);
         $sortFilters = $this->getSortAndFilters($request, $configuration, $config);
         $result = $adapter->getData($sortFilters['filters'], $sortFilters['sort'], $sortFilters['dir'], $offset, $limit, null, $sortFilters['drillDownFilters']);
@@ -315,7 +315,7 @@ class CustomReportController extends UserAwareController
 
         $config = $this->getReportForCurrentUser($request->request->getString('name'));
         $this->validateRequestColumns($config, $filters, $drillDownFilters, [$field]);
-        $configuration = $config->getDataSourceConfig();
+        $configuration = $this->getDataSource($config);
 
         $adapter = Tool\Config::getAdapter($configuration, $config);
         $result = $adapter->getAvailableOptions($filters ?? [], $field, $drillDownFilters);
@@ -331,7 +331,7 @@ class CustomReportController extends UserAwareController
     {
         $this->checkPermission('reports');
         $config = $this->getReportForCurrentUser($request->request->getString('name'));
-        $configuration = $config->getDataSourceConfig();
+        $configuration = $this->getDataSource($config);
         $adapter = Tool\Config::getAdapter($configuration, $config);
         $sortFilters = $this->getSortAndFilters($request, $configuration, $config);
         $result = $adapter->getData($sortFilters['filters'], $sortFilters['sort'], $sortFilters['dir'], 0, $this->getParameter('pimcore_custom_reports.chart_row_limit'), null, $sortFilters['drillDownFilters']);
@@ -385,7 +385,7 @@ class CustomReportController extends UserAwareController
             }
         }
 
-        $configuration = $config->getDataSourceConfig();
+        $configuration = $this->getDataSource($config);
 
         $adapter = Tool\Config::getAdapter($configuration, $config);
 
@@ -476,6 +476,14 @@ class CustomReportController extends UserAwareController
     }
 
     /**
+     * The data source of a report that is read. A new report has none until it is configured and saved.
+     */
+    private function getDataSource(Tool\Config $report): stdClass
+    {
+        return $report->getDataSourceConfig() ?? throw $this->createNotFoundException('The report has no data source');
+    }
+
+    /**
      * Decodes a filter parameter of the request: nothing, or a JSON array or object.
      */
     private function decodeJsonParameter(string $json): ?array
@@ -529,7 +537,7 @@ class CustomReportController extends UserAwareController
         $filters = $this->decodeJsonParameter($request->request->getString('filter'));
         $drillDownFilters = $request->request->all('drillDownFilters');
         $this->validateRequestColumns($config, $filters, $drillDownFilters, $sort !== null ? [$sort] : []);
-        if ($sort === null && $dir === null && property_exists($configuration, 'orderby') && $configuration->orderby !== '' && $configuration->orderbydir !== '') {
+        if ($sort === null && $dir === null && ($configuration->orderby ?? '') !== '' && ($configuration->orderbydir ?? '') !== '') {
             $sort = $configuration->orderby;
             $dir = $configuration->orderbydir;
         }
