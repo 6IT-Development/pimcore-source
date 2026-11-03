@@ -25,7 +25,7 @@ altered. `GlossaryTest::testGlossaryWithLowerThenAndGreaterThenHtml()` (`tests/U
 even asserts this wrong behaviour (`Huber` → `huber`).
 **Fix:** use the match (`$0` / callback with `$m[0]`) as link/abbr content; update the test.
 
-### [ ] B-02 – `$n`, `${n}` and `\n` in text/abbr/link are interpreted as regex back-references *(reproduced)*
+### [x] B-02 – `$n`, `${n}` and `\n` in text/abbr/link are interpreted as regex back-references *(reproduced)*
 **File:** `src/Tool/Processor.php:132`, `:137`, `:253-255`
 `preg_replace()` treats the replacement string specially. Abbreviation `costs $1 \0` renders as `title="costs  Plan"`;
 URLs with `$1` or backslashes are corrupted.

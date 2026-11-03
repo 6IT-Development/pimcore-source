@@ -317,4 +317,19 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryDoesNotInterpretBackReferences(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Plan $1');
+        $entry->setAbbr('costs $1 ${1} \0 \1');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse('<p>The Plan $1 offer</p>', [], 'en', null, null);
+
+        $expect = '<p>The <abbr class="pimcore_glossary" title="costs $1 ${1} \0 \1">Plan $1</abbr> offer</p>';
+
+        $this->assertSame($expect, $result);
+    }
 }
