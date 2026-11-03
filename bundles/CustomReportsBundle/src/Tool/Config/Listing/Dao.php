@@ -35,7 +35,11 @@ class Dao extends Config\Dao
 
         $idList = $this->loadIdList();
         foreach ($idList as $name) {
-            $configs[] = Config::getByName($name);
+            // a listed definition can be empty or removed in the meantime, one of them must not break the whole list
+            $config = Config::getByName($name);
+            if ($config) {
+                $configs[] = $config;
+            }
         }
 
         return $configs;

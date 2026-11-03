@@ -204,7 +204,7 @@ Not verifiable here (`vendor/` with admin-ui-classic-bundle missing) – test in
 
 ## Model / DAO (`src/Tool/Config*.php`)
 
-### [ ] B-21 – Report listing can contain `null` → fatal error in sharing filter
+### [x] B-21 – Report listing can contain `null` → fatal error in sharing filter
 **File:** `src/Tool/Config/Listing/Dao.php:36-41`, `:57-64`, `src/Tool/Config.php:116-123`
 `loadList()` adds `Config::getByName($name)` unconditionally; `getByName()` returns `null` when the data for an id is
 empty/falsy (e.g. a YAML definition `my_report: {}` – listed by `fetchAllKeys()` but `if ($data)` fails in
