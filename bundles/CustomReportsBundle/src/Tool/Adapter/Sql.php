@@ -71,7 +71,7 @@ class Sql extends AbstractAdapter
 
         $this->validateQuery($sql);
 
-        $sql .= ' LIMIT 0,1';
+        $sql = 'SELECT * FROM (' . $sql . ') AS somerandxyz LIMIT 0,1';
         $res = $this->runReadOnly(static fn (Connection $db): array|false => $db->fetchAssociative($sql));
         if ($res) {
             return array_keys($res);
@@ -163,7 +163,7 @@ class Sql extends AbstractAdapter
         return Db::get();
     }
 
-    protected function buildQueryString(stdClass $config, bool $ignoreSelectAndGroupBy = false, ?array $drillDownFilters = null, ?string $selectField = null): string
+    protected function buildQueryString(stdClass $config, bool $ignoreSelectAndGroupBy = false, ?string $selectField = null): string
     {
         $config = (array)$config;
         $sql = '';
@@ -190,24 +190,10 @@ class Sql extends AbstractAdapter
         }
 
         if (!empty($config['groupby']) && !$ignoreSelectAndGroupBy) {
-            if (!preg_match('/^\s*GROUP\s+BY\b/i', $config['groupby'])) {
+            if (!preg_match('/^\s*(GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT)\b/i', $config['groupby'])) {
                 $sql .= ' GROUP BY ';
             }
             $sql .= "\n" . $config['groupby'];
-        }
-
-        if ($drillDownFilters) {
-            $havingParts = [];
-            $db = $this->getDb();
-            foreach ($drillDownFilters as $field => $value) {
-                if ($value !== '' && $value !== null) {
-                    $havingParts[] = ($db->quoteIdentifier($field) . ' = ' . $db->quote($value));
-                }
-            }
-
-            if ($havingParts) {
-                $sql .= ' HAVING ' . implode(' AND ', $havingParts);
-            }
         }
 
         return $sql;
@@ -218,7 +204,14 @@ class Sql extends AbstractAdapter
         $db = $this->getDb();
         $condition = ['1 = 1'];
 
-        $sql = $this->buildQueryString($this->config, $ignoreSelectAndGroupBy, $drillDownFilters, $selectField);
+        $sql = $this->buildQueryString($this->config, $ignoreSelectAndGroupBy, $selectField);
+
+        // the clauses of the report are free text and may end with ORDER BY or LIMIT, so filters go on the derived table
+        foreach ($drillDownFilters ?? [] as $field => $value) {
+            if ($value !== '' && $value !== null) {
+                $condition[] = $db->quoteIdentifier((string) $field) . ' = ' . $db->quote($value);
+            }
+        }
 
         $extractAllFields = empty($fields);
         foreach ($filters as $filter) {

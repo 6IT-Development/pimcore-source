@@ -36,7 +36,7 @@ exception in both paths instead of returning `null`.
 **Fix:** `preg_match('/^\s*WHERE\b/i')` / `preg_replace('/^\s*WHERE\b\s*/i', '')` (same for `SELECT`, `FROM`,
 `GROUP\s+BY`).
 
-### [ ] B-03 – Appended clauses assume the `groupby` text is the last clause
+### [x] B-03 – Appended clauses assume the `groupby` text is the last clause
 **File:** `src/Tool/Adapter/Sql.php:65`, `:107-126`
 The `groupby` field is free text, so users put `ORDER BY …` / `LIMIT …` there (the UI has a separate order-by field,
 but nothing prevents it). Then:
