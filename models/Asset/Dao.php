@@ -563,6 +563,24 @@ class Dao extends Model\Element\Dao
 
     public function getCachedThumbnail(string $name, string $filename): ?array
     {
+        $hash = $name . $filename;
+
+        return $this->getThumbnailStatusCache()[$hash] ?? null;
+    }
+
+    public function hasCachedThumbnails(string $name): bool
+    {
+        foreach ($this->getThumbnailStatusCache() as $thumb) {
+            if ($thumb['name'] === $name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function getThumbnailStatusCache(): array
+    {
         $assetId = $this->model->getId();
 
         // we use a static var here, because it could be that an asset is serialized in the cache,
@@ -579,9 +597,7 @@ class Dao extends Model\Element\Dao
             }
         }
 
-        $hash = $name . $filename;
-
-        return self::$thumbnailStatusCache[$assetId][$hash] ?? null;
+        return self::$thumbnailStatusCache[$assetId];
     }
 
     public function deleteFromThumbnailCache(?string $name = null, ?string $filename = null): void

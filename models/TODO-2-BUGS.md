@@ -468,7 +468,7 @@ lookup. The `image` type stays valid for all asset classes, since videos and doc
 **Done:** the `status_cache` lookup falls back to `false`, so video thumbnail requests with an unknown name no longer
 raise "Undefined array key". Video thumbnails have no status cache.
 
-## [ ] B-24 – Unknown thumbnail name → DB `DELETE` and status-cache wipe on every anonymous request
+## [x] B-24 – Unknown thumbnail name → DB `DELETE` and status-cache wipe on every anonymous request
 
 **File:** `models/Asset/Service.php:390-395`; `models/Asset/Dao.php:588`
 
@@ -476,6 +476,9 @@ raise "Undefined array key". Video thumbnails have no status cache.
   status cache for that asset. Unauthenticated DB writes per request (separate cost from CoreBundle C-15).
 
 **Fix direction:** delete only when a cache row exists (`getCachedThumbnail()`), or only for `auto_*` names.
+
+**Done:** the thumbnail cache rows of the name are deleted only if `Dao::hasCachedThumbnails()` finds one; it reads the
+(static) status cache of the asset, so an unknown name costs at most one `SELECT` and no longer wipes the status cache.
 
 ## [ ] B-25 – Video branch of `getStreamedResponseFromImageThumbnail()`: undefined format key and metadata on missing file
 
