@@ -73,6 +73,11 @@ class CustomReportController extends UserAwareController
      */
     private const int MAX_PAGE_SIZE = 1000;
 
+    /**
+     * What the report editor accepts for the CSS and JS class names of a report, they are rendered without escaping.
+     */
+    private const string CLASS_NAME_PATTERN = '/^[_a-zA-Z]+[_a-zA-Z0-9-.\s]*\z/';
+
     #[Route('/tree', name: 'pimcore_bundle_customreports_customreport_tree', methods: [Request::METHOD_GET, Request::METHOD_POST])]
     public function treeAction(): JsonResponse
     {
@@ -286,13 +291,13 @@ class CustomReportController extends UserAwareController
         foreach ($items as $report) {
             if ($report->getDataSourceConfig() !== null) {
                 $reports[] = [
-                    'name' => htmlspecialchars($report->getName()),
-                    'niceName' => htmlspecialchars($report->getNiceName()),
-                    'iconClass' => htmlspecialchars($report->getIconClass()),
-                    'group' => htmlspecialchars($report->getGroup()),
-                    'groupIconClass' => htmlspecialchars($report->getGroupIconClass()),
+                    'name' => $report->getName(),
+                    'niceName' => $report->getNiceName(),
+                    'iconClass' => $this->getValidClassName($report->getIconClass()),
+                    'group' => $report->getGroup(),
+                    'groupIconClass' => $this->getValidClassName($report->getGroupIconClass()),
                     'menuShortcut' => $report->getMenuShortcut(),
-                    'reportClass' => htmlspecialchars($report->getReportClass()),
+                    'reportClass' => $this->getValidClassName($report->getReportClass()),
                 ];
             }
         }
@@ -544,10 +549,22 @@ class CustomReportController extends UserAwareController
                 throw new BadRequestHttpException(sprintf('Invalid report property "%s"', $key));
             }
 
+            if (in_array($key, ['groupIconClass', 'iconClass', 'reportClass'], true) && $value !== '' && !preg_match(self::CLASS_NAME_PATTERN, $value)) {
+                throw new BadRequestHttpException(sprintf('Invalid report property "%s"', $key));
+            }
+
             $properties[$key] = $value;
         }
 
         return $properties;
+    }
+
+    /**
+     * Reports saved before the server checked the class names can hold anything, the UI then uses its default.
+     */
+    private function getValidClassName(string $className): string
+    {
+        return preg_match(self::CLASS_NAME_PATTERN, $className) ? $className : '';
     }
 
     /**

@@ -507,7 +507,7 @@ pimcore.bundle.customreports.custom.report = Class.create(pimcore.bundle.customr
 
         if(!this.panel) {
             this.panel = new Ext.Panel({
-                title: t(this.config["niceName"]),
+                title: Ext.util.Format.htmlEncode(t(this.config["niceName"])),
                 layout: "fit",
                 border: false,
                 items: []

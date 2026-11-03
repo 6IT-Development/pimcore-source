@@ -154,7 +154,7 @@ pimcore.layout.portlets.customreports = Class.create(pimcore.layout.portlets.abs
                         this.layout.add(chart);
                     }
 
-                    this.layout.setTitle(t("portlet_customreport") + ": " + data.niceName);
+                    this.layout.setTitle(t("portlet_customreport") + ": " + Ext.util.Format.htmlEncode(data.niceName));
                     if(data.iconClass) {
                         this.layout.setIconCls(data.iconClass);
                     } else {

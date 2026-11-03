@@ -55,7 +55,7 @@ document.addEventListener(pimcore.events.pimcoreReady, (e) => {
 
                                         if(!groupToolbarMenuEntries[report["group"]]) {
                                             groupToolbarMenuEntries[report["group"]] = new Ext.menu.Item({
-                                                text: t(report["group"]),
+                                                text: Ext.util.Format.htmlEncode(t(report["group"])),
                                                 iconCls: report["groupIconClass"],
                                                 menu: []
                                             });
@@ -66,7 +66,7 @@ document.addEventListener(pimcore.events.pimcoreReady, (e) => {
                                     }
 
                                     parentMenuEntry.add({
-                                        text: t(report["niceName"]),
+                                        text: Ext.util.Format.htmlEncode(t(report["niceName"])),
                                         iconCls: report["iconClass"],
                                         handler: function (report, reportClass) {
                                             customreports.showReports(reportClass, {

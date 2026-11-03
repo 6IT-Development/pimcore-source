@@ -90,7 +90,7 @@ pimcore.bundle.customreports.panel = Class.create({
                 groupIconCls = groupIconCls + ' ' + groupIconCls.replace(/^pimcore_nav_icon_/, 'pimcore_icon_');
 
                 var groupNodeConfig = {
-                    text: group.name,
+                    text: Ext.util.Format.htmlEncode(group.name),
                     iconCls: groupIconCls,
                     leaf: false
 
@@ -116,7 +116,7 @@ pimcore.bundle.customreports.panel = Class.create({
                                 iconCls = iconCls + ' ' + iconCls.replace(/^pimcore_nav_icon_/, 'pimcore_icon_');
 
                                 var childConfig = {
-                                    text: reportConfig["text"] ? t(reportConfig["text"]) : t(reportClass.prototype.getName()),
+                                    text: Ext.util.Format.htmlEncode(reportConfig["text"] ? t(reportConfig["text"]) : t(reportClass.prototype.getName())),
                                     iconCls: iconCls,
                                     leaf: true,
                                     xdata: {

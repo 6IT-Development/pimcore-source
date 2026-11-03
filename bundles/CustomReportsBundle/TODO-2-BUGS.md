@@ -183,7 +183,7 @@ The error is a generic `Exception` → 500 instead of `400`, and the message say
 - Empty `exportFile` → `Filesystem\Exception\FileNotFoundException` → 500.
 **Fix:** `BadRequestHttpException` / `NotFoundHttpException`; `is_file()` check before creating the response.
 
-### [ ] B-19 – `getReportConfigAction` HTML-encodes JSON values (double encoding, inconsistent API)
+### [x] B-19 – `getReportConfigAction` HTML-encodes JSON values (double encoding, inconsistent API)
 **File:** `src/Controller/Reports/CustomReportController.php:245-255`
 `htmlspecialchars()` is applied server-side to values returned as JSON. Values with `&`, `<`, `"` (e.g. nice name
 `Sales & Marketing`) are shown as `Sales &amp; Marketing` wherever the UI renders them as text, and `reportClass`
