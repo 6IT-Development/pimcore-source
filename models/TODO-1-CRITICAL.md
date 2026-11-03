@@ -1823,7 +1823,7 @@ the call in `getLinkGenerator()`. Add a test that renders a link to an object of
 **Fix direction:** compare / test emptiness on `getMinimum()`, `getMaximum()` and `getUnitId()`; never call
 `getValue()` in persistence paths.
 
-## [ ] C-49 – Range values with an open bound (or without unit) are stored but load as `null` and are wiped on the next save
+## [x] C-49 – Range values with an open bound (or without unit) are stored but load as `null` and are wiped on the next save
 
 **Files:** `models/DataObject/ClassDefinition/Data/NumericRange.php:243`, `:299-300`, `:397`, `:439`;
 `QuantityValueRange.php:137`, `:190-199`, `:309-320`; `DateRange.php:54-97` (`:65`, `:84`, `:89`), `:134-144`

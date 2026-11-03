@@ -134,11 +134,16 @@ class QuantityValueRange extends Data implements ResourcePersistenceAwareInterfa
      */
     public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\QuantityValueRange
     {
-        if (isset($data[$this->getName() . '__minimum'], $data[$this->getName() . '__maximum'], $data[$this->getName() . '__unit'])) {
+        // an open bound and a missing unit are stored by getDataForResource(), so any stored column is a value
+        $minimum = $data[$this->getName() . '__minimum'] ?? null;
+        $maximum = $data[$this->getName() . '__maximum'] ?? null;
+        $unit = $data[$this->getName() . '__unit'] ?? null;
+
+        if ($minimum !== null || $maximum !== null || $unit !== null) {
             $quantityValueRange = new DataObject\Data\QuantityValueRange(
-                $data[$this->getName() . '__minimum'],
-                $data[$this->getName() . '__maximum'],
-                $data[$this->getName() . '__unit']
+                is_string($minimum) ? (float)$minimum : $minimum,
+                is_string($maximum) ? (float)$maximum : $maximum,
+                $unit
             );
 
             if (isset($params['owner'])) {

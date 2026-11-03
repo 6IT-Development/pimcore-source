@@ -240,9 +240,11 @@ class NumericRange extends Data implements
      */
     public function getDataFromResource(mixed $data, ?DataObject\Concrete $object = null, array $params = []): ?DataObject\Data\NumericRange
     {
-        if (isset($data[$this->getName() . '__minimum'], $data[$this->getName() . '__maximum'])) {
-            $minimum = $data[$this->getName() . '__minimum'];
-            $maximum = $data[$this->getName() . '__maximum'];
+        // an open bound is a valid range (rendered as -∞ / +∞), so one stored bound is enough
+        $minimum = $data[$this->getName() . '__minimum'] ?? null;
+        $maximum = $data[$this->getName() . '__maximum'] ?? null;
+
+        if ($minimum !== null || $maximum !== null) {
 
             if (is_string($minimum)) {
                 $minimum = (float)$minimum;
