@@ -73,7 +73,7 @@ fields, validate required keys (`user`, `dbname`, `host`|`unix_socket`) and defa
 **Fix direction:** `INSERT … ON DUPLICATE KEY UPDATE` / existence check, and insert the system user after the dumps if
 they do not provide one.
 
-### [ ] B-05 – Admin username `system` (or a role/folder name) deletes the system user / other users
+### [x] B-05 – Admin username `system` (or a role/folder name) deletes the system user / other users
 **File:** `src/Installer.php:743-763`
 ```php
 $db->delete('users', ['name' => $settings['username']]);   // no type filter

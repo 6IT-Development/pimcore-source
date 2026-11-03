@@ -95,4 +95,28 @@ class InstallerTest extends TestCase
         $this->assertSame('configured_db', $dbConfig['dbname']);
         $this->assertSame('db.example.com', $dbConfig['host']);
     }
+
+    public function testRejectsReservedAndInvalidAdminUsernamesBeforeConnecting(): void
+    {
+        $params = [
+            'admin_password' => 'secret-password',
+            'mysql_host_socket' => 'db.example.com',
+            'mysql_username' => 'pimcore',
+            'mysql_password' => '',
+            'mysql_database' => 'pimcore',
+        ];
+
+        $this->assertStringContainsString(
+            '"system" is reserved',
+            implode("\n", $this->createInstaller()->install($params + ['admin_username' => 'System']))
+        );
+        $this->assertStringContainsString(
+            'longer than 50 characters',
+            implode("\n", $this->createInstaller()->install($params + ['admin_username' => str_repeat('a', 51)]))
+        );
+        $this->assertStringContainsString(
+            'invalid characters',
+            implode("\n", $this->createInstaller()->install($params + ['admin_username' => 'ad min']))
+        );
+    }
 }

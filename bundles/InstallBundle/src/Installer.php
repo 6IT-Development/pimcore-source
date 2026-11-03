@@ -338,8 +338,15 @@ class Installer
     {
         $this->dispatchStepEvent('validate_parameters');
 
+        // check username & password before connecting
+        $adminUser = (string) ($params['admin_username'] ?? '');
+        $adminPass = (string) ($params['admin_password'] ?? '');
+
         $dbConfig = $this->resolveDbConfig($params);
-        $errors = $this->validateDbConfig($dbConfig);
+        $errors = array_merge(
+            $this->validateAdminCredentials($adminUser, $adminPass),
+            $this->validateDbConfig($dbConfig)
+        );
 
         if (!empty($errors)) {
             return $errors;
@@ -364,18 +371,6 @@ class Installer
         } catch (Exception $e) {
             $errors[] = sprintf('Couldn\'t establish connection to MySQL: %s', $e->getMessage());
 
-            return $errors;
-        }
-
-        // check username & password
-        $adminUser = $params['admin_username'] ?? '';
-        $adminPass = $params['admin_password'] ?? '';
-
-        if (strlen($adminPass) < 4 || strlen($adminUser) < 4) {
-            $errors[] = 'Username and password should have at least 4 characters';
-        }
-
-        if (!empty($errors)) {
             return $errors;
         }
 
@@ -486,6 +481,34 @@ class Installer
         }
 
         return $dbConfig;
+    }
+
+    /**
+     * @return string[] Array of errors
+     */
+    private function validateAdminCredentials(string $username, string $password): array
+    {
+        $errors = [];
+
+        if (strlen($password) < 4 || strlen($username) < 4) {
+            $errors[] = 'Username and password should have at least 4 characters';
+        }
+
+        // users.name is varchar(50), the allowed characters are the ones of User::save()
+        if (mb_strlen($username) > 50) {
+            $errors[] = 'The username must not be longer than 50 characters';
+        }
+
+        if ('' !== $username && !preg_match('/^[a-zA-Z0-9\-\.~_@]+$/', $username)) {
+            $errors[] = 'The username contains invalid characters (allowed characters: a-z A-Z 0-9 -.~_@)';
+        }
+
+        // the system user (id 0) is created by the installer and must not be replaced by the admin user
+        if ('system' === strtolower($username)) {
+            $errors[] = 'The username "system" is reserved, please choose a different admin username';
+        }
+
+        return $errors;
     }
 
     /**
@@ -922,7 +945,8 @@ class Installer
 
         $settings = array_replace_recursive($defaultConfig, $config);
 
-        $db->delete('users', ['name' => $settings['username']]);
+        // only replace a user of the same name, not a role or folder
+        $db->delete('users', ['name' => $settings['username'], 'type' => 'user']);
 
         $db->insert('users', [
             'parentId' => 0,
