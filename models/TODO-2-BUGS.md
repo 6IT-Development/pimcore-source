@@ -317,7 +317,7 @@ expire instead of releasing from a different key.
 **Done:** a failed `fopen()` of the temp file or the source file throws a `RuntimeException`; an unguessable MIME type
 falls back to `application/octet-stream`, so the type mapping resolves it by extension or as `unknown`.
 
-## [ ] B-13 – Legacy-file deletion passes `null` from a failed DB lookup to Flysystem
+## [x] B-13 – Legacy-file deletion passes `null` from a failed DB lookup to Flysystem
 
 **File:** `models/Asset.php:757-759`; `models/Asset/Dao.php:299-310`
 
@@ -325,6 +325,8 @@ falls back to `application/octet-stream`, so the type mapping resolves it by ext
   `TypeError` inside the transaction (C-05).
 
 **Fix direction:** `if ($dbPath && $dbPath !== $path && …)`.
+
+**Done:** `update()` skips the legacy-file deletion when the lookup returns `null` or `''`.
 
 ## [ ] B-14 – `ValidationException` message embeds the raw upload filename in HTML
 

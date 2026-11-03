@@ -774,9 +774,9 @@ class Asset extends Element\AbstractElement
                     $this->setCustomSetting('checksum', $checksum);
                 }
 
-                // delete old legacy file if exists
+                // delete old legacy file if exists; the lookup yields null on a DB error and '' for a missing row
                 $dbPath = $this->getDao()->getCurrentFullPath();
-                if ($dbPath !== $path && $storage->fileExists($dbPath)) {
+                if ($dbPath && $dbPath !== $path && $storage->fileExists($dbPath)) {
                     $storage->delete($dbPath);
                 }
 
