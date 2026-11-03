@@ -23,11 +23,13 @@ use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
 use Pimcore\Http\Exception\ResponseException;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Throwable;
 
 /**
  * @internal
@@ -36,8 +38,14 @@ class ResponseExceptionListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
+    /**
+     * Length of the http_error_log.uri column in characters
+     */
+    private const int URI_MAX_LENGTH = 1024;
+
     public function __construct(
         protected Connection $db,
+        protected LoggerInterface $logger,
     )
     {
     }
@@ -84,17 +92,29 @@ class ResponseExceptionListener implements EventSubscriberInterface
 
     protected function logToHttpErrorLog(Request $request, int $statusCode): void
     {
-        $uri = $request->getUri();
-        $exists = $this->db->fetchOne('SELECT date FROM http_error_log WHERE uri = ?', [$uri]);
-        if ($exists) {
-            $this->db->executeQuery('UPDATE http_error_log SET `count` = `count` + 1, date = ? WHERE uri = ?', [time(), $uri]);
-        } else {
-            $this->db->insert('http_error_log', [
-                'uri' => $uri,
-                'code' => $statusCode,
-                'parametersGet' => serialize($_GET),
-                'date' => time(),
-                'count' => 1,
+        // a failing log entry must not replace the response of the actual error
+        try {
+            // the stored value is what gets hashed, so that every hit of a long URI ends up in the same row
+            $uri = mb_substr(mb_scrub($request->getUri(), 'UTF-8'), 0, self::URI_MAX_LENGTH, 'UTF-8');
+            $uriHash = hash('sha256', $uri);
+
+            $exists = $this->db->fetchOne('SELECT date FROM http_error_log WHERE uri_hash = ?', [$uriHash]);
+            if ($exists) {
+                $this->db->executeStatement('UPDATE http_error_log SET `count` = `count` + 1, date = ? WHERE uri_hash = ?', [time(), $uriHash]);
+            } else {
+                $this->db->insert('http_error_log', [
+                    'uri' => $uri,
+                    'uri_hash' => $uriHash,
+                    'code' => $statusCode,
+                    'parametersGet' => serialize($_GET),
+                    'date' => time(),
+                    'count' => 1,
+                ]);
+            }
+        } catch (Throwable $e) {
+            $this->logger->warning('Could not write to the HTTP error log: {message}', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
             ]);
         }
     }

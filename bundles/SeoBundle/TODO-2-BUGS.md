@@ -11,7 +11,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 
 ## HTTP error log (`src/EventListener/ResponseExceptionListener.php`, `src/Controller/MiscController.php`)
 
-### [ ] B-01 – Unprotected DB write inside `kernel.exception`; long URIs are truncated and never matched again
+### [x] B-01 – Unprotected DB write inside `kernel.exception`; long URIs are truncated and never matched again
 **Files:** `src/EventListener/ResponseExceptionListener.php:85-100`, `src/Resources/install/install.sql:3`
 - `uri` is `varchar(1024) utf8` (utf8mb3). With Pimcore's default `sql_mode = ''` a longer URI (or one containing
   raw 4-byte UTF-8) is **silently truncated/mangled** on insert. The next hit does `SELECT … WHERE uri = <full uri>`,

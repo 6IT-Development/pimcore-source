@@ -17,6 +17,7 @@ These may still be pending on an 11.5.x database installed from an earlier patch
 | `Version20250416120333` | Index on `versions.public`. Looks the index up by column, because earlier runs created it with a generated `IDX_…` name. |
 | `Version20251217000100` | Drops sensitive columns from `http_error_log`; only drops the columns that still exist. |
 | `Version20261029000100` | Recomputes `tags.idPath` from `parentId` (moving a root-level tag corrupted its subtree, models C-29). Data only; leaves orphans, cycles and rows that would violate `idPath_name` unchanged with a warning. |
+| `Version20261103000100` | `http_error_log`: adds `uri_hash`, switches `uri` to utf8mb4 (SeoBundle B-01). Skipped if the bundle's table does not exist. |
 
 Any schema change made in this fork needs a **new** migration **and** the matching change in `install.sql`.
 

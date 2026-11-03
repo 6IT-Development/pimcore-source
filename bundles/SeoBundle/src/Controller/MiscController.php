@@ -86,7 +86,7 @@ class MiscController extends UserAwareController
         $profiler?->disable();
 
         $db = Db::get();
-        $data = $db->fetchAssociative('SELECT * FROM http_error_log WHERE uri = ?', [$request->query->getString('uri')]);
+        $data = $db->fetchAssociative('SELECT * FROM http_error_log WHERE uri_hash = ?', [hash('sha256', $request->query->getString('uri'))]);
 
         foreach ($data as $key => &$value) {
             if ($key === 'parametersGet') {

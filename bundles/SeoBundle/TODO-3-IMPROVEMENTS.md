@@ -195,8 +195,8 @@ check yes/no), and the controller duplicates the create/update target-resolution
 
 ### [ ] I-24 – Schema modernisation via migration
 **Files:** `src/Resources/install/install.sql`, `src/Installer.php`
-- `CHARACTER SET utf8` (= utf8mb3, deprecated alias in MySQL 8) → `utf8mb4` (`uri` column; requires hash/prefix
-  index because of the 3072-byte key limit).
+- ~~`CHARACTER SET utf8` (= utf8mb3, deprecated alias in MySQL 8) → `utf8mb4` (`uri` column; requires hash/prefix
+  index because of the 3072-byte key limit).~~ Done with B-01.
 - Integer display widths (`int(11)`, `int(3)`, `int(2)`, `bigint(20)`) are deprecated since MySQL 8.0.17.
 - `statusCode varchar(3)` → `SMALLINT UNSIGNED`; `priority int(2) DEFAULT '0'` vs model default `1`; `regex`/`active`/
   `passThroughParameters` nullable → `NOT NULL DEFAULT 0/1`.
