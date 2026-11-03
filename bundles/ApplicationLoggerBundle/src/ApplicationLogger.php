@@ -105,7 +105,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         return $logger;
     }
 
-    public function addWriter(object $writer): void
+    public function addWriter(HandlerInterface|LoggerInterface $writer): void
     {
         if ($writer instanceof HandlerInterface) {
             if (!isset($this->loggers['default-monolog'])) {
@@ -113,7 +113,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
                 $this->loggers['default-monolog'] = new Logger('app');
             }
             $this->loggers['default-monolog']->pushHandler($writer);
-        } elseif ($writer instanceof LoggerInterface) {
+        } else {
             $this->loggers[] = $writer;
         }
     }
@@ -185,9 +185,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         }
 
         foreach ($this->loggers as $logger) {
-            if ($logger instanceof LoggerInterface) {
-                $logger->log($level, $message, $context);
-            }
+            $logger->log($level, $message, $context);
         }
     }
 

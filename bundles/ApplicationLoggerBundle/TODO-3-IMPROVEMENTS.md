@@ -144,7 +144,7 @@ deep stacks is costly.
 `pushProcessor()` prepends, so execution order is the *reverse* of the listed order (introspection → app processor →
 psr message). This is correct but non-obvious; add a comment or use `priority` via `#[AsMonologProcessor]`.
 
-### [ ] I-18 – Strict handling of `addWriter()`
+### [x] I-18 – Strict handling of `addWriter()`
 **File:** `src/ApplicationLogger.php:71-82`
 `object $writer` that is neither `HandlerInterface` nor `LoggerInterface` is silently ignored → type it as
 `HandlerInterface|LoggerInterface`. The `instanceof LoggerInterface` check in `log()` (line 152) then becomes redundant.

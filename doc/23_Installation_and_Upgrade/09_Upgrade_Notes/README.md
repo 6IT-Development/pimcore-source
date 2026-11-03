@@ -17,6 +17,8 @@
 - `ApplicationLogger::getInstance()`, `ApplicationLoggerDb::getComponents()` and `ApplicationLoggerDb::getPriorities()`
   are deprecated. Inject the logger or define a service for the component, see the application logger docs.
 - The constructors of the bundle's `Installer` and `LogArchiveTask` have new arguments for the connection and the storage.
+- `ApplicationLogger::addWriter()` only accepts a `HandlerInterface` or `LoggerInterface`. Other objects were silently
+  ignored before and throw a `TypeError` now.
 #### [Cache]
 - Fixed: if `cache.app` uses the default filesystem adapter, Pimcore stores it in `pimcore.cache.pool`. Every pool
   derived from `cache.app` (`framework.cache.pools.*` with the default adapter, Symfony's own child pools) used to
