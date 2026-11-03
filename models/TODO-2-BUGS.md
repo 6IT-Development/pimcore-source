@@ -340,7 +340,7 @@ falls back to `application/octet-stream`, so the type mapping resolves it by ext
 
 **Done:** `checkMaxPixels()` escapes the filename with `htmlspecialchars(…, ENT_QUOTES)`.
 
-## [ ] B-15 – Storage writes / moves are not compensated when the transaction fails
+## [x] B-15 – Storage writes / moves are not compensated when the transaction fails
 
 **File:** `models/Asset.php:533-567`, TODO comment at `:634`
 
@@ -349,6 +349,12 @@ falls back to `application/octet-stream`, so the type mapping resolves it by ext
 
 **Fix direction:** record storage operations and undo them in the catch, or perform moves after commit with
 compensating handling.
+
+**Done:** `save()` records an undo step for every storage change and applies them in reverse order when the save
+finally fails (not between deadlock retries, which read the binary back from the storage). A replaced binary and a
+removed legacy file are kept as hidden `.backup_*` files next to them until the commit; a new file is deleted again;
+the asset move and the thumbnail relocation are moved back. Thumbnails cleared by the relocation are not restored (they
+are regenerated).
 
 ## [ ] B-16 – `getStream()` silently substitutes an empty stream for a missing binary
 

@@ -162,6 +162,24 @@ class Asset extends Element\AbstractElement
      */
     protected ?int $dataModificationDate = null;
 
+    /**
+     * Undo steps for the storage changes of the running save(), applied in reverse order when its transaction fails
+     *
+     * @internal
+     *
+     * @var list<callable(): void>
+     */
+    protected array $storageCompensations = [];
+
+    /**
+     * Backups of replaced or removed asset files of the running save(), deleted once its transaction is committed
+     *
+     * @internal
+     *
+     * @var list<string>
+     */
+    protected array $storageBackups = [];
+
     public function getDataModificationDate(): ?int
     {
         return $this->dataModificationDate;
@@ -179,7 +197,7 @@ class Asset extends Element\AbstractElement
 
     protected function getBlockedVars(): array
     {
-        $blockedVars = ['scheduledTasks', 'versions', 'stream'];
+        $blockedVars = ['scheduledTasks', 'versions', 'stream', 'storageCompensations', 'storageBackups'];
 
         if (!$this->isInDumpState()) {
             // for caching asset
@@ -520,6 +538,10 @@ class Asset extends Element\AbstractElement
             // if a transaction fails it gets restarted $maxRetries times, then the exception is thrown out
             // especially useful to avoid problems with deadlocks in multi-threaded environments (forked workers, ...)
             $maxRetries = 5;
+            // storage changes are kept across deadlock retries (a retry reads the binary back from the storage)
+            // and undone only when the save finally fails
+            $this->storageCompensations = [];
+            $this->storageBackups = [];
             for ($retries = 0; $retries < $maxRetries; $retries++) {
                 $this->beginTransaction();
 
@@ -558,11 +580,15 @@ class Asset extends Element\AbstractElement
                         // finally move the actual assets themselves
                         // We do this last so that any prior errors don't require a rollback
                         // on potentially a remote service.
+                        $newPath = $this->getRealFullPath();
+
                         try {
-                            $storage->move($oldPath, $this->getRealFullPath());
+                            $storage->move($oldPath, $newPath);
+                            $this->storageCompensations[] = static fn () => $storage->move($newPath, $oldPath);
                         } catch (UnableToMoveFile) {
                             //update children, if unable to move parent
                             $this->updateChildPaths($storage, $oldPath);
+                            $this->storageCompensations[] = fn () => $this->updateChildPaths($storage, $newPath, $oldPath, true);
                         }
                     }
 
@@ -574,6 +600,7 @@ class Asset extends Element\AbstractElement
                     }
 
                     $this->commit();
+                    $this->removeStorageBackups();
 
                     break; // transaction was successfully completed, so we cancel the loop here -> no restart required
                 } catch (Throwable $e) {
@@ -593,6 +620,8 @@ class Asset extends Element\AbstractElement
                         usleep($waitTime); // wait specified time until we restart the transaction
                     } else {
                         Logger::error('Unable to save Asset: ' . $e);
+
+                        $this->rollBackStorage();
 
                         // if the transaction still fail after $maxRetries retries, we throw out the exception
                         throw $e;
@@ -637,8 +666,6 @@ class Asset extends Element\AbstractElement
 
             return $this;
         } catch (Throwable $e) {
-            // TODO: we should rollback any files that were moved here,
-            // assuming a prior revert has not been done.
             $failureEvent = new AssetEvent($this, $parameters);
             $failureEvent->setArgument('exception', $e);
             if ($isUpdate) {
@@ -736,9 +763,20 @@ class Asset extends Element\AbstractElement
             if ($this->getDataChanged()) {
                 $src = $this->getStream();
 
-                if (!$storage->fileExists($path) || !stream_is_local($storage->readStream($path))) {
+                $fileExists = $storage->fileExists($path);
+                if (!$fileExists || !stream_is_local($storage->readStream($path))) {
                     // write stream directly if target file doesn't exist or if target is a remote storage
                     // this is because we don't have hardlinks there, so we don't need to consider them (see below)
+                    if ($fileExists) {
+                        // copied, not moved: the source stream may still read from this file
+                        $this->backupStorageFile($storage, $path, false);
+                    } else {
+                        $this->storageCompensations[] = static function () use ($storage, $path): void {
+                            if ($storage->fileExists($path)) {
+                                $storage->delete($path);
+                            }
+                        };
+                    }
                     $storage->writeStream($path, $src);
                 } else {
                     // We don't open a stream on existing files, because they could be possibly used by versions
@@ -755,6 +793,8 @@ class Asset extends Element\AbstractElement
 
                     try {
                         $storage->writeStream($tempFilePath, $src);
+                        // the current file is renamed away, so it can be put back if the transaction fails
+                        $this->backupStorageFile($storage, $path, true);
                         $storage->move($tempFilePath, $path);
                     } catch (Throwable $e) {
                         try {
@@ -775,10 +815,10 @@ class Asset extends Element\AbstractElement
                     $this->setCustomSetting('checksum', $checksum);
                 }
 
-                // delete old legacy file if exists; the lookup yields null on a DB error and '' for a missing row
+                // remove old legacy file if exists (deleted on commit); the lookup yields null on a DB error and '' for a missing row
                 $dbPath = $this->getDao()->getCurrentFullPath();
                 if ($dbPath && $dbPath !== $path && $storage->fileExists($dbPath)) {
-                    $storage->delete($dbPath);
+                    $this->backupStorageFile($storage, $dbPath, true);
                 }
 
                 $this->closeStream(); // set stream to null, so that the source stream isn't used anymore after saving
@@ -1835,6 +1875,60 @@ class Asset extends Element\AbstractElement
     }
 
     /**
+     * Keeps the current content of $path in a hidden file next to it until the save is committed, and registers
+     * putting it back as the undo step
+     */
+    private function backupStorageFile(FilesystemOperator $storage, string $path, bool $move): void
+    {
+        $backupPath = rtrim(dirname($path), '/') . '/' . uniqid('.backup_');
+
+        if ($move) {
+            $storage->move($path, $backupPath);
+        } else {
+            $storage->copy($path, $backupPath);
+        }
+
+        $this->storageBackups[] = $backupPath;
+        $this->storageCompensations[] = static function () use ($storage, $path, $backupPath): void {
+            if ($storage->fileExists($path)) {
+                $storage->delete($path);
+            }
+            $storage->move($backupPath, $path);
+        };
+    }
+
+    private function rollBackStorage(): void
+    {
+        foreach (array_reverse($this->storageCompensations) as $compensation) {
+            try {
+                $compensation();
+            } catch (Throwable $e) {
+                Logger::error('Unable to undo a storage change of asset ' . $this->getId() . ': ' . $e->getMessage());
+            }
+        }
+
+        $this->storageCompensations = [];
+        $this->storageBackups = [];
+    }
+
+    private function removeStorageBackups(): void
+    {
+        $storage = Storage::get('asset');
+        foreach ($this->storageBackups as $backupPath) {
+            try {
+                if ($storage->fileExists($backupPath)) {
+                    $storage->delete($backupPath);
+                }
+            } catch (Throwable $e) {
+                Logger::error('Unable to delete the asset file backup ' . $backupPath . ': ' . $e->getMessage());
+            }
+        }
+
+        $this->storageCompensations = [];
+        $this->storageBackups = [];
+    }
+
+    /**
      * @throws FilesystemException
      */
     private function relocateThumbnails(string $oldPath): void
@@ -1865,10 +1959,12 @@ class Asset extends Element\AbstractElement
 
                 try {
                     $storage->move($oldThumbnailsPath, $newThumbnailsPath);
+                    $this->storageCompensations[] = static fn () => $storage->move($newThumbnailsPath, $oldThumbnailsPath);
                 } catch (UnableToMoveFile) {
                     //update children, if unable to move parent
                     //if there is an error, we can ignore it
                     $this->updateChildPaths($storage, $oldThumbnailsPath, $newThumbnailsPath, true);
+                    $this->storageCompensations[] = fn () => $this->updateChildPaths($storage, $newThumbnailsPath, $oldThumbnailsPath, true);
                 }
             }
         }
