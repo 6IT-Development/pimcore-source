@@ -379,6 +379,11 @@ class Service extends Model\Element\Service
             return null;
         }
 
+        // the type comes from the URL, video thumbnail configs can only be applied to videos
+        if ($config['type'] === 'video' && !$asset instanceof Asset\Video) {
+            return null;
+        }
+
         $config['file_extension'] ??= strtolower(pathinfo($config['filename'], PATHINFO_EXTENSION));
 
         $prefix = preg_replace('@^cache-buster\-[\d]+\/@', '', $config['prefix']);

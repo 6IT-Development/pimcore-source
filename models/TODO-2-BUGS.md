@@ -443,7 +443,7 @@ $extension = str_replace($keypart, '', $key);     // 'data.data' → stem 'data'
 **Done:** the number is inserted before the last `.` by position (`data.data` → `data_1.data`); a name without an
 extension or a dotfile gets it appended (`README_1`, `.htaccess_1`).
 
-## [ ] B-22 – Public thumbnail route: type/asset mismatch → uncaught `TypeError` (anonymous 500)
+## [x] B-22 – Public thumbnail route: type/asset mismatch → uncaught `TypeError` (anonymous 500)
 
 **File:** `models/Asset/Service.php:373-374`, `:420`, `:431`, `:468`
 
@@ -452,6 +452,9 @@ extension or a dotfile gets it appended (`README_1`, `.htaccess_1`).
   Document with type `video` fails at `:431`. The controller's `catch (Exception)` (CoreBundle B-65) does not catch it.
 
 **Fix direction:** return `null` when `type === 'video'` and the asset is not `Asset\Video` (and vice versa).
+
+**Done:** a `video` thumbnail request for an asset that is not an `Asset\Video` returns `null` (404) before any config
+lookup. The `image` type stays valid for all asset classes, since videos and documents have image thumbnails too.
 
 ## [ ] B-23 – Undefined `status_cache` key for video thumbnails
 
