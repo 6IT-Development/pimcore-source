@@ -230,7 +230,7 @@ string-prefix replacement; wrap in a transaction or catch + log.
 
 **Fix direction:** enlarge (`varchar(1024)`/`TEXT` + hash index) via migration, and validate length on save.
 
-### [ ] B-21 – URL slug redirects: stale existing redirect is kept → redirect loop possible
+### [x] B-21 – URL slug redirects: stale existing redirect is kept → redirect loop possible
 **File:** `src/EventListener/UrlSlugUpdateListener.php:57-80`
 - The existence check only looks at `source + type auto_create` and **skips** creation if one exists, without updating
   its target. Scenario: slug `/a`→`/b` (creates `/a → /b`), `/b`→`/a` (creates `/b → /a`), `/a`→`/c`: existing

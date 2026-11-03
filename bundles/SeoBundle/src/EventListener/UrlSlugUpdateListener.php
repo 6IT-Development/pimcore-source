@@ -18,15 +18,18 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\SeoBundle\EventListener;
 
 use Pimcore;
-use Pimcore\Bundle\SeoBundle\Model\Redirect;
 use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
-use Pimcore\Db;
+use Pimcore\Bundle\SeoBundle\Redirect\AutoRedirectCreator;
 use Pimcore\Event\Model\DataObject\ClassDefinition\UrlSlugEvent;
 use Pimcore\Event\UrlSlugEvents;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class UrlSlugUpdateListener implements EventSubscriberInterface
 {
+    public function __construct(private readonly AutoRedirectCreator $autoRedirectCreator)
+    {
+    }
+
     public static function getSubscribedEvents(): array
     {
         return [
@@ -47,40 +50,23 @@ class UrlSlugUpdateListener implements EventSubscriberInterface
             return;
         }
 
-        $db = Db::get();
         foreach ($data as $slug) {
-            if ($previousSlug = $slug->getPreviousSlug()) {
-                if ($previousSlug === $slug->getSlug() || !$slug->getSlug()) {
-                    continue;
-                }
-
-                $checkSql = 'SELECT id FROM redirects WHERE source = :sourcePath AND `type` = :typeAuto';
-                if ($slug->getSiteId()) {
-                    $checkSql .= ' AND sourceSite = ' . $db->quote($slug->getSiteId());
-                } else {
-                    $checkSql .= ' AND sourceSite IS NULL';
-                }
-
-                $existingCheck = $db->fetchOne($checkSql, ['sourcePath' => $previousSlug, 'typeAuto' => Redirect::TYPE_AUTO_CREATE]);
-                if (!$existingCheck) {
-                    $redirect = new Redirect();
-                    $redirect->setType(Redirect::TYPE_AUTO_CREATE);
-                    $redirect->setRegex(false);
-                    $redirect->setTarget($slug->getSlug());
-                    $redirect->setSource($previousSlug);
-                    $redirect->setStatusCode(301);
-                    $redirect->setExpiry(time() + 86400 * 365); // this entry is removed automatically after 1 year
-
-                    if ($slug->getSiteId()) {
-                        $redirect->setSourceSite($slug->getSiteId());
-                        $redirect->setTargetSite($slug->getSiteId());
-                    }
-
-                    $redirect->save();
-                }
-
-                $slug->setPreviousSlug(null);
+            $previousSlug = $slug->getPreviousSlug();
+            $newSlug = $slug->getSlug();
+            // without a new slug the previous one is kept for the next save
+            if (!$previousSlug || !$newSlug) {
+                continue;
             }
+
+            if ($previousSlug !== $newSlug) {
+                $siteId = $slug->getSiteId() ?: null;
+
+                // the new slug is live again, an older auto redirect away from it would shadow it or loop
+                $this->autoRedirectCreator->deleteForSource($newSlug, $siteId);
+                $this->autoRedirectCreator->createOrUpdate($previousSlug, $newSlug, $siteId, $siteId);
+            }
+
+            $slug->setPreviousSlug(null);
         }
     }
 }

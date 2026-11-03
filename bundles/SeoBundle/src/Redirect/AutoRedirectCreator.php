@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\SeoBundle\Redirect;
 
 use Doctrine\DBAL\Connection;
 use Pimcore\Bundle\SeoBundle\Model\Redirect;
+use Pimcore\Cache;
 
 /**
  * Creates the redirects that are added automatically when a document or URL slug changes its path.
@@ -64,5 +65,24 @@ final readonly class AutoRedirectCreator
         $redirect->save();
 
         return $redirect;
+    }
+
+    /**
+     * Deletes the auto redirects away from $source, called when $source is a live URL again.
+     *
+     * @return int number of deleted redirects
+     */
+    public function deleteForSource(string $source, ?int $sourceSite): int
+    {
+        $deleted = (int)$this->db->executeStatement(
+            'DELETE FROM redirects WHERE source = :source AND `type` = :typeAuto AND sourceSite <=> :sourceSite',
+            ['source' => $source, 'typeAuto' => Redirect::TYPE_AUTO_CREATE, 'sourceSite' => $sourceSite]
+        );
+
+        if ($deleted > 0) {
+            Cache::clearTag('redirect');
+        }
+
+        return $deleted;
     }
 }

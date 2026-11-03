@@ -192,8 +192,8 @@ Three places build auto redirects with different defaults (expiry yes/no, regex 
 check yes/no), and the controller duplicates the create/update target-resolution block. Introduce an
 `AutoRedirectCreator` service (upsert by source/site/type, site resolution, configurable TTL replacing the magic
 `86400 * 365` → e.g. `pimcore_seo.redirects.auto_create_redirects_ttl`). Resolves B-18, B-19, B-21.
-_Partly done with B-18: `Redirect\AutoRedirectCreator` (upsert, `TTL` constant) is used for pretty URL and move
-redirects; the URL slug listener and a configurable TTL are still open._
+_Partly done with B-18/B-19/B-21: `Redirect\AutoRedirectCreator` (upsert, `TTL` constant) is used for pretty URL,
+move and URL slug redirects; a configurable TTL and the controller's create/update duplication are still open._
 
 ### [ ] I-24 – Schema modernisation via migration
 **Files:** `src/Resources/install/install.sql`, `src/Installer.php`
