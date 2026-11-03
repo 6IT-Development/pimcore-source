@@ -200,7 +200,7 @@ return `null` on failure.
 **Outcome:** The immutable types came with B-01. A date like `2026-02-31` used to pass the pattern and fail with a 500 here, now that
 filter is ignored like any other value which is not a date.
 
-### [ ] I-26 – Count query cleanup
+### [x] I-26 – Count query cleanup
 **File:** `src/Controller/LogController.php:117-122`
 The cloned count query still carries `ORDER BY`; reset it (`resetOrderBy()` in DBAL ≥ 3.8) and reuse the base builder
 before paging is applied instead of undoing `setMaxResults`/`setFirstResult`.

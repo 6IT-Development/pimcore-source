@@ -79,17 +79,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         $qb = $db->createQueryBuilder();
         $qb
             ->select('*')
-            ->from(ApplicationLoggerDb::TABLE_NAME)
-            ->setFirstResult($params->start)
-            ->setMaxResults($params->limit)
-            ->orderBy('id', 'DESC');
-
-        // ExtJS sends the sorters as JSON: [{"property": "...", "direction": "ASC|DESC"}]
-        $sorters = json_decode($query?->sort ?: $payload?->sort ?? '', true);
-        if (is_array($sorters) && in_array($sorters[0]['property'] ?? null, self::SORTABLE_COLUMNS, true)) {
-            $direction = 'DESC' === strtoupper((string)($sorters[0]['direction'] ?? '')) ? 'DESC' : 'ASC';
-            $qb->orderBy($db->quoteIdentifier($sorters[0]['property']), $direction);
-        }
+            ->from(ApplicationLoggerDb::TABLE_NAME);
 
         if ('' !== $params->priority) {
             $qb->andWhere($qb->expr()->eq('priority', ':priority'));
@@ -124,12 +114,23 @@ class LogController extends UserAwareController implements KernelControllerEvent
             $qb->andWhere('pid = ' . $qb->createNamedParameter($params->pid, ParameterType::INTEGER));
         }
 
+        // counted before sorting and paging are applied
         $totalQb = clone $qb;
         $total = (int)$totalQb
             ->select('COUNT(id)')
-            ->setMaxResults(null)
-            ->setFirstResult(0)
             ->fetchOne();
+
+        $qb
+            ->setFirstResult($params->start)
+            ->setMaxResults($params->limit)
+            ->orderBy('id', 'DESC');
+
+        // ExtJS sends the sorters as JSON: [{"property": "...", "direction": "ASC|DESC"}]
+        $sorters = json_decode($query?->sort ?: $payload?->sort ?? '', true);
+        if (is_array($sorters) && in_array($sorters[0]['property'] ?? null, self::SORTABLE_COLUMNS, true)) {
+            $direction = 'DESC' === strtoupper((string)($sorters[0]['direction'] ?? '')) ? 'DESC' : 'ASC';
+            $qb->orderBy($db->quoteIdentifier($sorters[0]['property']), $direction);
+        }
 
         return $this->jsonResponse([
             'p_totalCount' => $total,
