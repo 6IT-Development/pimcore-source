@@ -727,7 +727,7 @@ passing it on. A high-resolution factor is not compared: the route rebuilds the 
 **Done:** the parameter defaults to `null` in the trait and the interface, so a call without argument checks the
 thumbnail's own path reference.
 
-## [ ] B-42 – Empty / `'0'` thumbnail name → `TypeError` instead of fallback
+## [x] B-42 – Empty / `'0'` thumbnail name → `TypeError` instead of fallback
 
 **File:** `models/Asset/Image/Thumbnail.php:430-438`
 
@@ -735,6 +735,10 @@ thumbnail's own path reference.
   `image.thumbnail(emptyField)` → 500.
 
 **Fix direction:** treat `''` like `null`, or throw `NotFoundException` for any null result.
+
+**Done:** an empty name is mapped to an empty config, like `null`, in the image, document and video thumbnail
+constructors. Any other name without a definition, including `'0'`, throws `NotFoundException` instead of returning
+`null`.
 
 ## [ ] B-43 – `Thumbnail::generate()` catches only `Exception`
 

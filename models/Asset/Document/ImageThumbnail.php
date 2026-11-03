@@ -184,9 +184,14 @@ final class ImageThumbnail implements ImageThumbnailInterface
 
     protected function createConfig(array|string|Image\Thumbnail\Config $selector): Image\Thumbnail\Config
     {
+        // an empty name (e.g. from an empty field) is treated like no config
+        if ($selector === '') {
+            $selector = [];
+        }
+
         $config = Image\Thumbnail\Config::getByAutoDetect($selector);
 
-        if (!empty($selector) && $config === null) {
+        if ($config === null) {
             throw new NotFoundException('Thumbnail definition "' . (is_string($selector) ? $selector : '') . '" does not exist');
         }
 
