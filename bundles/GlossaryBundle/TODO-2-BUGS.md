@@ -205,7 +205,7 @@ produces `Unknown column 'foo'`, which `getTotalCount()` swallows (`total: 0`) w
 
 ## Configuration / installer
 
-### [ ] B-23 – `blocked_tags` config merges by index: user config overwrites defaults positionally *(reproduced)*
+### [x] B-23 – `blocked_tags` config merges by index: user config overwrites defaults positionally *(reproduced)*
 **Files:** `src/DependencyInjection/Configuration.php:32-36`, `config/pimcore/default.yaml:2-6`
 `useAttributeAsKey('name')` on a plain list keeps numeric keys, and the bundle defaults are merged with the project
 config. Project config `pimcore_glossary: { blocked_tags: ['nav'] }` results in

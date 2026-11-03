@@ -29,6 +29,7 @@ Root cause of B-23. Use `->arrayNode('blocked_tags')->scalarPrototype()->end()->
 `->info()` so `config:dump-reference pimcore_glossary` documents the option, remove the `@var ArrayNodeDefinition`
 cast (`getRootNode()` is typed in 7.4), and delete the two YAML files (they only exist to inject defaults).
 Consider an `enabled`/`limit` default option as well.
+*Partly done with B-23:* defaults, `info()` and both YAML files are done; the `@var` cast and further options remain.
 
 ### [ ] I-03 – Attribute-based / leaner service configuration
 **File:** `config/services.yaml`

@@ -21,6 +21,14 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
 
 class Configuration implements ConfigurationInterface
 {
+    /**
+     * Content inside these elements is never linked.
+     */
+    public const array DEFAULT_BLOCKED_TAGS = [
+        'a', 'script', 'style', 'code', 'pre', 'textarea', 'acronym',
+        'abbr', 'option', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    ];
+
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('pimcore_glossary');
@@ -31,9 +39,20 @@ class Configuration implements ConfigurationInterface
 
         $rootNode
             ->children()
-            ->arrayNode('blocked_tags')
-            ->useAttributeAsKey('name')
-            ->prototype('scalar');
+                ->arrayNode('blocked_tags')
+                    ->info('Elements whose content is never linked. A configured list replaces the default list; existing links and abbreviations are never nested either way.')
+                    ->performNoDeepMerging()
+                    ->beforeNormalization()
+                        ->ifArray()
+                        ->then(static fn (array $tags): array => array_map(
+                            static fn (mixed $tag): mixed => is_string($tag) ? strtolower(trim($tag)) : $tag,
+                            $tags
+                        ))
+                    ->end()
+                    ->scalarPrototype()->end()
+                    ->defaultValue(self::DEFAULT_BLOCKED_TAGS)
+                ->end()
+            ->end();
 
         return $treeBuilder;
     }
