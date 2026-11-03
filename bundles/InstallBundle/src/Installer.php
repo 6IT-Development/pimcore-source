@@ -129,6 +129,13 @@ class Installer
     private bool $skipDatabaseConfig = false;
 
     /**
+     * When true, the database structure is created even if the target database already contains tables
+     * (install.sql drops and re-creates all Pimcore tables)
+     *
+     */
+    private bool $dropExistingTables = false;
+
+    /**
      * Bundles that will be installed
      *
      */
@@ -195,6 +202,11 @@ class Installer
     public function setCommandLineOutput(PimcoreStyle $commandLineOutput): void
     {
         $this->commandLineOutput = $commandLineOutput;
+    }
+
+    public function setDropExistingTables(bool $dropExistingTables): void
+    {
+        $this->dropExistingTables = $dropExistingTables;
     }
 
     public function setCreateDatabaseStructure(bool $createDatabaseStructure): void
@@ -337,6 +349,16 @@ class Installer
             return $errors;
         }
 
+        try {
+            $errors = $this->checkExistingTables($db);
+        } catch (Exception $e) {
+            $errors[] = sprintf('Couldn\'t check the existing tables of the target database: %s', $e->getMessage());
+        }
+
+        if (!empty($errors)) {
+            return $errors;
+        }
+
         $this->dispatchStepEvent('start_install');
 
         try {
@@ -355,6 +377,42 @@ class Installer
                 $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Creating the database structure drops and re-creates every Pimcore table, so refuse to run it against a
+     * database that already contains tables unless dropping them was explicitly requested.
+     *
+     * @return string[] Array of errors
+     */
+    public function checkExistingTables(Connection $db): array
+    {
+        if (!$this->createDatabaseStructure || $this->dropExistingTables
+            || !in_array('setup_database', $this->getRunInstallSteps(), true)) {
+            return [];
+        }
+
+        $tables = $db->fetchFirstColumn(
+            'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME'
+        );
+
+        if (empty($tables)) {
+            return [];
+        }
+
+        $database = (string) $db->fetchOne('SELECT DATABASE()');
+        $isPimcore = (bool) array_intersect(['users', 'settings_store', 'migration_versions', 'assets', 'documents', 'objects'], $tables);
+
+        return [
+            sprintf(
+                'The database "%s" is not empty (%d table(s)%s). Installing would drop all Pimcore tables and their data. '
+                . 'Use an empty database, skip the structure creation with --skip-database-structure '
+                . 'or pass --drop-existing-tables to drop and re-create the tables.',
+                $database,
+                count($tables),
+                $isPimcore ? ', contains an existing Pimcore installation' : ''
+            ),
+        ];
     }
 
     public function resolveDbConfig(array $params): array

@@ -26,6 +26,14 @@ The `--no-interaction` flag will prevent any interactive prompts.
 
 :::
 
+:::caution
+
+Creating the database structure drops and re-creates all Pimcore tables. The installer therefore aborts if the target
+database already contains tables. Use an empty database, pass `--skip-database-structure` to keep the existing
+structure, or pass `--drop-existing-tables` to explicitly drop the existing tables and all their data.
+
+:::
+
 To avoid having to pass sensitive data (e.g. DB password) as command line option, you can also set each parameter as env
 variable. See `./vendor/bin/pimcore-install` for details. Example:
 

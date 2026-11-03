@@ -21,7 +21,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – Installer drops every Pimcore table in the target database without any guard → data loss
+## [x] C-01 – Installer drops every Pimcore table in the target database without any guard → data loss
 
 **Files:** `src/Installer.php:673-700`, `dump/install.sql` (56× `DROP TABLE IF EXISTS`), `src/Command/InstallCommand.php:335-337`
 

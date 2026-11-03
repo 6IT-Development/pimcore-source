@@ -164,6 +164,11 @@ class InstallCommand extends Command
                 InputOption::VALUE_NONE,
                 'Skip creation of database structure during install'
             )->addOption(
+                'drop-existing-tables',
+                null,
+                InputOption::VALUE_NONE,
+                'Create the database structure even if the database is not empty. <comment>All existing Pimcore tables and their data are dropped!</comment>'
+            )->addOption(
                 'skip-database-data',
                 null,
                 InputOption::VALUE_NONE,
@@ -204,6 +209,9 @@ class InstallCommand extends Command
         //check skipping database creation or database data
         if ($input->getOption('skip-database-structure')) {
             $this->installer->setCreateDatabaseStructure(false);
+        }
+        if ($input->getOption('drop-existing-tables')) {
+            $this->installer->setDropExistingTables(true);
         }
         if ($input->getOption('skip-database-data')) {
             $this->installer->setImportDatabaseData(false);
@@ -332,10 +340,6 @@ class InstallCommand extends Command
             $this->installer->setBundlesToInstall($installableBundles, $bundleSetupEvent->getAvailableBundles(), $bundleSetupEvent->getExcludeBundlesFromPhpBundles());
         }
 
-        if ($input->isInteractive() && !$this->io->confirm('This will install Pimcore with the given settings. Do you want to continue?')) {
-            return 0;
-        }
-
         $params = [];
         $missing = [];
 
@@ -360,6 +364,14 @@ class InstallCommand extends Command
             $this->io->listing($missing);
 
             return 1;
+        }
+
+        if ($input->isInteractive() && !$this->io->confirm(sprintf(
+            'This will install Pimcore into the database <comment>%s</comment>%s. Do you want to continue?',
+            $this->describeTargetDatabase($params),
+            $input->getOption('drop-existing-tables') ? ' and <comment>drop all existing Pimcore tables</comment>' : ''
+        ))) {
+            return 0;
         }
 
         $checkErrors = $this->installer->checkPrerequisites();
@@ -421,6 +433,21 @@ class InstallCommand extends Command
         $this->io->success('Pimcore was successfully installed');
 
         return 0;
+    }
+
+    private function describeTargetDatabase(array $params): string
+    {
+        $dbConfig = $this->installer->resolveDbConfig($params);
+
+        $host = isset($dbConfig['unix_socket'])
+            ? $dbConfig['unix_socket']
+            : sprintf('%s:%s', $dbConfig['host'] ?? 'localhost', $dbConfig['port'] ?? 3306);
+
+        if (isset($dbConfig['url'])) {
+            $host = preg_replace('#//[^@/]*@#', '//', (string) $dbConfig['url']);
+        }
+
+        return sprintf('%s@%s/%s', $dbConfig['user'] ?? '', $host, $dbConfig['dbname'] ?? '');
     }
 
     private function writeInstallerOutputResults(BufferedOutput $output, BufferedOutput $errorOutput): void
