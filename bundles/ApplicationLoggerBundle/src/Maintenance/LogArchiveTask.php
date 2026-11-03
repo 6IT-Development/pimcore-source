@@ -97,7 +97,7 @@ readonly class LogArchiveTask implements TaskInterface
 
                 $deleteArchiveLogDate = $archiveLogDate->add(new DateInterval('P' . (int)($this->config['applicationlog']['delete_archive_threshold'] ?? 6) . 'M'));
                 if ($deleteArchiveLogDate < new DateTimeImmutable()) {
-                    $db->executeStatement('DROP TABLE IF EXISTS `' . ($this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase()) . '`.' . $archiveTable);
+                    $db->executeStatement('DROP TABLE IF EXISTS ' . $db->quoteIdentifier($this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase()) . '.' . $db->quoteIdentifier($archiveTable));
 
                     // the folder of the archived month, not of the month the archive expires
                     $folderName = $archiveLogDate->format('Y/m');

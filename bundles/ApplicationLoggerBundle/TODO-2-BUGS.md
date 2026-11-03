@@ -159,7 +159,7 @@ The handler writes through the **default** connection. Logs written inside a tra
 (typical: `catch` → log error → rollback) disappear together with the business data – exactly the entries that matter.
 **Fix direction:** dedicated DBAL connection for logging (configurable), or buffer + write after commit.
 
-### [ ] B-21 – Inconsistent identifier quoting with `archive_alternative_database`
+### [x] B-21 – Inconsistent identifier quoting with `archive_alternative_database`
 **File:** `src/Maintenance/LogArchiveTask.php:52-54, 109`
 `CREATE` uses `$db->quoteIdentifier($altDb)`, `DROP` uses manual `` `...` `` without escaping. DB names with special
 chars (`-`, backtick) break the `DROP`; behaviour differs between statements.
