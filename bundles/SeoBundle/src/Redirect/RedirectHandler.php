@@ -35,6 +35,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\LockInterface;
+use Throwable;
 
 /**
  * @internal
@@ -254,11 +255,11 @@ final class RedirectHandler
             // acquire lock to avoid concurrent redirect cache warm-up
             $this->lock->acquire(true);
 
-            //check again if redirects are cached to avoid re-warming cache
-            $valueFromCache = Cache::load($cacheKey);
-            $this->redirects = $valueFromCache === false ? null : $valueFromCache;
-            if (!isset($this->redirects)) {
-                try {
+            try {
+                //check again if redirects are cached to avoid re-warming cache
+                $valueFromCache = Cache::load($cacheKey);
+                $this->redirects = $valueFromCache === false ? null : $valueFromCache;
+                if (!isset($this->redirects)) {
                     $list = new Redirect\Listing();
                     $list->setCondition('active = 1 AND regex = 1');
                     $list->setOrder('DESC');
@@ -267,12 +268,12 @@ final class RedirectHandler
                     $this->redirects = $list->load();
 
                     Cache::save($this->redirects, $cacheKey, ['system', 'redirect', 'route'], null, 998, true);
-                } catch (Exception) {
-                    $this->logger->error('Failed to load redirects');
                 }
+            } catch (Throwable $e) {
+                $this->logger->error('Failed to load redirects', ['exception' => $e]);
+            } finally {
+                $this->lock->release();
             }
-
-            $this->lock->release();
         }
 
         if (!is_array($this->redirects)) {

@@ -83,7 +83,7 @@ $url = preg_replace('@^' . $targetSite->getRootPath() . '/@', '/', $url);
 
 **Fix direction:** `preg_quote($targetSite->getRootPath(), '@')`, or `str_starts_with()` + `substr()`.
 
-### [ ] B-07 – Redirect cache lock not released on `\Error` / non-`Exception` throwables
+### [x] B-07 – Redirect cache lock not released on `\Error` / non-`Exception` throwables
 **File:** `src/Redirect/RedirectHandler.php:245-268`
 - `acquire(true)` … `release()` without `finally`; only `Exception` is caught. A `TypeError`/`Error` while loading
   (e.g. B-09, corrupted cache entry) leaves the lock held until the process ends → other PHP-FPM workers block on
