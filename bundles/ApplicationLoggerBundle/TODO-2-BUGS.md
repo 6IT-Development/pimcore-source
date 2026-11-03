@@ -96,7 +96,7 @@ mutating shared instances in `getInstance()`.
 throws `TypeError` before reaching this code. The `instanceof ElementInterface` branch is dead; positions 2/3 are
 reachable only as extra args. Decide: drop the legacy path (and document) or support it properly.
 
-### [ ] B-12 – Only the first `previous` exception is included in the file object
+### [x] B-12 – Only the first `previous` exception is included in the file object
 **Lines:** 326-344
 The recursive call passes `$includePrevious` as default `false`, so chains deeper than one level are lost
 (e.g. `HandlerFailedException → RuntimeException → PDOException` loses the root cause).

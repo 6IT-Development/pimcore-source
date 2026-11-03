@@ -365,7 +365,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         }
 
         if ($includePrevious && $exceptionObject->getPrevious()) {
-            $data[] = "\nPrevious:\n" . self::exceptionToString($exceptionObject->getPrevious(), $includeStackTrace);
+            $data[] = "\nPrevious:\n" . self::exceptionToString($exceptionObject->getPrevious(), $includeStackTrace, true);
         }
 
         return implode("\n", $data);
