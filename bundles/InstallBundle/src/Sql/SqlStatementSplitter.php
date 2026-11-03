@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\InstallBundle\Sql;
 
 use Generator;
+use RuntimeException;
 
 /**
  * Splits an SQL script into single statements like the mysql client does: delimiters inside
@@ -43,6 +44,18 @@ final class SqlStatementSplitter
     public static function splitString(string $sql): Generator
     {
         return self::split(self::linesOfString($sql));
+    }
+
+    /**
+     * Reads the file line by line, so large dumps are not loaded into memory at once
+     *
+     * @param string $file File path or stream URL (e.g. compress.zlib://...)
+     *
+     * @return Generator<int, string> Statements without the trailing delimiter, keyed by their 1-based number
+     */
+    public static function splitFile(string $file): Generator
+    {
+        return self::split(self::linesOfFile($file));
     }
 
     /**
@@ -189,6 +202,29 @@ final class SqlStatementSplitter
         $next = $line[$i + 2] ?? '';
 
         return $next === '' || ord($next) <= 32;
+    }
+
+    /**
+     * @return Generator<int, string>
+     */
+    private static function linesOfFile(string $file): Generator
+    {
+        $handle = @fopen($file, 'rb');
+        if ($handle === false) {
+            throw new RuntimeException(sprintf('Unable to open SQL file %s', $file));
+        }
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                yield $line;
+            }
+
+            if (!feof($handle)) {
+                throw new RuntimeException(sprintf('Unable to read SQL file %s', $file));
+            }
+        } finally {
+            fclose($handle);
+        }
     }
 
     /**

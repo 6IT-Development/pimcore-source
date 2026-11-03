@@ -113,7 +113,7 @@ iterate `next_result()` checking errors. Report the failing statement number / f
 
 ---
 
-## [ ] C-04 – Comment-stripping regex corrupts dump data (and is broken itself)
+## [x] C-04 – Comment-stripping regex corrupts dump data (and is broken itself)
 
 **Files:** `src/Installer.php:681` (install.sql), `src/Installer.php:778` (user dumps in `PIMCORE_PROJECT_ROOT/dump/`)
 

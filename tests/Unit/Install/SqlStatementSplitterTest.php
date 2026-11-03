@@ -66,6 +66,21 @@ class SqlStatementSplitterTest extends TestCase
         );
     }
 
+    public function testSplitsCompressedFilesLineByLine(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'sql') . '.sql.gz';
+        file_put_contents($file, gzencode("/* header */\nINSERT INTO a VALUES ('.x { color: red; } /* c */ ;\n');\r\nSELECT 2"));
+
+        try {
+            $this->assertSame([
+                1 => "/* header */\nINSERT INTO a VALUES ('.x { color: red; } /* c */ ;\n')",
+                2 => 'SELECT 2',
+            ], iterator_to_array(SqlStatementSplitter::splitFile('compress.zlib://' . $file)));
+        } finally {
+            unlink($file);
+        }
+    }
+
     public function testSupportsDelimiterBlocks(): void
     {
         $sql = "DELIMITER ;;\nCREATE TRIGGER t BEFORE INSERT ON a FOR EACH ROW BEGIN SET @x = 1; SET @y = 2; END;;\nDELIMITER ;\nSELECT 1;";

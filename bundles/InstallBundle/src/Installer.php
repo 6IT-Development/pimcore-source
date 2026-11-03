@@ -775,21 +775,9 @@ class Installer
         $db->executeQuery('SET FOREIGN_KEY_CHECKS=0;');
 
         if ($this->createDatabaseStructure) {
-            $mysqlInstallScript = file_get_contents(__DIR__ . '/../dump/install.sql');
-
-            // remove comments in SQL script
-            $mysqlInstallScript = preg_replace("/\s*(?!<\")\/\*(?![!+])[^\*]+\*\/(?!\")\s*/", '', $mysqlInstallScript);
-
-            // get every command as single part
-            $mysqlInstallScripts = explode(';', $mysqlInstallScript);
-
-            // execute every script with a separate call, otherwise this will end in a PDO_Exception "unbufferd queries, ..." seems to be a PDO bug after some googling
-            foreach ($mysqlInstallScripts as $m) {
-                $sql = trim($m);
-                if (strlen($sql) > 0) {
-                    $sql .= ';';
-                    $db->executeQuery($sql);
-                }
+            // execute every statement with a separate call, comments are left to the server
+            foreach (SqlStatementSplitter::splitFile(__DIR__ . '/../dump/install.sql') as $sql) {
+                $db->executeStatement($sql);
             }
 
             $cacheAdapter = new DoctrineDbalAdapter($db);
@@ -872,13 +860,15 @@ class Installer
             $file = 'compress.zlib://' . $file;
         }
 
-        $dumpFile = file_get_contents($file);
-
-        // remove comments in SQL script
-        $dumpFile = preg_replace("/\s*(?!<\")\/\*(?![!+])[^\*]+\*\/(?!\")\s*/", '', $dumpFile);
-
+        // the dump is imported as it is: comments are parsed by the server, stripping them would also
+        // change string data that contains comment sequences (CSS, JS, HTML)
         if (str_contains($file, 'atomic')) {
             // atomic dumps are sent as one multi-statement query (e.g. for routines without DELIMITER)
+            $dumpFile = file_get_contents($file);
+            if ($dumpFile === false) {
+                throw new RuntimeException(sprintf('Unable to read the database dump %s', $file));
+            }
+
             $this->executeMultiStatementQuery($db, $dumpFile, $file);
 
             return;
@@ -886,7 +876,7 @@ class Installer
 
         // execute the statements one by one: each one is a packet of its own (max_allowed_packet) and
         // the error of every single statement is reported
-        foreach (SqlStatementSplitter::splitString($dumpFile) as $number => $sql) {
+        foreach (SqlStatementSplitter::splitFile($file) as $number => $sql) {
             try {
                 $db->executeStatement($sql);
             } catch (Exception $e) {
