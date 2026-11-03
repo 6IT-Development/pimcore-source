@@ -249,7 +249,7 @@ array every time the glossary tab is opened → all other language selectors in 
 translations, object localized fields, …) get one more empty entry per open/close cycle.
 **Fix:** `this.languages = ['', ...pimcore.settings.websiteLanguages];`
 
-### [ ] B-27 – Drop zones are re-created on every refresh/update/edit → leak and multiplied handlers
+### [x] B-27 – Drop zones are re-created on every refresh/update/edit → leak and multiplied handlers
 **File:** `public/js/settings.js:184-215`, `:273-312`, `:265-266`, `:259-262`, `:172`, `:319`
 `updateRows()` creates a new `Ext.dd.DropZone` for every row on each `refresh`, `rowupdated`, store `update`,
 `viewready`, add and delete; `onNodeDrop` calls `updateRows()` again and `beforeedit` adds another zone on each edit.

@@ -47,6 +47,7 @@ pimcore.bundle.glossary.settings = Class.create({
 
 
             this.panel.on("destroy", function () {
+                Ext.destroy(this.rowDropZone, this.editorDropZone);
                 pimcore.globalmanager.remove("bundle_glossary");
             }.bind(this));
 
@@ -175,7 +176,6 @@ pimcore.bundle.glossary.settings = Class.create({
                         let data = grid.getStore().getAt(rowIndex);
                         pimcore.helpers.deleteConfirm(t('glossary'), data.data.id, function () {
                             grid.getStore().removeAt(rowIndex);
-                            this.updateRows();
                         }.bind(this));
 
                     }.bind(this)
@@ -187,37 +187,13 @@ pimcore.bundle.glossary.settings = Class.create({
             clicksToEdit: 1,
             clicksToMoveEditor: 1,
             listeners: {
-                beforeedit: function(el, e, eOpts, i) {
-                    var editorRow = el.editor.body;
-                    editorRow.rowIdx = e.rowIdx;
-                    let dd = new Ext.dd.DropZone(editorRow, {
-                        ddGroup: "element",
-
-                        getTargetFromEvent: function(e) {
-                            return this.getEl();
-                        },
-
-                        onNodeOver : function(target, dd, e, data) {
-                            if (data.records.length === 1) {
-                                return Ext.dd.DropZone.prototype.dropAllowed;
-                            }
-                        },
-
-                        onNodeDrop : function(myRowIndex, target, dd, e1, data) {
-                            if (pimcore.helpers.dragAndDropValidateSingleItem(data)) {
-                                try {
-                                    var record = data.records[0];
-                                    var data = record.data;
-
-                                    Ext.getCmp('linkEditor').setValue(data.path);
-
-                                    return true;
-                                } catch (e) {
-                                    console.log(e);
-                                }
-                            }
-                        }.bind(this, i)
-                    });
+                // the editor floats above the grid rows; being the topmost target, it gets the drop while editing
+                beforeedit: function (plugin) {
+                    if (!this.editorDropZone) {
+                        this.editorDropZone = this.createLinkDropZone(plugin.editor.body, function (path) {
+                            Ext.getCmp('linkEditor').setValue(path);
+                        });
+                    }
                 }.bind(this),
                 delay: 1
             }
@@ -260,68 +236,60 @@ pimcore.bundle.glossary.settings = Class.create({
             stripeRows: true,
             tbar: toolbar,
             viewConfig: {
-                forceFit: true,
-                listeners: {
-                    rowupdated: this.updateRows.bind(this),
-                    refresh: this.updateRows.bind(this)
-                }
+                forceFit: true
             }
         });
 
-        this.store.on("update", this.updateRows.bind(this));
-        this.grid.on("viewready", this.updateRows.bind(this));
+        // one drop zone for all rows, the row is resolved from the drop event
+        this.grid.on("viewready", function (grid) {
+            var view = grid.getView();
+            this.rowDropZone = this.createLinkDropZone(view.getEl(), function (path, rowEl) {
+                view.getRecord(rowEl).set("link", path);
+            }, function (e) {
+                return e.getTarget(view.getItemSelector(), view.getEl());
+            });
+        }.bind(this));
 
         this.store.load();
 
         return this.grid;
     },
 
-    updateRows: function () {
+    /**
+     * @param {Ext.dom.Element} el
+     * @param {Function} setLink called with the path of the dropped element and the target
+     * @param {Function} [getTarget] resolves the target from the event, the whole element by default
+     */
+    createLinkDropZone: function (el, setLink, getTarget) {
+        return new Ext.dd.DropZone(el, {
+            ddGroup: "element",
 
-        var rows = Ext.get(this.grid.getEl().dom).query(".x-grid-row");
+            getTargetFromEvent: getTarget || function () {
+                return this.getEl();
+            },
 
-        for (var i = 0; i < rows.length; i++) {
+            onNodeOver: function (target, dd, e, data) {
+                if (data.records.length === 1) {
+                    return Ext.dd.DropZone.prototype.dropAllowed;
+                }
+                return Ext.dd.DropZone.prototype.dropNotAllowed;
+            },
 
-            let dd = new Ext.dd.DropZone(rows[i], {
-                ddGroup: "element",
+            onNodeDrop: function (target, dd, e, data) {
+                if (!pimcore.helpers.dragAndDropValidateSingleItem(data)) {
+                    return false;
+                }
 
-                getTargetFromEvent: function(e) {
-                    return this.getEl();
-                },
+                setLink(data.records[0].data.path, target);
 
-                onNodeOver : function(target, dd, e, data) {
-                    if (data.records.length == 1) {
-                        return Ext.dd.DropZone.prototype.dropAllowed;
-                    }
-                },
-
-                onNodeDrop : function(myRowIndex, target, dd, e, data) {
-                    if (pimcore.helpers.dragAndDropValidateSingleItem(data)) {
-                        try {
-                            var record = data.records[0];
-                            var data = record.data;
-
-                            var rec = this.grid.getStore().getAt(myRowIndex);
-                            rec.set("link", data.path);
-
-                            this.updateRows();
-
-                            return true;
-                        } catch (e) {
-                            console.log(e);
-                        }
-                    }
-                }.bind(this, i)
-            });
-        }
-
+                return true;
+            }
+        });
     },
 
     onAdd: function (btn, ev) {
         this.grid.store.insert(0,{
             name: t('/')
         });
-
-        this.updateRows();
     }
 });
