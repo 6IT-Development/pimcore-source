@@ -158,7 +158,7 @@ final class Redirect extends AbstractModel
     public function getTargetPath(): string
     {
         $redirectTarget = $this->target;
-        $targetDocumentPath = Document::getById($this->target)?->getFullPath();
+        $targetDocumentPath = is_numeric($redirectTarget) ? Document::getById((int)$redirectTarget)?->getFullPath() : null;
 
         $resolvedPath = ($targetDocumentPath ?? $redirectTarget) ?? '';
 

@@ -109,7 +109,7 @@ events are per request, but check `isMainRequest()` there as well for fragments)
 **Fix direction:** `$ts = strtotime($expiry); if ($ts === false) throw new InvalidArgumentException(...)`, or
 accept only `int|DateTimeInterface|null`.
 
-### [ ] B-10 – `Redirect::getTargetPath()` – `TypeError` for `null` target, deprecation for path targets
+### [x] B-10 – `Redirect::getTargetPath()` – `TypeError` for `null` target, deprecation for path targets
 **File:** `src/Model/Redirect.php:157-169`
 - `Document::getById($this->target)`: `target` is `?string` → `null` causes `TypeError` (`int|string` required);
   any string triggers Pimcore's "Passing id as string is deprecated"; a path target like `/foo` is looked up as id.
