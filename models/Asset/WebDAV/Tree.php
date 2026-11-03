@@ -24,6 +24,7 @@ use Pimcore\Model\Element;
 use Pimcore\Model\User;
 use Pimcore\Tool\Admin;
 use Sabre\DAV;
+use Sabre\Uri;
 use Throwable;
 
 /**
@@ -101,6 +102,7 @@ class Tree extends DAV\Tree
                 $asset = $sourceAsset;
                 $asset->setPath($parent->getRealFullPath() . '/');
                 $asset->setParentId($parent->getId());
+                $asset->setFilename(basename($destinationPath));
             }
 
             $asset->setUserModification($user->getId());
@@ -117,6 +119,10 @@ class Tree extends DAV\Tree
 
                 throw $e;
             }
+
+            // like DAV\Tree::move(), so the node cache does not serve the old nodes for the rest of the request
+            $this->markDirty(Uri\split($sourcePath)[0]);
+            $this->markDirty(Uri\split($destinationPath)[0]);
         } catch (DAV\Exception $e) {
             throw $e;
         } catch (Element\DuplicateFullPathException $e) {

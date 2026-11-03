@@ -413,7 +413,7 @@ that cannot be rewound is closed before it is replaced.
 
 ## Dao / Listing / Service / Folder / WebDAV
 
-## [ ] B-20 – WebDAV `MOVE` to another folder ignores the new filename
+## [x] B-20 – WebDAV `MOVE` to another folder ignores the new filename
 
 **File:** `models/Asset/WebDAV/Tree.php:73-79`
 
@@ -422,6 +422,9 @@ that cannot be rewound is closed before it is replaced.
   Sabre's `markDirty()`, so the node cache is stale for the rest of the request.
 
 **Fix direction:** set the filename in both branches; call `markDirty()` on source and destination directories.
+
+**Done:** the cross-directory branch sets the destination filename too, and the source and destination directories
+are marked dirty after a successful move. The duplicate case already answers `409 Conflict` (C-08).
 
 ## [ ] B-21 – `Service::getUniqueKey()` throws `TypeError` for names without an extension and mangles repeated stems
 
