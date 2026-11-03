@@ -716,13 +716,16 @@ passing it on. A high-resolution factor is not compared: the route rebuilds the 
 
 **Done:** `reset()` clears the cached MIME type.
 
-## [ ] B-41 – `existsOnStorage()` without argument always returns `false`
+## [x] B-41 – `existsOnStorage()` without argument always returns `false`
 
 **File:** `models/Asset/Thumbnail/ImageThumbnailTrait.php:371-373`
 
 - Default is `[]`, so `$pathReference ??= …` never fires.
 
 **Fix direction:** default to `null` (update `ImageThumbnailInterface` too).
+
+**Done:** the parameter defaults to `null` in the trait and the interface, so a call without argument checks the
+thumbnail's own path reference.
 
 ## [ ] B-42 – Empty / `'0'` thumbnail name → `TypeError` instead of fallback
 

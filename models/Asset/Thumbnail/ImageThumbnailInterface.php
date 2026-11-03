@@ -70,7 +70,7 @@ interface ImageThumbnailInterface
      * @internal
      *
      */
-    public function existsOnStorage(?array $pathReference = []): bool;
+    public function existsOnStorage(?array $pathReference = null): bool;
 
     public static function supportsFormat(string $format): bool;
 

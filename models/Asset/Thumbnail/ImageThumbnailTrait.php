@@ -369,7 +369,7 @@ trait ImageThumbnailTrait
      * @internal
      *
      */
-    public function existsOnStorage(?array $pathReference = []): bool
+    public function existsOnStorage(?array $pathReference = null): bool
     {
         $pathReference ??= $this->getPathReference(true);
         if (isset($pathReference['storagePath'])) {
