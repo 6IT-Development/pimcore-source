@@ -358,55 +358,68 @@ class Installer
             return $errors;
         }
 
-        // try to establish a mysql connection
-        try {
-            $config = new Configuration();
+        $db = null;
 
-            $db = DriverManager::getConnection($dbConfig, $config);
-            $db->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
-            $db->getDatabasePlatform()->registerDoctrineTypeMapping('bit', 'boolean');
+        try {
+            // try to establish a mysql connection
+            try {
+                $config = new Configuration();
+
+                $db = DriverManager::getConnection($dbConfig, $config);
+                $db->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
+                $db->getDatabasePlatform()->registerDoctrineTypeMapping('bit', 'boolean');
+            } catch (Throwable $e) {
+                $this->logger->error((string) $e);
+
+                return [sprintf('Couldn\'t establish connection to MySQL: %s', $e->getMessage())];
+            }
 
             $this->dispatchStepEvent('check_prerequisites');
 
             // check all db-requirements before install
-            $errors = $this->checkPrerequisites($db);
+            try {
+                $errors = $this->checkPrerequisites($db);
+            } catch (Throwable $e) {
+                $this->logger->error((string) $e);
+
+                return [sprintf('Couldn\'t check the prerequisites: %s', $e->getMessage())];
+            }
 
             if (count($errors) > 0) {
                 return $errors;
             }
-        } catch (Exception $e) {
-            $errors[] = sprintf('Couldn\'t establish connection to MySQL: %s', $e->getMessage());
 
-            return $errors;
-        }
+            try {
+                $errors = $this->checkExistingTables($db);
+            } catch (Throwable $e) {
+                $this->logger->error((string) $e);
+                $errors[] = sprintf('Couldn\'t check the existing tables of the target database: %s', $e->getMessage());
+            }
 
-        try {
-            $errors = $this->checkExistingTables($db);
-        } catch (Exception $e) {
-            $errors[] = sprintf('Couldn\'t check the existing tables of the target database: %s', $e->getMessage());
-        }
+            if (!empty($errors)) {
+                return $errors;
+            }
 
-        if (!empty($errors)) {
-            return $errors;
-        }
+            $this->dispatchStepEvent('start_install');
 
-        $this->dispatchStepEvent('start_install');
+            try {
+                return $this->runInstall(
+                    $dbConfig,
+                    [
+                        'username' => $adminUser,
+                        'password' => $adminPass,
+                    ],
+                    $db
+                );
+            } catch (Throwable $e) {
+                $this->logger->error((string)$e);
 
-        try {
-            return $this->runInstall(
-                $dbConfig,
-                [
-                    'username' => $adminUser,
-                    'password' => $adminPass,
-                ],
-                $db
-            );
-        } catch (Throwable $e) {
-            $this->logger->error((string)$e);
-
-            return [
-                $e->getMessage(),
-            ];
+                return [
+                    $e->getMessage(),
+                ];
+            }
+        } finally {
+            $db?->close();
         }
     }
 

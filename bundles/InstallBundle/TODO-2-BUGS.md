@@ -235,7 +235,7 @@ lines (or use a `config/bundles.local.php`-style include), `var_export`/`php -l`
 
 **Fix direction:** `if ($filterStates !== [] && !in_array($check->getState(), $filterStates, true)) continue;`.
 
-### [ ] B-19 – Only `Exception` is caught around connection/prerequisite checks
+### [x] B-19 – Only `Exception` is caught around connection/prerequisite checks
 **File:** `src/Installer.php:306-326`
 - `Requirements::checkMysql()` and the DBAL platform detection can throw `Error`/`TypeError` (e.g. unexpected
   `SHOW VARIABLES` results) → escapes `install()` as an uncaught exception with stack trace instead of an error list;
