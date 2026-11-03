@@ -20,6 +20,7 @@ namespace Pimcore\Model\Asset\WebDAV;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Tool\TmpStore;
 use Pimcore\Tool\Serialize;
+use Throwable;
 
 /**
  * @internal
@@ -35,29 +36,37 @@ class Service
      */
     private const int DELETE_LOG_LIFETIME = 30;
 
-    public static function addToDeleteLog(Asset $asset): void
+    /**
+     * The entries are per user, only the user who deleted the asset can restore it
+     */
+    public static function addToDeleteLog(Asset $asset, int $userId): void
     {
         $asset->setInDumpState(true);
         $data = Serialize::serialize($asset);
         $asset->setInDumpState(false);
 
-        TmpStore::set(self::getDeleteLogId($asset->getRealFullPath()), $data, self::DELETE_LOG_TAG, self::DELETE_LOG_LIFETIME);
+        TmpStore::set(self::getDeleteLogId($asset->getRealFullPath(), $userId), $data, self::DELETE_LOG_TAG, self::DELETE_LOG_LIFETIME);
     }
 
-    public static function getFromDeleteLog(string $path): ?Asset
+    public static function getFromDeleteLog(string $path, int $userId): ?Asset
     {
-        $item = TmpStore::get(self::getDeleteLogId($path));
+        $item = TmpStore::get(self::getDeleteLogId($path, $userId));
         if (!$item) {
             return null;
         }
 
-        $asset = Serialize::unserialize($item->getData());
+        try {
+            $asset = Serialize::unserialize($item->getData());
+        } catch (Throwable) {
+            // e.g. a class of the serialized asset no longer exists
+            return null;
+        }
 
         return $asset instanceof Asset ? $asset : null;
     }
 
-    private static function getDeleteLogId(string $path): string
+    private static function getDeleteLogId(string $path, int $userId): string
     {
-        return self::DELETE_LOG_PREFIX . md5($path);
+        return self::DELETE_LOG_PREFIX . $userId . '-' . md5($path);
     }
 }

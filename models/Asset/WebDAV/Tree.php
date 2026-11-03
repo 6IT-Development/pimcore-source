@@ -76,7 +76,7 @@ class Tree extends DAV\Tree
 
                     $asset->setData($sourceAsset->getData());
                     $sourceToDelete = $sourceAsset;
-                } elseif ($asset = Asset\WebDAV\Service::getFromDeleteLog('/' . $destinationPath)) {
+                } elseif ($asset = Asset\WebDAV\Service::getFromDeleteLog('/' . $destinationPath, $user->getId())) {
                     // see: Asset\WebDAV\File::delete() why this is necessary
                     // the deleted asset is restored with the data of the source asset
                     $this->assertAllowed($sourceAsset->getParent(), 'create', $user);

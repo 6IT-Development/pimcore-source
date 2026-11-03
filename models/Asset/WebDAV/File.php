@@ -76,7 +76,9 @@ class File extends DAV\File
 
             // add the asset to the delete history, this is used so come over problems with programs like photoshop (delete, create instead of replace => move)
             // for details see Asset\WebDAV\Tree::move()
-            Asset\WebDAV\Service::addToDeleteLog($this->asset);
+            if ($user = AdminTool::getCurrentUser()) {
+                Asset\WebDAV\Service::addToDeleteLog($this->asset, $user->getId());
+            }
         } else {
             throw new DAV\Exception\Forbidden();
         }

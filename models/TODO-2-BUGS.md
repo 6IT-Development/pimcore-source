@@ -561,7 +561,7 @@ directly to `setStream()`.
 `file_put_contents()` / `fopen()` (`DAV\Exception`), and close the handle and delete the temp file in `finally`, also
 when `Asset::create()` / `save()` throws.
 
-## [ ] B-30 – WebDAV delete log: lost entries, cross-user restore, unrestricted `unserialize()`
+## [x] B-30 – WebDAV delete log: lost entries, cross-user restore, unrestricted `unserialize()`
 
 **Files:** `models/Asset/WebDAV/Service.php:36`, `:54`; `File.php:80-91`; `Tree.php:59-66`
 (CoreBundle C-13 only mentions the inner `Serialize::unserialize`.)
@@ -572,6 +572,11 @@ when `Asset::create()` / `save()` throws.
 - Outer `unserialize()` at `:36` has no `allowed_classes` and no error handling.
 
 **Fix direction:** TmpStore / DB keyed by user + path; `allowed_classes` restricted; at minimum `LOCK_EX` / `flock`.
+
+**Done:** C-13 already replaced the shared file with one TmpStore item per path (no lost entries, no outer
+`unserialize()`). The item id now contains the user id, so only the user who deleted an asset can restore it with a
+`MOVE`. A failing `unserialize()` returns `null`. `allowed_classes` is not restricted, because a serialized asset
+contains metadata, property and element classes that cannot be listed; the data is written by the server only.
 
 ## [ ] B-31 – Folder preview collage caches partial images and fatals on corrupt tiles
 
