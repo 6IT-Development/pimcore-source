@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Model\DataObject\Traits;
 
 use Doctrine\DBAL\Connection;
+use InvalidArgumentException;
 
 /**
  * @internal
@@ -60,6 +61,19 @@ trait CompositeIndexTrait
             $key = $newIndex['index_key'];
             $columns = $newIndex['index_columns'];
 
+            // key and columns come from the class definition and end up as identifiers in DDL
+            if (!is_string($key) || !preg_match('/^[A-Za-z0-9_]{1,62}$/D', $key)) {
+                throw new InvalidArgumentException(sprintf('Invalid composite index key: %s', json_encode($key)));
+            }
+            if (!is_array($columns) || !$columns) {
+                throw new InvalidArgumentException(sprintf('Composite index %s has no columns', $key));
+            }
+            foreach ($columns as $column) {
+                if (!is_string($column) || !preg_match('/^[A-Za-z0-9_]{1,64}$/D', $column)) {
+                    throw new InvalidArgumentException(sprintf('Invalid column %s in composite index %s', json_encode($column), $key));
+                }
+            }
+
             $newIndicesMap['c_' . $key] = implode(',', $columns);
         }
 
@@ -78,13 +92,14 @@ trait CompositeIndexTrait
         }
 
         foreach ($drop as $key) {
-            $this->db->executeQuery('ALTER TABLE `' . $table . '` DROP INDEX `' . $key . '`;');
+            $this->db->executeQuery('ALTER TABLE ' . $this->db->quoteIdentifier($table) . ' DROP INDEX ' . $this->db->quoteIdentifier($key));
         }
 
         foreach ($add as $key) {
-            $columnName = $newIndicesMap[$key];
+            $columnNames = array_map([$this->db, 'quoteIdentifier'], explode(',', $newIndicesMap[$key]));
             $this->db->executeQuery(
-                'ALTER TABLE `' . $table . '` ADD INDEX `' . $key . '` (' . $columnName . ');'
+                'ALTER TABLE ' . $this->db->quoteIdentifier($table) . ' ADD INDEX ' . $this->db->quoteIdentifier($key)
+                . ' (' . implode(',', $columnNames) . ')'
             );
         }
     }

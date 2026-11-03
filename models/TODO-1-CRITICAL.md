@@ -2344,7 +2344,7 @@ Tests in I-191.
 >   Nothing was executed.
 > - Critical items: C-58, C-59. Bugs: B-343–B-347. Improvements: I-192–I-198.
 
-## [ ] C-58 – Composite-index definitions go unescaped into `ALTER TABLE`: SQL injection through the class definition (C-32 for composite indices)
+## [x] C-58 – Composite-index definitions go unescaped into `ALTER TABLE`: SQL injection through the class definition (C-32 for composite indices)
 
 **Files:** `models/DataObject/Traits/CompositeIndexTrait.php:34-90` (`:63`, `:81`, `:87`);
 `models/DataObject/ClassDefinition.php:1111-1125` (`setCompositeIndices()`, no validation);

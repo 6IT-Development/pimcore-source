@@ -363,6 +363,18 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             throw new Exception(sprintf('Invalid ID `%s` for class definition %s', $this->getId(), $this->getName()));
         }
 
+        // composite index keys and columns become identifiers in ALTER TABLE statements
+        foreach ($this->getCompositeIndices() as $compositeIndex) {
+            $indexKey = $compositeIndex['index_key'] ?? null;
+            $indexColumns = $compositeIndex['index_columns'] ?? null;
+            if (!is_string($indexKey) || !preg_match('/^[A-Za-z0-9_]{1,62}$/D', $indexKey)
+                || !in_array($compositeIndex['index_type'] ?? null, ['store', 'query', 'localized_store', 'localized_query'], true)
+                || !is_array($indexColumns) || !$indexColumns
+                || array_filter($indexColumns, fn ($column) => !is_string($column) || !preg_match('/^[A-Za-z0-9_]{1,64}$/D', $column))) {
+                throw new Exception(sprintf('Invalid composite index for class definition %s: %s', $this->getName(), json_encode($compositeIndex)));
+            }
+        }
+
         foreach (['parentClass', 'listingParentClass', 'useTraits', 'listingUseTraits'] as $propertyName) {
             $propertyValue = $this->{'get' . ucfirst($propertyName)}();
             if ($propertyValue && !preg_match('/^[a-zA-Z_\x7f-\xff\\\][a-zA-Z0-9_\x7f-\xff\\\ ,]*$/', $propertyValue)) {
