@@ -29,6 +29,7 @@ use Pimcore\Model\Exception\ThumbnailFormatNotSupportedException;
 use Pimcore\Model\Exception\ThumbnailMaxScalingFactorException;
 use Pimcore\Tool;
 use Symfony\Component\EventDispatcher\GenericEvent;
+use Throwable;
 
 final class Thumbnail implements ThumbnailInterface
 {
@@ -129,7 +130,7 @@ final class Thumbnail implements ThumbnailInterface
                 try {
                     $deferred = $deferredAllowed && $this->deferred;
                     $this->pathReference = Thumbnail\Processor::process($this->asset, $this->config, null, $deferred, $generated);
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     Logger::error("Couldn't create thumbnail of image " . $this->asset->getRealFullPath() . ': ' . $e);
                 }
             }

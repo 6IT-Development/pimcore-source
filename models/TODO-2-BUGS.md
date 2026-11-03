@@ -740,7 +740,7 @@ thumbnail's own path reference.
 constructors. Any other name without a definition, including `'0'`, throws `NotFoundException` instead of returning
 `null`.
 
-## [ ] B-43 – `Thumbnail::generate()` catches only `Exception`
+## [x] B-43 – `Thumbnail::generate()` catches only `Exception`
 
 **File:** `models/Asset/Image/Thumbnail.php:129-134`; `Processor.php:343-344`
 
@@ -749,6 +749,10 @@ constructors. Any other name without a definition, including `'0'`, throws `NotF
   failed save → `writeStream(false)`.
 
 **Fix direction:** catch `\Throwable`; check `fopen` / save results in the Processor.
+
+**Done:** the image, document and video thumbnail generators catch `Throwable`, so a `TypeError` or
+`DivisionByZeroError` from a transformation falls back to the error placeholder. The Processor throws when the saved
+temp file cannot be opened instead of passing `false` to `writeStream()`.
 
 ## [ ] B-44 – `DivisionByZeroError` in `getEstimatedDimensions()` during HTML rendering
 

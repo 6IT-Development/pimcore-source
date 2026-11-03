@@ -354,10 +354,11 @@ class Processor
                 $tmpFsPath = File::getLocalTempFilePath($fileExtension);
                 $image->save($tmpFsPath, $format, $config->getQuality());
                 $stream = fopen($tmpFsPath, 'rb');
-                $storage->writeStream($storagePath, $stream);
-                if (is_resource($stream)) {
-                    fclose($stream);
+                if ($stream === false) {
+                    throw new Exception('Unable to read the generated thumbnail file ' . $tmpFsPath);
                 }
+                $storage->writeStream($storagePath, $stream);
+                fclose($stream);
 
                 if ($statusCacheEnabled && $asset instanceof Asset\Image) {
                     //update thumbnail dimensions to cache

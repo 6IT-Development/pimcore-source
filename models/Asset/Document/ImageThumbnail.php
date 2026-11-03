@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Asset\Document;
 
-use Exception;
 use Pimcore;
 use Pimcore\Document;
 use Pimcore\Event\AssetEvents;
@@ -33,6 +32,7 @@ use Pimcore\Tool;
 use Pimcore\Tool\Storage;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Lock\LockFactory;
+use Throwable;
 
 /**
  * @property Model\Asset\Document|null $asset
@@ -104,7 +104,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
                         $this->pathReference = Image\Thumbnail\Processor::process($this->asset, $config, $cacheFileStream, $deferred, $generated);
                     }
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 Logger::error("Couldn't create image-thumbnail of document " . $this->asset->getRealFullPath() . ': ' . $e);
             }
         }

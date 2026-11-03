@@ -32,6 +32,7 @@ use Pimcore\Tool\Storage;
 use Pimcore\Video;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Lock\LockFactory;
+use Throwable;
 
 /**
  * @property Model\Asset\Video|null $asset
@@ -174,7 +175,7 @@ final class ImageThumbnail implements ImageThumbnailInterface
                             $deferred,
                             $generated
                         );
-                    } catch (Exception $e) {
+                    } catch (Throwable $e) {
                         Logger::error("Couldn't create image-thumbnail of video " . $this->asset->getRealFullPath() . ': ' . $e);
                     }
                 }
