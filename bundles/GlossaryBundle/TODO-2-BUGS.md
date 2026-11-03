@@ -17,7 +17,7 @@ Items marked *(reproduced)* were verified with a scratch copy of the code on Sym
 
 ## Replacement engine (`src/Tool/Processor.php`)
 
-### [ ] B-01 – Case-insensitive match replaces the visitor-visible word with the stored casing *(reproduced)*
+### [x] B-01 – Case-insensitive match replaces the visitor-visible word with the stored casing *(reproduced)*
 **File:** `src/Tool/Processor.php:218`, `:249-251`
 The replacement is always the stored `text`, never the matched text: entry `Glossary` (not case-sensitive) turns
 `the glossary` into `the <a …>Glossary</a>`; a sentence-initial `Huber` becomes `huber`. Content is silently

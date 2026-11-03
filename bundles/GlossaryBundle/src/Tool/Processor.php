@@ -146,8 +146,9 @@ class Processor
 
     /**
      * Replaces the glossary terms of one text node in a single pass: at each position the leftmost match wins, and
-     * on a tie the entry that comes first (the longest text). Matched text is wrapped in elements built with the
-     * DOM API, so text and attribute values are escaped by the serializer.
+     * on a tie the entry that comes first (the longest text). The matched text is kept as written in the content (not
+     * replaced with the casing of the entry) and wrapped in elements built with the DOM API, so text and attribute
+     * values are escaped by the serializer.
      */
     private function replaceInTextNode(\DOMText $textNode, array &$entries, int $limit): void
     {
@@ -165,11 +166,11 @@ class Processor
                 if (preg_match($entry['search'], $text, $m, PREG_OFFSET_CAPTURE, $offset) === 1
                     && ($match === null || $m[0][1] < $match['offset'])
                 ) {
-                    $match = ['index' => $index, 'offset' => $m[0][1], 'length' => strlen($m[0][0])];
+                    $match = ['index' => $index, 'offset' => $m[0][1], 'text' => $m[0][0]];
                 }
             }
 
-            if ($match === null || $match['length'] === 0) {
+            if ($match === null || $match['text'] === '') {
                 break;
             }
 
@@ -178,10 +179,10 @@ class Processor
             if ($match['offset'] > $offset) {
                 $fragment->appendChild($doc->createTextNode(substr($text, $offset, $match['offset'] - $offset)));
             }
-            $fragment->appendChild($this->createReplacement($doc, $entries[$match['index']]));
+            $fragment->appendChild($this->createReplacement($doc, $entries[$match['index']], $match['text']));
 
             $entries[$match['index']]['count']++;
-            $offset = $match['offset'] + $match['length'];
+            $offset = $match['offset'] + strlen($match['text']);
         }
 
         if ($fragment === null) {
@@ -195,9 +196,9 @@ class Processor
         $textNode->parentNode->replaceChild($fragment, $textNode);
     }
 
-    private function createReplacement(\DOMDocument $doc, array $entry): \DOMNode
+    private function createReplacement(\DOMDocument $doc, array $entry, string $matchedText): \DOMNode
     {
-        $node = $doc->createTextNode($entry['text']);
+        $node = $doc->createTextNode($matchedText);
 
         if ($entry['abbr']) {
             $abbr = $doc->createElement('abbr');

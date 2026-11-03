@@ -164,7 +164,7 @@ class GlossaryTest extends TestCase
             null
         );
 
-        $expect = '<p><a class="pimcore_glossary" href="/huber">huber</a> &lt;&gt; is the best</p>';
+        $expect = '<p><a class="pimcore_glossary" href="/huber">Huber</a> &lt;&gt; is the best</p>';
 
         $this->assertSame($expect, $result);
     }
@@ -300,5 +300,21 @@ class GlossaryTest extends TestCase
         $saved = Glossary::getById($entry->getId());
         $this->assertNull($saved->getLink());
         $this->assertSame('Nullable abbreviation', $saved->getAbbr());
+    }
+
+    public function testGlossaryKeepsTheCasingOfTheContent(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Glossary');
+        $entry->setLink('/glossary');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse('<p>the glossary, the GLOSSARY</p>', [], 'en', null, null);
+
+        $expect = '<p>the <a class="pimcore_glossary" href="/glossary">glossary</a>, '
+            . 'the <a class="pimcore_glossary" href="/glossary">GLOSSARY</a></p>';
+
+        $this->assertSame($expect, $result);
     }
 }
