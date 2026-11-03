@@ -63,13 +63,19 @@ class Processor
             return $content;
         }
 
-        $locale = $this->requestHelper->getMainRequest()->getLocale();
-        $currentDocument = $this->documentResolver->getDocument();
-        $uri = $this->requestHelper->getMainRequest()->getRequestUri();
+        // the language of the rendered content (e.g. a snippet in another language) is the one of the current
+        // request, while links to the page the visitor is on are suppressed, i.e. the document of the main request
+        $mainRequest = $this->requestHelper->getMainRequest();
+        $locale = $this->requestHelper->getCurrentRequest()->getLocale();
+        $currentDocument = $this->documentResolver->getDocument($mainRequest);
 
-        return $this->parse($content, $options, $locale, $currentDocument, $uri);
+        return $this->parse($content, $options, $locale, $currentDocument, $mainRequest->getPathInfo());
     }
 
+    /**
+     * @param Document|null $document the page the content is shown on, never linked to itself
+     * @param string|null $uri the path of that page; a query string, fragment and trailing slash are ignored
+     */
     public function parse(string $content, array $options, string $locale, ?Document $document, ?string $uri): string
     {
         $data = $this->getData($locale);
@@ -81,24 +87,11 @@ class Processor
             'limit' => -1,
         ], $options);
 
+        $path = $uri === null ? null : rtrim((string)parse_url($uri, PHP_URL_PATH), '/');
+
         $entries = [];
         foreach ($data as $entry) {
-            $linkTarget = $entry['linkTarget'] ?? '';
-            $linkTargetTrimmed = rtrim((string)$linkTarget, ' /');
-            if ($document instanceof Document) {
-                // check if the current document is the target link (id check)
-                if ($entry['linkType'] == 'internal' && $document->getId() == $linkTarget) {
-                    continue;
-                }
-
-                // check if the current document is the target link (path check)
-                if ($document->getFullPath() == $linkTargetTrimmed) {
-                    continue;
-                }
-            }
-
-            // check if the current URI is the target link (path check)
-            if ($uri === $linkTargetTrimmed) {
+            if ($this->isLinkToCurrentPage($entry, $document, $path)) {
                 continue;
             }
 
@@ -135,6 +128,28 @@ class Processor
         $html->clear();
 
         return $result;
+    }
+
+    private function isLinkToCurrentPage(array $entry, ?Document $document, ?string $path): bool
+    {
+        if ($entry['linkType'] === '') {
+            return false;
+        }
+
+        // the rendered link: the full path of the target document for internal links
+        $linkPath = rtrim((string)$entry['link'], ' /');
+
+        if ($document instanceof Document) {
+            if ($entry['linkType'] === 'internal' && $document->getId() === $entry['linkTarget']) {
+                return true;
+            }
+
+            if (rtrim($document->getFullPath(), '/') === $linkPath) {
+                return true;
+            }
+        }
+
+        return $path === $linkPath;
     }
 
     /**

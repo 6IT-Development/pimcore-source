@@ -82,7 +82,7 @@ any project snapshot/diff tooling sees changed markup on every page with glossar
 (`html_entity_decode($expect)` like the other tests do), and run `GlossaryTest` on PHP 8.4 in CI. Do **not** pass
 `useHtml5Parser: false` (deprecated in 7.4).
 
-### [ ] B-09 – Self-link suppression compares against the raw request URI (query string, trailing slash, sub-requests)
+### [x] B-09 – Self-link suppression compares against the raw request URI (query string, trailing slash, sub-requests)
 **File:** `src/Tool/Processor.php:66-68`, `:96-113`
 - `getRequestUri()` includes the query string (`/page?utm_source=x`) and is not trimmed → a page links to itself as
   soon as a query parameter or a trailing slash is present, while `$linkTargetTrimmed` is trimmed.

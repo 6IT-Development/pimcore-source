@@ -427,4 +427,28 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryDoesNotLinkToTheCurrentPage(): void
+    {
+        foreach ([['Self', '/self-page', null], ['Home', '/', null], ['PHP', null, 'Hypertext Preprocessor']] as [$text, $link, $abbr]) {
+            $entry = new Glossary();
+            $entry->setText($text);
+            $entry->setLink($link);
+            $entry->setAbbr($abbr);
+            $entry->setLanguage('en');
+            $entry->save();
+        }
+
+        // query string and trailing slash of the current URI are ignored
+        $result = $this->processor->parse('<p>Self, Home, PHP</p>', [], 'en', null, '/self-page/?utm_source=x');
+        $expect = '<p>Self, <a class="pimcore_glossary" href="/">Home</a>, '
+            . '<abbr class="pimcore_glossary" title="Hypertext Preprocessor">PHP</abbr></p>';
+        $this->assertSame($expect, $result);
+
+        // an entry without a link is not suppressed on the home page
+        $result = $this->processor->parse('<p>Self, Home, PHP</p>', [], 'en', null, '/');
+        $expect = '<p><a class="pimcore_glossary" href="/self-page">Self</a>, Home, '
+            . '<abbr class="pimcore_glossary" title="Hypertext Preprocessor">PHP</abbr></p>';
+        $this->assertSame($expect, $result);
+    }
 }
