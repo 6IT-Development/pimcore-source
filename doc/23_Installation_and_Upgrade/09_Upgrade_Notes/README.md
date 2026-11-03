@@ -2,6 +2,11 @@
 
 ## Unreleased
 ### General
+#### [Application Logger]
+- Removed the legacy call signature `$logger->error($message, $context, $fileObject, $component)` of the level methods
+  and the protected `ApplicationLogger::handleLog()`. Extra arguments are ignored now, pass `fileObject` and `component`
+  in the `$context` array. Passing an element as second argument has been throwing a `TypeError` since `$context` is
+  typed as `array`, use `$context['relatedObject']`.
 #### [Cache]
 - Fixed: if `cache.app` uses the default filesystem adapter, Pimcore stores it in `pimcore.cache.pool`. Every pool
   derived from `cache.app` (`framework.cache.pools.*` with the default adapter, Symfony's own child pools) used to

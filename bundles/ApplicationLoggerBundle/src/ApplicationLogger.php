@@ -267,70 +267,42 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
     public function emergency(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('emergency', $message, func_get_args());
+        $this->log('emergency', $message, $context);
     }
 
     public function critical(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('critical', $message, func_get_args());
+        $this->log('critical', $message, $context);
     }
 
     public function error(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('error', $message, func_get_args());
+        $this->log('error', $message, $context);
     }
 
     public function alert(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('alert', $message, func_get_args());
+        $this->log('alert', $message, $context);
     }
 
     public function warning(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('warning', $message, func_get_args());
+        $this->log('warning', $message, $context);
     }
 
     public function notice(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('notice', $message, func_get_args());
+        $this->log('notice', $message, $context);
     }
 
     public function info(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('info', $message, func_get_args());
+        $this->log('info', $message, $context);
     }
 
     public function debug(string|Stringable $message, array $context = []): void
     {
-        $this->handleLog('debug', $message, func_get_args());
-    }
-
-    protected function handleLog(mixed $level, string|Stringable $message, array $params): void
-    {
-        $context = [];
-
-        if (isset($params[1])) {
-            if (is_array($params[1])) {
-                // standard PSR-3 -> $context is an array
-                $context = $params[1];
-            } elseif ($params[1] instanceof ElementInterface) {
-                $context['relatedObject'] = $params[1];
-            }
-        }
-
-        if (isset($params[2])) {
-            if ($params[2] instanceof FileObject) {
-                $context['fileObject'] = $params[2];
-            }
-        }
-
-        if (isset($params[3])) {
-            if (is_string($params[3])) {
-                $context['component'] = $params[3];
-            }
-        }
-
-        $this->log($level, $message, $context);
+        $this->log('debug', $message, $context);
     }
 
     public function logException(

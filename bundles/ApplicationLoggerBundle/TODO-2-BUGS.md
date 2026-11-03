@@ -89,7 +89,7 @@ mutating shared instances in `getInstance()`.
 - `$logCall['class'] === __CLASS__` does not match subclasses overriding the methods → falls through to the innermost
   frame and reports the logger itself as source.
 
-### [ ] B-11 – Legacy call signature is half-supported and throws `TypeError`
+### [x] B-11 – Legacy call signature is half-supported and throws `TypeError`
 **Lines:** 252-278
 `handleLog()` still parses the Pimcore-legacy form `error($msg, $relatedObject, $fileObject, $component)` via
 `func_get_args()`, but the public signatures type `$context` as `array`, so passing an `ElementInterface` as 2nd argument
