@@ -26,6 +26,7 @@ use Pimcore\Extension\Bundle\Exception\AdminClassicBundleNotFoundException;
 use Pimcore\Model\Document;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -46,14 +47,23 @@ class SettingsController extends UserAwareController
             $data = $this->decodeJson($request->request->getString('data'));
 
             if ($request->query->getString('xaction') === 'destroy') {
-                $id = $data['id'];
-                $glossary = Glossary::getById($id);
+                $glossary = $this->findGlossary($data);
+                if (!$glossary) {
+                    return $this->notFoundResponse();
+                }
+
                 $glossary->delete();
 
                 return $this->jsonResponse(['success' => true, 'data' => []]);
             } elseif ($request->query->getString('xaction') === 'update') {
                 // save glossary
-                $glossary = Glossary::getById($data['id']);
+                $glossary = $this->findGlossary($data);
+                if (!$glossary) {
+                    return $this->notFoundResponse();
+                }
+
+                // already loaded, and a string id would fail setId()
+                unset($data['id']);
 
                 $data = $this->normalizeEmptyValues($data);
 
@@ -132,6 +142,25 @@ class SettingsController extends UserAwareController
         }
 
         return $this->jsonResponse(['success' => false]);
+    }
+
+    /**
+     * The entry may have been deleted in another tab or by another user; the grid sends the id as number, other
+     * clients may send it as string.
+     */
+    private function findGlossary(mixed $data): ?Glossary
+    {
+        $id = is_array($data) ? filter_var($data['id'] ?? null, FILTER_VALIDATE_INT) : false;
+        if ($id === false || $id < 1) {
+            return null;
+        }
+
+        return Glossary::getById($id);
+    }
+
+    private function notFoundResponse(): JsonResponse
+    {
+        return $this->jsonResponse(['success' => false, 'message' => 'Glossary entry not found'], Response::HTTP_NOT_FOUND);
     }
 
     /**

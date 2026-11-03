@@ -166,7 +166,7 @@ blocks per page call `Cache::load()` repeatedly.
 
 ## Admin controller (`src/Controller/SettingsController.php`)
 
-### [ ] B-18 – Deleting/updating an entry that no longer exists → fatal error on `null`
+### [x] B-18 – Deleting/updating an entry that no longer exists → fatal error on `null`
 **File:** `src/Controller/SettingsController.php:50-58`
 `Glossary::getById()` returns `?Glossary`; `->delete()` / `->setValues()` are called unchecked → `Error: Call to a
 member function … on null` (HTTP 500) when two admins edit the grid or a row was deleted in another tab. An `id`
