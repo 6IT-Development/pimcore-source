@@ -92,6 +92,11 @@
 - `Config::getYAxis()` always returns an array, a single value or `null` set through `Config::setYAxis()` is normalized.
 - The default key bindings `reports` and `custom_reports` no longer override the ones set in the application under
   `pimcore_admin.user.default_key_bindings`.
+#### [Glossary]
+- `pimcore_glossary.blocked_tags` replaces the default list instead of being merged into it by position. Before,
+  `blocked_tags: ['nav']` resulted in `['nav', 'script', ...]` (`a` was no longer blocked) and `blocked_tags: []` kept
+  all defaults. To add tags, repeat the defaults (`bin/console config:dump-reference pimcore_glossary`). Tag names are
+  lowercased. Existing links and abbreviations are never linked again, whether `a` and `abbr` are in the list or not.
 
 ### Security
 #### [Twig]
