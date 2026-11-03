@@ -24,7 +24,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 **Fix direction:** `try/catch (\Throwable)` + log a warning; store a hash column (`uri_hash`, unique) and look up by
 hash; truncate explicitly; `utf8mb4` (I-24).
 
-### [ ] B-02 – Duplicate rows / race condition, `code` never updated, `$_GET` used instead of the Request
+### [x] B-02 – Duplicate rows / race condition, `code` never updated, `$_GET` used instead of the Request
 **File:** `src/EventListener/ResponseExceptionListener.php:87-99`
 - `SELECT` then `INSERT` without a unique key on `uri` → concurrent 404s (crawler bursts) insert duplicates; the grid
   then shows the same URI several times with split counts.

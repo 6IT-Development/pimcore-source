@@ -98,19 +98,13 @@ class ResponseExceptionListener implements EventSubscriberInterface
             $uri = mb_substr(mb_scrub($request->getUri(), 'UTF-8'), 0, self::URI_MAX_LENGTH, 'UTF-8');
             $uriHash = hash('sha256', $uri);
 
-            $exists = $this->db->fetchOne('SELECT date FROM http_error_log WHERE uri_hash = ?', [$uriHash]);
-            if ($exists) {
-                $this->db->executeStatement('UPDATE http_error_log SET `count` = `count` + 1, date = ? WHERE uri_hash = ?', [time(), $uriHash]);
-            } else {
-                $this->db->insert('http_error_log', [
-                    'uri' => $uri,
-                    'uri_hash' => $uriHash,
-                    'code' => $statusCode,
-                    'parametersGet' => serialize($_GET),
-                    'date' => time(),
-                    'count' => 1,
-                ]);
-            }
+            $now = time();
+
+            $this->db->executeStatement(
+                'INSERT INTO http_error_log (uri, uri_hash, code, parametersGet, `date`, `count`) VALUES (?, ?, ?, ?, ?, 1)
+                    ON DUPLICATE KEY UPDATE `count` = `count` + 1, `date` = ?, code = ?',
+                [$uri, $uriHash, $statusCode, serialize($request->query->all()), $now, $now, $statusCode]
+            );
         } catch (Throwable $e) {
             $this->logger->warning('Could not write to the HTTP error log: {message}', [
                 'message' => $e->getMessage(),
