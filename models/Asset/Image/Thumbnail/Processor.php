@@ -85,6 +85,19 @@ class Processor
     }
 
     /**
+     * Whether the deferred thumbnail route can rebuild the config by its name, i.e. it is persisted and not changed at
+     * runtime (e.g. by getAsFormat() or setItems()).
+     */
+    private static function isPersistedConfig(Config $config): bool
+    {
+        $persistedConfig = Config::getByName($config->getName());
+
+        return $persistedConfig
+            && $persistedConfig->getHash() === $config->getHash()
+            && strcasecmp($persistedConfig->getFormat(), $config->getFormat()) === 0;
+    }
+
+    /**
      * @param string|resource|null $fileSystemPath
      * @param bool $deferred deferred means that the image will be generated on-the-fly (details see below)
      *
@@ -220,8 +233,8 @@ class Processor
         $pathInfo = ltrim($asset->getRealPath(), '/') . $asset->getId() . '/' . $config->getName() . '/' . $filename;
         $tmpStoreDeferredConfigId = 'thumb_' . $asset->getId() . '__' . md5($pathInfo);
         if ($deferred) {
-            // only add the config to the TmpStore if necessary (e.g. if the config is auto-generated)
-            if (!Config::exists($config->getName())) {
+            // only add the config to the TmpStore if necessary (e.g. if the config is auto-generated or was changed at runtime)
+            if (!self::isPersistedConfig($config)) {
                 TmpStore::add($tmpStoreDeferredConfigId, $config, 'thumbnail_deferred');
             }
 
@@ -351,10 +364,9 @@ class Processor
                     $asset->addThumbnailFileToCache($tmpFsPath, $filename, $config);
                 }
 
-                if (!Config::exists($config->getName())) {
-                    // delete dynamic thumbnail configs out of the TmpStore as soon as we've generated the thumbnail file
-                    TmpStore::delete($tmpStoreDeferredConfigId);
-                }
+                // delete dynamic thumbnail configs out of the TmpStore as soon as we've generated the thumbnail file
+                // (unconditionally: the deferred route may have changed the config before it was passed here)
+                TmpStore::delete($tmpStoreDeferredConfigId);
 
                 $generated = true;
 

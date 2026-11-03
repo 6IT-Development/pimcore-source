@@ -690,7 +690,7 @@ not change the output: `selectMedia()` replaces the items, which are hashed, and
 only decides whether the original SVG is served instead of the generated file. The quality override of the deferred
 route is handled with B-39.
 
-## [ ] B-39 – Runtime-modified named configs are not stored for deferred generation
+## [x] B-39 – Runtime-modified named configs are not stored for deferred generation
 
 **File:** `models/Asset/Image/Thumbnail/Processor.php:224`; `models/Asset/Thumbnail/ImageThumbnailTrait.php:423-434`
 
@@ -699,6 +699,12 @@ route is handled with B-39.
   path, so the `.webp` URL never resolves.
 
 **Fix direction:** store when the config differs from the persisted definition (compare hashes), not by name.
+
+**Done:** the processor stores the config in the TmpStore unless a persisted config of that name has the same hash and
+format. The deferred route reads the TmpStore entry first and falls back to the config by name only without one;
+for a TmpStore config it does not apply the auto-format quality, which closes the URL/path mismatch from B-38. The
+processor always deletes the TmpStore entry after generating, because the route may have changed the config before
+passing it on. A high-resolution factor is not compared: the route rebuilds the configured factors from the file name.
 
 ## [ ] B-40 – `getAsFormat()` returns a clone with a stale MIME type
 

@@ -390,25 +390,30 @@ class Service extends Model\Element\Service
         $prefix = preg_replace('@^cache-buster\-[\d]+\/@', '', $config['prefix']);
         $prefix = preg_replace('@' . $asset->getId() . '/$@', '', $prefix);
         if (ltrim($asset->getPath(), '/') === ltrim($prefix, '/')) {
-            // just check if the thumbnail exists -> throws exception otherwise
             $thumbnailConfigClass = 'Pimcore\\Model\\Asset\\' . ucfirst($config['type']) . '\\Thumbnail\Config';
-            $thumbnailConfig = $thumbnailConfigClass::getByName($config['thumbnail_name']);
+            // check if there's an item in the TmpStore first: it is also stored for named configs that were changed
+            // at runtime (e.g. getAsFormat()), which cannot be rebuilt by name
+            // remove an eventually existing cache-buster prefix first (eg. when using with a CDN)
+            $pathInfo = preg_replace('@^cache-buster\-[\d]+/@', '', $config['prefix']) . $config['thumbnail_name'] . '/' . $config['filename'];
+            $deferredConfigId = 'thumb_' . $config['asset_id'] . '__' . md5(rawurldecode($pathInfo));
+            $thumbnailConfig = null;
+            $isDeferredConfig = false;
 
-            if (!$thumbnailConfig) {
-                // check if there's an item in the TmpStore
-                // remove an eventually existing cache-buster prefix first (eg. when using with a CDN)
-                $pathInfo = preg_replace('@^cache-buster\-[\d]+/@', '', $config['prefix']) . $config['thumbnail_name'] . '/' . $config['filename'];
-                $deferredConfigId = 'thumb_' . $config['asset_id'] . '__' . md5(rawurldecode($pathInfo));
+            if ($thumbnailConfigItem = TmpStore::get($deferredConfigId)) {
+                $thumbnailConfig = $thumbnailConfigItem->getData();
+                $isDeferredConfig = true;
+                // the dynamic config get's deleted out of the TmpStore in the Processor after the thumbnail
+                // file was generated, to avoid race conditions and other unintended behavior
 
-                if ($thumbnailConfigItem = TmpStore::get($deferredConfigId)) {
-                    $thumbnailConfig = $thumbnailConfigItem->getData();
-                    // the dynamic config get's deleted out of the TmpStore in the Processor after the thumbnail
-                    // file was generated, to avoid race conditions and other unintended behavior
+                if (!$thumbnailConfig instanceof $thumbnailConfigClass) {
+                    throw new Exception('Deferred thumbnail config file doesn\'t contain a valid ' . $thumbnailConfigClass . ' object');
+                }
+            } else {
+                // just check if the thumbnail exists -> throws exception otherwise
+                $thumbnailConfig = $thumbnailConfigClass::getByName($config['thumbnail_name']);
 
-                    if (!$thumbnailConfig instanceof $thumbnailConfigClass) {
-                        throw new Exception('Deferred thumbnail config file doesn\'t contain a valid ' . $thumbnailConfigClass . ' object');
-                    }
-                } elseif ((Config::getSystemConfiguration()['assets'][$config['type']]['thumbnails']['status_cache'] ?? false)
+                if (!$thumbnailConfig
+                    && (Config::getSystemConfiguration()['assets'][$config['type']]['thumbnails']['status_cache'] ?? false)
                     && $asset->getDao()->hasCachedThumbnails($config['thumbnail_name'])) {
                     // Delete Thumbnail Name from Cache so the next call can generate a new TmpStore entry
                     // because otherwise it's getting directly delivered from the cache by Processor:process()
@@ -485,7 +490,8 @@ class Service extends Model\Element\Service
                         }
                     }
 
-                    if (!empty($thumbnailFormats[$config['file_extension']]['quality'] ?? null)) {
+                    // a config from the TmpStore already has the quality the thumbnail URL was built with
+                    if (!$isDeferredConfig && !empty($thumbnailFormats[$config['file_extension']]['quality'] ?? null)) {
                         $thumbnailConfig->setQuality($thumbnailFormats[$config['file_extension']]['quality']);
                     }
                 }
