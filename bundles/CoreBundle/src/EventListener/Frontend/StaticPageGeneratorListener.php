@@ -30,6 +30,8 @@ use Pimcore\Http\Request\Resolver\DocumentResolver;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Http\RequestHelper;
 use Pimcore\Logger;
+use Pimcore\Model\Document\Hardlink;
+use Pimcore\Model\Document\Hardlink\Wrapper\WrapperInterface;
 use Pimcore\Model\Document\Page;
 use Pimcore\Model\Document\PageSnippet;
 use Pimcore\Model\Site;
@@ -155,7 +157,9 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
 
         $document = $this->documentResolver->getDocument();
 
-        if ($document instanceof Page && $document->getStaticGeneratorEnabled()
+        // a hardlink wrapper carries the source page's static generator flag and pretty URL, its rendering
+        // must not be stored for the hardlink path (never refreshed) or the source's pretty URL
+        if ($document instanceof Page && !$document instanceof WrapperInterface && $document->getStaticGeneratorEnabled()
             && $this->responseCanBeStored($request, $event->getResponse())) {
             $response = $event->getResponse()->getContent();
             $this->staticPageGenerator->generate($document, ['response' => $response]);
@@ -207,6 +211,15 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
         if (is_string($oldPath)) {
             try {
                 $this->staticPageGenerator->removeTree($oldPath);
+            } catch (Exception $exception) {
+                Logger::error((string)$exception);
+            }
+        }
+
+        // static pages that earlier versions stored for hardlink requests are cleaned up when the hardlink is saved
+        if ($document instanceof Hardlink) {
+            try {
+                $this->staticPageGenerator->removeTree($document->getRealFullPath());
             } catch (Exception $exception) {
                 Logger::error((string)$exception);
             }

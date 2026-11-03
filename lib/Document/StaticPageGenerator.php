@@ -85,6 +85,14 @@ class StaticPageGenerator
 
     public function generate(Document\PageSnippet $document, array $params = []): bool
     {
+        // hardlink wrappers are copies of the source document: their static file would be written to the source's
+        // pretty URL or to a hardlink path that nothing refreshes or removes
+        if ($document instanceof Document\Hardlink\Wrapper\WrapperInterface) {
+            Logger::debug('Static page for hardlink ' . $document->getRealFullPath() . ' not generated');
+
+            return false;
+        }
+
         $storagePath = $this->getStoragePath($document);
 
         $storage = Storage::get('document_static');

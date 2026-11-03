@@ -2256,7 +2256,7 @@ config, then move the file into place. Add tests for `\`, `'`, duplicate values 
 >   (B-341) was **not verified**.
 > - Critical items: C-57. Bugs: B-341–B-342. Improvements: I-190–I-191.
 
-## [ ] C-57 – Hardlinked pages are written into the static-page storage: the hardlink URL is frozen forever, and the source's pretty URL is overwritten with the hardlink rendering
+## [x] C-57 – Hardlinked pages are written into the static-page storage: the hardlink URL is frozen forever, and the source's pretty URL is overwritten with the hardlink rendering
 
 **Files:** `models/Document/Hardlink/Wrapper/Page.php:26-29`; `models/Document/Hardlink/Service.php:29-74` (copy of all
 fields); `lib/Document/StaticPageGenerator.php:43-80`, `:82-115`, `:126-132`;
