@@ -253,7 +253,7 @@ auto redirects whose **source** equals the new slug (the new slug is live again)
 **Fix direction:** `$ts = $element->getModificationDate(); if ($ts) { $url->setLastmod(new DateTimeImmutable('@' .
 $ts)); }`.
 
-### [ ] B-23 – `DocumentTreeGenerator::populate()`: section filter ignored for current site, null root document
+### [x] B-23 – `DocumentTreeGenerator::populate()`: section filter ignored for current site, null root document
 **File:** `src/Sitemap/Document/DocumentTreeGenerator.php:76-109`
 - `handleCurrentSite` branch ignores `$section` → when Presta requests section `default` (or another site), the
   current site's URLs are added to `site_<id>` anyway; with `handleSites` also enabled the current site is generated

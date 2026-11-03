@@ -21,12 +21,13 @@ use Exception;
 use Generator;
 use Pimcore;
 use Pimcore\Bundle\SeoBundle\Sitemap\Element\AbstractElementGenerator;
-use Pimcore\Logger;
 use Pimcore\Model\Document;
 use Pimcore\Model\Site;
 use Presta\SitemapBundle\Service\UrlContainerInterface;
 use Presta\SitemapBundle\Sitemap\Url\Url;
 use Presta\SitemapBundle\Sitemap\Url\UrlConcrete;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class DocumentTreeGenerator extends AbstractElementGenerator
@@ -41,7 +42,8 @@ class DocumentTreeGenerator extends AbstractElementGenerator
         DocumentUrlGeneratorInterface $urlGenerator,
         array                         $filters = [],
         array                         $processors = [],
-        array                         $options = []
+        array                         $options = [],
+        private readonly LoggerInterface $logger = new NullLogger()
     )
     {
         parent::__construct($filters, $processors);
@@ -83,16 +85,23 @@ class DocumentTreeGenerator extends AbstractElementGenerator
             }
         }
 
+        // a site is populated once, even if it is the current site and handleSites is enabled too
+        $populatedSiteIds = [];
+
         if ($this->options['handleCurrentSite']) {
             try {
                 $currentSite = Site::getCurrentSite();
-                $rootDocument = $currentSite->getRootDocument();
-                if ($rootDocument instanceof Document) {
-                    $siteSection = sprintf('site_%s', $currentSite->getId());
-                    $this->populateCollection($urlContainer, $rootDocument, $siteSection, $currentSite);
+            } catch (Exception $e) {
+                $currentSite = null;
+                $this->logger->error('Cannot determine current domain for sitemap generation', ['exception' => $e]);
+            }
+
+            if ($currentSite) {
+                $siteSection = sprintf('site_%s', $currentSite->getId());
+                if (null === $section || $section === $siteSection) {
+                    $this->populateSite($urlContainer, $currentSite, $siteSection);
+                    $populatedSiteIds[$currentSite->getId()] = true;
                 }
-            } catch (Exception) {
-                Logger::error('Cannot determine current domain for sitemap generation');
             }
         }
 
@@ -101,11 +110,25 @@ class DocumentTreeGenerator extends AbstractElementGenerator
             foreach ($sites as $site) {
                 $siteSection = sprintf('site_%s', $site->getId());
 
-                if (null === $section || $section === $siteSection) {
-                    $this->populateCollection($urlContainer, $site->getRootDocument(), $siteSection, $site);
+                if ((null === $section || $section === $siteSection) && !isset($populatedSiteIds[$site->getId()])) {
+                    $this->populateSite($urlContainer, $site, $siteSection);
                 }
             }
         }
+    }
+
+    private function populateSite(UrlContainerInterface $urlContainer, Site $site, string $section): void
+    {
+        $rootDocument = $site->getRootDocument();
+        if (!$rootDocument instanceof Document) {
+            $this->logger->warning('Skipping site {site} in the sitemap, its root document does not exist', [
+                'site' => $site->getId(),
+            ]);
+
+            return;
+        }
+
+        $this->populateCollection($urlContainer, $rootDocument, $section, $site);
     }
 
     private function populateCollection(UrlContainerInterface $urlContainer, Document $rootDocument, string $section, ?Site $site = null): void
