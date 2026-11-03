@@ -65,9 +65,9 @@ class Dao extends AbstractDao
 
         if (!$this->model->getId()) {
             $this->create();
+        } else {
+            $this->update();
         }
-
-        $this->update();
 
         // after the write, so a concurrent request cannot cache the old entries again
         Cache::clearTag('glossary');
@@ -88,26 +88,14 @@ class Dao extends AbstractDao
      */
     public function update(): void
     {
-        $ts = time();
-        $this->model->setModificationDate($ts);
+        $this->model->setModificationDate(time());
 
-        $data = [];
-        $type = $this->model->getObjectVars();
-
-        foreach ($type as $key => $value) {
-            if (in_array($key, $this->getValidTableColumns('glossary'))) {
-                if (is_bool($value)) {
-                    $value = (int)$value;
-                }
-                $data[$key] = $value;
-            }
-        }
-
-        $this->db->update('glossary', $data, ['id' => $this->model->getId()]);
+        $this->db->update('glossary', $this->getTableData(), ['id' => $this->model->getId()]);
     }
 
     /**
-     * Create a new record for the object in database
+     * Create a new record for the object in database, in one INSERT, so no empty row is left behind when the data
+     * cannot be written
      */
     public function create(): void
     {
@@ -115,8 +103,28 @@ class Dao extends AbstractDao
         $this->model->setModificationDate($ts);
         $this->model->setCreationDate($ts);
 
-        $this->db->insert('glossary', []);
+        $data = $this->getTableData();
+        unset($data['id']);
+
+        $this->db->insert('glossary', $data);
 
         $this->model->setId((int)$this->db->lastInsertId());
+    }
+
+    private function getTableData(): array
+    {
+        $data = [];
+        $columns = $this->getValidTableColumns('glossary');
+
+        foreach ($this->model->getObjectVars() as $key => $value) {
+            if (in_array($key, $columns)) {
+                if (is_bool($value)) {
+                    $value = (int)$value;
+                }
+                $data[$key] = $value;
+            }
+        }
+
+        return $data;
     }
 }

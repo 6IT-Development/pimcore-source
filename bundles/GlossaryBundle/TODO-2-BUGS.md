@@ -148,7 +148,7 @@ still renders the external link, so the corruption is only noticed after saving.
 **Fix:** use `ctype_digit($link)` (or a separate `linkType`/`documentId` column) in both places; cast to `int` before
 calling `Document::getById()`.
 
-### [ ] B-16 – `Dao::save()` for new entries is not atomic (empty `INSERT` + `UPDATE`)
+### [x] B-16 – `Dao::save()` for new entries is not atomic (empty `INSERT` + `UPDATE`)
 **File:** `src/Model/Glossary/Dao.php:54-61`, `:97-106`
 `create()` inserts an empty row, then `update()` writes the data. If `update()` fails (e.g. value too long for
 `varchar(255)` under strict SQL mode, see I-12), an orphan row with all columns `NULL` remains. Two queries instead
