@@ -380,6 +380,6 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
     {
         $data = self::exceptionToString($exceptionObject, true, true);
 
-        return new FileObject($data);
+        return Pimcore::getContainer()->get(FileObjectWriter::class)->write($data);
     }
 }

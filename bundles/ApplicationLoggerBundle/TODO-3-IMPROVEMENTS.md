@@ -75,7 +75,7 @@ clearing it would lose the configuration of those services. `getInstance()` no l
 - Introduce a `RelatedObjectType: string` backed enum (`object|asset|document`) or reuse
   `Pimcore\Model\Element\Service::getElementType()` everywhere.
 
-### [ ] I-10 – `FileObject` as a proper immutable value object
+### [x] I-10 – `FileObject` as a proper immutable value object
 **File:** `src/FileObject.php`
 - `final class` with `protected` promoted properties is meaningless → `private readonly` or PHP 8.4 asymmetric
   visibility `public private(set) string $filename`.

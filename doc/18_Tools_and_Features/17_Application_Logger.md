@@ -215,15 +215,15 @@ There are some context variables with a special functionality: `fileObject`, `re
 namespace App\Controller;
 
 use Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger;
-use Pimcore\Bundle\ApplicationLoggerBundle\FileObject;
+use Pimcore\Bundle\ApplicationLoggerBundle\FileObjectWriter;
 use Pimcore\Model\DataObject\AbstractObject;
 use Symfony\Component\HttpFoundation\Response;
 
 class TestController
 {
-    public function testAction(ApplicationLogger $logger): Response
+    public function testAction(ApplicationLogger $logger, FileObjectWriter $fileObjectWriter): Response
     {
-        $fileObject = new FileObject('some interesting data');
+        $fileObject = $fileObjectWriter->write('some interesting data');
         $myObject   = DataObject::getById(73);
         
         $logger->error('my error message', [

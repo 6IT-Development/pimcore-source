@@ -17,34 +17,24 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
-use League\Flysystem\FilesystemException;
-use League\Flysystem\UnableToWriteFile;
-use Pimcore\Logger;
-use Pimcore\Tool\Storage;
 use const PIMCORE_PROJECT_ROOT;
 
-final class FileObject
+/**
+ * Reference to data stored by FileObjectWriter
+ */
+final readonly class FileObject
 {
+    /**
+     * @param string|null $filename null if the file could not be written
+     */
     public function __construct(
-        protected string  $data,
-        protected ?string $filename = null
+        private string  $data,
+        private ?string $filename
     )
     {
-        if (!$this->filename) {
-            $this->filename = date('/Y/m/d/') . uniqid('fileobject_', true);
-        }
-
-        $storage = Storage::get('application_log');
-
-        try {
-            $storage->write($this->filename, $this->data);
-        } catch (FilesystemException|UnableToWriteFile) {
-            Logger::warn('Application Logger could not write File Object:' . $this->filename);
-            // the log entry must not link to a file which does not exist
-            $this->filename = null;
-        }
     }
 
+    #[\Deprecated(message: 'Use getFilename() instead')]
     public function getSystemPath(): ?string
     {
         return $this->filename;

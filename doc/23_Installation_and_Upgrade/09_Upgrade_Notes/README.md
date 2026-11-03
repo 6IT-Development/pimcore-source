@@ -9,6 +9,9 @@
   typed as `array`, use `$context['relatedObject']`.
 - `FileObject::getFilename()` and `FileObject::getSystemPath()` return `null` if the file could not be written, and the
   log entry is stored without a file object.
+- `new FileObject($data)` no longer writes a file and its `$filename` argument is required. Use the new
+  `FileObjectWriter` service: `$fileObjectWriter->write($data)`. `FileObject::getSystemPath()` is deprecated, use
+  `getFilename()`. Generated file names now end in a UUID instead of a `uniqid()` value.
 #### [Cache]
 - Fixed: if `cache.app` uses the default filesystem adapter, Pimcore stores it in `pimcore.cache.pool`. Every pool
   derived from `cache.app` (`framework.cache.pools.*` with the default adapter, Symfony's own child pools) used to
