@@ -657,7 +657,7 @@ cache of each one. `Document\Dao` and `DataObject\AbstractObject\Dao` have the s
 
 ## Image thumbnails (Image, Image/Thumbnail/**, Thumbnail/**)
 
-## [ ] B-37 – Uppercase file extensions break the `source` format (JPEG bytes in `.png`, or full PNG of a photo)
+## [x] B-37 – Uppercase file extensions break the `source` format (JPEG bytes in `.png`, or full PNG of a photo)
 
 **File:** `models/Asset/Image/Thumbnail/Processor.php:114`, `:119`, `:129`, `:338`; `models/Asset/Service.php:399-405`
 
@@ -667,6 +667,10 @@ cache of each one. `Document\Dao` and `DataObject\AbstractObject\Dao` have the s
   writer wins. Same for `.TIF` (the `tifforiginal` bypass never triggers).
 
 **Fix direction:** `strtolower()` the extension; include the resolved format in filename/hash.
+
+**Done:** the processor lowercases the source extension, so `.JPG` resolves to `pjpeg` (`.jpg`) on both the eager and
+the deferred path and `.TIF` reaches the `tifforiginal` bypass; `original` thumbnails get the lowercase extension that
+`Service` already expects in URLs. The format already ends up in the file extension; hashing it is part of B-38.
 
 ## [ ] B-38 – `Config::getHash()` omits output-affecting fields
 

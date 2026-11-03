@@ -111,7 +111,7 @@ class Processor
             ];
         }
 
-        $fileExt = pathinfo($asset->getFilename(), PATHINFO_EXTENSION);
+        $fileExt = strtolower(pathinfo($asset->getFilename(), PATHINFO_EXTENSION));
 
         // simple detection for source type if SOURCE is selected
         if ($format == 'source' || empty($format)) {
