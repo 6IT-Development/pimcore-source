@@ -192,6 +192,9 @@ My content
 {% endapply %}
 ``` 
 
+Used on a variable (`{{ text|pimcore_glossary }}`), the value is escaped first like any other output. For a variable
+that contains trusted HTML, use `{{ html|raw|pimcore_glossary }}`.
+
 ### `pimcore_placeholder` 
 See [Placeholder Template Extension](00_Placeholder.md)
 

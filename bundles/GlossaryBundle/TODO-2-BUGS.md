@@ -229,7 +229,7 @@ values in `beforeNormalization()`; move defaults from `default.yaml` into the tr
 
 ## Twig extension
 
-### [ ] B-25 – `pimcore_glossary` filter: `null` input → `TypeError`; output marked safe without pre-escaping
+### [x] B-25 – `pimcore_glossary` filter: `null` input → `TypeError`; output marked safe without pre-escaping
 **File:** `src/Twig/Extension/GlossaryExtension.php:39`, `:43-50`
 - `applyGlossary(string $string, …)` with `strict_types`: `{{ product.description|pimcore_glossary }}` where the
   getter returns `null` → `TypeError` → template error.

@@ -108,6 +108,10 @@
   `pimcore.templating_engine.twig.sandbox_security_policy.methods`. Objects that give access to services, the database,
   the request or the session (container, kernel, `app` global, DBAL connection, DAOs, storages, …) and the password/2FA
   getters of `Pimcore\Model\User` can no longer be used in sandboxed templates.
+#### [Glossary]
+- The `pimcore_glossary` filter escapes a plain variable before processing it: `{{ text|pimcore_glossary }}` no longer
+  outputs the HTML of `text` unescaped. `{% apply pimcore_glossary %}` blocks are not affected. For trusted HTML in a
+  variable, use `{{ html|raw|pimcore_glossary }}`. `null` gives an empty string instead of a `TypeError`.
 #### [Routing]
 - Removed the legacy `/app.php/...` → `/...` redirect from `RoutingListener` (open redirect via `/app.php/%5Cexample.com`).
   `app.php` is the Symfony 3 front controller; add a web server rewrite if old URLs must still be redirected.

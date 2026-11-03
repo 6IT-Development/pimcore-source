@@ -36,14 +36,16 @@ class GlossaryExtension extends AbstractExtension
     public function getFilters(): array
     {
         return [
-            new TwigFilter('pimcore_glossary', [$this, 'applyGlossary'], ['is_safe' => ['html']]),
+            // the output is HTML, so a plain variable is escaped before it is processed: {{ text|pimcore_glossary }};
+            // trusted HTML is passed with {% apply pimcore_glossary %} … {% endapply %} or {{ html|raw|pimcore_glossary }}
+            new TwigFilter('pimcore_glossary', [$this, 'applyGlossary'], ['is_safe' => ['html'], 'pre_escape' => 'html']),
         ];
     }
 
-    public function applyGlossary(string $string, array $options = []): string
+    public function applyGlossary(?string $string, array $options = []): string
     {
-        if (!$string) {
-            return $string;
+        if ($string === null || $string === '') {
+            return '';
         }
 
         return $this->glossaryProcessor->process($string, $options);
