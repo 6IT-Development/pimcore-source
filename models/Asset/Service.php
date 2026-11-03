@@ -571,11 +571,24 @@ class Service extends Model\Element\Service
                 $thumbnailStream = $storage->readStream($requestedFile);
             }
         } elseif ($config['type'] === 'video') {
-            $storagePath = rawurldecode($thumbnail['formats'][$config['file_extension']]);
-
-            if ($storage->fileExists($storagePath)) {
-                $thumbnailStream = $storage->readStream($storagePath);
+            // the format is missing while the video is converted or if it is not part of the thumbnail config
+            $storagePath = $thumbnail['formats'][$config['file_extension']] ?? null;
+            if (!is_string($storagePath)) {
+                return null;
             }
+
+            // the paths are frontend paths, see Video::enrichThumbnailPath()
+            $prefix = Config::getSystemConfiguration('assets')['frontend_prefixes']['thumbnail'];
+            if ($prefix && str_starts_with($storagePath, $prefix)) {
+                $storagePath = substr($storagePath, strlen($prefix));
+            }
+            $storagePath = rawurldecode($storagePath);
+
+            if (!$storage->fileExists($storagePath)) {
+                return null;
+            }
+
+            $thumbnailStream = $storage->readStream($storagePath);
             $mime = $storage->mimeType($storagePath);
             $fileSize = $storage->fileSize($storagePath);
         } else {

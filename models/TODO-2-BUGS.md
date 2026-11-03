@@ -480,7 +480,7 @@ raise "Undefined array key". Video thumbnails have no status cache.
 **Done:** the thumbnail cache rows of the name are deleted only if `Dao::hasCachedThumbnails()` finds one; it reads the
 (static) status cache of the asset, so an unknown name costs at most one `SELECT` and no longer wipes the status cache.
 
-## [ ] B-25 – Video branch of `getStreamedResponseFromImageThumbnail()`: undefined format key and metadata on missing file
+## [x] B-25 – Video branch of `getStreamedResponseFromImageThumbnail()`: undefined format key and metadata on missing file
 
 **File:** `models/Asset/Service.php:511-517`
 
@@ -490,6 +490,11 @@ raise "Undefined array key". Video thumbnails have no status cache.
   always false.
 
 **Fix direction:** return `null` on missing key/file; read metadata only for existing files; strip the prefix as at `:569`.
+
+**Done:** a missing format key or a missing file returns `null` (404) before any metadata is read. The frontend
+thumbnail prefix that `Video::enrichThumbnailPath()` adds is stripped before the path is decoded (the unverified point
+holds: with a prefix the file was never found). Paths rewritten by an `ASSET_VIDEO_THUMBNAIL` listener still cannot be
+mapped back.
 
 ## [ ] B-26 – Thumbnail responses: `Expires` in local time, cache headers differ between paths, streams not closed
 
