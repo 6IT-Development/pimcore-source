@@ -205,9 +205,12 @@ filter is ignored like any other value which is not a date.
 The cloned count query still carries `ORDER BY`; reset it (`resetOrderBy()` in DBAL ≥ 3.8) and reuse the base builder
 before paging is applied instead of undoing `setMaxResults`/`setFirstResult`.
 
-### [ ] I-27 – Memory-safe maintenance queries
+### [x] I-27 – Memory-safe maintenance queries
 **Files:** `src/Maintenance/LogArchiveTask.php:81`, `src/Maintenance/LogMailMaintenanceTask.php:70`
 Use `iterateAssociative()` / chunking and `WHERE fileobject IS NOT NULL` instead of loading whole result sets.
+**Outcome:** Nothing left to change: B-18 and B-19 already read both tasks in id-bounded chunks of 100 and 1000 rows. The archive task
+also needs the ids of rows without a file object to move them, so `fileobject IS NOT NULL` does not apply, and
+`deleteFileObjects()` skips the empty paths.
 
 ### [ ] I-28 – ARCHIVE engine availability
 **File:** `src/Maintenance/LogArchiveTask.php:62-75`
