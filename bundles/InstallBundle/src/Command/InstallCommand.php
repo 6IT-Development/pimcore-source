@@ -280,12 +280,27 @@ class InstallCommand extends Command
             }
 
             // set option values from env vars
-            if (!$value || $isDefaultValue) {
-                if ($env = getenv($config['env'])) {
+            if (null === $value || '' === $value || false === $value || $isDefaultValue) {
+                $env = $this->getEnvValue($config['env']);
+                if (null !== $env) {
                     $input->setOption($name, $env);
                 }
             }
         }
+    }
+
+    /**
+     * Dotenv (.env, .env.local) only populates $_SERVER and $_ENV, getenv() only sees real process env vars
+     */
+    private function getEnvValue(string $name): ?string
+    {
+        $value = $_SERVER[$name] ?? $_ENV[$name] ?? getenv($name);
+
+        if (!is_scalar($value) || false === $value || '' === (string) $value) {
+            return null;
+        }
+
+        return (string) $value;
     }
 
     /**

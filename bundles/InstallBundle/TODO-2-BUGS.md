@@ -118,7 +118,7 @@ for sockets, cast port to `int`.
 
 ## CLI options / env vars
 
-### [ ] B-08 – `PIMCORE_INSTALL_*` env vars defined in `.env` / `.env.local` are ignored
+### [x] B-08 – `PIMCORE_INSTALL_*` env vars defined in `.env` / `.env.local` are ignored
 **Files:** `src/Command/InstallCommand.php:254-259`, `lib/Bootstrap.php:156-157`, docs `README.md:29-37`
 - `initialize()` reads `getenv($config['env'])`. `Bootstrap::bootstrap()` loads dotenv via `new Dotenv()->bootEnv()`,
   which (since Symfony 5) does **not** call `putenv()` – values land only in `$_SERVER`/`$_ENV`. Only real process env

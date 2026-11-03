@@ -44,6 +44,8 @@ $ PIMCORE_INSTALL_MYSQL_USERNAME=username PIMCORE_INSTALL_MYSQL_PASSWORD=passwor
   --no-interaction
 ```
 
+The env variables can also be defined in the `.env` / `.env.local` files of the project.
+
 ### Installing Bundles
 
 #### Overview of Bundle Lists
