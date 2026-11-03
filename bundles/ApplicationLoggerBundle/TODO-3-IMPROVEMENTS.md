@@ -20,7 +20,7 @@ possible, at least keep the separate extension but use the prepend-aware loader.
 `AbstractBundle` as well without giving up `AbstractPimcoreBundle` and its static `isInstalled()`. The separate extension
 stays and uses the prepend-aware loader (B-22). Revisit if core gets an `AbstractBundle`-based variant.
 
-### [ ] I-02 – Own configuration tree instead of `pimcore.applicationlog` in CoreBundle
+### [x] I-02 – Own configuration tree instead of `pimcore.applicationlog` in CoreBundle
 **Files:** `src/Maintenance/LogArchiveTask.php`, `src/Maintenance/LogMailMaintenanceTask.php`
 Both tasks read `Pimcore\Config` (ArrayAccess over the whole system config, untyped `array|null`). Define a
 `pimcore_application_logger` config tree in this bundle (with BC mapping from `pimcore.applicationlog`), inject typed

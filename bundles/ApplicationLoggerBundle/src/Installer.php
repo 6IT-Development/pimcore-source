@@ -19,16 +19,26 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
 use League\Flysystem\FilesystemException;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
-use Pimcore\Config;
 use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 use Pimcore\Tool\Storage;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 
 class Installer extends SettingsStoreAwareInstaller
 {
     protected const string USER_PERMISSIONS_CATEGORY = 'Pimcore Application Logger Bundle';
 
     protected const array USER_PERMISSIONS = ['application_logging'];
+
+    public function __construct(
+        BundleInterface $bundle,
+        #[Autowire(param: 'pimcore_application_logger.archive_alternative_database')]
+        private readonly string $archiveAlternativeDatabase
+    )
+    {
+        parent::__construct($bundle);
+    }
 
     public function install(): void
     {
@@ -81,9 +91,8 @@ class Installer extends SettingsStoreAwareInstaller
     private function dropArchiveTables(): void
     {
         $db = Db::get();
-        $alternativeDatabase = Config::getSystemConfiguration('applicationlog')['archive_alternative_database'] ?? '';
 
-        foreach (array_unique(array_filter([$db->getDatabase(), $alternativeDatabase])) as $database) {
+        foreach (array_unique(array_filter([$db->getDatabase(), $this->archiveAlternativeDatabase])) as $database) {
             $tables = $db->fetchFirstColumn(
                 'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
                 [$database, ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_%']

@@ -23,10 +23,10 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemException;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
-use Pimcore\Config;
 use Pimcore\Maintenance\TaskInterface;
 use Pimcore\Tool\Storage;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * @internal
@@ -37,8 +37,13 @@ readonly class LogArchiveTask implements TaskInterface
 
     public function __construct(
         private Connection      $db,
-        private Config          $config,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        #[Autowire(param: 'pimcore_application_logger.archive_threshold')]
+        private int             $archiveThreshold,
+        #[Autowire(param: 'pimcore_application_logger.archive_alternative_database')]
+        private string          $archiveAlternativeDatabase,
+        #[Autowire(param: 'pimcore_application_logger.delete_archive_threshold')]
+        private int             $deleteArchiveThreshold
     )
     {
     }
@@ -51,14 +56,12 @@ readonly class LogArchiveTask implements TaskInterface
         $archiveTableName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_' . $date->format('Y') . '_' . $date->format('m');
         $tablename = $archiveTableName;
 
-        if (!empty($this->config['applicationlog']['archive_alternative_database'])) {
-            $tablename = $db->quoteIdentifier($this->config['applicationlog']['archive_alternative_database']) . '.' . $tablename;
+        if ('' !== $this->archiveAlternativeDatabase) {
+            $tablename = $db->quoteIdentifier($this->archiveAlternativeDatabase) . '.' . $tablename;
         }
 
-        $archive_threshold = (int)($this->config['applicationlog']['archive_treshold'] ?? 30);
-
         $timestamp = time();
-        $sql = 'SELECT %s FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $archive_threshold . ' DAY)';
+        $sql = 'SELECT %s FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $this->archiveThreshold . ' DAY)';
 
         if ($db->fetchOne(sprintf($sql, 'COUNT(*)')) > 0) {
             $columns = [];
@@ -71,9 +74,9 @@ readonly class LogArchiveTask implements TaskInterface
             $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $tablename . ' (' . implode(', ', $columnDefinitions) . ') ENGINE = ARCHIVE ROW_FORMAT = DEFAULT DEFAULT CHARSET=utf8mb4;');
             $this->widenLegacyArchiveTable($archiveTableName, $tablename);
 
-            $this->logger->debug('Archiving application_logs and deleting their referenced FileObjects which are older than ' . $archive_threshold . ' days');
+            $this->logger->debug('Archiving application_logs and deleting their referenced FileObjects which are older than ' . $this->archiveThreshold . ' days');
 
-            $this->archiveRows($tablename, $columns, '`timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $archive_threshold . ' DAY)');
+            $this->archiveRows($tablename, $columns, '`timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $this->archiveThreshold . ' DAY)');
         }
 
         $archiveTables = $db->fetchFirstColumn(
@@ -82,7 +85,7 @@ readonly class LogArchiveTask implements TaskInterface
                 WHERE table_schema = ?
                 AND table_name LIKE ?',
             [
-                $this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase(),
+                $this->archiveAlternativeDatabase ?: $db->getDatabase(),
                 ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_%',
             ]
         );
@@ -95,9 +98,9 @@ readonly class LogArchiveTask implements TaskInterface
                     continue;
                 }
 
-                $deleteArchiveLogDate = $archiveLogDate->add(new DateInterval('P' . (int)($this->config['applicationlog']['delete_archive_threshold'] ?? 6) . 'M'));
+                $deleteArchiveLogDate = $archiveLogDate->add(new DateInterval('P' . $this->deleteArchiveThreshold . 'M'));
                 if ($deleteArchiveLogDate < new DateTimeImmutable()) {
-                    $db->executeStatement('DROP TABLE IF EXISTS ' . $db->quoteIdentifier($this->config['applicationlog']['archive_alternative_database'] ?: $db->getDatabase()) . '.' . $db->quoteIdentifier($archiveTable));
+                    $db->executeStatement('DROP TABLE IF EXISTS ' . $db->quoteIdentifier($this->archiveAlternativeDatabase ?: $db->getDatabase()) . '.' . $db->quoteIdentifier($archiveTable));
 
                     // the folder of the archived month, not of the month the archive expires
                     $folderName = $archiveLogDate->format('Y/m');
@@ -173,7 +176,7 @@ readonly class LogArchiveTask implements TaskInterface
         $messageType = $this->db->fetchOne(
             'SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?',
             [
-                $this->config['applicationlog']['archive_alternative_database'] ?: $this->db->getDatabase(),
+                $this->archiveAlternativeDatabase ?: $this->db->getDatabase(),
                 $archiveTableName,
                 'message',
             ]

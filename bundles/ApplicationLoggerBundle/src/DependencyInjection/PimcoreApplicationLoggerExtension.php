@@ -33,10 +33,29 @@ class PimcoreApplicationLoggerExtension extends Extension implements PrependExte
         );
 
         $loader->load('services.yaml');
+
+        $config = $this->processConfiguration(new Configuration(), $configs);
+
+        $container->setParameter('pimcore_application_logger.send_log_summary', $config['mail_notification']['send_log_summary']);
+        $container->setParameter('pimcore_application_logger.filter_priority', $config['mail_notification']['filter_priority']);
+        $container->setParameter('pimcore_application_logger.mail_receiver', $config['mail_notification']['mail_receiver']);
+        $container->setParameter('pimcore_application_logger.archive_threshold', $config['archive_threshold']);
+        $container->setParameter('pimcore_application_logger.archive_alternative_database', $config['archive_alternative_database']);
+        $container->setParameter('pimcore_application_logger.delete_archive_threshold', $config['delete_archive_threshold']);
     }
 
     public function prepend(ContainerBuilder $container): void
     {
+        // the former location of the settings, prepended so that the bundle's own config wins
+        $legacyConfig = [];
+        foreach ($container->getExtensionConfig('pimcore') as $config) {
+            $legacyConfig = array_replace_recursive($legacyConfig, $config['applicationlog'] ?? []);
+        }
+
+        if ($legacyConfig) {
+            $container->prependExtensionConfig('pimcore_application_logger', $legacyConfig);
+        }
+
         if ($container->hasExtension('pimcore_admin')) {
             // without prepend the loader appends the config, which then wins over the application's own key bindings
             $loader = new YamlFileLoader(

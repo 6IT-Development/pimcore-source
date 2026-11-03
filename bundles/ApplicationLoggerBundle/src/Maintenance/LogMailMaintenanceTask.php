@@ -19,11 +19,11 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
 
 use Doctrine\DBAL\Connection;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
-use Pimcore\Config;
 use Pimcore\Mail;
 use Pimcore\Maintenance\TaskInterface;
 use Pimcore\Tool;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Exception\RfcComplianceException;
 
@@ -33,8 +33,13 @@ readonly class LogMailMaintenanceTask implements TaskInterface
 
     public function __construct(
         private Connection      $db,
-        private Config          $config,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        #[Autowire(param: 'pimcore_application_logger.send_log_summary')]
+        private bool            $sendLogSummary,
+        #[Autowire(param: 'pimcore_application_logger.filter_priority')]
+        private ?int            $filterPriority,
+        #[Autowire(param: 'pimcore_application_logger.mail_receiver')]
+        private string          $mailReceiver
     )
     {
     }
@@ -47,7 +52,7 @@ readonly class LogMailMaintenanceTask implements TaskInterface
             return;
         }
 
-        if (!empty($this->config['applicationlog']['mail_notification']['send_log_summary'])) {
+        if ($this->sendLogSummary) {
             $receivers = $this->getReceivers();
 
             if ($receivers) {
@@ -75,10 +80,8 @@ readonly class LogMailMaintenanceTask implements TaskInterface
         // remove unnecessary noise
         $enumValue = explode(',', str_replace(['enum(', ')'], '', $columnType));
 
-        $logLevel = (int)($this->config['applicationlog']['mail_notification']['filter_priority'] ?? null);
-
         // out of range values would produce an invalid IN() list
-        $logLevels = array_slice($enumValue, 0, max(0, $logLevel) + 1);
+        $logLevels = array_slice($enumValue, 0, max(0, (int)$this->filterPriority) + 1);
 
         $query = 'SELECT * FROM '
             . ApplicationLoggerDb::TABLE_NAME
@@ -128,9 +131,8 @@ readonly class LogMailMaintenanceTask implements TaskInterface
     private function getReceivers(): array
     {
         $receivers = [];
-        $configuredReceivers = (string)($this->config['applicationlog']['mail_notification']['mail_receiver'] ?? '');
 
-        foreach (preg_split('/,|;/', $configuredReceivers, -1, PREG_SPLIT_NO_EMPTY) as $receiver) {
+        foreach (preg_split('/,|;/', $this->mailReceiver, -1, PREG_SPLIT_NO_EMPTY) as $receiver) {
             $receiver = trim($receiver);
             if ('' === $receiver) {
                 continue;

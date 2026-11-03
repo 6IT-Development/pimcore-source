@@ -296,3 +296,19 @@ For example errors are more important than just info entries.
 The archive function automatically creates new database tables to archive the log entries in the form `application_logs_archive_*`. 
 In the above example log entries will be moved after 30 days to these archive tables. 
 Optionally a different database name for the archive tables can be defined. 
+
+The options are configured in the `pimcore_application_logger` tree: 
+
+```yaml
+pimcore_application_logger:
+    mail_notification:
+        send_log_summary: true
+        filter_priority: 3
+        mail_receiver: 'admin@example.com;ops@example.com'
+    archive_threshold: 30
+    archive_alternative_database: ''
+    delete_archive_threshold: 6
+```
+
+The former location `pimcore.applicationlog` still works, including its misspelled key `archive_treshold`. 
+Values in `pimcore_application_logger` take precedence. 
