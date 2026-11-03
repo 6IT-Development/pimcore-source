@@ -546,7 +546,7 @@ which `LongRunningHelper::cleanUp()` (kernel shutdown, `Pimcore::collectGarbage(
 permissions of documents and objects are anchored too; their `hasChildren()` / `getChildAmount()` conditions remain for
 B-167.
 
-## [ ] B-29 – WebDAV upload writes the body to disk before the permission check and leaks temp files on errors
+## [x] B-29 – WebDAV upload writes the body to disk before the permission check and leaks temp files on errors
 
 **Files:** `models/Asset/WebDAV/Folder.php:112-133`; `models/Asset/WebDAV/File.php:110-123`
 
@@ -556,6 +556,10 @@ B-167.
 
 **Fix direction:** check permission first; `try/finally` with `fclose`/`unlink`, or pass a `php://temp` stream
 directly to `setStream()`.
+
+**Done:** `createFile()` checks the `create` permission before the body is written. Both methods check the results of
+`file_put_contents()` / `fopen()` (`DAV\Exception`), and close the handle and delete the temp file in `finally`, also
+when `Asset::create()` / `save()` throws.
 
 ## [ ] B-30 – WebDAV delete log: lost entries, cross-user restore, unrestricted `unserialize()`
 

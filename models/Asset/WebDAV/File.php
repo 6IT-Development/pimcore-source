@@ -96,19 +96,27 @@ class File extends DAV\File
         if ($this->asset->isAllowed('publish')) {
             // read from resource -> default for SabreDAV
             $tmpFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/asset-dav-tmp-file-' . uniqid();
-            file_put_contents($tmpFile, $data);
-            $file = fopen($tmpFile, 'r+', false, FileHelper::getContext());
+            $file = null;
 
-            $user = AdminTool::getCurrentUser();
-            $this->asset->setUserModification($user->getId());
+            try {
+                if (file_put_contents($tmpFile, $data) !== false) {
+                    $file = fopen($tmpFile, 'r+', false, FileHelper::getContext());
+                }
+                if (!$file) {
+                    throw new DAV\Exception('Unable to write the uploaded file to a temporary file');
+                }
 
-            $this->asset->setStream($file);
-            $this->asset->save();
+                $user = AdminTool::getCurrentUser();
+                $this->asset->setUserModification($user->getId());
 
-            if (is_resource($file)) {
-                fclose($file);
+                $this->asset->setStream($file);
+                $this->asset->save();
+            } finally {
+                if (is_resource($file)) {
+                    fclose($file);
+                }
+                @unlink($tmpFile);
             }
-            unlink($tmpFile);
 
             return null;
         }

@@ -106,33 +106,38 @@ class Folder extends DAV\Collection
      * @return null
      *
      * @throws DAV\Exception\Forbidden
+     * @throws DAV\Exception
      */
     public function createFile($name, $data = null): null
     {
+        // check the permission before the request body is written to disk
+        if (!$this->asset->isAllowed('create')) {
+            throw new DAV\Exception\Forbidden('Missing "create" permission');
+        }
+
         $tmpFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/asset-dav-tmp-file-' . uniqid();
         if (is_resource($data)) {
             @rewind($data);
         }
-        file_put_contents($tmpFile, $data);
 
-        $user = AdminTool::getCurrentUser();
+        try {
+            if (file_put_contents($tmpFile, $data) === false) {
+                throw new DAV\Exception('Unable to write the uploaded file to a temporary file');
+            }
 
-        if ($this->asset->isAllowed('create')) {
+            $user = AdminTool::getCurrentUser();
+
             Asset::create($this->asset->getId(), [
                 'filename' => Element\Service::getValidKey($name, 'asset'),
                 'sourcePath' => $tmpFile,
                 'userModification' => $user->getId(),
                 'userOwner' => $user->getId(),
             ]);
-
-            unlink($tmpFile);
-
-            return null;
+        } finally {
+            @unlink($tmpFile);
         }
 
-        unlink($tmpFile);
-
-        throw new DAV\Exception\Forbidden('Missing "create" permission');
+        return null;
     }
 
     /**
