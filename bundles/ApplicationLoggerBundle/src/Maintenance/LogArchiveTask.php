@@ -53,6 +53,7 @@ readonly class LogArchiveTask implements TaskInterface
     {
     }
 
+    #[\Override]
     public function execute(): void
     {
         $db = $this->db;

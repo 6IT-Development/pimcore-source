@@ -136,6 +136,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
      * Clears the file object and related object set on the instance, also called by the kernel between requests
      * and messages
      */
+    #[\Override]
     public function reset(): void
     {
         $this->fileObject = null;
@@ -149,6 +150,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         $this->reset();
     }
 
+    #[\Override]
     public function log(mixed $level, string|Stringable $message, array $context = []): void
     {
         // the file object and related object set on the instance apply to the next log call only,
@@ -270,41 +272,49 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         return str_replace(PIMCORE_PROJECT_ROOT . '/', '', $filename);
     }
 
+    #[\Override]
     public function emergency(string|Stringable $message, array $context = []): void
     {
         $this->log('emergency', $message, $context);
     }
 
+    #[\Override]
     public function critical(string|Stringable $message, array $context = []): void
     {
         $this->log('critical', $message, $context);
     }
 
+    #[\Override]
     public function error(string|Stringable $message, array $context = []): void
     {
         $this->log('error', $message, $context);
     }
 
+    #[\Override]
     public function alert(string|Stringable $message, array $context = []): void
     {
         $this->log('alert', $message, $context);
     }
 
+    #[\Override]
     public function warning(string|Stringable $message, array $context = []): void
     {
         $this->log('warning', $message, $context);
     }
 
+    #[\Override]
     public function notice(string|Stringable $message, array $context = []): void
     {
         $this->log('notice', $message, $context);
     }
 
+    #[\Override]
     public function info(string|Stringable $message, array $context = []): void
     {
         $this->log('info', $message, $context);
     }
 
+    #[\Override]
     public function debug(string|Stringable $message, array $context = []): void
     {
         $this->log('debug', $message, $context);

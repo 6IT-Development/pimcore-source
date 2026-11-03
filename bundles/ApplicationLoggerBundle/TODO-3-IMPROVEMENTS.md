@@ -93,7 +93,7 @@ clearing it would lose the configuration of those services. `getInstance()` no l
 (consistent with `logExceptionObject()`), rename to `$level`. Mark old parameter names via `#[\Deprecated]` if BC matters.
 **Outcome:** Renamed without a BC layer, PHP cannot mark a parameter name as deprecated. Listed in the upgrade notes.
 
-### [ ] I-12 – Use `#[\Override]` on overridden/implemented methods
+### [x] I-12 – Use `#[\Override]` on overridden/implemented methods
 **Files:** `ApplicationLogger` (PSR-3 methods), `ApplicationLoggerDb::write()`, `Installer::install()/uninstall()`,
 `PimcoreApplicationLoggerBundle::getPath()/getInstaller()`, maintenance `execute()`.
 

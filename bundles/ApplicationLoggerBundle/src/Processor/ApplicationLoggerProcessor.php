@@ -33,6 +33,7 @@ use Pimcore\Model\Element\Service;
  */
 class ApplicationLoggerProcessor implements ProcessorInterface
 {
+    #[\Override]
     public function __invoke(LogRecord $record): LogRecord
     {
         $record = $this->processFileObject($record);

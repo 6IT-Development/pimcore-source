@@ -31,6 +31,7 @@ class Configuration implements ConfigurationInterface
 
     private const int DEFAULT_DELETE_ARCHIVE_THRESHOLD = 6;
 
+    #[\Override]
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('pimcore_application_logger');

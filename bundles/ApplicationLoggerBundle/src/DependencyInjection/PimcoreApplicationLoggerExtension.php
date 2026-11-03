@@ -25,6 +25,7 @@ use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
 class PimcoreApplicationLoggerExtension extends Extension implements PrependExtensionInterface
 {
+    #[\Override]
     public function load(array $configs, ContainerBuilder $container): void
     {
         $loader = new YamlFileLoader(
@@ -44,6 +45,7 @@ class PimcoreApplicationLoggerExtension extends Extension implements PrependExte
         $container->setParameter('pimcore_application_logger.delete_archive_threshold', $config['delete_archive_threshold']);
     }
 
+    #[\Override]
     public function prepend(ContainerBuilder $container): void
     {
         // the former location of the settings, prepended so that the bundle's own config wins

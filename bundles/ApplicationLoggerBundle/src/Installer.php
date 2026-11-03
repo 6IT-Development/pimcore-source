@@ -40,6 +40,7 @@ class Installer extends SettingsStoreAwareInstaller
         parent::__construct($bundle);
     }
 
+    #[\Override]
     public function install(): void
     {
         $this->addUserPermission();
@@ -48,6 +49,7 @@ class Installer extends SettingsStoreAwareInstaller
         parent::install();
     }
 
+    #[\Override]
     public function uninstall(): void
     {
         $this->removeUserPermission();

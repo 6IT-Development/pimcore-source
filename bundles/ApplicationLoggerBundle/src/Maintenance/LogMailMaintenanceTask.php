@@ -51,6 +51,7 @@ readonly class LogMailMaintenanceTask implements TaskInterface
     {
     }
 
+    #[\Override]
     public function execute(): void
     {
         // rows written from now on are left for the next run, they are not part of the mails of this one

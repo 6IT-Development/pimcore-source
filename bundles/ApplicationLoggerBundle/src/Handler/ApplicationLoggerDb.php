@@ -64,6 +64,7 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
         parent::__construct($level, $bubble);
     }
 
+    #[\Override]
     protected function write(LogRecord $record): void
     {
         // a log call must not turn into an application error, e.g. when the bundle is not installed,
@@ -114,6 +115,7 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
         }
     }
 
+    #[\Override]
     public function close(): void
     {
         $this->separateDb?->close();

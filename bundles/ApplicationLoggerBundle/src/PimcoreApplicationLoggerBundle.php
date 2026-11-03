@@ -27,6 +27,7 @@ class PimcoreApplicationLoggerBundle extends AbstractPimcoreBundle implements Pi
     use BundleAdminClassicTrait;
     use PackageVersionTrait;
 
+    #[\Override]
     public function getCssPaths(): array
     {
         return [
@@ -34,6 +35,7 @@ class PimcoreApplicationLoggerBundle extends AbstractPimcoreBundle implements Pi
         ];
     }
 
+    #[\Override]
     public function getJsPaths(): array
     {
         return [
@@ -43,11 +45,13 @@ class PimcoreApplicationLoggerBundle extends AbstractPimcoreBundle implements Pi
         ];
     }
 
+    #[\Override]
     public function getInstaller(): ?Installer
     {
         return $this->container->get(Installer::class);
     }
 
+    #[\Override]
     public function getPath(): string
     {
         return dirname(__DIR__);

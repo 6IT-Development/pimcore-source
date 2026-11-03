@@ -53,6 +53,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
         'id', 'pid', 'timestamp', 'priority', 'component', 'relatedobject', 'source', 'message', 'fileobject',
     ];
 
+    #[\Override]
     public function onKernelControllerEvent(ControllerEvent $event): void
     {
         $this->checkPermission(self::PERMISSION);
