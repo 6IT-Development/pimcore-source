@@ -174,7 +174,7 @@ The error is a generic `Exception` → 500 instead of `400`, and the message say
 `??` for column configs without a name.
 **Fix:** validate `is_array($configuration) && isset($configuration[0])`; `$item['name'] ?? null`.
 
-### [ ] B-18 – Download/temp-file errors surface as 500 with wrong exception types
+### [x] B-18 – Download/temp-file errors surface as 500 with wrong exception types
 **File:** `src/Controller/Reports/CustomReportController.php:334-342`, `:413-428`
 - `getTemporaryFileFromFileName()` throws `Symfony\Component\Security\Core\Exception\InvalidArgumentException`
   (security component – wrong layer, not mapped to `400`).

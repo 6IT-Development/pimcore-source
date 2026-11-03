@@ -27,7 +27,6 @@ use Pimcore\Model\Element\Service;
 use Pimcore\Model\Exception\ConfigWriteException;
 use RuntimeException;
 use stdClass;
-use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -460,17 +459,23 @@ class CustomReportController extends UserAwareController
     {
         $this->checkPermission('reports');
         $config = $this->getReportForCurrentUser($request->query->getString('name'));
-        if ($exportFile = $request->query->getString('exportFile')) {
-            $exportFile = $this->getTemporaryFileFromFileName($exportFile, $config);
-            $response = new BinaryFileResponse($exportFile);
-            $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-            $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, 'export.csv');
-            $response->deleteFileAfterSend();
-
-            return $response;
+        $exportFile = $request->query->getString('exportFile');
+        if ($exportFile === '') {
+            throw new BadRequestHttpException('Missing export file name');
         }
 
-        throw new FileNotFoundException("File \"$exportFile\" not found!");
+        $exportFile = $this->getTemporaryFileFromFileName($exportFile, $config);
+        // the file is gone after its first download
+        if (!is_file($exportFile)) {
+            throw $this->createNotFoundException();
+        }
+
+        $response = new BinaryFileResponse($exportFile);
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, 'export.csv');
+        $response->deleteFileAfterSend();
+
+        return $response;
     }
 
     /**
