@@ -42,10 +42,11 @@ class UrlGenerator implements UrlGeneratorInterface
 
     protected function configureOptions(OptionsResolver $options): void
     {
+        // lazy defaults, the request context can change after this service was created (CLI --base-url, workers)
         $options->setDefaults([
-            'scheme' => $this->requestContext->getScheme(),
-            'host' => $this->requestContext->getHost(),
-            'base_url' => $this->requestContext->getBaseUrl(),
+            'scheme' => fn (Options $options): string => $this->requestContext->getScheme(),
+            'host' => fn (Options $options): string => $this->requestContext->getHost(),
+            'base_url' => fn (Options $options): string => $this->requestContext->getBaseUrl(),
         ]);
 
         $options->setDefault('port', function (Options $options) {

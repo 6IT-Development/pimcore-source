@@ -265,7 +265,7 @@ $ts)); }`.
 **Fix direction:** apply the same `null === $section || $section === $siteSection` check; skip sites with `null` root
 and log a warning; inject a logger (I-04).
 
-### [ ] B-24 – `UrlGenerator` snapshots `RequestContext` scheme/host/base URL at construction time
+### [x] B-24 – `UrlGenerator` snapshots `RequestContext` scheme/host/base URL at construction time
 **File:** `src/Sitemap/UrlGenerator.php:35-49`
 - Defaults for `scheme`, `host`, `base_url` are read once in the constructor (`setDefaults([...])` with values),
   while `port` is a lazy closure. If the router context changes after the service was created (CLI
