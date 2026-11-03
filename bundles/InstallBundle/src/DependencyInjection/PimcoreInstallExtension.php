@@ -54,10 +54,10 @@ final class PimcoreInstallExtension extends ConfigurableExtension
     }
 
     /**
-     * Only add DB credentials which are not empty
+     * Only add DB credentials which are set, the installer filters env values which resolve to an empty value at runtime
      */
     private function normalizeDbCredentials(array $dbCredentials): array
     {
-        return array_filter($dbCredentials, fn($value) => !empty($value));
+        return array_filter($dbCredentials, static fn ($value) => null !== $value && '' !== $value);
     }
 }

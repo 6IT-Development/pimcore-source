@@ -57,4 +57,42 @@ class InstallerTest extends TestCase
 
         $this->createInstaller()->setRunInstallSteps([]);
     }
+
+    public function testMergesConfiguredDbCredentialsWithParameters(): void
+    {
+        $installer = $this->createInstaller();
+        $installer->setDbCredentials(['host' => 'db.example.com', 'port' => '', 'user' => null]);
+
+        $this->assertTrue($installer->isDbCredentialConfigured('host', 'unix_socket'));
+        $this->assertFalse($installer->isDbCredentialConfigured('port'));
+        $this->assertFalse($installer->isDbCredentialConfigured('user', 'password', 'dbname'));
+
+        $dbConfig = $installer->resolveDbConfig([
+            'mysql_username' => 'pimcore',
+            'mysql_password' => 'secret',
+            'mysql_database' => 'pimcore_db',
+            'mysql_ssl_cert_path' => '',
+        ]);
+
+        $this->assertSame('db.example.com', $dbConfig['host']);
+        $this->assertSame('pimcore', $dbConfig['user']);
+        $this->assertSame('secret', $dbConfig['password']);
+        $this->assertSame('pimcore_db', $dbConfig['dbname']);
+    }
+
+    public function testConfiguredDbCredentialsTakePrecedence(): void
+    {
+        $installer = $this->createInstaller();
+        $installer->setDbCredentials(['user' => 'configured', 'dbname' => 'configured_db']);
+
+        $dbConfig = $installer->resolveDbConfig([
+            'mysql_host_socket' => 'db.example.com',
+            'mysql_port' => '3307',
+            'mysql_password' => '',
+        ]);
+
+        $this->assertSame('configured', $dbConfig['user']);
+        $this->assertSame('configured_db', $dbConfig['dbname']);
+        $this->assertSame('db.example.com', $dbConfig['host']);
+    }
 }

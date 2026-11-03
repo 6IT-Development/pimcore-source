@@ -175,6 +175,11 @@ pimcore_install:
             port:                 "%env(DB_PORT)%"
 ```
 
+Every field is optional: the installer only skips the options and prompts of the configured fields and asks for the
+others (e.g. configure `host` and `port` and pass the user, password and database name as options). Fields which resolve
+to an empty value at runtime are treated as not configured. The installer aborts if the user, the database name or the
+host/socket is missing after merging the config with the options.
+
 ## Set a Time Zone
 Make sure to set the corresponding time zone in your configuration. 
 It will be used for displaying date/time values in the admin backend.

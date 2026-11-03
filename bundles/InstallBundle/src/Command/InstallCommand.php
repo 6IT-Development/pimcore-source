@@ -90,12 +90,14 @@ class InstallCommand extends Command
                 'mode' => InputOption::VALUE_REQUIRED,
                 'default' => 'localhost',
                 'group' => 'db_credentials',
+                'db_credentials' => ['host', 'unix_socket'],
             ],
             'mysql-username' => [
                 'description' => 'MySQL username',
                 'mode' => InputOption::VALUE_REQUIRED,
                 'insecure' => true,
                 'group' => 'db_credentials',
+                'db_credentials' => ['user'],
             ],
             'mysql-password' => [
                 'description' => 'MySQL password',
@@ -103,17 +105,20 @@ class InstallCommand extends Command
                 'insecure' => true,
                 'hidden-input' => true,
                 'group' => 'db_credentials',
+                'db_credentials' => ['password'],
             ],
             'mysql-database' => [
                 'description' => 'MySQL database',
                 'mode' => InputOption::VALUE_REQUIRED,
                 'group' => 'db_credentials',
+                'db_credentials' => ['dbname'],
             ],
             'mysql-port' => [
                 'description' => 'MySQL Port (will be omitted if socket is set)',
                 'mode' => InputOption::VALUE_REQUIRED,
                 'default' => 3306,
                 'group' => 'db_credentials',
+                'db_credentials' => ['port', 'unix_socket'],
             ],
             'mysql-ssl-cert-path' => [
                 'description' => 'MySQL SSL certificate path (if empty non-ssl connection assumed)',
@@ -333,7 +338,9 @@ class InstallCommand extends Command
 
     private function installerNeedsOption(array $config): bool
     {
-        if ('db_credentials' === ($config['group'] ?? null) && !$this->installer->needsDbCredentials()) {
+        // options of DB credential fields which are configured via pimcore_install.parameters.database_credentials
+        if ('db_credentials' === ($config['group'] ?? null)
+            && $this->installer->isDbCredentialConfigured(...($config['db_credentials'] ?? []))) {
             return false;
         }
 

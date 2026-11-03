@@ -47,7 +47,7 @@ forward-compat with DBAL 4. IDs are stable – refer to them as `B-xx` in later 
 
 ## Database / credentials
 
-### [ ] B-03 – Partially configured `pimcore_install.parameters.database_credentials` disables **all** DB prompts
+### [x] B-03 – Partially configured `pimcore_install.parameters.database_credentials` disables **all** DB prompts
 **Files:** `src/DependencyInjection/PimcoreInstallExtension.php:43-62`, `src/Installer.php:190-193`, `:215-218`, `:360-374`, `src/Command/InstallCommand.php:311-322`
 - `needsDbCredentials()` returns `false` as soon as **any** credential is configured. Configuring only
   `host: '%env(DB_HOST)%'` / `port` (the doc example mixes static and env values) skips the `mysql-username`,

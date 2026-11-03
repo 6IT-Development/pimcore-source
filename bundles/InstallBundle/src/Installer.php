@@ -112,10 +112,10 @@ class Installer
     private EventDispatcherInterface $eventDispatcher;
 
     /**
-     * Predefined DB credentials from config
+     * Predefined DB credentials from config, only contains the configured (non-empty) fields
      *
      */
-    private array $dbCredentials;
+    private array $dbCredentials = [];
 
     private ?PimcoreStyle $commandLineOutput = null;
 
@@ -204,7 +204,11 @@ class Installer
 
     public function setDbCredentials(array $dbCredentials = []): void
     {
-        $this->dbCredentials = $dbCredentials;
+        // env placeholders are resolved at runtime and may resolve to an empty value
+        $this->dbCredentials = array_filter(
+            $dbCredentials,
+            static fn ($value) => null !== $value && '' !== $value
+        );
     }
 
     public function setCommandLineOutput(PimcoreStyle $commandLineOutput): void
@@ -235,6 +239,20 @@ class Installer
     public function needsDbCredentials(): bool
     {
         return empty($this->dbCredentials);
+    }
+
+    /**
+     * Whether one of the given fields (user, password, dbname, host, port, unix_socket) is set via config
+     */
+    public function isDbCredentialConfigured(string ...$fields): bool
+    {
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $this->dbCredentials)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function setBundlesToInstall(array $bundlesToInstall = [], array $availableBundles = [], array $excludeFromBundlesPhp = []): void
@@ -321,7 +339,11 @@ class Installer
         $this->dispatchStepEvent('validate_parameters');
 
         $dbConfig = $this->resolveDbConfig($params);
-        $errors = [];
+        $errors = $this->validateDbConfig($dbConfig);
+
+        if (!empty($errors)) {
+            return $errors;
+        }
 
         // try to establish a mysql connection
         try {
@@ -423,6 +445,10 @@ class Installer
         ];
     }
 
+    /**
+     * Fields configured via pimcore_install.parameters.database_credentials take precedence, all other fields are
+     * taken from the parameters (CLI options, env vars or prompts)
+     */
     public function resolveDbConfig(array $params): array
     {
         $dbConfig = [
@@ -431,32 +457,28 @@ class Installer
             'driver' => 'pdo_mysql',
         ];
 
-        // do not handle parameters if db credentials are set via config
-        if (!empty($this->dbCredentials)) {
-            return array_merge(
-                $dbConfig,
-                $this->dbCredentials
-            );
+        foreach (['user' => 'mysql_username', 'password' => 'mysql_password', 'dbname' => 'mysql_database'] as $field => $param) {
+            if (array_key_exists($param, $params)) {
+                $dbConfig[$field] = $params[$param];
+            }
         }
 
         // database configuration host/unix socket
-        $dbConfig = array_merge($dbConfig, [
-            'user' => $params['mysql_username'],
-            'password' => $params['mysql_password'],
-            'dbname' => $params['mysql_database'],
-        ]);
+        $hostSocketValue = $params['mysql_host_socket'] ?? null;
 
-        $hostSocketValue = $params['mysql_host_socket'];
-
-        // use value as unix socket if file exists
-        if (file_exists($hostSocketValue)) {
-            $dbConfig['unix_socket'] = $hostSocketValue;
-        } else {
-            $dbConfig['host'] = $hostSocketValue;
-            $dbConfig['port'] = $params['mysql_port'];
+        if (null !== $hostSocketValue && '' !== $hostSocketValue) {
+            // use value as unix socket if file exists
+            if (file_exists($hostSocketValue)) {
+                $dbConfig['unix_socket'] = $hostSocketValue;
+            } else {
+                $dbConfig['host'] = $hostSocketValue;
+                $dbConfig['port'] = $params['mysql_port'] ?? $dbConfig['port'];
+            }
         }
 
-        $mysqlSslCertPath = $params['mysql_ssl_cert_path'];
+        $dbConfig = array_merge($dbConfig, $this->dbCredentials);
+
+        $mysqlSslCertPath = $params['mysql_ssl_cert_path'] ?? null;
         if (!empty($mysqlSslCertPath)) {
             $dbConfig['driverOptions'] = [
                 PDO::MYSQL_ATTR_SSL_CA => $mysqlSslCertPath,
@@ -464,6 +486,32 @@ class Installer
         }
 
         return $dbConfig;
+    }
+
+    /**
+     * @return string[] Array of errors
+     */
+    private function validateDbConfig(array $dbConfig): array
+    {
+        $errors = [];
+
+        foreach (['user' => 'mysql-username', 'dbname' => 'mysql-database'] as $field => $option) {
+            if (!isset($dbConfig[$field]) || '' === (string) $dbConfig[$field]) {
+                $errors[] = sprintf(
+                    'The database credential "%s" is missing. Configure pimcore_install.parameters.database_credentials.%s or pass --%s.',
+                    $field,
+                    $field,
+                    $option
+                );
+            }
+        }
+
+        if (empty($dbConfig['host']) && empty($dbConfig['unix_socket'])) {
+            $errors[] = 'The database host or unix socket is missing. Configure pimcore_install.parameters.database_credentials.host '
+                . '(or unix_socket) or pass --mysql-host-socket.';
+        }
+
+        return $errors;
     }
 
     private function runInstall(array $dbConfig, array $userCredentials, Connection $db): array
