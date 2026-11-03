@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CustomReportsBundle\Tool\Adapter;
 
 use Doctrine\DBAL\Connection;
-use Exception;
 use Pimcore;
 use Pimcore\Db;
 use stdClass;
@@ -43,27 +42,22 @@ class Sql extends AbstractAdapter
         $db = $this->getDb();
 
         $baseQuery = $this->getBaseQuery($filters ?? [], $fields ?? [], false, $drillDownFilters ?? []);
-        $data = [];
-        $total = 0;
 
-        if ($baseQuery) {
-
-            $order = '';
-            if ($sort && $dir) {
-                $dir = ((strtoupper($dir) === 'ASC') ? 'ASC' : 'DESC');
-                $order = ' ORDER BY ' . $db->quoteIdentifier($sort) . ' ' . $dir;
-            }
-
-            $sql = $baseQuery['data'] . $order;
-            if ($offset !== null && $limit) {
-                $sql .= " LIMIT $offset,$limit";
-            }
-
-            [$total, $data] = $this->runReadOnly(static fn (Connection $db): array => [
-                $db->fetchOne($baseQuery['count']),
-                $db->fetchAllAssociative($sql),
-            ]);
+        $order = '';
+        if ($sort && $dir) {
+            $dir = ((strtoupper($dir) === 'ASC') ? 'ASC' : 'DESC');
+            $order = ' ORDER BY ' . $db->quoteIdentifier($sort) . ' ' . $dir;
         }
+
+        $sql = $baseQuery['data'] . $order;
+        if ($offset !== null && $limit) {
+            $sql .= " LIMIT $offset,$limit";
+        }
+
+        [$total, $data] = $this->runReadOnly(static fn (Connection $db): array => [
+            $db->fetchOne($baseQuery['count']),
+            $db->fetchAllAssociative($sql),
+        ]);
 
         return ['data' => $data, 'total' => $total];
     }
@@ -89,7 +83,7 @@ class Sql extends AbstractAdapter
     /**
      * Rejects everything but a single SELECT statement.
      *
-     * @throws Exception
+     * @throws InvalidReportQueryException
      */
     protected function validateQuery(string $sql): void
     {
@@ -99,11 +93,11 @@ class Sql extends AbstractAdapter
             $code = $this->stripLiteralsAndComments($sql, $backslashEscapes);
 
             if (str_contains($code, ';')) {
-                throw new Exception('Only a single SELECT statement is allowed!');
+                throw new InvalidReportQueryException('Only a single SELECT statement is allowed!');
             }
 
             if (preg_match('/\\b(' . implode('|', self::FORBIDDEN_KEYWORDS) . ')\\b/i', $code, $matches)) {
-                throw new Exception("Only 'SELECT' statements are allowed! You've used '" . $matches[1] . "'");
+                throw new InvalidReportQueryException("Only 'SELECT' statements are allowed! You've used '" . $matches[1] . "'");
             }
         }
     }
@@ -222,7 +216,7 @@ class Sql extends AbstractAdapter
         return $sql;
     }
 
-    protected function getBaseQuery(array $filters, array $fields, bool $ignoreSelectAndGroupBy = false, ?array $drillDownFilters = null, ?string $selectField = null): ?array
+    protected function getBaseQuery(array $filters, array $fields, bool $ignoreSelectAndGroupBy = false, ?array $drillDownFilters = null, ?string $selectField = null): array
     {
         $db = $this->getDb();
         $condition = ['1 = 1'];
@@ -276,11 +270,7 @@ class Sql extends AbstractAdapter
             }
         }
 
-        try {
-            $this->validateQuery($sql);
-        } catch (Exception) {
-            return null;
-        }
+        $this->validateQuery($sql);
 
         $condition = implode(' AND ', $condition);
 
@@ -303,11 +293,8 @@ class Sql extends AbstractAdapter
     {
         $db = $this->getDb();
         $baseQuery = $this->getBaseQuery($filters, [$field], false, $drillDownFilters);
-        $data = [];
-        if ($baseQuery) {
-            $sql = $baseQuery['data'] . ' GROUP BY ' . $db->quoteIdentifier($field);
-            $data = $this->runReadOnly(static fn (Connection $db): array => $db->fetchAllAssociative($sql));
-        }
+        $sql = $baseQuery['data'] . ' GROUP BY ' . $db->quoteIdentifier($field);
+        $data = $this->runReadOnly(static fn (Connection $db): array => $db->fetchAllAssociative($sql));
 
         $filteredData = [];
         foreach ($data as $d) {

@@ -17,7 +17,7 @@ admin UX. IDs are stable – refer to them as `B-xx` in later sessions. Line num
 
 ## SQL adapter (`src/Tool/Adapter/Sql.php`)
 
-### [ ] B-01 – Keyword blacklist produces false positives and fails silently
+### [x] B-01 – Keyword blacklist produces false positives and fails silently
 **File:** `src/Tool/Adapter/Sql.php:64`, `:185-197`, `:37`
 The regex has no word boundary: column/table names like `last_update `, `backdrop `, `price_alter `, or a string
 literal `'… DELETE '` are rejected. In `getColumns()` this throws a misleading "Only 'SELECT' statements are allowed"
