@@ -303,7 +303,7 @@ expire instead of releasing from a different key.
 
 **Done:** fixed by `f215fb75ee` (C-03), which moved the temp file removal of `create()` into `finally`.
 
-## [ ] B-12 – `Asset::create()` passes `null`/`false` into typed functions
+## [x] B-12 – `Asset::create()` passes `null`/`false` into typed functions
 
 **File:** `models/Asset.php:358`, `:370`, `:375-377`, `:382`
 
@@ -313,6 +313,9 @@ expire instead of releasing from a different key.
 - `fopen($tmpFile)` failing at `:358` → `stream_copy_to_stream(…, false)` `TypeError`.
 
 **Fix direction:** validate each result and throw a meaningful exception.
+
+**Done:** a failed `fopen()` of the temp file or the source file throws a `RuntimeException`; an unguessable MIME type
+falls back to `application/octet-stream`, so the type mapping resolves it by extension or as `unknown`.
 
 ## [ ] B-13 – Legacy-file deletion passes `null` from a failed DB lookup to Flysystem
 

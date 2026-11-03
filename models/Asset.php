@@ -57,6 +57,7 @@ use Pimcore\SystemSettingsConfig;
 use Pimcore\Tool;
 use Pimcore\Tool\Serialize;
 use Pimcore\Tool\Storage;
+use RuntimeException;
 use stdClass;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Filesystem\Filesystem;
@@ -350,6 +351,9 @@ class Asset extends Element\AbstractElement
                             // write a tmp file because the stream isn't a pointer to the local filesystem
                             $isRewindable = @rewind($data['stream']);
                             $dest = fopen($tmpFile, 'w+', false, File::getContext());
+                            if ($dest === false) {
+                                throw new RuntimeException('Unable to open the temporary file ' . $tmpFile);
+                            }
                             stream_copy_to_stream($data['stream'], $dest);
                             $mimeTypeGuessData = $tmpFile;
 
@@ -361,13 +365,13 @@ class Asset extends Element\AbstractElement
                             }
                         }
                     }
-                    $mimeType = MimeTypes::getDefault()->guessMimeType($mimeTypeGuessData);
+                    $mimeType = MimeTypes::getDefault()->guessMimeType($mimeTypeGuessData) ?? 'application/octet-stream';
                 } else {
                     $sourcePath = $data['sourcePath'];
                     unset($data['sourcePath']);
                     if (!is_dir($sourcePath)) {
                         $mimeTypeGuessData = $sourcePath;
-                        $mimeType = MimeTypes::getDefault()->guessMimeType($mimeTypeGuessData);
+                        $mimeType = MimeTypes::getDefault()->guessMimeType($mimeTypeGuessData) ?? 'application/octet-stream';
                     }
                 }
 
@@ -380,6 +384,9 @@ class Asset extends Element\AbstractElement
                 // opened after the max pixels check, so a rejected image does not leak the handle
                 if ($sourcePath !== null && is_file($sourcePath)) {
                     $data['stream'] = fopen($sourcePath, 'rb', false, File::getContext());
+                    if ($data['stream'] === false) {
+                        throw new RuntimeException('Unable to read the source file ' . $sourcePath);
+                    }
                 }
 
                 if (array_key_exists('type', $data)) {
