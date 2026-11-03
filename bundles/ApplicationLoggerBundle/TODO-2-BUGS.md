@@ -132,7 +132,7 @@ The write error is only logged as a warning; the object keeps `filename`, so the
 trailing `;`/`,`) → `new Address('')` throws `RfcComplianceException` → the whole maintenance task fails on every run
 and the rows are never flagged. Filter empty entries; skip sending if no valid receiver.
 
-### [ ] B-17 – Invalid `filter_priority` produces broken SQL
+### [x] B-17 – Invalid `filter_priority` produces broken SQL
 **File:** `src/Maintenance/LogMailMaintenanceTask.php:55-68`
 `filter_priority > 7` → undefined array index → `null` → `IN('emergency',...,,)` SQL syntax error. Negative values →
 empty `IN()` → syntax error. Clamp to `0..7`.

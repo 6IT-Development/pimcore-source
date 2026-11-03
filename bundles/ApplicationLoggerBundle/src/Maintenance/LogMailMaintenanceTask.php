@@ -53,10 +53,8 @@ readonly class LogMailMaintenanceTask implements TaskInterface
 
             $logLevel = (int)($this->config['applicationlog']['mail_notification']['filter_priority'] ?? null);
 
-            $logLevels = [];
-            for ($i = 0; $i < $logLevel + 1; $i++) {
-                $logLevels[] = $enumValue[$i];
-            }
+            // out of range values would produce an invalid IN() list
+            $logLevels = array_slice($enumValue, 0, max(0, $logLevel) + 1);
 
             $query = 'SELECT * FROM '
                 . ApplicationLoggerDb::TABLE_NAME
