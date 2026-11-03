@@ -194,7 +194,7 @@ class Folder extends DAV\Collection
         return $this;
     }
 
-    public function getLastModified(): int
+    public function getLastModified(): ?int
     {
         return $this->asset->getModificationDate();
     }

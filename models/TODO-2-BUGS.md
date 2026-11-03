@@ -628,7 +628,7 @@ coercions it would turn into `TypeError`s.
 
 **Done:** returns `false` when there is no row.
 
-## [ ] B-35 – WebDAV `getContentType()` / `getLastModified()` are non-nullable, model getters are nullable
+## [x] B-35 – WebDAV `getContentType()` / `getLastModified()` are non-nullable, model getters are nullable
 
 **File:** `models/Asset/WebDAV/File.php:97-100`, `:158-161`
 
@@ -636,6 +636,10 @@ coercions it would turn into `TypeError`s.
   whole folder (assets created via API without data).
 
 **Fix direction:** return `?string` (Sabre allows null) / fall back to `0`.
+
+**Done:** `File::getContentType()` returns `?string`; `File::getLastModified()` and `Folder::getLastModified()` (same
+defect) return `?int`. Sabre's interfaces document `null` for both and then omit the property, which is better than a
+1970 date from `0`.
 
 ## [ ] B-36 – `Dao::unlockPropagate()` builds invalid SQL for unsaved assets
 

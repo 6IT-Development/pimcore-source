@@ -84,7 +84,7 @@ class File extends DAV\File
         }
     }
 
-    public function getLastModified(): int
+    public function getLastModified(): ?int
     {
         return $this->asset->getModificationDate();
     }
@@ -153,7 +153,7 @@ class File extends DAV\File
      * Returns the mimetype of the asset
      *
      */
-    public function getContentType(): string
+    public function getContentType(): ?string
     {
         return $this->asset->getMimeType();
     }
