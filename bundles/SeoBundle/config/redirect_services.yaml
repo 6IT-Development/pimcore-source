@@ -9,6 +9,9 @@ services:
     # deletes/deactivates expired redirects (maintenance task and admin cleanup)
     Pimcore\Bundle\SeoBundle\Redirect\RedirectExpiryService: ~
 
+    # creates/updates the redirects added when a document or URL slug changes its path
+    Pimcore\Bundle\SeoBundle\Redirect\AutoRedirectCreator: ~
+
     #
     # REDIRECTS Export
     #

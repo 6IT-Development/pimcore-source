@@ -194,7 +194,7 @@ if (Pimcore\Tool\Admin::getCurrentUser()->isAllowed('redirects') && $pimcore_seo
 **Fix direction:** check the config flag first, then `Admin::getCurrentUser()?->isAllowed('redirects')` (decide whether
 system moves without a user should create redirects).
 
-### [ ] B-18 – Pretty-URL auto redirects: no site, no duplicate check, also on unpublish, no expiry
+### [x] B-18 – Pretty-URL auto redirects: no site, no duplicate check, also on unpublish, no expiry
 **File:** `src/EventListener/DocumentListener.php:62-88`
 - `sourceSite`/`targetSite` are never set → for pages inside a site the redirect is created with `sourceSite = NULL`,
   but `Dao::getByExactMatch()` requires `sourceSite = <siteId>` for site requests → **the redirect never matches**

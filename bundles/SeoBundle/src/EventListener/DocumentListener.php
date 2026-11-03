@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\SeoBundle\EventListener;
 use Pimcore;
 use Pimcore\Bundle\SeoBundle\Model\Redirect;
 use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
+use Pimcore\Bundle\SeoBundle\Redirect\AutoRedirectCreator;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
 use Pimcore\Model\Document;
@@ -31,6 +32,10 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class DocumentListener implements EventSubscriberInterface
 {
+    public function __construct(private readonly AutoRedirectCreator $autoRedirectCreator)
+    {
+    }
+
     public static function getSubscribedEvents(): array
     {
         return [
@@ -69,19 +74,14 @@ class DocumentListener implements EventSubscriberInterface
         $pimcore_seo_redirects = Pimcore::getContainer()->getParameter('pimcore_seo.redirects');
         if ($page instanceof Page && $pimcore_seo_redirects['auto_create_redirects']) {
             $oldPage = $event->getArgument('oldPage');
-            $task = $event->getArgument('task');
-            if ($task === 'publish' || $task === 'unpublish') {
-                if ($page->getPrettyUrl() !== $oldPage->getPrettyUrl()
-                    && empty($oldPage->getPrettyUrl()) === false
-                    && empty($page->getPrettyUrl()) === false
-                ) {
-                    $redirect = new Redirect();
-
-                    $redirect->setSource($oldPage->getPrettyUrl());
-                    $redirect->setTarget($page->getPrettyUrl());
-                    $redirect->setStatusCode(301);
-                    $redirect->setType(Redirect::TYPE_AUTO_CREATE);
-                    $redirect->save();
+            // an unpublished page has no live URL to redirect to
+            if ($event->getArgument('task') === 'publish') {
+                $oldPrettyUrl = $oldPage->getPrettyUrl();
+                $prettyUrl = $page->getPrettyUrl();
+                if ($oldPrettyUrl && $prettyUrl && $prettyUrl !== $oldPrettyUrl) {
+                    // pretty URLs are paths on the domain of the page's site
+                    $siteId = Frontend::getSiteForDocument($page)?->getId();
+                    $this->autoRedirectCreator->createOrUpdate($oldPrettyUrl, $prettyUrl, $siteId, $siteId);
                 }
             }
         }
