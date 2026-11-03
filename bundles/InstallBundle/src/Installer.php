@@ -521,6 +521,11 @@ class Installer
 
             $errors = $this->setupDatabase($db, $userCredentials, $errors);
 
+            if (!empty($errors)) {
+                // the following steps need a complete database
+                return $errors;
+            }
+
             if (!$this->skipDatabaseConfig && in_array('write_database_config', $stepsToRun)) {
                 // now we're able to write the server version to the database.yaml
                 if ($db instanceof Connection) {
@@ -536,22 +541,37 @@ class Installer
 
         if (in_array('install_assets', $stepsToRun)) {
             $this->dispatchStepEvent('install_assets');
-            $this->installAssets($kernel);
+
+            // missing public assets do not break the installation, continue with the other steps
+            if (null !== $error = $this->installAssets($kernel)) {
+                $errors[] = $error;
+            }
         }
 
         if (in_array('install_classes', $stepsToRun)) {
             $this->dispatchStepEvent('install_classes');
-            $this->installClasses();
+
+            if (null !== $error = $this->installClasses()) {
+                $errors[] = $error;
+
+                return $errors;
+            }
         }
 
         if (in_array('mark_migrations_as_done', $stepsToRun)) {
             $this->dispatchStepEvent('migrations');
-            $this->markMigrationsAsDone();
+
+            // without the migrations marked as done, the next migrate run would execute all core migrations again
+            if (null !== $error = $this->markMigrationsAsDone()) {
+                $errors[] = $error;
+
+                return $errors;
+            }
         }
 
         if (!empty($this->bundlesToInstall) && in_array('install_bundles', $stepsToRun)) {
             $this->dispatchStepEvent('install_bundles');
-            $this->installBundles();
+            $errors = array_merge($errors, $this->installBundles());
         }
 
         if (in_array('clear_cache', $stepsToRun)) {
@@ -563,7 +583,10 @@ class Installer
         return $errors;
     }
 
-    private function runCommand(array $arguments, string $taskName): void
+    /**
+     * @return string|null Error message if the command failed
+     */
+    private function runCommand(array $arguments, string $taskName): ?string
     {
         $io = $this->commandLineOutput;
 
@@ -586,59 +609,87 @@ class Installer
 
             $io?->writeln($process->getOutput());
         } catch (ProcessFailedException $e) {
-            $this->logger->error($e->getMessage());
+            return $this->handleFailedProcess($e, $taskName);
+        }
 
-            if (null === $io) {
-                return;
-            }
+        return null;
+    }
 
-            $stdErr = $io->getErrorStyle();
-            $process = $e->getProcess();
+    /**
+     * Logs the failure, writes the process output to the error output and returns the error message
+     * including the command that has to be run manually
+     */
+    private function handleFailedProcess(ProcessFailedException $e, string $taskName): string
+    {
+        $this->logger->error($e->getMessage());
 
-            $errorOutput = trim($process->getErrorOutput());
-            if (!empty($errorOutput)) {
-                $stdErr->write($errorOutput);
-            }
+        $process = $e->getProcess();
+        $commandLine = str_replace(["'", '\\'], ['', '\\\\'], $process->getCommandLine());
 
+        $stdErr = $this->commandLineOutput?->getErrorStyle();
+        if (null !== $stdErr) {
             $stdErr->write($process->getOutput());
             $stdErr->write($process->getErrorOutput());
             $stdErr->note($taskName . ' failed. Please run the following command manually:');
-            $stdErr->writeln('  ' . str_replace(["'", '\\'], ['', '\\\\'], $process->getCommandLine()));
+            $stdErr->writeln('  ' . $commandLine);
         }
+
+        $errorOutput = trim($process->getErrorOutput()) ?: trim($process->getOutput());
+        $lines = $errorOutput !== '' ? preg_split('/\R/', $errorOutput) : [];
+        $lastLine = trim((string) end($lines));
+
+        return sprintf(
+            '%s failed%s. Please run the following command manually: %s',
+            $taskName,
+            $lastLine !== '' ? ' (' . $lastLine . ')' : '',
+            $commandLine
+        );
     }
 
-    private function markMigrationsAsDone(): void
+    private function markMigrationsAsDone(): ?string
     {
-        $this->runCommand([
+        return $this->runCommand([
             'doctrine:migrations:sync-metadata-storage',
             '-q',
-        ], 'Sync migrations metadata storage');
-
-        $this->runCommand([
-            'doctrine:migrations:version',
-            '--all', '--add', '--prefix=Pimcore\\Bundle\\CoreBundle', '-n', '-q',
-        ], 'Marking all migrations as done');
+        ], 'Sync migrations metadata storage')
+            ?? $this->runCommand([
+                'doctrine:migrations:version',
+                '--all', '--add', '--prefix=Pimcore\\Bundle\\CoreBundle', '-n', '-q',
+            ], 'Marking all migrations as done');
     }
 
-    private function installClasses(): void
+    private function installClasses(): ?string
     {
-        $this->runCommand([
+        return $this->runCommand([
             'pimcore:deployment:classes-rebuild',
             '-c',
         ], 'Installing class definitions');
     }
 
-    private function installBundles(): void
+    /**
+     * A failed bundle does not stop the installation of the other bundles
+     *
+     * @return string[] Array of errors
+     */
+    private function installBundles(): array
     {
+        $errors = [];
+
         $this->writeBundlesToConfig();
         foreach ($this->bundlesToInstall as $bundle) {
             if (in_array($bundle, $this->availableBundles) && !$this->isBundleInstalled($bundle)) {
-                $this->runCommand([
+                $error = $this->runCommand([
                     'pimcore:bundle:install',
                     $bundle,
                 ], 'Installing ' . $bundle);
+
+                if (null !== $error) {
+                    $errors[] = $error;
+                }
             }
         }
+
+        return $errors;
     }
 
     private function writeBundlesToConfig(): void
@@ -655,7 +706,10 @@ class Installer
         $writer->addBundlesToConfig($bundlesToInstall, $availableBundles);
     }
 
-    private function installAssets(KernelInterface $kernel): void
+    /**
+     * @return string|null Error message if the assets could not be installed
+     */
+    private function installAssets(KernelInterface $kernel): ?string
     {
         $this->logger->info('Running {command} command', ['command' => 'assets:install']);
 
@@ -671,25 +725,10 @@ class Installer
 
             $io?->writeln($process->getOutput());
         } catch (ProcessFailedException $e) {
-            $this->logger->error($e->getMessage());
-
-            if (null === $io) {
-                return;
-            }
-
-            $stdErr = $io->getErrorStyle();
-            $process = $e->getProcess();
-
-            $errorOutput = trim($process->getErrorOutput());
-            if (!empty($errorOutput)) {
-                $stdErr->write($errorOutput);
-            }
-
-            $stdErr->write($process->getOutput());
-            $stdErr->write($process->getErrorOutput());
-            $stdErr->note('Installing assets failed. Please run the following command manually:');
-            $stdErr->writeln('  ' . str_replace(["'", '\\'], ['', '\\\\'], $process->getCommandLine()));
+            return $this->handleFailedProcess($e, 'Installing assets');
         }
+
+        return null;
     }
 
     private function createConfigFiles(array $config): void

@@ -48,7 +48,7 @@ given. Show `user@host/dbname` in the interactive confirm. Keep `--skip-database
 
 ---
 
-## [ ] C-02 – Failing sub-steps are swallowed → "Pimcore was successfully installed", exit code 0, half-installed system
+## [x] C-02 – Failing sub-steps are swallowed → "Pimcore was successfully installed", exit code 0, half-installed system
 
 **Files:** `src/Installer.php:508-550` (`runCommand()`), `:600-635` (`installAssets()`), `:552-584`, `:403-506`
 (`runInstall()`), `src/Command/InstallCommand.php:404-423`
