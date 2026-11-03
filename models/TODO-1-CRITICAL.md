@@ -1761,7 +1761,7 @@ same way. Add a test (I-141).
 > - Only two files lack `declare(strict_types=1)`: `CustomLayout/Dao.php`, `CustomLayout/Listing/Dao.php` (I-73).
 > - Critical items: C-46–C-51. Bugs: B-266–B-299. Improvements: I-149–I-160.
 
-## [ ] C-46 – `ClassDefinition::getLinkGenerator()` throws `TypeError` for every class without a link generator
+## [x] C-46 – `ClassDefinition::getLinkGenerator()` throws `TypeError` for every class without a link generator
 
 **Files:** `models/DataObject/ClassDefinition/Helper/LinkGeneratorResolver.php:27`; `PreviewGeneratorResolver.php:27`;
 `DefaultValueGeneratorResolver.php:27`; caller `models/DataObject/ClassDefinition.php:1048-1054` (`:167`);
