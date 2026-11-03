@@ -175,7 +175,7 @@ application's own config. The bundle's `default_key_bindings.application_logger`
 override. Symfony 7.1+ supports `new YamlFileLoader($container, $locator, prepend: true)` or
 `$container->prependExtensionConfig()` (or `AbstractBundle::prependExtension()` with `import(..., prepend: true)`).
 
-### [ ] B-23 – Installer is not idempotent / uninstall leaves leftovers
+### [x] B-23 – Installer is not idempotent / uninstall leaves leftovers
 **File:** `src/Installer.php:29-99`
 - `addUserPermission()` uses plain `insert` → reinstall after a partially failed install / after a manual permission
   insert fails with a duplicate-key exception. Check existence first (or `INSERT IGNORE`/upsert).

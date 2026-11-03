@@ -17,9 +17,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle;
 
+use League\Flysystem\FilesystemException;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
+use Pimcore\Config;
 use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
+use Pimcore\Tool\Storage;
 
 class Installer extends SettingsStoreAwareInstaller
 {
@@ -39,6 +42,8 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $this->removeUserPermission();
         $this->dropApplicationLogTable();
+        $this->dropArchiveTables();
+        $this->deleteFileObjects();
 
         parent::uninstall();
     }
@@ -70,15 +75,56 @@ class Installer extends SettingsStoreAwareInstaller
         $db->executeQuery('DROP TABLE IF EXISTS `application_logs`;');
     }
 
+    /**
+     * Also looks in the default database, the alternative one may have been configured after the first tables were archived
+     */
+    private function dropArchiveTables(): void
+    {
+        $db = Db::get();
+        $alternativeDatabase = Config::getSystemConfiguration('applicationlog')['archive_alternative_database'] ?? '';
+
+        foreach (array_unique(array_filter([$db->getDatabase(), $alternativeDatabase])) as $database) {
+            $tables = $db->fetchFirstColumn(
+                'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
+                [$database, ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_%']
+            );
+
+            foreach ($tables as $table) {
+                if (preg_match('/^' . ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_\d{4}_\d{2}$/', $table)) {
+                    $db->executeStatement('DROP TABLE IF EXISTS ' . $db->quoteIdentifier($database) . '.' . $db->quoteIdentifier($table));
+                }
+            }
+        }
+    }
+
+    private function deleteFileObjects(): void
+    {
+        $storage = Storage::get('application_log');
+
+        try {
+            foreach ($storage->listContents('/') as $item) {
+                if ($item->isDir()) {
+                    $storage->deleteDirectory($item->path());
+                } else {
+                    $storage->delete($item->path());
+                }
+            }
+        } catch (FilesystemException $e) {
+            // the bundle is gone at this point, leftover files must not make the uninstall fail
+            $this->output->writeln('Could not delete all file objects of the application logger: ' . $e->getMessage());
+        }
+    }
+
     private function addUserPermission(): void
     {
         $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
-            $db->insert('users_permission_definitions', [
-                $db->quoteIdentifier('key') => $permission,
-                $db->quoteIdentifier('category') => self::USER_PERMISSIONS_CATEGORY,
-            ]);
+            // the permission can already exist after a partially failed install or when it was added by hand
+            $db->executeStatement(
+                'INSERT INTO `users_permission_definitions` (`key`, `category`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `category` = VALUES(`category`)',
+                [$permission, self::USER_PERMISSIONS_CATEGORY]
+            );
         }
     }
 
