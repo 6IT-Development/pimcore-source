@@ -220,7 +220,10 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         $parentId = $this->getParentId();
         if ($this->parent === null && $parentId !== null && $parentId !== 0) {
             $parent = Service::getElementById(Service::getElementType($this), $parentId);
-            $this->setParent($parent);
+            // a missing parent must not reset the parentId of the element
+            if ($parent !== null) {
+                $this->setParent($parent);
+            }
         }
 
         return $this->parent;

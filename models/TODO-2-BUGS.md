@@ -393,7 +393,10 @@ that cannot be rewound is closed before it is replaced.
 **Fix direction:** narrow to `?Asset` and set `parentId` consistently.
 
 **Done:** the `ElementInterface` signature is kept (the interface defines it), but a non-asset parent now throws an
-`InvalidArgumentException`; `null` clears `parentId` together with the parent.
+`InvalidArgumentException`; `null` clears `parentId` together with the parent. So that this does not reset the
+`parentId` by accident, `AbstractElement::getParent()` no longer calls `setParent(null)` for a missing parent, and
+`Element\Service::cloneMe()` drops the cached parent with `setParentId($copy->getParentId())` instead of
+`setParent(null)` (this also keeps the `parentId` of cloned objects, which `AbstractObject::setParent(null)` cleared).
 
 ## [ ] B-19 – `delete()` traversal guard is ineffective
 

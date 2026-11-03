@@ -1127,7 +1127,8 @@ class Service extends Model\AbstractModel
         /** @var ElementInterface $theCopy */
         $theCopy = $deepCopy->copy($element);
         $theCopy->setId(null);
-        $theCopy->setParent(null);
+        // drops the cached parent element, but keeps the parentId
+        $theCopy->setParentId($theCopy->getParentId());
         if ($theCopy instanceof AbstractElement) {
             $theCopy->markFieldDirty('properties');
         }
