@@ -193,7 +193,7 @@ so the escaping strategy is inconsistent and does not protect them.
 validate `iconClass`/`groupIconClass`/`reportClass` server-side with the same regex the UI uses
 (`/^[_a-zA-Z]+[_a-zA-Z0-9-.\s]*$/`, `item.js`).
 
-### [ ] B-20 – `create-csv` route is `GET`-only while the UI sends params via `Ext.Ajax.request` *(verify)*
+### [x] B-20 – `create-csv` route is `GET`-only while the UI sends params via `Ext.Ajax.request` *(verify)*
 **File:** `src/Controller/Reports/CustomReportController.php:344`, `public/js/pimcore/report/custom/report.js:563-572`
 `Ext.Ajax.request()` without `method` defaults to `POST` when `params` are present (ExtJS `Connection`), but the route
 only allows `GET`. If the admin UI does not override the default method globally, the CSV export answers `405`.

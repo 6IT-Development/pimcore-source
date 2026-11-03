@@ -562,6 +562,7 @@ pimcore.bundle.customreports.custom.report = Class.create(pimcore.bundle.customr
 
         Ext.Ajax.request({
             url: Routing.generate('pimcore_bundle_customreports_customreport_createcsv'),
+            method: 'GET',
             params: {
                 exportFile: exportFile,
                 offset: offset,
