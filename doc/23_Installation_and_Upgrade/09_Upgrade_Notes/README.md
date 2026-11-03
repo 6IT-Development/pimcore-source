@@ -12,6 +12,8 @@
 - `new FileObject($data)` no longer writes a file and its `$filename` argument is required. Use the new
   `FileObjectWriter` service: `$fileObjectWriter->write($data)`. `FileObject::getSystemPath()` is deprecated, use
   `getFilename()`. Generated file names now end in a UUID instead of a `uniqid()` value.
+- The `$priority` parameter of `ApplicationLogger::logException()` is now `string|Level $level`. Passing `null` is no
+  longer possible, omit the argument for the default `alert`. Calls using the named argument `priority:` need to change.
 #### [Cache]
 - Fixed: if `cache.app` uses the default filesystem adapter, Pimcore stores it in `pimcore.cache.pool`. Every pool
   derived from `cache.app` (`framework.cache.pools.*` with the default adapter, Symfony's own child pools) used to

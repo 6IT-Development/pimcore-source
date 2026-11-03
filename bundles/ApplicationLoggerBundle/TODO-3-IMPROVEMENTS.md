@@ -87,10 +87,11 @@ clearing it would lose the configuration of those services. `getInstance()` no l
 - `catch (FilesystemException|UnableToWriteFile)` – `UnableToWriteFile` already implements `FilesystemException`.
 - `Logger::warn()` → `Logger::warning()` (or injected PSR logger).
 
-### [ ] I-11 – Simplify `logException()` signature
+### [x] I-11 – Simplify `logException()` signature
 **File:** `src/ApplicationLogger.php:280-301`
 `?string $priority = 'alert'` + `if (is_null(...))` → non-nullable `string|Level $priority = Level::Alert`
 (consistent with `logExceptionObject()`), rename to `$level`. Mark old parameter names via `#[\Deprecated]` if BC matters.
+**Outcome:** Renamed without a BC layer, PHP cannot mark a parameter name as deprecated. Listed in the upgrade notes.
 
 ### [ ] I-12 – Use `#[\Override]` on overridden/implemented methods
 **Files:** `ApplicationLogger` (PSR-3 methods), `ApplicationLoggerDb::write()`, `Installer::install()/uninstall()`,

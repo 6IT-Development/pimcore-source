@@ -313,20 +313,17 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
     public function logException(
         string                    $message,
         Throwable                 $exceptionObject,
-        ?string                   $priority = 'alert',
+        string|Level              $level = Level::Alert,
         ElementInterface|int|null $relatedObject = null,
         ?string                   $component = null
     ): void
     {
-        if (is_null($priority)) {
-            $priority = 'alert';
-        }
-
         $message .= ' : ' . $exceptionObject->getMessage();
 
         $fileObject = self::createExceptionFileObject($exceptionObject);
 
-        $this->log($priority, $message, [
+        // a writer can be any PSR-3 logger, which only has to know the PSR-3 levels
+        $this->log($level instanceof Level ? $level->toPsrLogLevel() : $level, $message, [
             'relatedObject' => $relatedObject,
             'fileObject' => $fileObject,
             'component' => $component,
