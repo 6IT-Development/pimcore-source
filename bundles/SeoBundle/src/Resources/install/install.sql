@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS `http_error_log` (
 CREATE TABLE IF NOT EXISTS `redirects` (
      `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
      `type` ENUM('entire_uri','path_query','path','auto_create') NOT NULL,
-     `source` varchar(255) DEFAULT NULL,
+     `source` varchar(1024) DEFAULT NULL,
      `sourceSite` int(11) DEFAULT NULL,
-     `target` varchar(255) DEFAULT NULL,
+     `target` varchar(1024) DEFAULT NULL,
      `targetSite` int(11) DEFAULT NULL,
      `statusCode` varchar(3) DEFAULT NULL,
      `priority` int(2) DEFAULT '0',
@@ -32,5 +32,5 @@ CREATE TABLE IF NOT EXISTS `redirects` (
      `userModification` int(11) unsigned DEFAULT NULL,
      PRIMARY KEY (`id`),
      KEY `priority` (`priority`),
-     INDEX `routing_lookup` (`active`, `regex`, `sourceSite`, `source`, `type`, `expiry`, `priority`)
+     INDEX `routing_lookup` (`active`, `regex`, `sourceSite`, `source`(255), `type`, `expiry`, `priority`)
 ) DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;

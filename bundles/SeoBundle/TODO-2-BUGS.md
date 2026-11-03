@@ -221,7 +221,7 @@ upserts by `(source, sourceSite, type=auto_create)`, and applies the same expiry
 **Fix direction:** filter `type IN ('page','hardlink','link')` in the listing condition; upsert instead of insert;
 string-prefix replacement; wrap in a transaction or catch + log.
 
-### [ ] B-20 – `redirects.source`/`target` are `varchar(255)` → long paths silently truncated
+### [x] B-20 – `redirects.source`/`target` are `varchar(255)` → long paths silently truncated
 **Files:** `src/Resources/install/install.sql:18-20`, `src/EventListener/DocumentListener.php`,
 `src/EventListener/UrlSlugUpdateListener.php`, `src/Controller/RedirectsController.php`
 - Document paths/pretty URLs/slugs can exceed 255 chars (document paths up to 765). With `sql_mode = ''` the value is

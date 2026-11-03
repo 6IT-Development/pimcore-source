@@ -48,6 +48,11 @@ final class Redirect extends AbstractModel
 
     public const string TYPE_AUTO_CREATE = 'auto_create';
 
+    /**
+     * Length of the source and target columns.
+     */
+    public const int MAX_LENGTH = 1024;
+
     public const array TYPES = [
         self::TYPE_ENTIRE_URI,
         self::TYPE_PATH_QUERY,
@@ -410,6 +415,12 @@ final class Redirect extends AbstractModel
 
     public function save(): void
     {
+        foreach (['source' => $this->source, 'target' => $this->target] as $field => $value) {
+            if ($value !== null && mb_strlen($value) > self::MAX_LENGTH) {
+                throw new InvalidArgumentException(sprintf('The redirect %s must not be longer than %d characters', $field, self::MAX_LENGTH));
+            }
+        }
+
         $this->dispatchEvent(new RedirectEvent($this), RedirectEvents::PRE_SAVE);
         $this->getDao()->save();
         $this->dispatchEvent(new RedirectEvent($this), RedirectEvents::POST_SAVE);

@@ -19,6 +19,7 @@ These may still be pending on an 11.5.x database installed from an earlier patch
 | `Version20261029000100` | Recomputes `tags.idPath` from `parentId` (moving a root-level tag corrupted its subtree, models C-29). Data only; leaves orphans, cycles and rows that would violate `idPath_name` unchanged with a warning. |
 | `Version20261103000100` | `http_error_log`: adds `uri_hash`, switches `uri` to utf8mb4 (SeoBundle B-01). Skipped if the bundle's table does not exist. |
 | `Version20261103000200` | `http_error_log`: merges duplicate rows, makes `uri_hash` unique (SeoBundle B-02). Needs `Version20261103000100` first. Skipped if the table does not exist. |
+| `Version20261103000300` | `redirects`: enlarges `source`/`target` to `varchar(1024)`, `routing_lookup` indexes a 255-character prefix of `source` (SeoBundle B-20). Skipped if the bundle's table does not exist. |
 
 Any schema change made in this fork needs a **new** migration **and** the matching change in `install.sql`.
 
