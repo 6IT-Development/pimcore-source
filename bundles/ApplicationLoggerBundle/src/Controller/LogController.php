@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Controller;
 
 use Carbon\Carbon;
-use DateMalformedStringException;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
@@ -232,9 +231,7 @@ class LogController extends UserAwareController implements KernelControllerEvent
     }
 
     /**
-     * Returns the date in UTC, the time zone the log entries are stored in
-     *
-     * @throws DateMalformedStringException
+     * Returns the date in UTC, the time zone the log entries are stored in, or null if it is not a valid date
      */
     private function parseDateObject(string $date, string $time, DateTimeZone $timeZone): ?DateTimeImmutable
     {
@@ -242,10 +239,15 @@ class LogController extends UserAwareController implements KernelControllerEvent
             return null;
         }
 
-        if ('' !== $time && preg_match(LogGridRequest::DATE_TIME_PATTERN, $time, $timeMatches)) {
-            $dateTime = new DateTimeImmutable(sprintf('%sT%s', $dateMatches['date'], $timeMatches['time']), $timeZone);
-        } else {
-            $dateTime = new DateTimeImmutable($date, $timeZone);
+        if (preg_match(LogGridRequest::DATE_TIME_PATTERN, $time, $timeMatches)) {
+            $date = sprintf('%sT%s', $dateMatches['date'], $timeMatches['time']);
+        }
+
+        $dateTime = DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', $date, $timeZone);
+
+        // createFromFormat() only warns about values like 2026-02-31 and moves them to the next month
+        if (false === $dateTime || false !== DateTimeImmutable::getLastErrors()) {
+            return null;
         }
 
         return $dateTime->setTimezone(new DateTimeZone('UTC'));

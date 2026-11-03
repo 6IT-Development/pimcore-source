@@ -192,11 +192,13 @@ reaches the error handler instead. Missing and invalid paths still get their 404
 **File:** `src/Controller/LogController.php:109-111`
 `%` and `_` in the user's search text act as wildcards. Use `addcslashes($message, '%_\\')`.
 
-### [ ] I-25 – Use immutable date types in the controller
+### [x] I-25 – Use immutable date types in the controller
 **File:** `src/Controller/LogController.php:198-209`
 `DateTime` + `Types::DATETIME_MUTABLE` → `DateTimeImmutable` + `Types::DATETIME_IMMUTABLE`. The `@throws
 DateMalformedStringException` is unreachable after the regex check; use `DateTimeImmutable::createFromFormat()` and
 return `null` on failure.
+**Outcome:** The immutable types came with B-01. A date like `2026-02-31` used to pass the pattern and fail with a 500 here, now that
+filter is ignored like any other value which is not a date.
 
 ### [ ] I-26 – Count query cleanup
 **File:** `src/Controller/LogController.php:117-122`
