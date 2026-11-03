@@ -35,7 +35,7 @@ final readonly class ApplicationLogRepository
      */
     public function getComponents(): array
     {
-        return $this->db->fetchFirstColumn('SELECT component FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE NOT ISNULL(component) GROUP BY component;');
+        return $this->db->fetchFirstColumn('SELECT DISTINCT component FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE NOT ISNULL(component);');
     }
 
     /**
@@ -45,7 +45,7 @@ final readonly class ApplicationLogRepository
     {
         $priorities = [];
 
-        foreach ($this->db->fetchFirstColumn('SELECT priority FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE NOT ISNULL(priority) GROUP BY priority;') as $priority) {
+        foreach ($this->db->fetchFirstColumn('SELECT DISTINCT priority FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE NOT ISNULL(priority);') as $priority) {
             $priorities[$priority] = match (Level::fromName($priority)) {
                 Level::Debug => 'DEBUG',
                 Level::Info => 'INFO',

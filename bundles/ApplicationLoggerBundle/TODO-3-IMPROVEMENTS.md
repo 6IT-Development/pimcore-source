@@ -157,7 +157,7 @@ and logging a warning (related to C-05 / B-14).
 `error_log()`, as a warning through the logger could fail the same way. A throwing writer is now caught too. An unknown level
 still throws `Psr\Log\InvalidArgumentException`, because PSR-3 requires it.
 
-### [ ] I-20 – Unused / misleading schema & naming
+### [x] I-20 – Unused / misleading schema & naming
 - Column `info` is never written nor read (`Installer`, archive schema, `ApplicationLoggerDb::write()`).
 - `ApplicationLoggerDb::getPriorities()` loop variable `$priorityNumber` holds a priority *name*.
 - `getComponents()` uses `GROUP BY` where `SELECT DISTINCT` states intent.
@@ -165,6 +165,8 @@ still throws `Psr\Log\InvalidArgumentException`, because PSR-3 requires it.
   (`ApplicationLogger:192`, `ApplicationLoggerProcessor:109`).
 - Snake-case local `$archive_threshold` (`LogArchiveTask:56`) vs camelCase elsewhere.
 - `relatedObjectType` / `relatedObject` property type `AbstractObject|Document|int|Asset|null` → `ElementInterface|int|null`.
+**Outcome:** The loop variable and `$archive_threshold` went away with earlier fixes. The `info` column is only removed from new tables,
+the bundle has no migrations to drop it from existing ones. The archive task names its columns, so it works with both.
 
 ### [ ] I-21 – Single permission check in the controller
 **File:** `src/Controller/LogController.php`

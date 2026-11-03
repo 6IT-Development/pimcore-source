@@ -17,6 +17,9 @@
 - `ApplicationLogger::getInstance()`, `ApplicationLoggerDb::getComponents()` and `ApplicationLoggerDb::getPriorities()`
   are deprecated. Inject the logger or define a service for the component, see the application logger docs.
 - The constructors of the bundle's `Installer` and `LogArchiveTask` have new arguments for the connection and the storage.
+- New `application_logs` and archive tables no longer have the unused `info` column. Existing tables keep it, it stays
+  empty and can be dropped manually.
+- The protected property `ApplicationLogger::$relatedObject` is now typed `ElementInterface|int|null`.
 - `ApplicationLogger::addWriter()` only accepts a `HandlerInterface` or `LoggerInterface`. Other objects were silently
   ignored before and throw a `TypeError` now.
 #### [Cache]

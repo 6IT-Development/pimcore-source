@@ -23,9 +23,6 @@ use Monolog\Logger;
 use Pimcore;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Bundle\ApplicationLoggerBundle\Processor\ContextNormalizer;
-use Pimcore\Model\Asset;
-use Pimcore\Model\DataObject\AbstractObject;
-use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Psr\Log\InvalidArgumentException as PsrInvalidArgumentException;
@@ -44,7 +41,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
     protected string|null|FileObject $fileObject = null;
 
-    protected AbstractObject|Document|int|Asset|null $relatedObject = null;
+    protected ElementInterface|int|null $relatedObject = null;
 
     protected string $relatedObjectType = RelatedObjectType::Object->value;
 
@@ -129,7 +126,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         $this->fileObject = $fileObject;
     }
 
-    public function setRelatedObject(Asset|int|Document|AbstractObject $relatedObject): void
+    public function setRelatedObject(ElementInterface|int $relatedObject): void
     {
         $this->relatedObject = $relatedObject;
         $this->relatedObjectType = is_int($relatedObject)
@@ -243,12 +240,12 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
         if (isset($previousCall['class'])) {
             // called from a class method
-            // ClassName->methodName():line
+            // ClassName::methodName:line
             return sprintf('%s::%s:%d', $previousCall['class'], $previousCall['function'], $line);
         }
 
         // called from a function
-        // filename.php::functionName():line
+        // filename.php::functionName:line
         return sprintf('%s::%s:%d', $file, $previousCall['function'], $line);
     }
 

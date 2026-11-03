@@ -46,7 +46,6 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
         'message' => 'TEXT NULL',
         'priority' => "ENUM('emergency','alert','critical','error','warning','notice','info','debug') DEFAULT NULL",
         'fileobject' => 'VARCHAR(1024) DEFAULT NULL',
-        'info' => 'VARCHAR(1024) DEFAULT NULL',
         'component' => 'VARCHAR(190) DEFAULT NULL',
         'source' => 'VARCHAR(190) DEFAULT NULL',
         'relatedobject' => 'INT(11) UNSIGNED DEFAULT NULL',

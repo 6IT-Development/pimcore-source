@@ -61,7 +61,7 @@ class ApplicationLoggerProcessor implements ProcessorInterface
 
         if (isset($extra['class']) && isset($extra['function'])) {
             // called from a class method
-            // ClassName->methodName():line
+            // ClassName::methodName:line
             $source = sprintf(
                 '%s::%s:%d',
                 $extra['class'],
@@ -70,7 +70,7 @@ class ApplicationLoggerProcessor implements ProcessorInterface
             );
         } elseif (isset($extra['function'])) {
             // called from a function
-            // filename.php::functionName():line
+            // filename.php::functionName:line
             $source = sprintf(
                 '%s::%s:%d',
                 ContextNormalizer::relativeFilename($extra['file']),
