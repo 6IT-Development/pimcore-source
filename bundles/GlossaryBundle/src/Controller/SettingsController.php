@@ -115,7 +115,8 @@ class SettingsController extends UserAwareController
             }
 
             if ($request->request->has('filter')) {
-                $list->setCondition('`text` LIKE ' . $list->quote('%' . $request->request->getString('filter') . '%'));
+                // % and _ in the search term are literal characters, not wildcards
+                $list->setCondition('`text` LIKE ?', ['%' . $list->escapeLike($request->request->getString('filter')) . '%']);
             }
 
             $list->load();

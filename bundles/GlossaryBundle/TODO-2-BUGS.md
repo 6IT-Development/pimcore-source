@@ -189,7 +189,7 @@ outside the class → protected properties are invisible → `data: []`. The cre
 `getObjectVars()`. The grid record is never refreshed with server values (`modificationDate`, normalised link).
 **Fix:** `'data' => $glossary->getObjectVars()` (ideally a dedicated normaliser/array shape shared by all actions).
 
-### [ ] B-21 – Search filter does not escape `LIKE` wildcards
+### [x] B-21 – Search filter does not escape `LIKE` wildcards
 **File:** `src/Controller/SettingsController.php:120-122`
 `%` and `_` in the search field act as wildcards (`_` matches every one-char term, searching for `100%` matches
 everything starting with `100`). Not an injection (value is quoted).
