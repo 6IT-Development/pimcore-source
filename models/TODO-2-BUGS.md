@@ -398,7 +398,7 @@ that cannot be rewound is closed before it is replaced.
 `Element\Service::cloneMe()` drops the cached parent with `setParentId($copy->getParentId())` instead of
 `setParent(null)` (this also keeps the `parentId` of cloned objects, which `AbstractObject::setParent(null)` cleared).
 
-## [ ] B-19 – `delete()` traversal guard is ineffective
+## [x] B-19 – `delete()` traversal guard is ineffective
 
 **File:** `models/Asset.php:1029-1030`
 
@@ -406,6 +406,8 @@ that cannot be rewound is closed before it is replaced.
   low, but the guard does not do what it claims.
 
 **Fix direction:** `!str_contains(...)`, or remove the check and rely on key validation + Flysystem path normalisation.
+
+**Done:** the guard uses `str_contains()`, so a `/../` at the start of the path is detected as well.
 
 ---
 
