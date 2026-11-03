@@ -468,6 +468,7 @@ class Mail extends Email
         // $message->getHeaders()->remove('Subject'); ....
 
         $recipients = [];
+        $hadRecipients = $this->getTo() || $this->getCc() || $this->getBcc();
 
         foreach (['To', 'Cc', 'Bcc', 'ReplyTo'] as $key) {
             $recipients[$key] = null;
@@ -476,17 +477,26 @@ class Mail extends Email
 
             if ($addresses) {
                 $addresses = $this->filterLogAddresses($addresses);
-                /** @var MailboxListHeader|null $header */
-                $header = $this->getHeaders()->get(strtolower($key));
-                $header?->setAddresses($addresses);
+                if ($addresses) {
+                    /** @var MailboxListHeader|null $header */
+                    $header = $this->getHeaders()->get(strtolower($key));
+                    $header?->setAddresses($addresses);
+                } else {
+                    $this->getHeaders()->remove(strtolower($key));
+                }
             }
 
             $addresses = $this->$getterName();
             $recipients[$key] = $addresses;
         }
 
+        // every recipient is blocklisted: nothing to send, which is not a sending failure
+        $suppressed = $hadRecipients && !$this->getTo() && !$this->getCc() && !$this->getBcc();
+
         $sendingFailedException = null;
-        if ($mailer === null) {
+        if ($suppressed) {
+            $mailer = null;
+        } elseif ($mailer === null) {
             try {
                 //if no mailer given, get default mailer from container
                 $mailer = Pimcore::getContainer()->get(Mailer::class);
@@ -506,7 +516,7 @@ class Mail extends Email
 
         Pimcore::getEventDispatcher()->dispatch($event, MailEvents::PRE_SEND);
 
-        if ($event->hasArgument('mailer') && !$sendingFailedException) {
+        if ($event->hasArgument('mailer') && !$sendingFailedException && !$suppressed) {
             $mailer = $event->getArgument('mailer');
 
             try {
@@ -524,7 +534,9 @@ class Mail extends Email
             Pimcore::getEventDispatcher()->dispatch($event, MailEvents::PRE_LOG);
 
             try {
-                $this->lastLogEntry = MailHelper::logEmail($this, $recipients, $sendingFailedException?->getMessage());
+                $error = $sendingFailedException?->getMessage()
+                    ?? ($suppressed ? 'Not sent: every recipient is on the email blocklist' : null);
+                $this->lastLogEntry = MailHelper::logEmail($this, $recipients, $error);
             } catch (Exception) {
                 Logger::emerg("Couldn't log Email");
             }
@@ -545,20 +557,15 @@ class Mail extends Email
     private function filterLogAddresses(array $addresses): array
     {
         foreach ($addresses as $addrKey => $address) {
-            if ($address instanceof Address) {
-                // remove address if blocklisted
-                if (Model\Tool\Email\Blocklist::getByAddress($address->getAddress())) {
-                    unset($addrKey);
-                }
-            } else {
-                // remove address if blocklisted
-                if (Model\Tool\Email\Blocklist::getByAddress($addrKey)) {
-                    unset($addresses[$addrKey]);
-                }
+            $plainAddress = $address instanceof Address ? $address->getAddress() : (string) $address;
+
+            // remove address if blocklisted
+            if (Model\Tool\Email\Blocklist::getByAddress(trim($plainAddress))) {
+                unset($addresses[$addrKey]);
             }
         }
 
-        return $addresses;
+        return array_values($addresses);
     }
 
     /**

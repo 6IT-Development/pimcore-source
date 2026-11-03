@@ -1498,7 +1498,7 @@ Add a functional test: log in, deactivate the user, next request is unauthentica
 
 ---
 
-## [ ] C-42 – The email blocklist is never applied: blocklisted recipients still receive every email
+## [x] C-42 – The email blocklist is never applied: blocklisted recipients still receive every email
 
 **Files:** `lib/Mail.php:462-487`, `:545-562`, `:576-588`; `models/Tool/Email/Blocklist.php:38-48`;
 `models/Tool/Email/Blocklist/Dao.php:33-41`
