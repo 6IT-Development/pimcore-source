@@ -173,10 +173,12 @@ the bundle has no migrations to drop it from existing ones. The archive task nam
 Permission is checked in `onKernelControllerEvent()` **and** again in every action. Keep one (the event, implemented
 via `checkPermission()` – fixes B-03), remove the per-action calls.
 
-### [ ] I-22 – Drop `QueryParams` (AdminBundle) dependency
+### [x] I-22 – Drop `QueryParams` (AdminBundle) dependency
 **File:** `src/Controller/LogController.php:25,75-84`
 Parse ExtJS `sort` JSON (`[{"property":..,"direction":..}]`) locally with a column whitelist (see B-06). Aligns with the
 branch goal of removing admin-bundle coupling.
+**Outcome:** Nothing left to change: B-06 already parses the ExtJS `sort` JSON in the controller with a column whitelist, and `src`
+no longer refers to `QueryParams`.
 
 ### [ ] I-23 – Hardening of the file-object response
 **File:** `src/Controller/LogController.php:185-192`
