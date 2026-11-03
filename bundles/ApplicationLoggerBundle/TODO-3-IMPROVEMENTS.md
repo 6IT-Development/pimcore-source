@@ -149,10 +149,13 @@ psr message). This is correct but non-obvious; add a comment or use `priority` v
 `object $writer` that is neither `HandlerInterface` nor `LoggerInterface` is silently ignored → type it as
 `HandlerInterface|LoggerInterface`. The `instanceof LoggerInterface` check in `log()` (line 152) then becomes redundant.
 
-### [ ] I-19 – Never throw from the logger
+### [x] I-19 – Never throw from the logger
 **File:** `src/ApplicationLogger.php:126`
 Throwing `Psr\Log\InvalidArgumentException` for an invalid `fileObject` makes a log call fatal. Prefer dropping the value
 and logging a warning (related to C-05 / B-14).
+**Outcome:** The exception for an invalid `fileObject` went away with B-14: `ContextNormalizer` drops the value and reports it with
+`error_log()`, as a warning through the logger could fail the same way. A throwing writer is now caught too. An unknown level
+still throws `Psr\Log\InvalidArgumentException`, because PSR-3 requires it.
 
 ### [ ] I-20 – Unused / misleading schema & naming
 - Column `info` is never written nor read (`Installer`, archive schema, `ApplicationLoggerDb::write()`).

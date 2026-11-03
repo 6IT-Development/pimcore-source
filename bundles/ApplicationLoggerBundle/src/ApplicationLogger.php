@@ -28,6 +28,7 @@ use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
+use Psr\Log\InvalidArgumentException as PsrInvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Stringable;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException as ContainerInvalidArgumentException;
@@ -185,7 +186,15 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         }
 
         foreach ($this->loggers as $logger) {
-            $logger->log($level, $message, $context);
+            // a failing writer must not break the calling code or keep the entry from the other writers,
+            // only an unknown level is reported to the caller, as PSR-3 requires
+            try {
+                $logger->log($level, $message, $context);
+            } catch (PsrInvalidArgumentException $e) {
+                throw $e;
+            } catch (Throwable $e) {
+                error_log(sprintf('Application Logger writer %s failed: %s', get_debug_type($logger), $e->getMessage()));
+            }
         }
     }
 
