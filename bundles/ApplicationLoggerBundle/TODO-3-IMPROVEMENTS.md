@@ -133,7 +133,7 @@ or extract a shared `ContextNormalizer`.
 now, with the stricter rules of the two: only the project root at the start of a path is stripped, and an ID must be
 positive.
 
-### [ ] I-16 – Avoid double backtrace work
+### [x] I-16 – Avoid double backtrace work
 `ApplicationLogger::resolveLoggingSource()` runs `debug_backtrace()` and then `IntrospectionProcessor` runs another one
 for every record (`config/services.yaml:32-46`), although `source` is already set. Either rely on the introspection
 processor (skip partial already configured) or skip it when `source` exists. Also `debug_backtrace()` without a limit on

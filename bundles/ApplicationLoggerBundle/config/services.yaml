@@ -25,9 +25,11 @@ services:
     # monolog handler.
     Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor:
         autoconfigure: false
+        arguments:
+            $introspectionProcessor: '@pimcore.app_logger.introspection_processor'
 
-    # IntrospectionProcessor adds data regarding a called function / line. The skipClassesPartials makes sure
-    # we skip the stack frame when called through ApplicationLogger.
+    # IntrospectionProcessor adds data regarding a called function / line. ApplicationLoggerProcessor only runs it for
+    # records without a source. The skipClassesPartials makes sure we skip the stack frames of the application logger.
     pimcore.app_logger.introspection_processor:
         class: Monolog\Processor\IntrospectionProcessor
         autoconfigure: false
@@ -35,6 +37,7 @@ services:
             $level: 'DEBUG'
             $skipClassesPartials:
                 - 'Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger'
+                - 'Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor'
 
     # the DB write handler
     Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb:
@@ -42,7 +45,6 @@ services:
         calls:
             - [ pushProcessor, [ '@monolog.processor.psr_log_message' ] ]
             - [ pushProcessor, [ '@Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor' ] ]
-            - [ pushProcessor, [ '@pimcore.app_logger.introspection_processor' ] ]
 
     Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogRepository: ~
 

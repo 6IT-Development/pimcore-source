@@ -29,6 +29,10 @@ use Monolog\Processor\ProcessorInterface;
  */
 class ApplicationLoggerProcessor implements ProcessorInterface
 {
+    public function __construct(private readonly ?ProcessorInterface $introspectionProcessor = null)
+    {
+    }
+
     #[\Override]
     public function __invoke(LogRecord $record): LogRecord
     {
@@ -41,6 +45,11 @@ class ApplicationLoggerProcessor implements ProcessorInterface
         $source = $context['source'] ?? null;
         if ($source) {
             return $record;
+        }
+
+        // takes a backtrace, ApplicationLogger has already set the source for its records
+        if (null !== $this->introspectionProcessor) {
+            $record = ($this->introspectionProcessor)($record);
         }
 
         $extra = $record->extra;

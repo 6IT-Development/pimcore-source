@@ -36,6 +36,9 @@ use Throwable;
 
 class ApplicationLogger implements LoggerInterface, ResetInterface
 {
+    // enough for the logging methods, subclasses overriding them and an internal function calling them
+    private const int SOURCE_BACKTRACE_LIMIT = 12;
+
     protected ?string $component = null;
 
     protected string|null|FileObject $fileObject = null;
@@ -200,7 +203,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
         // look for the first call to this class calling one of the logging methods,
         // is_a() also matches subclasses overriding them
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::SOURCE_BACKTRACE_LIMIT);
         $index = 0;
         for ($i = count($backtrace) - 1; $i >= 0; $i--) {
             if (isset($backtrace[$i]['class'])
