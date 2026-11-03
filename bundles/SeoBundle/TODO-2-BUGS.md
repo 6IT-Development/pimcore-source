@@ -156,7 +156,7 @@ accept only `int|DateTimeInterface|null`.
 
 **Fix direction:** whitelist the editable fields (same list as `Csv::$columns` minus `id`).
 
-### [ ] B-15 – CSV import: no upload validation, `getRealPath()` may be `false`
+### [x] B-15 – CSV import: no upload validation, `getRealPath()` may be `false`
 **File:** `src/Controller/RedirectsController.php:218-225`
 - No `$file->isValid()` check (upload errors such as `UPLOAD_ERR_INI_SIZE`); `getRealPath()` returns `false` for a
   failed upload → `Csv::import(false)` → `TypeError` (500) instead of a 400 with a message.

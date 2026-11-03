@@ -44,6 +44,8 @@ class RedirectsController extends UserAwareController
 {
     use JsonHelperTrait;
 
+    private const int CSV_IMPORT_MAX_SIZE = 20 * 1024 * 1024;
+
     /**
      * Fields a client may set; owner, modification user and dates are maintained by the model.
      */
@@ -232,14 +234,30 @@ class RedirectsController extends UserAwareController
     {
         $this->checkPermission('redirects');
 
-        /** @var UploadedFile|null $file */
         $file = $request->files->get('redirects');
 
-        if (!$file) {
+        if (!$file instanceof UploadedFile) {
             throw new BadRequestHttpException('Missing file');
         }
 
-        $result = $csv->import($file->getRealPath());
+        if (!$file->isValid()) {
+            throw new BadRequestHttpException($file->getErrorMessage());
+        }
+
+        if (!in_array(strtolower($file->getClientOriginalExtension()), ['csv', 'txt'], true)) {
+            throw new BadRequestHttpException('The file must be a CSV file');
+        }
+
+        if ($file->getSize() > self::CSV_IMPORT_MAX_SIZE) {
+            throw new BadRequestHttpException(sprintf('The file must not be larger than %d MB', self::CSV_IMPORT_MAX_SIZE / 1024 / 1024));
+        }
+
+        $path = $file->getRealPath();
+        if ($path === false) {
+            throw new BadRequestHttpException('The uploaded file cannot be read');
+        }
+
+        $result = $csv->import($path);
 
         return $this->jsonResponse([
             'success' => true,
