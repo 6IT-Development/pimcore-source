@@ -147,7 +147,7 @@ check `fopen`; when no column is exported return `400` or export all columns wit
   type from the client → `TypeError` (500) after part of the setters were already applied to the in-memory object.
 **Fix:** request DTO / explicit mapping with defaults (see C-04, I-12); `$data['yAxis'] ?? null`.
 
-### [ ] B-15 – `cloneAction` ignores write target / writeability and copies metadata
+### [x] B-15 – `cloneAction` ignores write target / writeability and copies metadata
 **File:** `src/Controller/Reports/CustomReportController.php:108-140`
 - No `isWriteable()` check (unlike `add`/`update`/`delete`). With write target `disabled`,
   `LocationAwareConfigRepository::saveConfig()` silently does nothing and the action returns `success: true`.

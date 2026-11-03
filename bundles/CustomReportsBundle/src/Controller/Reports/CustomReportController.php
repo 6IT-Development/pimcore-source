@@ -34,6 +34,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -143,26 +144,26 @@ class CustomReportController extends UserAwareController
 
         $newName = $request->request->getString('newName');
         $this->isValidConfigName($newName);
-        $report = Tool\Config::getByName($newName);
-        if ($report) {
-            throw new Exception('report already exists');
+        if (Tool\Config::getByName($newName)) {
+            throw new ConflictHttpException('The custom report already exists');
         }
 
-        $report = Tool\Config::getByName($request->request->getString('name'));
-        if (!$report) {
+        $source = Tool\Config::getByName($request->request->getString('name'));
+        if (!$source) {
             throw $this->createNotFoundException();
         }
-        $reportData = $this->encodeJson($report);
-        $reportData = $this->decodeJson($reportData);
 
-        unset($reportData['name']);
-        $reportData['name'] = $newName;
+        $report = new Tool\Config();
+        if (!$report->isWriteable()) {
+            throw new ConfigWriteException();
+        }
 
-        foreach ($reportData as $key => $value) {
-            $setter = 'set' . ucfirst($key);
-            if (method_exists($report, $setter)) {
-                $report->$setter($value);
-            }
+        $report->setName($newName);
+
+        // only the definition, the clone gets its own dates on save
+        $definition = $source->getObjectVars();
+        foreach (array_keys(self::UPDATABLE_PROPERTIES) as $key) {
+            $report->{'set' . ucfirst($key)}($definition[$key]);
         }
 
         $report->save();
