@@ -30,7 +30,7 @@ forward-compat with DBAL 4. IDs are stable – refer to them as `B-xx` in later 
 **Fix direction:** boot/set the App kernel whenever a step needs the container (`install_assets`, `install_bundles`,
 `clear_cache` only for clearing), validate `--only-steps` against the known list (`InvalidOptionException`), unify names.
 
-### [ ] B-02 – `clearKernelCacheDir()` fails on a mounted `var/cache` and runs while the booted kernel uses it
+### [x] B-02 – `clearKernelCacheDir()` fails on a mounted `var/cache` and runs while the booted kernel uses it
 **File:** `src/Installer.php:646-671`, `:452-459`, `:499-501`
 - `rename(var/cache, var/cach~)` throws `IOException` ("Device or resource busy") when `var/cache` is a Docker volume /
   bind mount – common in the official docker setups. The exception is **not** caught (only the final `remove()` is),

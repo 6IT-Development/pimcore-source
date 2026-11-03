@@ -516,7 +516,7 @@ class Installer
         $kernel = new $kernel($environment, true);
 
         if (in_array('clear_cache', $stepsToRun)) {
-            $this->clearKernelCacheDir($kernel);
+            $this->clearKernelCacheDir();
         }
 
         // the assets installer and the bundle installation (settings store) need the container of the app kernel,
@@ -587,11 +587,16 @@ class Installer
             $errors = array_merge($errors, $this->installBundles());
         }
 
-        if (in_array('clear_cache', $stepsToRun)) {
-            $this->clearKernelCacheDir($kernel);
-        }
-
         $this->dispatchStepEvent('complete');
+
+        if (in_array('clear_cache', $stepsToRun)) {
+            // the container files of a booted kernel are loaded lazily, so it must not be used after its cache is gone
+            if ($needsAppKernel) {
+                $kernel->shutdown();
+            }
+
+            $this->clearKernelCacheDir();
+        }
 
         return $errors;
     }
@@ -753,7 +758,7 @@ class Installer
         }
     }
 
-    private function clearKernelCacheDir(KernelInterface $kernel): void
+    private function clearKernelCacheDir(): void
     {
         // we don't use $kernel->getCacheDir() here, since we want to have a fully clean cache dir at this point
         $cacheDir = PIMCORE_SYMFONY_CACHE_DIRECTORY;
@@ -766,17 +771,41 @@ class Installer
         $oldCacheDir = substr($cacheDir, 0, -1) . '~';
 
         $filesystem = new Filesystem();
-        if ($filesystem->exists($oldCacheDir)) {
-            $filesystem->remove($oldCacheDir);
-        }
 
-        $filesystem->rename($cacheDir, $oldCacheDir);
-        $filesystem->mkdir($cacheDir);
+        try {
+            if ($filesystem->exists($oldCacheDir)) {
+                $filesystem->remove($oldCacheDir);
+            }
+
+            $filesystem->rename($cacheDir, $oldCacheDir);
+            $filesystem->mkdir($cacheDir);
+        } catch (IOException $e) {
+            // the cache dir cannot be renamed if it is a mount point (e.g. a docker volume), empty it instead
+            $this->logger->info('Could not rename the cache directory, removing its contents instead: {message}', [
+                'message' => $e->getMessage(),
+            ]);
+
+            $this->emptyDirectory($filesystem, $cacheDir);
+
+            return;
+        }
 
         try {
             $filesystem->remove($oldCacheDir);
         } catch (IOException $e) {
             $this->logger->error($e->getMessage());
+        }
+    }
+
+    private function emptyDirectory(Filesystem $filesystem, string $directory): void
+    {
+        $entries = scandir($directory);
+        if (false === $entries) {
+            throw new IOException(sprintf('Failed to read the directory "%s".', $directory), 0, null, $directory);
+        }
+
+        foreach (array_diff($entries, ['.', '..']) as $entry) {
+            $filesystem->remove($directory . '/' . $entry);
         }
     }
 
