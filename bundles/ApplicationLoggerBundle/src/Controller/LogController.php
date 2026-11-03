@@ -34,6 +34,7 @@ use Pimcore\Controller\KernelControllerEventInterface;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -190,21 +191,31 @@ class LogController extends UserAwareController implements KernelControllerEvent
             if (!$storage->fileExists($filePath)) {
                 throw new NotFoundHttpException(sprintf('File object "%s" not found.', $filePath));
             }
-
-            $fileData = $storage->readStream($filePath);
         } catch (PathTraversalDetected $e) {
             throw new BadRequestHttpException(sprintf('Invalid file object path "%s".', $filePath), $e);
         } catch (FilesystemException $e) {
             throw new NotFoundHttpException(sprintf('File object "%s" could not be read.', $filePath), $e);
         }
 
+        // basename() only splits at "/", makeDisposition() rejects both separators and a non-ASCII or "%" fallback
+        $fileName = basename(str_replace('\\', '/', $filePath));
+
         return new StreamedResponse(
-            static function () use ($fileData): void {
+            static function () use ($storage, $filePath): void {
+                $fileData = $storage->readStream($filePath);
                 fpassthru($fileData);
                 fclose($fileData);
             },
             Response::HTTP_OK,
-            ['Content-Type' => 'text/plain']
+            [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+                'X-Content-Type-Options' => 'nosniff',
+                'Content-Disposition' => HeaderUtils::makeDisposition(
+                    HeaderUtils::DISPOSITION_INLINE,
+                    $fileName,
+                    preg_replace('/[^\x20-\x7e]|%/', '_', $fileName)
+                ),
+            ]
         );
     }
 

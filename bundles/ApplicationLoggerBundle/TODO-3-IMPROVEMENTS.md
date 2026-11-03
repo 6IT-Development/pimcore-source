@@ -180,11 +180,13 @@ branch goal of removing admin-bundle coupling.
 **Outcome:** Nothing left to change: B-06 already parses the ExtJS `sort` JSON in the controller with a column whitelist, and `src`
 no longer refers to `QueryParams`.
 
-### [ ] I-23 – Hardening of the file-object response
+### [x] I-23 – Hardening of the file-object response
 **File:** `src/Controller/LogController.php:185-192`
 Add `charset=UTF-8`, `X-Content-Type-Options: nosniff` and `Content-Disposition: inline; filename=...`. Consider
 `HeaderUtils`/`BinaryFileResponse`-like semantics; the stream is opened before the response is sent – open it inside
 the callback.
+**Outcome:** A read that fails after the existence check now happens while the response is sent, so it can no longer become a 404. It
+reaches the error handler instead. Missing and invalid paths still get their 404 and 400.
 
 ### [ ] I-24 – Escape LIKE wildcards in message search
 **File:** `src/Controller/LogController.php:109-111`
