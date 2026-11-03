@@ -44,7 +44,7 @@ the concrete class or the static `getInstance()`.
 Replace manual `$requestSource->get*()` juggling (GET vs POST bag) with a readonly DTO + `#[MapQueryString]` /
 `#[MapRequestPayload]` and validator constraints (limits, enum priority, date format). Fixes B-05 cleanly.
 
-### [ ] I-06 – Use `ClockInterface` instead of `time()` / `new DateTime('now')`
+### [x] I-06 – Use `ClockInterface` instead of `time()` / `new DateTime('now')`
 **Files:** `src/Maintenance/LogArchiveTask.php:49,58,108`
 Makes archive/retention logic testable and removes mixing of `time()`, `DateTime`, `DateTimeImmutable` and `Carbon`.
 

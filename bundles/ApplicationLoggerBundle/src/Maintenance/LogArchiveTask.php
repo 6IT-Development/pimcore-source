@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
 
 use DateInterval;
-use DateTime;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemException;
@@ -26,6 +25,7 @@ use Monolog\Attribute\WithMonologChannel;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Maintenance\TaskInterface;
 use Pimcore\Tool\Storage;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -42,6 +42,7 @@ readonly class LogArchiveTask implements TaskInterface
     public function __construct(
         private Connection      $db,
         private LoggerInterface $logger,
+        private ClockInterface  $clock,
         #[Autowire(param: 'pimcore_application_logger.archive_threshold')]
         private int             $archiveThreshold,
         #[Autowire(param: 'pimcore_application_logger.archive_alternative_database')]
@@ -56,7 +57,7 @@ readonly class LogArchiveTask implements TaskInterface
     {
         $db = $this->db;
 
-        $date = new DateTime('now');
+        $date = $this->clock->now();
         $archiveTableName = ApplicationLoggerDb::TABLE_ARCHIVE_PREFIX . '_' . $date->format('Y') . '_' . $date->format('m');
         $tablename = $archiveTableName;
 
@@ -64,7 +65,7 @@ readonly class LogArchiveTask implements TaskInterface
             $tablename = $db->quoteIdentifier($this->archiveAlternativeDatabase) . '.' . $tablename;
         }
 
-        $timestamp = time();
+        $timestamp = $date->getTimestamp();
         $sql = 'SELECT %s FROM ' . ApplicationLoggerDb::TABLE_NAME . ' WHERE `timestamp` < DATE_SUB(FROM_UNIXTIME(' . $timestamp . '), INTERVAL ' . $this->archiveThreshold . ' DAY)';
 
         if ($db->fetchOne(sprintf($sql, 'COUNT(*)')) > 0) {
@@ -103,7 +104,7 @@ readonly class LogArchiveTask implements TaskInterface
                 }
 
                 $deleteArchiveLogDate = $archiveLogDate->add(new DateInterval('P' . $this->deleteArchiveThreshold . 'M'));
-                if ($deleteArchiveLogDate < new DateTimeImmutable()) {
+                if ($deleteArchiveLogDate < $date) {
                     $db->executeStatement('DROP TABLE IF EXISTS ' . $db->quoteIdentifier($this->archiveAlternativeDatabase ?: $db->getDatabase()) . '.' . $db->quoteIdentifier($archiveTable));
 
                     // the folder of the archived month, not of the month the archive expires
