@@ -42,6 +42,13 @@ class Dao extends Config\Dao
             }
         }
 
+        if ($this->model->getFilter()) {
+            $configs = array_values(array_filter($configs, $this->model->getFilter()));
+        }
+        if ($this->model->getOrder()) {
+            usort($configs, $this->model->getOrder());
+        }
+
         return $configs;
     }
 
@@ -59,6 +66,6 @@ class Dao extends Config\Dao
 
     public function getTotalCount(): int
     {
-        return count($this->loadIdList());
+        return count($this->loadList());
     }
 }

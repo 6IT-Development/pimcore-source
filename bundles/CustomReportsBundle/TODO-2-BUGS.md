@@ -212,7 +212,7 @@ empty/falsy (e.g. a YAML definition `my_report: {}` – listed by `fetchAllKeys(
 `getReportsList()` then call methods on `null` → fatal error for the whole report menu.
 **Fix:** skip `null` results (`if ($config = Config::getByName($name)) { … }`).
 
-### [ ] B-22 – `Listing` filter/order API is silently ignored
+### [x] B-22 – `Listing` filter/order API is silently ignored
 **File:** `src/Tool/Config/Listing.php:32-35`, `src/Tool/Config/Listing/Dao.php:32-42`
 `Listing` uses `FilterListingTrait`/`OrderListingTrait` and implements the callable filter/order interfaces, but
 `Dao::loadList()` never applies `$this->model->getFilter()` / `getOrder()` → `setFilter()`/`setOrder()` have no effect.
