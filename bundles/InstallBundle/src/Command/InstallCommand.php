@@ -104,6 +104,7 @@ class InstallCommand extends Command
                 'mode' => InputOption::VALUE_OPTIONAL,
                 'insecure' => true,
                 'hidden-input' => true,
+                'allow-empty' => true,
                 'group' => 'db_credentials',
                 'db_credentials' => ['password'],
             ],
@@ -124,6 +125,7 @@ class InstallCommand extends Command
                 'description' => 'MySQL SSL certificate path (if empty non-ssl connection assumed)',
                 'mode' => InputOption::VALUE_OPTIONAL,
                 'default' => '',
+                'allow-empty' => true,
                 'group' => 'db_credentials',
             ],
             'install-bundles' => [
@@ -284,7 +286,7 @@ class InstallCommand extends Command
             $isDefaultValue = isset($config['default']) && $value === $config['default'];
 
             // show warning for insecure options
-            if ($value && ($config['insecure'] ?? false)) {
+            if (!$this->isEmptyValue($value) && ($config['insecure'] ?? false)) {
                 $this->io->writeln([
                     sprintf(
                         '<comment>[WARNING]</comment> Using sensitive options (<comment>--%s</comment>) on the command line interface can be insecure.',
@@ -300,13 +302,21 @@ class InstallCommand extends Command
             }
 
             // set option values from env vars
-            if (null === $value || '' === $value || false === $value || $isDefaultValue) {
+            if ($this->isEmptyValue($value) || $isDefaultValue) {
                 $env = $this->getEnvValue($config['env']);
                 if (null !== $env) {
                     $input->setOption($name, $env);
                 }
             }
         }
+    }
+
+    /**
+     * Unlike empty(), "0" is a value
+     */
+    private function isEmptyValue(mixed $value): bool
+    {
+        return null === $value || false === $value || '' === $value;
     }
 
     /**
@@ -338,7 +348,7 @@ class InstallCommand extends Command
             $value = $input->getOption($name);
             $isDefaultValue = isset($config['default']) && $value === $config['default'];
 
-            if ($value || $isDefaultValue) {
+            if (!$this->isEmptyValue($value) || $isDefaultValue) {
                 continue;
             }
 
@@ -351,8 +361,14 @@ class InstallCommand extends Command
                     $value
                 );
             } else {
-                $validator = function ($answer) use ($name) {
-                    if (empty($answer)) {
+                // an empty MySQL password is allowed (e.g. passwordless dev users), "0" is a valid value
+                $allowEmpty = $config['allow-empty'] ?? false;
+                $validator = function ($answer) use ($name, $allowEmpty) {
+                    if (null === $answer || '' === trim((string) $answer)) {
+                        if ($allowEmpty) {
+                            return '';
+                        }
+
                         throw new RuntimeException(sprintf('%s cannot be empty', $name));
                     }
 
@@ -419,7 +435,7 @@ class InstallCommand extends Command
             $value = $input->getOption($name);
 
             // Empty MySQL password allowed, empty ssl cert path means it is not used
-            if ($value || $name === 'mysql-password' || $name === 'mysql-ssl-cert-path' || $config['mode'] === InputOption::VALUE_NONE) {
+            if (!$this->isEmptyValue($value) || ($config['allow-empty'] ?? false) || $config['mode'] === InputOption::VALUE_NONE) {
                 $param = str_replace('-', '_', $name);
                 $params[$param] = $value;
             } else {

@@ -159,7 +159,7 @@ for sockets, cast port to `int`.
 **Fix direction:** strict `array_search`, filter `false`, `array_unique()` recommendations; pass `null` as default when
 nothing is recommended and adapt the confirm text.
 
-### [ ] B-12 – Interactive prompts reject an empty MySQL password and the value `"0"`
+### [x] B-12 – Interactive prompts reject an empty MySQL password and the value `"0"`
 **File:** `src/Command/InstallCommand.php:268-309`, `:349-350`
 - The validator throws for `empty($answer)` on **every** option, including `mysql-password` – although `execute()`
   explicitly allows an empty password (`:349`). Local MySQL/MariaDB with socket auth or passwordless dev users cannot be
