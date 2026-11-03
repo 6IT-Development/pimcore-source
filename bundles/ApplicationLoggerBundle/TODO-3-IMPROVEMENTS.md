@@ -67,7 +67,7 @@ clearing it would lose the configuration of those services. `getInstance()` no l
 
 ## PHP 8.4 modernisation
 
-### [ ] I-09 – Enums for priority and element type
+### [x] I-09 – Enums for priority and element type
 **Files:** `src/Handler/ApplicationLoggerDb.php:68-87`, `src/Maintenance/LogMailMaintenanceTask.php:46-60`,
 `src/ApplicationLogger.php:44,94-107`, `src/Processor/ApplicationLoggerProcessor.php:73-84`
 - Use `Monolog\Level` (already a dependency) for priorities instead of string arrays / parsing `SHOW COLUMNS`

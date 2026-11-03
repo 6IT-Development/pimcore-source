@@ -140,19 +140,18 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
     public static function getPriorities(): array
     {
         $priorities = [];
-        $priorityNames = [
-            'debug' => 'DEBUG',
-            'info' => 'INFO',
-            'notice' => 'NOTICE',
-            'warning' => 'WARN',
-            'error' => 'ERR',
-            'critical' => 'CRIT',
-            'alert' => 'ALERT',
-            'emergency' => 'EMERG',
-        ];
 
         foreach (Db::get()->fetchFirstColumn('SELECT priority FROM ' . self::TABLE_NAME . ' WHERE NOT ISNULL(priority) GROUP BY priority;') as $priorityNumber) {
-            $priorities[$priorityNumber] = $priorityNames[$priorityNumber];
+            $priorities[$priorityNumber] = match (Level::fromName($priorityNumber)) {
+                Level::Debug => 'DEBUG',
+                Level::Info => 'INFO',
+                Level::Notice => 'NOTICE',
+                Level::Warning => 'WARN',
+                Level::Error => 'ERR',
+                Level::Critical => 'CRIT',
+                Level::Alert => 'ALERT',
+                Level::Emergency => 'EMERG',
+            };
         }
 
         return $priorities;

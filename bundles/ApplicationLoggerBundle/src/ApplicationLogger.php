@@ -42,7 +42,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
     protected AbstractObject|Document|int|Asset|null $relatedObject = null;
 
-    protected string $relatedObjectType = 'object';
+    protected string $relatedObjectType = RelatedObjectType::Object->value;
 
     protected array $loggers = [];
 
@@ -127,16 +127,9 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
     public function setRelatedObject(Asset|int|Document|AbstractObject $relatedObject): void
     {
         $this->relatedObject = $relatedObject;
-
-        if ($this->relatedObject instanceof AbstractObject) {
-            $this->relatedObjectType = 'object';
-        } elseif ($this->relatedObject instanceof Asset) {
-            $this->relatedObjectType = 'asset';
-        } elseif ($this->relatedObject instanceof Document) {
-            $this->relatedObjectType = 'document';
-        } else {
-            $this->relatedObjectType = 'object';
-        }
+        $this->relatedObjectType = is_int($relatedObject)
+            ? RelatedObjectType::Object->value
+            : (string)Service::getElementType($relatedObject);
     }
 
     /**
@@ -147,7 +140,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
     {
         $this->fileObject = null;
         $this->relatedObject = null;
-        $this->relatedObjectType = 'object';
+        $this->relatedObjectType = RelatedObjectType::Object->value;
     }
 
     public function __clone()
@@ -196,7 +189,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
         if (is_numeric($relatedObject)) {
             $context['relatedObject'] = $relatedObject;
-            $context['relatedObjectType'] = in_array($relatedObjectType, ['object', 'document', 'asset'], true) ? $relatedObjectType : 'object';
+            $context['relatedObjectType'] = RelatedObjectType::fromContext($relatedObjectType)->value;
         } elseif ($relatedObject instanceof ElementInterface) {
             $context['relatedObject'] = $relatedObject->getId();
             $context['relatedObjectType'] = Service::getElementType($relatedObject);

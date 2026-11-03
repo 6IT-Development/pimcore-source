@@ -17,8 +17,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\ApplicationLoggerBundle\Maintenance;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Monolog\Attribute\WithMonologChannel;
+use Monolog\Level;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
 use Pimcore\Mail;
 use Pimcore\Maintenance\TaskInterface;
@@ -75,30 +78,21 @@ readonly class LogMailMaintenanceTask implements TaskInterface
      */
     private function sendSummaryMails(array $receivers, int $maxId): void
     {
-        // getting the enums from priority
-        $priorityColumnDefinition = $this->db->fetchAllAssociative('SHOW COLUMNS FROM ' . ApplicationLoggerDb::TABLE_NAME . " LIKE 'priority'");
-
-        // type is the actual enum values
-        $columnType = reset($priorityColumnDefinition)['Type'];
-
-        // remove unnecessary noise
-        $enumValue = explode(',', str_replace(['enum(', ')'], '', $columnType));
-
-        // out of range values would produce an invalid IN() list
-        $logLevels = array_slice($enumValue, 0, max(0, (int)$this->filterPriority) + 1);
-
         $query = 'SELECT * FROM '
             . ApplicationLoggerDb::TABLE_NAME
             . ' WHERE maintenanceChecked IS NULL '
-            . 'AND priority IN('
-            . implode(',', $logLevels)
-            . ') '
+            . 'AND priority IN(?) '
             . 'AND id > ? AND id <= ? '
             . 'ORDER BY id ASC '
             . 'LIMIT ' . self::MAIL_BATCH_SIZE;
 
         $lastId = 0;
-        while ($entries = $this->db->fetchAllAssociative($query, [$lastId, $maxId])) {
+        $logLevels = $this->getSummaryLogLevels();
+        while ($entries = $this->db->fetchAllAssociative(
+            $query,
+            [$logLevels, $lastId, $maxId],
+            [ArrayParameterType::STRING, ParameterType::INTEGER, ParameterType::INTEGER]
+        )) {
             // log entries contain user-controlled input, so they must not end up as markup in the mail
             $html = htmlspecialchars(var_export($entries, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $html = "<pre>$html</pre>";
@@ -115,6 +109,19 @@ readonly class LogMailMaintenanceTask implements TaskInterface
             $lastId = (int)$entries[array_key_last($entries)]['id'];
             $this->flagAsChecked($lastId);
         }
+    }
+
+    /**
+     * filter_priority counts from the most severe level, values out of range are limited to the existing levels
+     *
+     * @return string[]
+     */
+    private function getSummaryLogLevels(): array
+    {
+        return array_map(
+            static fn (Level $level): string => $level->toPsrLogLevel(),
+            array_slice(array_reverse(Level::cases()), 0, max(0, (int)$this->filterPriority) + 1)
+        );
     }
 
     private function flagAsChecked(int $maxId): void

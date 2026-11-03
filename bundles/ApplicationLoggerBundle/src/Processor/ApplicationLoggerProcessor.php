@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Processor;
 use Monolog\LogRecord;
 use Monolog\Processor\ProcessorInterface;
 use Pimcore\Bundle\ApplicationLoggerBundle\FileObject;
+use Pimcore\Bundle\ApplicationLoggerBundle\RelatedObjectType;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 
@@ -80,7 +81,7 @@ class ApplicationLoggerProcessor implements ProcessorInterface
             $relatedObject = $relatedObject->getId();
         } elseif (is_numeric($relatedObject) && (int)$relatedObject > 0) {
             $relatedObject = (int)$relatedObject;
-            $relatedObjectType = in_array($relatedObjectType, ['object', 'document', 'asset'], true) ? $relatedObjectType : 'object';
+            $relatedObjectType = RelatedObjectType::fromContext($relatedObjectType)->value;
         } else {
             error_log('Application Logger dropped the relatedObject: it must be an element or an ID, got ' . get_debug_type($relatedObject));
             $relatedObject = null;
