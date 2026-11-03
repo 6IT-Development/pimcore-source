@@ -84,7 +84,7 @@ does not filter for `NULL`/empty values – `buildQueryString()` skips `null`/`'
 **Fix:** parse with `\DateTimeImmutable::createFromFormat()` (reject invalid), use `>= startOfDay AND < startOfNextDay`,
 and document/handle the column type (timestamp vs. datetime).
 
-### [ ] B-08 – Filtered columns are added to the CSV select list → rows do not match the header
+### [x] B-08 – Filtered columns are added to the CSV select list → rows do not match the header
 **File:** `src/Tool/Adapter/Sql.php:153`, `:173`, `:178`, `:190-191`, `src/Controller/Reports/CustomReportController.php:365-371`, `:391-398`
 Every filter appends its `property` to `$fields`. For the CSV export (`$fields` = exported columns) a filter on a
 non-exported column adds an extra column to every data row while the header row (`fputcsv($fp, $fields)`) does not

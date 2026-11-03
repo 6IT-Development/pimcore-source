@@ -245,11 +245,9 @@ class Sql extends AbstractAdapter
             }
         }
 
-        $extractAllFields = empty($fields);
         foreach ($filters as $filter) {
             [$property, $type, $operator, $value] = $this->normalizeFilter($filter);
             $column = $db->quoteIdentifier($property);
-            $fields[] = $property;
 
             if ($type === 'date' && $operator !== 'like') {
                 $condition[] = $this->buildDateCondition($db, $column, $operator, $this->parseFilterDate($value));
@@ -269,7 +267,7 @@ class Sql extends AbstractAdapter
 
         $total = 'SELECT COUNT(*) FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
 
-        if ($fields && !$extractAllFields) {
+        if ($fields) {
             $select = implode(',', array_map($db->quoteIdentifier(...), $fields));
             $data = 'SELECT ' . $select . ' FROM (' . $sql . ') AS somerandxyz WHERE ' . $condition;
         } else {
