@@ -593,7 +593,7 @@ contains metadata, property and element classes that cannot be listed; the data 
 undecodable data) and the following tiles move up; the canvas is cropped to the rows actually drawn. Tile streams are
 closed after reading.
 
-## [ ] B-32 – Folder preview freshness check does not match the collage contents
+## [x] B-32 – Folder preview freshness check does not match the collage contents
 
 **File:** `models/Asset/Folder.php:303` vs `:309-313`
 
@@ -601,6 +601,9 @@ closed after reading.
   descendants, while the collage uses the first 42 by `id`. Any change anywhere in a deep tree regenerates the collage.
 
 **Fix direction:** `SELECT MAX(modificationDate) FROM (SELECT … ORDER BY id LIMIT 42) t`.
+
+**Done:** the maximum is taken over a derived table of the first 42 descendants by `id`, the same rows the collage
+listing uses.
 
 ## [ ] B-33 – `Dao::getCurrentFullPath()` / `getCustomSettings()` return `''` instead of `null` for a missing row
 
