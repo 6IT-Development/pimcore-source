@@ -126,7 +126,8 @@ class GlossaryTest extends TestCase
         </div>
     </section>';
 
-        $this->assertSame($expect, $result);
+        // the HTML5 parser (PHP >= 8.4) serializes entities of unmodified nodes as characters, e.g. &nbsp; as U+00A0
+        $this->assertSame(html_entity_decode($expect), $result);
     }
 
     public function testGlossaryWithAnotherHtml(): void

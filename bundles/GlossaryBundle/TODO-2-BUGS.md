@@ -71,7 +71,7 @@ filter is applied around a whole layout.
 **Fix:** check `preg_last_error()` / `null` and fall back to the original text; check the `appendXML()` result before
 replacing the node (or avoid string round-trips entirely, I-13).
 
-### [ ] B-08 – PHP 8.4 native HTML5 parser changes output; `GlossaryTest` fails on the target stack *(reproduced)*
+### [x] B-08 – PHP 8.4 native HTML5 parser changes output; `GlossaryTest` fails on the target stack *(reproduced)*
 **Files:** `src/Tool/Processor.php:87`, `:154`, `lib/Tool/DomCrawler.php:31`,
 `tests/Unit/Document/Glossary/GlossaryTest.php:88-130`
 On Symfony 7.4 + PHP ≥ 8.4 `Crawler` uses `\Dom\HTMLDocument` (no opt-out without deprecation, mandatory in

@@ -126,7 +126,12 @@ class Processor
             $this->replaceInTextNode($textNode, $entries, (int)$options['limit']);
         }
 
-        $result = preg_match('@</html>@i', $content) ? $this->serializeDocument($content, $root) : $html->html();
+        if (preg_match('@</html>@i', $content)) {
+            $result = $this->serializeDocument($content, $root);
+        } else {
+            $this->removeImpliedHead($content, $root);
+            $result = $html->html();
+        }
         $html->clear();
 
         return $result;
@@ -144,6 +149,20 @@ class Processor
         }
 
         return $doctype . $root->ownerDocument->saveHTML($root);
+    }
+
+    /**
+     * The HTML5 parser of PHP 8.4 adds an empty <head> in front of a <body>…</body> input, which would end up inside
+     * the page when the filter is applied around the body of a layout.
+     */
+    private function removeImpliedHead(string $content, \DOMNode $root): void
+    {
+        $head = $root->firstChild;
+        if ($head instanceof \DOMElement && strtolower($head->nodeName) === 'head' && !$head->hasChildNodes()
+            && !preg_match('@<head[\s>]@i', $content)
+        ) {
+            $root->removeChild($head);
+        }
     }
 
     /**
