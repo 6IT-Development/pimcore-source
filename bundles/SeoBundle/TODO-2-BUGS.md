@@ -148,7 +148,7 @@ accept only `int|DateTimeInterface|null`.
 
 **Fix direction:** use the same `isset`/`??` handling as in `create`; extract shared create/update code (I-23).
 
-### [ ] B-14 – Mass assignment: client can overwrite owner/creation metadata
+### [x] B-14 – Mass assignment: client can overwrite owner/creation metadata
 **File:** `src/Controller/RedirectsController.php:87, 116`
 - `$redirect->setValues($data)` with the raw JSON payload → a user with `redirects` permission can set
   `userOwner`, `userModification`, `creationDate`, `modificationDate` (setters exist). `updateModificationInfos()`

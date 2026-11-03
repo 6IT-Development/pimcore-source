@@ -44,6 +44,23 @@ class RedirectsController extends UserAwareController
 {
     use JsonHelperTrait;
 
+    /**
+     * Fields a client may set; owner, modification user and dates are maintained by the model.
+     */
+    private const array EDITABLE_FIELDS = [
+        'type',
+        'source',
+        'sourceSite',
+        'target',
+        'targetSite',
+        'statusCode',
+        'priority',
+        'regex',
+        'passThroughParameters',
+        'active',
+        'expiry',
+    ];
+
     #[Route('/list', name: 'pimcore_bundle_seo_redirects_redirects', methods: [Request::METHOD_POST])]
     public function redirectsAction(
         Request         $request,
@@ -89,8 +106,6 @@ class RedirectsController extends UserAwareController
                 return $this->jsonResponse(['data' => $redirect->getObjectVars(), 'success' => true]);
             }
             if ($request->query->getString('xaction') === 'create') {
-                unset($data['id']);
-
                 // save route
                 $redirect = new Redirect();
 
@@ -164,10 +179,13 @@ class RedirectsController extends UserAwareController
     }
 
     /**
-     * Resolves a target path to its document id and decodes `+` in a plain (non-regex) source.
+     * Keeps the editable fields, resolves a target path to its document id and decodes `+` in a plain (non-regex)
+     * source.
      */
     private function normalizeRedirectData(array $data): array
     {
+        $data = array_intersect_key($data, array_flip(self::EDITABLE_FIELDS));
+
         if (!empty($data['target']) && is_string($data['target'])) {
             if ($doc = Document::getByPath($data['target'])) {
                 $data['target'] = $doc->getId();
