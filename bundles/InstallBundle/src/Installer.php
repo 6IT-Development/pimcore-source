@@ -878,21 +878,19 @@ class Installer
             $dataFiles = $this->getDataFiles();
 
             try {
-                //create a system user with id 0
-                $this->insertSystemUser($db);
-
                 if (empty($dataFiles) || !$this->importDatabaseDataDump) {
                     // empty installation
                     $this->insertDatabaseContents($db);
-                    $this->createOrUpdateUser($db, $userCredentials);
                 } else {
                     foreach ($dataFiles as $dbFile) {
                         $this->logger->info('Importing DB file {dbFile}', ['dbFile' => $dbFile]);
                         $this->insertDatabaseDump($db, $dbFile);
                     }
-
-                    $this->createOrUpdateUser($db, $userCredentials);
                 }
+
+                // create a system user with id 0 after the dumps, they may already contain it
+                $this->insertSystemUser($db);
+                $this->createOrUpdateUser($db, $userCredentials);
             } catch (Exception $e) {
                 $this->logger->error((string)$e);
                 $errors[] = $e->getMessage();
@@ -1125,8 +1123,20 @@ class Installer
         }
     }
 
+    /**
+     * Creates the system user with id 0, unless the database (kept with --skip-database-structure or filled by a
+     * dump) already contains it
+     */
     protected function insertSystemUser(Connection $db): void
     {
+        $exists = $db->fetchOne(
+            "SELECT id FROM users WHERE id = 0 OR (type = 'user' AND name = 'system') LIMIT 1"
+        );
+
+        if (false !== $exists) {
+            return;
+        }
+
         $db->insert('users', [
             'parentId' => 0,
             'name' => 'system',

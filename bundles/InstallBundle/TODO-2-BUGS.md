@@ -62,7 +62,7 @@ forward-compat with DBAL 4. IDs are stable – refer to them as `B-xx` in later 
 **Fix direction:** merge configured credentials with CLI/env values per field, only skip prompts for configured
 fields, validate required keys (`user`, `dbname`, `host`|`unix_socket`) and default the property to `[]`.
 
-### [ ] B-04 – `--skip-database-structure` (and dumps containing `users` data) always fail on the system user insert
+### [x] B-04 – `--skip-database-structure` (and dumps containing `users` data) always fail on the system user insert
 **File:** `src/Installer.php:702-725`, `:898-909`
 - With `--skip-database-structure` the existing `users` table is kept, but `insertSystemUser()` still inserts
   `('user','system')` → `UNIQUE KEY type_name (type, name)` (`dump/install.sql`, `users`) → `UniqueConstraintViolation`
