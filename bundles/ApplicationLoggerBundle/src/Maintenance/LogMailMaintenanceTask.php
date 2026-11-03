@@ -23,13 +23,16 @@ use Pimcore\Config;
 use Pimcore\Mail;
 use Pimcore\Maintenance\TaskInterface;
 use Pimcore\Tool;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Exception\RfcComplianceException;
 
 readonly class LogMailMaintenanceTask implements TaskInterface
 {
     public function __construct(
-        private Connection $db,
-        private Config     $config
+        private Connection      $db,
+        private Config          $config,
+        private LoggerInterface $logger
     )
     {
     }
@@ -37,11 +40,7 @@ readonly class LogMailMaintenanceTask implements TaskInterface
     public function execute(): void
     {
         if (!empty($this->config['applicationlog']['mail_notification']['send_log_summary'])) {
-            $receivers = preg_split('/,|;/', $this->config['applicationlog']['mail_notification']['mail_receiver']);
-
-            array_walk($receivers, function (&$value) {
-                $value = trim($value);
-            });
+            $receivers = $this->getReceivers();
 
             // getting the enums from priority
             $priorityColumnDefinition = $this->db->fetchAllAssociative('SHOW COLUMNS FROM ' . ApplicationLoggerDb::TABLE_NAME . " LIKE 'priority'");
@@ -72,7 +71,7 @@ readonly class LogMailMaintenanceTask implements TaskInterface
             $rowsProcessed = 0;
 
             $rowCount = count($rows);
-            if ($rowCount) {
+            if ($rowCount && $receivers) {
                 while ($rowsProcessed < $rowCount) {
                     $entries = [];
 
@@ -93,7 +92,7 @@ readonly class LogMailMaintenanceTask implements TaskInterface
                     $mail->setIgnoreDebugMode(true);
                     $mail->html($html);
                     foreach ($receivers as $receiver) {
-                        $mail->addTo(new Address($receiver, $receiver));
+                        $mail->addTo($receiver);
                     }
                     $mail->subject('Error Log ' . Tool::getHostUrl());
                     $mail->send();
@@ -111,5 +110,33 @@ readonly class LogMailMaintenanceTask implements TaskInterface
             . 'WHERE maintenanceChecked != 1 '
             . 'OR maintenanceChecked IS NULL'
         );
+    }
+
+    /**
+     * @return Address[]
+     */
+    private function getReceivers(): array
+    {
+        $receivers = [];
+        $configuredReceivers = (string)($this->config['applicationlog']['mail_notification']['mail_receiver'] ?? '');
+
+        foreach (preg_split('/,|;/', $configuredReceivers, -1, PREG_SPLIT_NO_EMPTY) as $receiver) {
+            $receiver = trim($receiver);
+            if ('' === $receiver) {
+                continue;
+            }
+
+            try {
+                $receivers[] = new Address($receiver, $receiver);
+            } catch (RfcComplianceException $e) {
+                $this->logger->warning('Skipping invalid log summary mail receiver: ' . $e->getMessage());
+            }
+        }
+
+        if (!$receivers) {
+            $this->logger->warning('Log summary mails are enabled, but no valid mail receiver is configured');
+        }
+
+        return $receivers;
     }
 }

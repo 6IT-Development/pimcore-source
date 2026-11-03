@@ -126,7 +126,7 @@ The write error is only logged as a warning; the object keeps `filename`, so the
 
 ## Maintenance
 
-### [ ] B-16 – Mail task crashes on missing/empty receivers
+### [x] B-16 – Mail task crashes on missing/empty receivers
 **File:** `src/Maintenance/LogMailMaintenanceTask.php:39-44, 94-96`
 `mail_receiver` has no default → `preg_split(null)` (PHP 8.1+ deprecation, returns `['']`). Empty entries (also from a
 trailing `;`/`,`) → `new Address('')` throws `RfcComplianceException` → the whole maintenance task fails on every run
