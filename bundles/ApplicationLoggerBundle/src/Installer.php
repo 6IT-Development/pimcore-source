@@ -67,7 +67,7 @@ class Installer extends SettingsStoreAwareInstaller
             $columns[] = $db->quoteIdentifier($name) . ' ' . $definition . ($name === 'id' ? ' AUTO_INCREMENT' : '');
         }
 
-        $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $db->quoteIdentifier(ApplicationLoggerDb::TABLE_NAME) . ' (
+        $db->executeStatement('CREATE TABLE IF NOT EXISTS ' . $db->quoteIdentifier(ApplicationLoggerDb::TABLE_NAME) . ' (
           ' . implode(",\n          ", $columns) . ',
           PRIMARY KEY (`id`),
           KEY `component` (`component`),
@@ -82,7 +82,7 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $db = Db::get();
 
-        $db->executeQuery('DROP TABLE IF EXISTS `application_logs`;');
+        $db->executeStatement('DROP TABLE IF EXISTS `application_logs`;');
     }
 
     /**

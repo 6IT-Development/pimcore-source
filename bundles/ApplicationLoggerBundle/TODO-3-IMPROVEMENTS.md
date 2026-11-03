@@ -48,7 +48,7 @@ Replace manual `$requestSource->get*()` juggling (GET vs POST bag) with a readon
 **Files:** `src/Maintenance/LogArchiveTask.php:49,58,108`
 Makes archive/retention logic testable and removes mixing of `time()`, `DateTime`, `DateTimeImmutable` and `Carbon`.
 
-### [ ] I-07 – `executeStatement()` for DDL/DML
+### [x] I-07 – `executeStatement()` for DDL/DML
 **Files:** `src/Installer.php:49,75`, `src/Maintenance/LogArchiveTask.php:62,77,91`,
 `src/Maintenance/LogMailMaintenanceTask.php:106`
 `executeQuery()` is meant for result sets; use `executeStatement()` (returns affected rows) for `CREATE`, `DROP`,

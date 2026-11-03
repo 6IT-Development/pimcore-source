@@ -76,7 +76,7 @@ readonly class LogArchiveTask implements TaskInterface
                 $columnDefinitions[] = $db->quoteIdentifier($name) . ' ' . $definition;
             }
 
-            $db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $tablename . ' (' . implode(', ', $columnDefinitions) . ') ENGINE = ARCHIVE ROW_FORMAT = DEFAULT DEFAULT CHARSET=utf8mb4;');
+            $db->executeStatement('CREATE TABLE IF NOT EXISTS ' . $tablename . ' (' . implode(', ', $columnDefinitions) . ') ENGINE = ARCHIVE ROW_FORMAT = DEFAULT DEFAULT CHARSET=utf8mb4;');
             $this->widenLegacyArchiveTable($archiveTableName, $tablename);
 
             $this->logger->debug('Archiving application_logs and deleting their referenced FileObjects which are older than ' . $this->archiveThreshold . ' days');
