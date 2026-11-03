@@ -332,4 +332,19 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryLimitCountsPerDocument(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Limit');
+        $entry->setLink('/limit');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        $result = $this->processor->parse('<div><p>Limit</p><p>Limit</p><p>Limit</p></div>', ['limit' => 1], 'en', null, null);
+
+        $expect = '<div><p><a class="pimcore_glossary" href="/limit">Limit</a></p><p>Limit</p><p>Limit</p></div>';
+
+        $this->assertSame($expect, $result);
+    }
 }

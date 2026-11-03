@@ -31,7 +31,7 @@ even asserts this wrong behaviour (`Huber` → `huber`).
 URLs with `$1` or backslashes are corrupted.
 **Fix:** `preg_replace_callback()` returning the literal replacement, or escape `\` and `$` in `replace`.
 
-### [ ] B-03 – `limit` option is applied per element, not per document *(reproduced)*
+### [x] B-03 – `limit` option is applied per element, not per document *(reproduced)*
 **File:** `src/Tool/Processor.php:120`, `:122`, `:135-138`
 The closure captures `$data` **by value** (`use ($options, $data)`), so `$data['count']` is reset for every element.
 `{% apply pimcore_glossary({limit: 1}) %}` with three paragraphs links all three occurrences.
