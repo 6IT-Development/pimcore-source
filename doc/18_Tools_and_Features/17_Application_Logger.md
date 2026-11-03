@@ -120,6 +120,9 @@ Note that the channel(s) need to exist. This can either by achieved by [configur
 or by using [DI tags](https://symfony.com/doc/current/reference/dic_tags.html#dic-tags-monolog) to select the logger for
 the channel you want to log to. When using DI tags, the channel will be created implicitly by monolog.
 
+Entries logged while a transaction is active on the database connection are written through a second connection with the
+same parameters, so they are kept if the transaction is rolled back. This second connection is only opened when needed.
+
 > **IMPORTANT**: As the `ApplicationLoggerDb` handler has a dependency on the database connection it is important to exclude
   channels logging database queries (typically the `doctrine` channel) from the handler to avoid infinite loops. Either
   specify a allowlist of supported channels (as shown in the example above) or exclude the `doctrine` channel by setting

@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Handler;
 
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Exception;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
@@ -52,6 +53,8 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
         'maintenanceChecked' => 'TINYINT(1) DEFAULT NULL',
     ];
 
+    private ?Connection $separateDb = null;
+
     public function __construct(
         private readonly Connection $db,
         int|string|Level            $level = Level::Debug,
@@ -66,7 +69,7 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
         // a log call must not turn into an application error, e.g. when the bundle is not installed,
         // the database is gone or a value does not fit its column in strict mode
         try {
-            $this->db->insert(self::TABLE_NAME, [
+            $this->insert([
                 'pid' => getmypid(),
                 'priority' => $record->level->toPsrLogLevel(),
                 // TEXT holds 65535 bytes
@@ -88,6 +91,34 @@ class ApplicationLoggerDb extends AbstractProcessingHandler
                 $record->message
             ));
         }
+    }
+
+    /**
+     * Entries written inside a transaction must survive its rollback, typically they explain why it happened
+     */
+    private function insert(array $data): void
+    {
+        if (!$this->db->isTransactionActive()) {
+            $this->db->insert(self::TABLE_NAME, $data);
+
+            return;
+        }
+
+        try {
+            $this->separateDb ??= DriverManager::getConnection($this->db->getParams(), $this->db->getConfiguration());
+            $this->separateDb->insert(self::TABLE_NAME, $data);
+        } catch (Exception) {
+            // e.g. the connection timed out in a long-running process, it reconnects on the next use
+            $this->separateDb?->close();
+            $this->db->insert(self::TABLE_NAME, $data);
+        }
+    }
+
+    public function close(): void
+    {
+        $this->separateDb?->close();
+
+        parent::close();
     }
 
     private function truncate(mixed $value, int $length): ?string

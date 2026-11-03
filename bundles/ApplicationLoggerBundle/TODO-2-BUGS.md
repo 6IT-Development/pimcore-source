@@ -153,7 +153,7 @@ idempotent.
 Also logical: FileObjects are deleted **at archive time**, so archived rows always reference missing files, and the
 later per-month folder deletion (C-01) is redundant.
 
-### [ ] B-20 – Log rows are lost when the business transaction rolls back
+### [x] B-20 – Log rows are lost when the business transaction rolls back
 **File:** `src/Handler/ApplicationLoggerDb.php:33-55`, `config/services.yaml:41-46`
 The handler writes through the **default** connection. Logs written inside a transaction that is later rolled back
 (typical: `catch` → log error → rollback) disappear together with the business data – exactly the entries that matter.
