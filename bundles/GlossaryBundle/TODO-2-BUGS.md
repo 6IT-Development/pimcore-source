@@ -242,7 +242,7 @@ trusted HTML may be passed (and add `is_safe_callback`/`Markup` handling).
 
 ## Admin UI (`public/js/settings.js`)
 
-### [ ] B-26 – Opening the editor mutates the global `pimcore.settings.websiteLanguages` array
+### [x] B-26 – Opening the editor mutates the global `pimcore.settings.websiteLanguages` array
 **File:** `public/js/settings.js:21-22`
 `this.languages = pimcore.settings.websiteLanguages; this.languages.splice(0,0,"")` prepends `""` to the **shared**
 array every time the glossary tab is opened → all other language selectors in the admin (document settings,

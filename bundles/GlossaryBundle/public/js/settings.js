@@ -18,8 +18,8 @@ pimcore.registerNS("pimcore.bundle.glossary.settings");
 pimcore.bundle.glossary.settings = Class.create({
 
     initialize: function () {
-        this.languages = pimcore.settings.websiteLanguages;
-        this.languages.splice(0,0,"");
+        // a copy with an empty entry for "all languages"; the global list is shared by all language selectors
+        this.languages = [''].concat(pimcore.settings.websiteLanguages);
         this.getTabPanel();
     },
 
