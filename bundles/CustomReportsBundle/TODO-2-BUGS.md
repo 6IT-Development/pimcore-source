@@ -160,7 +160,7 @@ check `fopen`; when no column is exported return `400` or export all columns wit
 **Fix:** create a fresh `Config`, copy only the definition fields, reset dates, check `isWriteable()`; throw
 `ConflictHttpException`.
 
-### [ ] B-16 – `isValidConfigName()` accepts a trailing newline and has no length limit
+### [x] B-16 – `isValidConfigName()` accepts a trailing newline and has no length limit
 **File:** `src/Controller/Reports/CustomReportController.php:433-438`
 `/^[a-zA-Z0-9_\-]+$/` – `$` also matches before a final `\n`, so `"report\n"` passes and is used as settings-store id /
 YAML file name (`report\n.yaml`). There is no maximum length (file-name limits, `settings_store.id` column length).

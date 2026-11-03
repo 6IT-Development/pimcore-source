@@ -469,12 +469,14 @@ class CustomReportController extends UserAwareController
     }
 
     /**
-     * @throws Exception
+     * The name becomes a file name and a settings store id, which has 190 characters.
+     *
+     * @throws BadRequestHttpException
      */
     public function isValidConfigName(string $configName): void
     {
-        if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $configName)) {
-            throw new Exception('The customer report name is invalid');
+        if (!preg_match('/^[a-zA-Z0-9_-]{1,190}\z/', $configName)) {
+            throw new BadRequestHttpException('The custom report name is invalid');
         }
     }
 
