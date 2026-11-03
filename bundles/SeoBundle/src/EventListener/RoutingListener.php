@@ -48,7 +48,7 @@ class RoutingListener implements EventSubscriberInterface
 
     public function onKernelRequest(RequestEvent $event): void
     {
-        if (!PimcoreSeoBundle::isInstalled()) {
+        if (!$event->isMainRequest() || !PimcoreSeoBundle::isInstalled()) {
             return;
         }
 
@@ -61,7 +61,7 @@ class RoutingListener implements EventSubscriberInterface
 
     public function onKernelException(ExceptionEvent $event): void
     {
-        if (!PimcoreSeoBundle::isInstalled()) {
+        if (!$event->isMainRequest() || !PimcoreSeoBundle::isInstalled()) {
             return;
         }
 

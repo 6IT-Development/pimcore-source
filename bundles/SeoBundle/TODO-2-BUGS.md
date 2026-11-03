@@ -91,7 +91,7 @@ $url = preg_replace('@^' . $targetSite->getRootPath() . '/@', '/', $url);
 
 **Fix direction:** `try { … } finally { $this->lock->release(); }` and catch `\Throwable` for the warm-up.
 
-### [ ] B-08 – Redirect lookup runs for sub-requests (error controller, ESI/fragments)
+### [x] B-08 – Redirect lookup runs for sub-requests (error controller, ESI/fragments)
 **File:** `src/EventListener/RoutingListener.php:48-59`
 - `onKernelRequest` has no `$event->isMainRequest()` check. Symfony's error handling issues a sub-request to the
   error controller, fragments render sub-requests → each runs the exact-match DB query (+ isInstalled query, I-16)
