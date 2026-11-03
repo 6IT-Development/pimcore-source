@@ -253,10 +253,20 @@ class InstallCommand extends Command
         if (false !== $bundleOption) {
             $bundleSetupEvent = $this->installer->dispatchBundleSetupEvent();
 
-            if (null === $bundleOption) {
-                $bundles = [];
-            } else {
-                $bundles = explode(',', $bundleOption);
+            // without a value only the required bundles are installed
+            $bundles = array_values(array_filter(
+                array_map('trim', explode(',', (string) $bundleOption)),
+                static fn (string $bundle) => '' !== $bundle
+            ));
+
+            $validBundles = array_keys($bundleSetupEvent->getAvailableBundles());
+            $unknownBundles = array_diff($bundles, $validBundles);
+            if ([] !== $unknownBundles) {
+                throw new InvalidOptionException(sprintf(
+                    'Unknown bundle(s) in "--install-bundles": %s. Installable bundles: %s',
+                    implode(', ', $unknownBundles),
+                    implode(', ', $validBundles)
+                ));
             }
 
             $installableBundles = $bundleSetupEvent->getInstallableBundles($bundles);
@@ -381,7 +391,7 @@ class InstallCommand extends Command
         // dispatch a bundle config event here to manually add/remove bundles/recommendations
         $bundleSetupEvent = $this->installer->dispatchBundleSetupEvent();
 
-        if (!empty($bundleSetupEvent->getBundles()) && !$input->getOption('install-bundles') && $input->isInteractive() && $this->io->confirm(sprintf('Do you want to install bundles? We recommend %s.', implode(', ', $bundleSetupEvent->getRecommendedBundles())), false)) {
+        if (!empty($bundleSetupEvent->getBundles()) && false === $input->getOption('install-bundles') && $input->isInteractive() && $this->io->confirm(sprintf('Do you want to install bundles? We recommend %s.', implode(', ', $bundleSetupEvent->getRecommendedBundles())), false)) {
             $bundles = $this->io->choice('Which bundle(s) do you want to install? You can choose multiple e.g. 0,1,2,3 or just hit enter to install recommended bundles', array_keys($bundleSetupEvent->getBundles()), $this->getRecommendBundles($bundleSetupEvent), true);
             $installableBundles = $bundleSetupEvent->getInstallableBundles($bundles);
             $this->installer->setBundlesToInstall($installableBundles, $bundleSetupEvent->getAvailableBundles(), $bundleSetupEvent->getExcludeBundlesFromPhpBundles());

@@ -135,7 +135,7 @@ for sockets, cast port to `int`.
 
 **Fix direction:** resolve the bundle option from env before `:214`, or remove it from the env list/help.
 
-### [ ] B-10 – `--install-bundles` parsing: no trimming, unknown names silently dropped, empty value re-triggers the prompt
+### [x] B-10 – `--install-bundles` parsing: no trimming, unknown names silently dropped, empty value re-triggers the prompt
 **Files:** `src/Command/InstallCommand.php:214-226`, `:329-333`, `src/Installer.php:220-230`
 - `explode(',', $bundleOption)` without `trim()` → `--install-bundles="PimcoreSeoBundle, PimcoreUuidBundle"` installs
   only the first bundle.
