@@ -11,11 +11,14 @@ currently broken. IDs are stable – refer to them as `I-xx` in later sessions. 
 
 ## Symfony 7.4 modernisation
 
-### [ ] I-01 – Migrate bundle to `AbstractBundle`
+### [x] I-01 – Migrate bundle to `AbstractBundle`
 **Files:** `src/PimcoreApplicationLoggerBundle.php`, `src/DependencyInjection/PimcoreApplicationLoggerExtension.php`
 Use `loadExtension()` / `prependExtension()` (with `import(..., prepend: true)` – fixes B-22) and `configure()` instead
 of a separate `Extension` class. Check compatibility with `AbstractPimcoreBundle` first (it extends `Bundle`); if not
 possible, at least keep the separate extension but use the prepend-aware loader.
+**Outcome:** not possible without a core change. `AbstractPimcoreBundle` extends `Bundle`, and this bundle cannot extend
+`AbstractBundle` as well without giving up `AbstractPimcoreBundle` and its static `isInstalled()`. The separate extension
+stays and uses the prepend-aware loader (B-22). Revisit if core gets an `AbstractBundle`-based variant.
 
 ### [ ] I-02 – Own configuration tree instead of `pimcore.applicationlog` in CoreBundle
 **Files:** `src/Maintenance/LogArchiveTask.php`, `src/Maintenance/LogMailMaintenanceTask.php`
