@@ -14,7 +14,7 @@ forward-compat with DBAL 4. IDs are stable – refer to them as `B-xx` in later 
 
 ## Install steps / kernel
 
-### [ ] B-01 – `--only-steps` breaks for valid step combinations and accepts unknown step names silently
+### [x] B-01 – `--only-steps` breaks for valid step combinations and accepts unknown step names silently
 **Files:** `src/Installer.php:171-179`, `:452-459`, `:494-497`, `:911-914`, `:921-924`, `src/Command/InstallCommand.php:176-181`, `:195-198`
 - The App kernel is only set (`Pimcore::setKernel()`) and booted when `clear_cache` **or** `install_assets` is in the step
   list (`:456-459`). `--only-steps=install_bundles` (or `setup_database,install_bundles`) therefore runs

@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\InstallBundle\Command;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\InstallBundle\Event\BundleSetupEvent;
 use Pimcore\Bundle\InstallBundle\Event\InstallerStepEvent;
 use Pimcore\Bundle\InstallBundle\Event\InstallEvents;
@@ -27,6 +28,7 @@ use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Exception\InvalidOptionException;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -182,7 +184,7 @@ class InstallCommand extends Command
                 'only-steps',
                 null,
                 InputOption::VALUE_OPTIONAL,
-                'Specify a comma separated limited list of steps that should run. Available steps: ' . implode(', ', $this->installer->getRunInstallSteps())
+                'Specify a comma separated limited list of steps that should run. Available steps: ' . implode(', ', Installer::INSTALL_STEPS)
             );
 
         foreach ($this->getOptions() as $name => $config) {
@@ -197,9 +199,22 @@ class InstallCommand extends Command
 
     protected function initialize(InputInterface $input, OutputInterface $output): void
     {
-        if ($onlySteps = $input->getOption('only-steps')) {
-            $onlySteps = array_map('trim', explode(',', $onlySteps));
-            $this->installer->setRunInstallSteps($onlySteps);
+        $onlySteps = $input->getOption('only-steps');
+        if (null !== $onlySteps) {
+            $onlySteps = array_map('trim', explode(',', (string) $onlySteps));
+
+            if (in_array('', $onlySteps, true)) {
+                throw new InvalidOptionException(sprintf(
+                    'The option "--only-steps" contains an empty step. Available steps: %s',
+                    implode(', ', Installer::INSTALL_STEPS)
+                ));
+            }
+
+            try {
+                $this->installer->setRunInstallSteps($onlySteps);
+            } catch (InvalidArgumentException $e) {
+                throw new InvalidOptionException($e->getMessage(), 0, $e);
+            }
         }
 
         if ($input->getOption('skip-database-config')) {

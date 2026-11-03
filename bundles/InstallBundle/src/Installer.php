@@ -94,6 +94,19 @@ class Installer
         'PimcoreGenericExecutionEngineBundle' => PimcoreGenericExecutionEngineBundle::class,
     ];
 
+    /**
+     * Steps which can be selected with --only-steps, in the order they run
+     */
+    public const array INSTALL_STEPS = [
+        'write_database_config',
+        'setup_database',
+        'install_assets',
+        'install_classes',
+        'mark_migrations_as_done',
+        'install_bundles',
+        'clear_cache',
+    ];
+
     private LoggerInterface $logger;
 
     private EventDispatcherInterface $eventDispatcher;
@@ -178,15 +191,7 @@ class Installer
         'complete' => 'Install complete!',
     ];
 
-    private array $runInstallSteps = [
-        'write_database_config',
-        'setup_database',
-        'install_assets',
-        'install_classes',
-        'mark_migrations_as_done',
-        'install_bundles',
-        'clear_cache',
-    ];
+    private array $runInstallSteps = self::INSTALL_STEPS;
 
     public function __construct(
         LoggerInterface          $logger,
@@ -514,7 +519,12 @@ class Installer
             $this->clearKernelCacheDir($kernel);
         }
 
-        if (in_array('clear_cache', $stepsToRun) || in_array('install_assets', $stepsToRun)) {
+        // the assets installer and the bundle installation (settings store) need the container of the app kernel,
+        // the installer kernel has no database connection
+        $needsAppKernel = in_array('install_assets', $stepsToRun, true)
+            || (!empty($this->bundlesToInstall) && in_array('install_bundles', $stepsToRun, true));
+
+        if ($needsAppKernel) {
             Pimcore::setKernel($kernel);
             $kernel->boot();
         }
@@ -1061,8 +1071,31 @@ class Installer
         return $this->runInstallSteps;
     }
 
+    /**
+     * @param string[] $runInstallSteps
+     *
+     * @throws InvalidArgumentException If the list is empty or contains unknown steps
+     */
     public function setRunInstallSteps(array $runInstallSteps): void
     {
+        $runInstallSteps = array_values(array_unique($runInstallSteps));
+
+        if ([] === $runInstallSteps) {
+            throw new InvalidArgumentException(sprintf(
+                'No install step given. Available steps: %s',
+                implode(', ', self::INSTALL_STEPS)
+            ));
+        }
+
+        $unknownSteps = array_diff($runInstallSteps, self::INSTALL_STEPS);
+        if ([] !== $unknownSteps) {
+            throw new InvalidArgumentException(sprintf(
+                'Unknown install step(s): %s. Available steps: %s',
+                implode(', ', array_map(static fn ($step) => '"' . $step . '"', $unknownSteps)),
+                implode(', ', self::INSTALL_STEPS)
+            ));
+        }
+
         $this->runInstallSteps = $runInstallSteps;
     }
 }
