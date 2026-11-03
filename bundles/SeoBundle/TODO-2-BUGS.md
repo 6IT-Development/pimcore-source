@@ -177,6 +177,15 @@ $file?->getErrorMessage() ?? 'Missing file');` + size/extension check.
 **Fix direction:** decide on one semantic (delete expired `auto_create` redirects, deactivate manual ones?),
 implement it once in a service used by both (I-22), and clear the cache tag once at the end.
 
+### [x] B-29 – Redirect grid sort property is not checked against the table columns
+**File:** `src/Controller/RedirectsController.php` (`redirectsAction()`, listing branch; added after `7162d16812`)
+- The `sort` property from the request goes to `Listing::setOrderKey()`, which quotes it as an identifier but accepts
+  any name (`isValidOrderKey()` returns `true`) → an unknown property ends in an SQL error (500) instead of a 400.
+- `QueryParams::extractSortingSettings()` indexes the decoded JSON without checks → malformed `sort` gives
+  "array offset on null" warnings (same issue as B-05 in the HTTP error log grid).
+
+**Fix direction:** parse `sort` defensively, whitelist the `redirects` columns, answer an unknown property with a 400.
+
 ---
 
 ## Document / slug listeners (`src/EventListener/DocumentListener.php`, `src/EventListener/UrlSlugUpdateListener.php`)

@@ -18,14 +18,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\SeoBundle\Controller;
 
 use Exception;
-use Pimcore\Bundle\AdminBundle\Helper\QueryParams;
 use Pimcore\Bundle\SeoBundle\Model\Redirect;
 use Pimcore\Bundle\SeoBundle\Redirect\Csv;
 use Pimcore\Bundle\SeoBundle\Redirect\RedirectExpiryService;
 use Pimcore\Bundle\SeoBundle\Redirect\RedirectHandler;
 use Pimcore\Controller\Traits\JsonHelperTrait;
 use Pimcore\Controller\UserAwareController;
-use Pimcore\Extension\Bundle\Exception\AdminClassicBundleNotFoundException;
 use Pimcore\Logger;
 use Pimcore\Model\Document;
 use Pimcore\Model\Site;
@@ -46,6 +44,28 @@ class RedirectsController extends UserAwareController
     use JsonHelperTrait;
 
     private const int CSV_IMPORT_MAX_SIZE = 20 * 1024 * 1024;
+
+    /**
+     * Columns of the redirects table the grid may sort by.
+     */
+    private const array SORTABLE_FIELDS = [
+        'id',
+        'type',
+        'source',
+        'sourceSite',
+        'target',
+        'targetSite',
+        'statusCode',
+        'priority',
+        'regex',
+        'passThroughParameters',
+        'active',
+        'expiry',
+        'creationDate',
+        'modificationDate',
+        'userOwner',
+        'userModification',
+    ];
 
     /**
      * Fields a client may set; owner, modification user and dates are maintained by the model.
@@ -126,20 +146,16 @@ class RedirectsController extends UserAwareController
                 return $this->jsonResponse(['data' => $redirect->getObjectVars(), 'success' => true]);
             }
         } else {
-            if (!class_exists(QueryParams::class)) {
-                throw new AdminClassicBundleNotFoundException('This action requires package "pimcore/admin-ui-classic-bundle" to be installed.');
-            }
-
             // get list of routes
 
             $list = new Redirect\Listing();
             $list->setLimit($request->request->getInt('limit', 50));
             $list->setOffset($request->request->getInt('start'));
 
-            $sortingSettings = QueryParams::extractSortingSettings(array_merge($request->request->all(), $request->query->all()));
-            if ($sortingSettings['orderKey']) {
-                $list->setOrderKey($sortingSettings['orderKey']);
-                $list->setOrder($sortingSettings['order']);
+            $sort = $this->getSorting(array_merge($request->request->all(), $request->query->all()));
+            if ($sort) {
+                $list->setOrderKey($sort['property']);
+                $list->setOrder($sort['direction']);
             }
 
             if ($filterValue = $request->request->getString('filter')) {
@@ -179,6 +195,29 @@ class RedirectsController extends UserAwareController
         }
 
         return $this->jsonResponse(['success' => false]);
+    }
+
+    /**
+     * Reads the ExtJS `sort` parameter; a malformed one is ignored like in the HTTP error log grid, an unknown
+     * property is rejected instead of ending in an SQL error.
+     *
+     * @return array{property: string, direction: string}|null
+     */
+    private function getSorting(array $params): ?array
+    {
+        $sort = is_string($params['sort'] ?? null) ? json_decode($params['sort'], true) : null;
+        $sort = is_array($sort) ? ($sort[0] ?? null) : null;
+        if (!is_array($sort) || !isset($sort['property']) || !is_string($sort['property'])) {
+            return null;
+        }
+
+        if (!in_array($sort['property'], self::SORTABLE_FIELDS, true)) {
+            throw new BadRequestHttpException(sprintf('Cannot sort redirects by "%s"', $sort['property']));
+        }
+
+        $direction = is_string($sort['direction'] ?? null) ? strtoupper($sort['direction']) : 'ASC';
+
+        return ['property' => $sort['property'], 'direction' => $direction === 'DESC' ? 'DESC' : 'ASC'];
     }
 
     /**
