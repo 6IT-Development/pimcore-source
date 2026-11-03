@@ -37,7 +37,7 @@ The closure captures `$data` **by value** (`use ($options, $data)`), so `$data['
 `{% apply pimcore_glossary({limit: 1}) %}` with three paragraphs links all three occurrences.
 **Fix:** `use ($options, &$data)` (or a counter property / `\SplObjectStorage`); add a test.
 
-### [ ] B-04 – Exact match and case-insensitive matching are not Unicode-aware *(reproduced)*
+### [x] B-04 – Exact match and case-insensitive matching are not Unicode-aware *(reproduced)*
 **File:** `src/Tool/Processor.php:243-251`
 No `u` modifier: `\w` is ASCII-only and `i` folds only ASCII. Entry `Glossar` with *exact match* links the prefix of
 `Glossarübersicht` (`<a>Glossar</a>übersicht`); `ÄRZTE` vs `ärzte` never match case-insensitively.

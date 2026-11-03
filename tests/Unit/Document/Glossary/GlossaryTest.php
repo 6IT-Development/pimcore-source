@@ -347,4 +347,23 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryMatchesUnicodeWordsAndCase(): void
+    {
+        foreach ([['Glossar', '/glossar', true], ['ärzte', '/aerzte', false]] as [$text, $link, $exactMatch]) {
+            $entry = new Glossary();
+            $entry->setText($text);
+            $entry->setLink($link);
+            $entry->setExactmatch($exactMatch);
+            $entry->setLanguage('en');
+            $entry->save();
+        }
+
+        $result = $this->processor->parse('<p>Glossarübersicht, Glossar und ÄRZTE</p>', [], 'en', null, null);
+
+        $expect = '<p>Glossarübersicht, <a class="pimcore_glossary" href="/glossar">Glossar</a> und '
+            . '<a class="pimcore_glossary" href="/aerzte">ÄRZTE</a></p>';
+
+        $this->assertSame($expect, $result);
+    }
 }

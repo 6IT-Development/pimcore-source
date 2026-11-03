@@ -253,7 +253,8 @@ class Processor
         $mappedData = [];
 
         foreach ($data as $d) {
-            if (!($d['text'])) {
+            // a pattern with the u modifier does not compile for invalid UTF-8
+            if (!$d['text'] || !mb_check_encoding($d['text'], 'UTF-8')) {
                 continue;
             }
 
@@ -285,11 +286,12 @@ class Processor
                 continue;
             }
 
-            // add PCRE delimiter and modifiers
+            // add PCRE delimiter and modifiers; the u modifier makes the word boundaries and case folding work for
+            // non-ASCII letters (Glossar must not match in Glossarübersicht, ÄRZTE must match ärzte)
             if ($d['exactmatch']) {
-                $search = '/(?<!\w)' . preg_quote($d['text'], '/') . '(?!\w)/';
+                $search = '/(?<![\p{L}\p{N}_])' . preg_quote($d['text'], '/') . '(?![\p{L}\p{N}_])/u';
             } else {
-                $search = '/' . preg_quote($d['text'], '/') . '/';
+                $search = '/' . preg_quote($d['text'], '/') . '/u';
             }
 
             if (!$d['casesensitive']) {
