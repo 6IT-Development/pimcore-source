@@ -109,7 +109,7 @@ single streamed pass (I-15).
   large reports exhaust `memory_limit`.
 **Fix:** clamp `start >= 0`, `1 <= limit <= N` (e.g. 1000) in the controller; cap chart rows (configurable).
 
-### [ ] B-11 – `total` is returned as string (or `false`)
+### [x] B-11 – `total` is returned as string (or `false`)
 **File:** `src/Tool/Adapter/Sql.php:35`, `:38`, `:54`
 `fetchOne()` returns `string|false` for `COUNT(*)` with `pdo_mysql` → the JSON contains `"total": "123"`; the ExtJS
 store copes, but the documented contract (`CustomReportAdapterInterface::getData()`) is unclear and third-party

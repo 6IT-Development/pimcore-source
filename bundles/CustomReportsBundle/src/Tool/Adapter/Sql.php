@@ -76,7 +76,7 @@ class Sql extends AbstractAdapter
                 $sql .= " LIMIT $offset,$limit";
             }
 
-            return [$db->fetchOne($baseQuery['count']), $db->fetchAllAssociative($sql)];
+            return [(int) $db->fetchOne($baseQuery['count']), $db->fetchAllAssociative($sql)];
         });
 
         return ['data' => $data, 'total' => $total];

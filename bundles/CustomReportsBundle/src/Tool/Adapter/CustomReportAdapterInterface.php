@@ -27,6 +27,7 @@ interface CustomReportAdapterInterface
      * @param array|null $fields - if set, only in fields specified columns are returned
      * @param array|null $drillDownFilters - if set, additional filters are set
      *
+     * @return array{data: array, total: int} the rows of the requested page and the row count of the whole result
      */
     public function getData(?array $filters, ?string $sort, ?string $dir, ?int $offset, ?int $limit, ?array $fields = null, ?array $drillDownFilters = null): array;
 
