@@ -57,6 +57,8 @@ services:
         public: true
         alias: Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger
 
+    Psr\Log\LoggerInterface $applicationLogger: '@pimcore.app_logger'
+
     Pimcore\Bundle\ApplicationLoggerBundle\Maintenance\LogArchiveTask: ~
 
     Pimcore\Bundle\ApplicationLoggerBundle\Maintenance\LogMailMaintenanceTask: ~

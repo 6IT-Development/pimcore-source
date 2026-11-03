@@ -26,6 +26,7 @@ The logs are visible and searchable within the Pimcore backend GUI ![Tools menu]
 
 The application logger is a PSR-3 compatible component and available on the service container as service `Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger`
 and therefore it can be used the usual way.
+Services can also inject it without naming the concrete class through the named alias `Psr\Log\LoggerInterface $applicationLogger`.
 
 ### Basic Usage - Example
 

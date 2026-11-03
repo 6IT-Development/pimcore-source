@@ -34,7 +34,7 @@ scalars via `%parameters%` / `#[Autowire(param: ...)]`. Fix the `archive_treshol
   (lines 20-23) says autoconfigure is disabled, but it is only disabled for the introspection processor.
 - Inject a dedicated channel logger into `LogArchiveTask` via `#[WithMonologChannel('maintenance')]` / `#[Target]`.
 
-### [ ] I-04 – Named autowiring alias for the application logger
+### [x] I-04 – Named autowiring alias for the application logger
 **File:** `config/services.yaml:48-59`
 Add `Psr\Log\LoggerInterface $applicationLogger: '@pimcore.app_logger'` so services can inject it without referring to
 the concrete class or the static `getInstance()`.
