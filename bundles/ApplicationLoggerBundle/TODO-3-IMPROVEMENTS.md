@@ -237,7 +237,9 @@ changes behaviour: an archive database named `` we.ird`x `` becomes `` `we`.`ird
 **Outcome:** `ApplicationLoggerDb` stays public, the static `getInstance()` still fetches it from the container. All four routes are used
 by the admin JS, so each one keeps `expose`.
 
-### [ ] I-31 – Tests
+### [x] I-31 – Tests
 No tests exist for this bundle. Minimum set: `LogArchiveTask` date/folder calculation (C-01), archive insert with long
 messages (C-02), `ApplicationLogger` with `Stringable` (C-03), mail escaping (C-04), source resolution for closures
 (B-10), controller filter/paging/sorting (B-01, B-02, B-05, B-06).
+**Outcome:** Added in `tests/Unit/ApplicationLogger`. They use mocks, so the SQL itself is not run against a database. Mail sending is not
+covered, only the escaping through `LogMailMaintenanceTask::renderEntries()`.

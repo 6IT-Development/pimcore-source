@@ -94,12 +94,9 @@ readonly class LogMailMaintenanceTask implements TaskInterface
             [$logLevels, $lastId, $maxId],
             [ArrayParameterType::STRING, ParameterType::INTEGER, ParameterType::INTEGER]
         )) {
-            // log entries contain user-controlled input, so they must not end up as markup in the mail
-            $html = htmlspecialchars(var_export($entries, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $html = "<pre>$html</pre>";
             $mail = new Mail();
             $mail->setIgnoreDebugMode(true);
-            $mail->html($html);
+            $mail->html(self::renderEntries($entries));
             foreach ($receivers as $receiver) {
                 $mail->addTo($receiver);
             }
@@ -110,6 +107,16 @@ readonly class LogMailMaintenanceTask implements TaskInterface
             $lastId = (int)$entries[array_key_last($entries)]['id'];
             $this->flagAsChecked($lastId);
         }
+    }
+
+    /**
+     * Log entries contain user-controlled input, so they must not end up as markup in the mail
+     *
+     * @internal
+     */
+    public static function renderEntries(array $entries): string
+    {
+        return '<pre>' . htmlspecialchars(var_export($entries, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</pre>';
     }
 
     /**
