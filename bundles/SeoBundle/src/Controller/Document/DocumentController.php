@@ -45,8 +45,11 @@ class DocumentController extends UserAwareController
     {
         $this->checkPermission('seo_document_editor');
 
-        /** @var Page $root */
         $root = Page::getById(self::DOCUMENT_ROOT_ID);
+        if (!$root instanceof Page) {
+            throw $this->createNotFoundException('The root document is missing or not a page');
+        }
+
         if ($root->isAllowed('list')) {
             // make sure document routes are also built for unpublished documents
             $documentRouteHandler->setForceHandleUnpublishedDocuments(true);
@@ -84,7 +87,15 @@ class DocumentController extends UserAwareController
         // make sure document routes are also built for unpublished documents
         $documentRouteHandler->setForceHandleUnpublishedDocuments(true);
 
-        $document = Document::getById((int)$allParams['node']);
+        $nodeId = (int)($allParams['node'] ?? 0);
+        $document = $nodeId > 0 ? Document::getById($nodeId) : null;
+        if (!$document) {
+            throw $this->createNotFoundException(sprintf('Document %d not found', $nodeId));
+        }
+
+        if (!$document->isAllowed('list')) {
+            throw $this->createAccessDeniedHttpException();
+        }
 
         $documents = [];
         if ($document->hasChildren()) {

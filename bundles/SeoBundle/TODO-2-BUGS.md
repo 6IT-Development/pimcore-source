@@ -311,7 +311,7 @@ Doctrine `Schema`, I-24); cleanup of user/role permission strings on uninstall.
 **Fix direction:** validate keys against `Site\Listing` + `'default'`, `is_string()` on values, reset the runtime cache
 after save.
 
-### [ ] B-28 – `seopanelTreeAction`: missing/invalid `node` → fatal error; parent not permission-checked
+### [x] B-28 – `seopanelTreeAction`: missing/invalid `node` → fatal error; parent not permission-checked
 **File:** `src/Controller/Document/DocumentController.php:62-129` (also `:48-50`)
 - `$allParams['node']` without `??` → "Undefined array key"; `Document::getById(0)` → `null` →
   `$document->hasChildren()` on null → `Error` (500).
