@@ -101,7 +101,7 @@ appear twice or be missing; the same applies to grid paging.
 **Fix:** always append a deterministic order (configured order + all selected columns as tie breaker), or export in a
 single streamed pass (I-15).
 
-### [ ] B-10 – `limit`/`start` are not validated; chart endpoint is unbounded
+### [x] B-10 – `limit`/`start` are not validated; chart endpoint is unbounded
 **File:** `src/Tool/Adapter/Sql.php:47-49`, `src/Controller/Reports/CustomReportController.php:272-273`, `:325`
 - `limit=0` → `if ($offset !== null && $limit)` is false → **no LIMIT at all** (full result set in one JSON response).
 - negative `start`/`limit` → `LIMIT -5,40` → SQL syntax error (500).

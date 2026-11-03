@@ -46,6 +46,7 @@ class PimcoreCustomReportsExtension extends ConfigurableExtension implements Pre
         $container->setParameter('pimcore_custom_reports.definitions', $config['definitions'] ?? []);
         $container->setParameter('pimcore_custom_reports.config_location', $config['config_location'] ?? []);
         $container->setParameter('pimcore_custom_reports.connection', $config['connection'] ?? null);
+        $container->setParameter('pimcore_custom_reports.chart_row_limit', $config['chart_row_limit']);
     }
 
     public function prepend(ContainerBuilder $container): void

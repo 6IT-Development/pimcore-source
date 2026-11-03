@@ -53,6 +53,11 @@ class CustomReportController extends UserAwareController
         'sharedUserNames', 'sharedRoleNames',
     ];
 
+    /**
+     * Largest page the data action returns. The grid offers up to 200 rows, the drill-down option store asks for 400.
+     */
+    private const int MAX_PAGE_SIZE = 1000;
+
     #[Route('/tree', name: 'pimcore_bundle_customreports_customreport_tree', methods: [Request::METHOD_GET, Request::METHOD_POST])]
     public function treeAction(): JsonResponse
     {
@@ -284,8 +289,8 @@ class CustomReportController extends UserAwareController
         if (!class_exists(QueryParams::class)) {
             throw new AdminClassicBundleNotFoundException('This action requires package "pimcore/admin-ui-classic-bundle" to be installed.');
         }
-        $offset = $request->request->getInt('start');
-        $limit = $request->request->getInt('limit', 40);
+        $offset = max(0, $request->request->getInt('start'));
+        $limit = max(1, min(self::MAX_PAGE_SIZE, $request->request->getInt('limit', 40)));
         $config = $this->getReportForCurrentUser($request->request->getString('name'));
         $configuration = $config->getDataSourceConfig();
         $adapter = Tool\Config::getAdapter($configuration, $config);
@@ -329,7 +334,7 @@ class CustomReportController extends UserAwareController
         $configuration = $config->getDataSourceConfig();
         $adapter = Tool\Config::getAdapter($configuration, $config);
         $sortFilters = $this->getSortAndFilters($request, $configuration, $config);
-        $result = $adapter->getData($sortFilters['filters'], $sortFilters['sort'], $sortFilters['dir'], null, null, null, $sortFilters['drillDownFilters']);
+        $result = $adapter->getData($sortFilters['filters'], $sortFilters['sort'], $sortFilters['dir'], 0, $this->getParameter('pimcore_custom_reports.chart_row_limit'), null, $sortFilters['drillDownFilters']);
 
         return $this->jsonResponse([
             'success' => true,
@@ -384,7 +389,7 @@ class CustomReportController extends UserAwareController
 
         $adapter = Tool\Config::getAdapter($configuration, $config);
 
-        $offset = $request->query->getInt('offset');
+        $offset = max(0, $request->query->getInt('offset'));
         $limit = 5000;
         $result = $adapter->getData($filters, $sort, $dir, $offset * $limit, $limit, $fields, $drillDownFilters);
         ++$offset;

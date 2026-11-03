@@ -46,6 +46,14 @@ pimcore_custom_reports:
     connection: custom_reports
 ```
 
+## Limits
+The report grid returns at most 1000 rows per page. A report chart loads at most 10000 rows, change this with:
+
+```yaml
+pimcore_custom_reports:
+    chart_row_limit: 50000
+```
+
 ## Custom Data Source Adapters
 It is easily possible to implement custom source adapters for special use cases. To do so following steps are necessary: 
 
