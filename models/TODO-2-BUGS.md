@@ -672,7 +672,7 @@ cache of each one. `Document\Dao` and `DataObject\AbstractObject\Dao` have the s
 the deferred path and `.TIF` reaches the `tifforiginal` bypass; `original` thumbnails get the lowercase extension that
 `Service` already expects in URLs. The format already ends up in the file extension; hashing it is part of B-38.
 
-## [ ] B-38 – `Config::getHash()` omits output-affecting fields
+## [x] B-38 – `Config::getHash()` omits output-affecting fields
 
 **File:** `models/Asset/Image/Thumbnail/Config.php:836-846`
 
@@ -682,6 +682,13 @@ the deferred path and `.TIF` reaches the `tifforiginal` bypass; `original` thumb
   different path than the requested URL – every request for that URL goes through PHP.
 
 **Fix direction:** hash every output-affecting property.
+
+**Done:** `forceProcessICCProfiles` is hashed, appended only when set so existing thumbnail file names stay the same.
+Not hashed, on purpose: `format` already shows in the file extension, and hashing the configured value would break
+deferred URLs, because `Service` rewrites `SOURCE` to the concrete format from the URL before generating. `medias` does
+not change the output: `selectMedia()` replaces the items, which are hashed, and adds a filename suffix. `rasterizeSVG`
+only decides whether the original SVG is served instead of the generated file. The quality override of the deferred
+route is handled with B-39.
 
 ## [ ] B-39 – Runtime-modified named configs are not stored for deferred generation
 

@@ -835,13 +835,20 @@ final class Config extends Model\AbstractModel
      */
     public function getHash(array $params = []): string
     {
-        return hash('xxh32', serialize([
+        $hashData = [
             $this->getPreserveAnimation(),
             $this->getQuality(),
             $this->isPreserveColor(),
             $this->isPreserveMetaData(),
             $this->getItems(),
             $params,
-        ]));
+        ];
+
+        // only added when set, so the hashes (file names) of existing thumbnails stay the same
+        if ($this->isForceProcessICCProfiles()) {
+            $hashData[] = 'forceProcessICCProfiles';
+        }
+
+        return hash('xxh32', serialize($hashData));
     }
 }
