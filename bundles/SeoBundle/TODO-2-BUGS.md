@@ -207,7 +207,7 @@ system moves without a user should create redirects).
 **Fix direction:** reuse a shared auto-redirect service (I-23) that resolves sites (`Frontend::getSiteForDocument()`),
 upserts by `(source, sourceSite, type=auto_create)`, and applies the same expiry policy.
 
-### [ ] B-19 – Move auto redirects: created for every descendant type, duplicates, possible `TypeError`
+### [x] B-19 – Move auto redirects: created for every descendant type, duplicates, possible `TypeError`
 **File:** `src/EventListener/DocumentListener.php:116-140, 146-165`
 - `loadIdPathList()` has no type filter → redirects are created for folders, snippets, emails, newsletters, links
   … (snippets/emails are not routable; the target resolution in `RedirectHandler` then logs

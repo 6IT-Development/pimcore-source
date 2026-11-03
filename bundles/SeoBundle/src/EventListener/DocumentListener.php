@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\SeoBundle\EventListener;
 
+use Doctrine\DBAL\Connection;
 use Pimcore;
 use Pimcore\Bundle\SeoBundle\Model\Redirect;
 use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
@@ -28,12 +29,19 @@ use Pimcore\Model\Document\Hardlink;
 use Pimcore\Model\Document\Page;
 use Pimcore\Model\Site;
 use Pimcore\Tool\Frontend;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Throwable;
 
 class DocumentListener implements EventSubscriberInterface
 {
-    public function __construct(private readonly AutoRedirectCreator $autoRedirectCreator)
-    {
+    private const array REDIRECT_TARGET_TYPES = ['page', 'hardlink', 'link'];
+
+    public function __construct(
+        private readonly AutoRedirectCreator $autoRedirectCreator,
+        private readonly Connection $db,
+        private readonly LoggerInterface $logger,
+    ) {
     }
 
     public static function getSubscribedEvents(): array
@@ -117,60 +125,70 @@ class DocumentListener implements EventSubscriberInterface
         }
 
         $sourceSite = Frontend::getSiteForDocument($oldDocument);
-        if ($sourceSite) {
-            $oldPath = preg_replace('@^' . preg_quote($sourceSite->getRootPath(), '@') . '@', '', $oldPath);
-        }
-
         $targetSite = Frontend::getSiteForDocument($document);
 
-        $this->doCreateRedirectForFormerPath($oldPath, $document->getId(), $sourceSite, $targetSite);
+        $redirects = [$this->stripSiteRootPath($oldPath, $sourceSite) => $document->getId()];
 
         if ($document->hasChildren()) {
+            $newPath = $document->getRealFullPath();
+            $formerPath = $oldDocument->getRealFullPath();
+
+            // only routable documents, folders, snippets and emails cannot be the target of a redirect
             $list = new Document\Listing();
-            $list->setCondition('`path` LIKE :path', [
-                'path' => $list->escapeLike($document->getRealFullPath()) . '/%',
+            $list->setCondition('`path` LIKE :path AND `type` IN (:types)', [
+                'path' => $list->escapeLike($newPath) . '/%',
+                'types' => self::REDIRECT_TARGET_TYPES,
             ]);
 
-            $childrenList = $list->loadIdPathList();
-
-            $count = 0;
-
-            foreach ($childrenList as $child) {
-                $source = preg_replace('@^' . preg_quote($document->getRealFullPath(), '@') . '@', $oldDocument->getRealFullPath(), $child['path']);
-                if ($sourceSite) {
-                    $source = preg_replace('@^' . preg_quote($sourceSite->getRootPath(), '@') . '@', '', $source);
+            foreach ($list->loadIdPathList() as $child) {
+                $childPath = (string)$child['path'];
+                if (!str_starts_with($childPath, $newPath . '/')) {
+                    continue;
                 }
 
-                $target = $child['id'];
-
-                $this->doCreateRedirectForFormerPath($source, $target, $sourceSite, $targetSite);
-
-                $count++;
-                if ($count % 10 === 0) {
-                    Pimcore::collectGarbage();
-                }
+                $source = $formerPath . substr($childPath, strlen($newPath));
+                $redirects[$this->stripSiteRootPath($source, $sourceSite)] = (int)$child['id'];
             }
+        }
+
+        // the move itself is already done, a failing redirect must not report it as failed
+        try {
+            $this->db->transactional(function () use ($redirects, $sourceSite, $targetSite): void {
+                $count = 0;
+                foreach ($redirects as $source => $targetId) {
+                    $source = (string)$source;
+                    if ($source === '') {
+                        continue;
+                    }
+
+                    $this->autoRedirectCreator->createOrUpdate(
+                        $source,
+                        (string)$targetId,
+                        $sourceSite?->getId(),
+                        $targetSite?->getId()
+                    );
+
+                    if (++$count % 10 === 0) {
+                        Pimcore::collectGarbage();
+                    }
+                }
+            });
+        } catch (Throwable $e) {
+            $this->logger->error('Could not create the redirects for the former path {path} of document {document}', [
+                'path' => $oldPath,
+                'document' => $document->getId(),
+                'exception' => $e,
+            ]);
         }
     }
 
-    private function doCreateRedirectForFormerPath(string $source, int $targetId, ?Site $sourceSite, ?Site $targetSite): void
+    private function stripSiteRootPath(string $path, ?Site $site): string
     {
-        $redirect = new Redirect();
-        $redirect->setType(Redirect::TYPE_AUTO_CREATE);
-        $redirect->setRegex(false);
-        $redirect->setTarget((string)$targetId);
-        $redirect->setSource($source);
-        $redirect->setStatusCode(301);
-        $redirect->setExpiry(time() + 86400 * 365); // this entry is removed automatically after 1 year
-
-        if ($sourceSite) {
-            $redirect->setSourceSite($sourceSite->getId());
+        $rootPath = (string)$site?->getRootPath();
+        if ($rootPath !== '' && str_starts_with($path, $rootPath)) {
+            return substr($path, strlen($rootPath));
         }
 
-        if ($targetSite) {
-            $redirect->setTargetSite($targetSite->getId());
-        }
-
-        $redirect->save();
+        return $path;
     }
 }
