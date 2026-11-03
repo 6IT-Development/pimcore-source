@@ -299,7 +299,7 @@ and log a warning; inject a logger (I-04).
 **Fix direction:** `INSERT IGNORE`/upsert (or check before insert); split statements and use `executeStatement()` (or a
 Doctrine `Schema`, I-24); cleanup of user/role permission strings on uninstall.
 
-### [ ] B-27 – `robots.txt` save: unvalidated site keys / content type, stale runtime cache
+### [x] B-27 – `robots.txt` save: unvalidated site keys / content type, stale runtime cache
 **File:** `src/Controller/SettingsController.php:46-60`
 - Keys of `data[...]` are used as-is in the SettingsStore id (`robots.txt-<anything>`): no check that the key is
   `default` or an existing site id → orphan/garbage entries that `getRobotsConfig()` later returns.

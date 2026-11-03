@@ -60,4 +60,16 @@ final class Config
     {
         RuntimeCache::set('pimcore_bundle_seo_config_robots', $config);
     }
+
+    /**
+     * Makes the next getRobotsConfig() read the settings store again.
+     *
+     * @internal
+     */
+    public static function resetRobotsConfig(): void
+    {
+        if (RuntimeCache::isRegistered('pimcore_bundle_seo_config_robots')) {
+            RuntimeCache::getInstance()->offsetUnset('pimcore_bundle_seo_config_robots');
+        }
+    }
 }
