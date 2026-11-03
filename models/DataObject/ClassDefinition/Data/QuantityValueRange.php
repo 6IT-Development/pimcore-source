@@ -364,8 +364,19 @@ class QuantityValueRange extends Data implements ResourcePersistenceAwareInterfa
             return false;
         }
 
-        return $oldValue->getValue() === $newValue->getValue()
+        // compare the bounds, not getValue(): that materialises range(min, max) and loses fractional and open bounds
+        return self::isSameBound($oldValue->getMinimum(), $newValue->getMinimum())
+            && self::isSameBound($oldValue->getMaximum(), $newValue->getMaximum())
             && (string)$oldValue->getUnitId() === (string)$newValue->getUnitId();
+    }
+
+    private static function isSameBound(int|float|null $old, int|float|null $new): bool
+    {
+        if ($old === null || $new === null) {
+            return $old === $new;
+        }
+
+        return (float)$old === (float)$new;
     }
 
     public function getParameterTypeDeclaration(): ?string
@@ -391,7 +402,7 @@ class QuantityValueRange extends Data implements ResourcePersistenceAwareInterfa
     public function isEmpty(mixed $data): bool
     {
         if ($data instanceof DataObject\Data\QuantityValueRange) {
-            return empty($data->getValue()) && empty($data->getUnitId());
+            return $data->getMinimum() === null && $data->getMaximum() === null && empty($data->getUnitId());
         }
 
         return parent::isEmpty($data);

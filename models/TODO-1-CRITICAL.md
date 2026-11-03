@@ -1805,7 +1805,7 @@ the call in `getLinkGenerator()`. Add a test that renders a link to an object of
 `getHtmlTable()` / `Data\Link::getHtml()` escape), and validate URLs (`http(s)`/relative only) and `attributes` in
 `checkValidity()` of `ExternalImage` and `Link`.
 
-## [ ] C-48 – `QuantityValueRange::isEmpty()` / `isEqual()` materialise `range(min, max)` on every save: memory fatal or `ValueError`
+## [x] C-48 – `QuantityValueRange::isEmpty()` / `isEqual()` materialise `range(min, max)` on every save: memory fatal or `ValueError`
 
 **Files:** `models/DataObject/ClassDefinition/Data/QuantityValueRange.php:353-369`, `:391-398`;
 `models/DataObject/Data/QuantityValueRange.php:79-82` (`getValue()` → `getRange()`); `models/DataObject/Concrete/Dao.php:294`;
