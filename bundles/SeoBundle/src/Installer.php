@@ -49,10 +49,11 @@ class Installer extends SettingsStoreAwareInstaller
         $db = Db::get();
 
         foreach (self::USER_PERMISSIONS as $permission) {
-            $db->insert('users_permission_definitions', [
-                $db->quoteIdentifier('key') => $permission,
-                $db->quoteIdentifier('category') => self::USER_PERMISSIONS_CATEGORY,
-            ]);
+            // the permission can already exist after a partially failed install or when it was added by hand
+            $db->executeStatement(
+                'INSERT INTO `users_permission_definitions` (`key`, `category`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `category` = VALUES(`category`)',
+                [$permission, self::USER_PERMISSIONS_CATEGORY]
+            );
         }
     }
 
@@ -65,29 +66,40 @@ class Installer extends SettingsStoreAwareInstaller
                 $db->quoteIdentifier('key') => $permission,
             ]);
         }
+
+        // users and roles keep their granted permissions as a comma separated list
+        $rows = $db->fetchAllAssociative("SELECT `id`, `permissions` FROM `users` WHERE `permissions` IS NOT NULL AND `permissions` <> ''");
+        foreach ($rows as $row) {
+            $permissions = explode(',', (string)$row['permissions']);
+            $remaining = array_values(array_diff($permissions, self::USER_PERMISSIONS));
+            if (count($remaining) !== count($permissions)) {
+                $db->update('users', ['permissions' => implode(',', $remaining)], ['id' => $row['id']]);
+            }
+        }
     }
 
     private function installDatabaseTable(): void
     {
-        $sqlPath = __DIR__ . '/Resources/install/';
-        $sqlFileNames = ['install.sql'];
-        $db = Db::get();
-
-        foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath . $fileName);
-            $db->executeQuery($statement);
-        }
+        $this->executeSqlFile(__DIR__ . '/Resources/install/install.sql');
     }
 
     private function uninstallDatabaseTable(): void
     {
-        $sqlPath = __DIR__ . '/Resources/uninstall/';
-        $sqlFileNames = ['uninstall.sql'];
+        $this->executeSqlFile(__DIR__ . '/Resources/uninstall/uninstall.sql');
+    }
+
+    /**
+     * Runs the statements one by one; the files only use CREATE/DROP ... IF (NOT) EXISTS, so a re-run after a partial
+     * install is safe. DDL commits implicitly in MySQL, a transaction would not roll it back.
+     */
+    private function executeSqlFile(string $path): void
+    {
         $db = Db::get();
 
-        foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath . $fileName);
-            $db->executeQuery($statement);
+        foreach (preg_split('/;\s*(?:\R|$)/', (string)file_get_contents($path)) as $statement) {
+            if (trim($statement) !== '') {
+                $db->executeStatement($statement);
+            }
         }
     }
 }

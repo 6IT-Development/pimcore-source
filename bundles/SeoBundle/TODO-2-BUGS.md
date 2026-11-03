@@ -287,7 +287,7 @@ and log a warning; inject a logger (I-04).
 
 **Fix direction:** `->scalarNode('generator_id')->isRequired()->cannotBeEmpty()`.
 
-### [ ] B-26 – Installer is not idempotent; permissions are not cleaned from users/roles
+### [x] B-26 – Installer is not idempotent; permissions are not cleaned from users/roles
 **File:** `src/Installer.php:33-92`
 - `addUserPermission()` uses plain `insert` → re-running `install` after a partially failed install (tables created,
   settings-store flag not written) fails with a duplicate key on `users_permission_definitions`.
