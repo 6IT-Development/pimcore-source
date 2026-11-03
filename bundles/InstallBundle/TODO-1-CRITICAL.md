@@ -79,7 +79,7 @@ non-zero exit code (`Command::FAILURE`) when any step failed and print the manua
 
 ---
 
-## [ ] C-03 – SQL dump import batches up to 501 statements into one multi-query → errors after the first statement are lost, packet size logic is inverted
+## [x] C-03 – SQL dump import batches up to 501 statements into one multi-query → errors after the first statement are lost, packet size logic is inverted
 
 **File:** `src/Installer.php:769-805` (`insertDatabaseDump()`), `:709-720`
 

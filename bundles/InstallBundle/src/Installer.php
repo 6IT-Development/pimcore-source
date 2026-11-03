@@ -23,6 +23,7 @@ use Doctrine\DBAL\Driver\ServerInfoAwareConnection;
 use Doctrine\DBAL\DriverManager;
 use Exception;
 use InvalidArgumentException;
+use mysqli;
 use PDO;
 use Pimcore;
 use Pimcore\Bundle\ApplicationLoggerBundle\PimcoreApplicationLoggerBundle;
@@ -33,6 +34,7 @@ use Pimcore\Bundle\InstallBundle\BundleConfig\BundleWriter;
 use Pimcore\Bundle\InstallBundle\Event\BundleSetupEvent;
 use Pimcore\Bundle\InstallBundle\Event\InstallerStepEvent;
 use Pimcore\Bundle\InstallBundle\Event\InstallEvents;
+use Pimcore\Bundle\InstallBundle\Sql\SqlStatementSplitter;
 use Pimcore\Bundle\InstallBundle\SystemConfig\ConfigWriter;
 use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
 use Pimcore\Bundle\SimpleBackendSearchBundle\PimcoreSimpleBackendSearchBundle;
@@ -51,6 +53,7 @@ use Pimcore\Tool\Console;
 use Pimcore\Tool\Requirements;
 use Pimcore\Tool\Requirements\Check;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Symfony\Component\Cache\Adapter\DoctrineDbalAdapter;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
@@ -875,29 +878,82 @@ class Installer
         $dumpFile = preg_replace("/\s*(?!<\")\/\*(?![!+])[^\*]+\*\/(?!\")\s*/", '', $dumpFile);
 
         if (str_contains($file, 'atomic')) {
-            $db->executeStatement($dumpFile);
-        } else {
-            // get every command as single part - ; at end of line
-            $singleQueries = explode(";\n", $dumpFile);
+            // atomic dumps are sent as one multi-statement query (e.g. for routines without DELIMITER)
+            $this->executeMultiStatementQuery($db, $dumpFile, $file);
 
-            // execute queries in bulk mode to prevent max_packet_size errors
-            $batchQueries = [];
-            foreach ($singleQueries as $m) {
-                $sql = trim($m);
-                if ($sql !== '') {
-                    $batchQueries[] = $sql . ';';
+            return;
+        }
+
+        // execute the statements one by one: each one is a packet of its own (max_allowed_packet) and
+        // the error of every single statement is reported
+        foreach (SqlStatementSplitter::splitString($dumpFile) as $number => $sql) {
+            try {
+                $db->executeStatement($sql);
+            } catch (Exception $e) {
+                throw new RuntimeException(sprintf(
+                    'Importing the database dump %s failed at statement %d (%s): %s',
+                    basename($file),
+                    $number,
+                    preg_replace('/\s+/', ' ', substr($sql, 0, 100)) . (strlen($sql) > 100 ? '...' : ''),
+                    $e->getMessage()
+                ), 0, $e);
+            }
+        }
+    }
+
+    /**
+     * Executes a multi-statement query and checks the result of every statement, not only of the first one
+     *
+     * @throws Exception
+     */
+    private function executeMultiStatementQuery(Connection $db, string $sql, string $file): void
+    {
+        $native = $db->getNativeConnection();
+        $number = 1;
+
+        try {
+            if ($native instanceof PDO) {
+                $statement = $native->query($sql);
+                if ($statement === false) {
+                    throw new RuntimeException(implode(' ', $native->errorInfo()));
                 }
 
-                if (count($batchQueries) > 500) {
-                    $db->executeStatement(implode("\n", $batchQueries));
-                    $batchQueries = [];
-                }
-            }
+                // fetching the next rowset raises the error of the next statement
+                do {
+                    $number++;
+                } while ($statement->nextRowset());
 
-            // process remaining queries
-            if (count($batchQueries) > 0) {
-                $db->executeStatement(implode("\n", $batchQueries));
+                if ($statement->errorCode() !== '00000') {
+                    throw new RuntimeException(implode(' ', $statement->errorInfo()));
+                }
+
+                $statement->closeCursor();
+            } elseif ($native instanceof mysqli) {
+                if (!$native->multi_query($sql)) {
+                    throw new RuntimeException($native->error);
+                }
+
+                do {
+                    $native->store_result();
+                    if (!$native->more_results()) {
+                        break;
+                    }
+                    $number++;
+                } while ($native->next_result());
+
+                if ($native->errno) {
+                    throw new RuntimeException($native->error);
+                }
+            } else {
+                $db->executeStatement($sql);
             }
+        } catch (Throwable $e) {
+            throw new RuntimeException(sprintf(
+                'Importing the database dump %s failed at statement %d: %s',
+                basename($file),
+                $number,
+                $e->getMessage()
+            ), 0, $e);
         }
     }
 
