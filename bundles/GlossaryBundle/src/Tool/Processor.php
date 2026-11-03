@@ -81,17 +81,7 @@ class Processor
             'limit' => -1,
         ], $options);
 
-        // why not using a simple str_ireplace(array(), array(), $subject) ?
-        // because if you want to replace the terms "Donec vitae" and "Donec" you will get nested links, so the content
-        // of the html must be reloaded every search term to ensure that there is no replacement within a blocked tag
-        $html = new DomCrawler($content);
-        $es = $html->filterXPath('//*[normalize-space(text())]');
-
-        $tmpData = [
-            'search' => [],
-            'replace' => [],
-        ];
-
+        $entries = [];
         foreach ($data as $entry) {
             $linkTarget = $entry['linkTarget'] ?? '';
             $linkTargetTrimmed = rtrim((string)$linkTarget, ' /');
@@ -112,54 +102,106 @@ class Processor
                 continue;
             }
 
-            $tmpData['search'][] = $entry['search'];
-            $tmpData['replace'][] = $entry['replace'];
+            $entry['count'] = 0;
+            $entries[] = $entry;
         }
 
-        $data = $tmpData;
-        $data['count'] = array_fill(0, count($data['search']), 0);
+        if (!$entries) {
+            return $content;
+        }
 
-        $es->each(function ($parentNode, $i) use ($options, $data) {
-            /** @var DomCrawler|null $parentNode */
-            $text = $parentNode->html();
-            if (
-                $parentNode instanceof DomCrawler &&
-                !in_array($parentNode->nodeName(), $this->blockedTags) &&
-                strlen(trim($text))
-            ) {
-                $originalText = $text;
-                if ($options['limit'] < 0) {
-                    $text = preg_replace($data['search'], $data['replace'], $text);
-                } else {
-                    foreach ($data['search'] as $index => $search) {
-                        if ($data['count'][$index] < $options['limit']) {
-                            $limit = $options['limit'] - $data['count'][$index];
-                            $text = preg_replace($search, $data['replace'][$index], $text, $limit, $count);
-                            $data['count'][$index] += $count;
-                        }
-                    }
-                }
+        // only text nodes are searched, so terms are never replaced inside tag names, attribute values or markup
+        // inserted for another term, and existing links are never nested
+        $html = new DomCrawler($content);
+        $root = $html->getNode(0);
+        $textNodes = (new \DOMXPath($root->ownerDocument))->query('//text()[normalize-space()][not(ancestor::a)]');
 
-                if ($originalText !== $text) {
-                    // parse the modified inner HTML as HTML and import its nodes, so that escaped content stays
-                    // escaped and the serialized document never has to be entity-decoded as a whole
-                    $domNode = $parentNode->getNode(0);
-                    $replacement = new DomCrawler($text);
-                    $clone = $domNode->cloneNode();
-                    foreach ($replacement->filter(DomCrawler::FRAGMENT_WRAPPER_TAG)->getNode(0)->childNodes as $child) {
-                        $clone->appendChild($domNode->ownerDocument->importNode($child, true));
-                    }
-                    $replacement->clear();
-                    $domNode->parentNode->replaceChild($clone, $domNode);
-                }
+        foreach (iterator_to_array($textNodes) as $textNode) {
+            if (in_array(strtolower($textNode->parentNode->nodeName), $this->blockedTags, true)) {
+                continue;
             }
-        });
+
+            $this->replaceInTextNode($textNode, $entries, (int)$options['limit']);
+        }
 
         $result = $html->html();
         $html->clear();
-        unset($html);
 
         return $result;
+    }
+
+    /**
+     * Replaces the glossary terms of one text node in a single pass: at each position the leftmost match wins, and
+     * on a tie the entry that comes first (the longest text). Matched text is wrapped in elements built with the
+     * DOM API, so text and attribute values are escaped by the serializer.
+     */
+    private function replaceInTextNode(\DOMText $textNode, array &$entries, int $limit): void
+    {
+        $text = $textNode->data;
+        $offset = 0;
+        $fragment = null;
+
+        while (true) {
+            $match = null;
+            foreach ($entries as $index => $entry) {
+                if ($limit >= 0 && $entry['count'] >= $limit) {
+                    continue;
+                }
+
+                if (preg_match($entry['search'], $text, $m, PREG_OFFSET_CAPTURE, $offset) === 1
+                    && ($match === null || $m[0][1] < $match['offset'])
+                ) {
+                    $match = ['index' => $index, 'offset' => $m[0][1], 'length' => strlen($m[0][0])];
+                }
+            }
+
+            if ($match === null || $match['length'] === 0) {
+                break;
+            }
+
+            $doc = $textNode->ownerDocument;
+            $fragment ??= $doc->createDocumentFragment();
+            if ($match['offset'] > $offset) {
+                $fragment->appendChild($doc->createTextNode(substr($text, $offset, $match['offset'] - $offset)));
+            }
+            $fragment->appendChild($this->createReplacement($doc, $entries[$match['index']]));
+
+            $entries[$match['index']]['count']++;
+            $offset = $match['offset'] + $match['length'];
+        }
+
+        if ($fragment === null) {
+            return;
+        }
+
+        if ($offset < strlen($text)) {
+            $fragment->appendChild($textNode->ownerDocument->createTextNode(substr($text, $offset)));
+        }
+
+        $textNode->parentNode->replaceChild($fragment, $textNode);
+    }
+
+    private function createReplacement(\DOMDocument $doc, array $entry): \DOMNode
+    {
+        $node = $doc->createTextNode($entry['text']);
+
+        if ($entry['abbr']) {
+            $abbr = $doc->createElement('abbr');
+            $abbr->setAttribute('class', 'pimcore_glossary');
+            $abbr->setAttribute('title', $entry['abbr']);
+            $abbr->appendChild($node);
+            $node = $abbr;
+        }
+
+        if ($entry['link']) {
+            $link = $doc->createElement('a');
+            $link->setAttribute('class', 'pimcore_glossary');
+            $link->setAttribute('href', $entry['link']);
+            $link->appendChild($node);
+            $node = $link;
+        }
+
+        return $node;
     }
 
     private function getData(string $locale): array
@@ -169,7 +211,7 @@ class Processor
             $siteId = Site::getCurrentSite()->getId();
         }
 
-        $cacheKey = 'glossary_' . $locale . '_' . $siteId;
+        $cacheKey = 'glossary_entries_' . $locale . '_' . $siteId;
 
         if (Cache\RuntimeCache::isRegistered($cacheKey)) {
             return Cache\RuntimeCache::get($cacheKey);
@@ -195,33 +237,13 @@ class Processor
     {
         $mappedData = [];
 
-        // fix htmlentities issues
-        $tmpData = [];
         foreach ($data as $d) {
             if (!($d['text'])) {
                 continue;
             }
-            $text = htmlentities($d['text'], ENT_COMPAT, 'UTF-8');
-            if ($d['text'] !== $text) {
-                $td = $d;
-                $td['text'] = $text;
-                $tmpData[] = $td;
-            }
 
-            $tmpData[] = $d;
-        }
-
-        $data = $tmpData;
-
-        // prepare data
-        foreach ($data as $d) {
             if (!($d['link'] || $d['abbr'])) {
                 continue;
-            }
-
-            $r = $d['text'];
-            if ($d['abbr']) {
-                $r = '<abbr class="pimcore_glossary" title="' . $d['abbr'] . '">' . $r . '</abbr>';
             }
 
             $linkType = '';
@@ -239,24 +261,24 @@ class Processor
                         $linkTarget = $doc->getId();
                     }
                 }
-
-                $r = '<a class="pimcore_glossary" href="' . $d['link'] . '">' . $r . '</a>';
             }
 
             // add PCRE delimiter and modifiers
             if ($d['exactmatch']) {
-                $d['text'] = '/<a.*?\/a>(*SKIP)(*FAIL)|(?<!\w)' . preg_quote($d['text'], '/') . '(?!\w)/';
+                $search = '/(?<!\w)' . preg_quote($d['text'], '/') . '(?!\w)/';
             } else {
-                $d['text'] = '/<a.*?\/a>(*SKIP)(*FAIL)|' . preg_quote($d['text'], '/') . '/';
+                $search = '/' . preg_quote($d['text'], '/') . '/';
             }
 
             if (!$d['casesensitive']) {
-                $d['text'] .= 'i';
+                $search .= 'i';
             }
 
             $mappedData[] = [
-                'replace' => $r,
-                'search' => $d['text'],
+                'search' => $search,
+                'text' => $d['text'],
+                'abbr' => $d['abbr'],
+                'link' => $d['link'],
                 'linkType' => $linkType,
                 'linkTarget' => $linkTarget,
             ];

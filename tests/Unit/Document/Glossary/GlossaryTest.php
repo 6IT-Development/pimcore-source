@@ -189,4 +189,33 @@ class GlossaryTest extends TestCase
 
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryOnlyReplacesText(): void
+    {
+        foreach ([['span', '/span', null], ['Hypertext', '/hypertext', null], ['PHP', null, 'Hypertext Preprocessor']] as [$text, $link, $abbr]) {
+            $entry = new Glossary();
+            $entry->setText($text);
+            if ($link) {
+                $entry->setLink($link);
+            }
+            if ($abbr) {
+                $entry->setAbbr($abbr);
+            }
+            $entry->setLanguage('en');
+            $entry->save();
+        }
+
+        $result = $this->processor->parse(
+            '<p>A <span class="span" title="span">time span</span>, PHP and Hypertext</p>', [],
+            'en',
+            null,
+            null
+        );
+
+        $expect = '<p>A <span class="span" title="span">time <a class="pimcore_glossary" href="/span">span</a></span>, '
+            . '<abbr class="pimcore_glossary" title="Hypertext Preprocessor">PHP</abbr> and '
+            . '<a class="pimcore_glossary" href="/hypertext">Hypertext</a></p>';
+
+        $this->assertSame($expect, $result);
+    }
 }

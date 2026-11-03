@@ -74,7 +74,7 @@ import the nodes – and drop the global `html_entity_decode()`.
 
 ---
 
-## [ ] C-03 – Terms are replaced inside tag names, attribute values and previously inserted glossary markup
+## [x] C-03 – Terms are replaced inside tag names, attribute values and previously inserted glossary markup
 
 **Files:** `src/Tool/Processor.php:88`, `:124`, `:132`, `:137`, `:244-246`
 
