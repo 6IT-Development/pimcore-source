@@ -22,6 +22,7 @@ use Monolog\Level;
 use Monolog\Logger;
 use Pimcore;
 use Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb;
+use Pimcore\Bundle\ApplicationLoggerBundle\Processor\ContextNormalizer;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Document;
@@ -32,7 +33,6 @@ use Stringable;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException as ContainerInvalidArgumentException;
 use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
-use const PIMCORE_PROJECT_ROOT;
 
 class ApplicationLogger implements LoggerInterface, ResetInterface
 {
@@ -169,39 +169,13 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
             $context['fileObject'] = $instanceFileObject;
         }
 
-        if (isset($context['fileObject'])) {
-            if (is_string($context['fileObject'])) {
-                $context['fileObject'] = preg_replace('/^' . preg_quote(PIMCORE_PROJECT_ROOT, '/') . '/', '', $context['fileObject']);
-            } elseif ($context['fileObject'] instanceof FileObject) {
-                $context['fileObject'] = $context['fileObject']->getFilename();
-            } else {
-                // a log call must not turn into an application error
-                error_log('Application Logger dropped the fileObject: it must be a file path or an instance of FileObject, got ' . get_debug_type($context['fileObject']));
-                unset($context['fileObject']);
-            }
-        }
-
-        $relatedObject = $context['relatedObject'] ?? null;
-        $relatedObjectType = $context['relatedObjectType'] ?? null;
-
         // the instance type belongs to the instance object only
-        if (!$relatedObject && $instanceRelatedObject) {
-            $relatedObject = $instanceRelatedObject;
-            $relatedObjectType = $instanceRelatedObjectType;
+        if (empty($context['relatedObject']) && $instanceRelatedObject) {
+            $context['relatedObject'] = $instanceRelatedObject;
+            $context['relatedObjectType'] = $instanceRelatedObjectType;
         }
 
-        if (is_numeric($relatedObject)) {
-            $context['relatedObject'] = $relatedObject;
-            $context['relatedObjectType'] = RelatedObjectType::fromContext($relatedObjectType)->value;
-        } elseif ($relatedObject instanceof ElementInterface) {
-            $context['relatedObject'] = $relatedObject->getId();
-            $context['relatedObjectType'] = Service::getElementType($relatedObject);
-        } else {
-            if (null !== $relatedObject) {
-                error_log('Application Logger dropped the relatedObject: it must be an element or an ID, got ' . get_debug_type($relatedObject));
-            }
-            unset($context['relatedObject'], $context['relatedObjectType']);
-        }
+        $context = ContextNormalizer::normalize($context);
 
         if (!isset($context['source'])) {
             $context['source'] = $this->resolveLoggingSource();
@@ -247,7 +221,7 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
 
         $logCall = $backtrace[$index];
         $previousCall = $backtrace[$index + 1] ?? null;
-        $file = isset($logCall['file']) ? $this->normalizeFilename($logCall['file']) : '[internal]';
+        $file = isset($logCall['file']) ? ContextNormalizer::relativeFilename($logCall['file']) : '[internal]';
         $line = $logCall['line'] ?? 0;
 
         if (null === $previousCall) {
@@ -266,11 +240,6 @@ class ApplicationLogger implements LoggerInterface, ResetInterface
         // called from a function
         // filename.php::functionName():line
         return sprintf('%s::%s:%d', $file, $previousCall['function'], $line);
-    }
-
-    private function normalizeFilename(string $filename): string
-    {
-        return str_replace(PIMCORE_PROJECT_ROOT . '/', '', $filename);
     }
 
     #[\Override]

@@ -19,10 +19,6 @@ namespace Pimcore\Bundle\ApplicationLoggerBundle\Processor;
 
 use Monolog\LogRecord;
 use Monolog\Processor\ProcessorInterface;
-use Pimcore\Bundle\ApplicationLoggerBundle\FileObject;
-use Pimcore\Bundle\ApplicationLoggerBundle\RelatedObjectType;
-use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\Element\Service;
 
 /**
  * Make sure you add this processor when using the ApplicationLoggerDb handler as it
@@ -36,67 +32,7 @@ class ApplicationLoggerProcessor implements ProcessorInterface
     #[\Override]
     public function __invoke(LogRecord $record): LogRecord
     {
-        $record = $this->processFileObject($record);
-        $record = $this->processRelatedObject($record);
-
-        return $this->processLoggingSource($record);
-    }
-
-    private function processFileObject(LogRecord $record): LogRecord
-    {
-        $context = $record->context;
-
-        if (isset($context['fileObject'])) {
-            if (is_string($context['fileObject'])) {
-                $context['fileObject'] = str_replace(PIMCORE_PROJECT_ROOT, '', $context['fileObject']);
-            } elseif ($context['fileObject'] instanceof FileObject) {
-                $filename = $context['fileObject']->getFilename();
-                $context['fileObject'] = null === $filename ? null : str_replace(PIMCORE_PROJECT_ROOT, '', $filename);
-            } else {
-                // DBAL cannot bind it and a log call must not turn into an application error
-                error_log('Application Logger dropped the fileObject: it must be a file path or an instance of FileObject, got ' . get_debug_type($context['fileObject']));
-                unset($context['fileObject']);
-            }
-        }
-
-        return $record->with(context: $context);
-    }
-
-    private function processRelatedObject(LogRecord $record): LogRecord
-    {
-        $context = $record->context;
-        if (!isset($context['relatedObject'])) {
-            // remove related object type if no object is set
-            unset($context['relatedObjectType']);
-
-            return $record->with(context: $context);
-        }
-
-        $relatedObject = $context['relatedObject'];
-        $relatedObjectType = $context['relatedObjectType'] ?? null;
-
-        if ($relatedObject instanceof ElementInterface) {
-            $relatedObjectType = Service::getElementType($relatedObject);
-            $relatedObject = $relatedObject->getId();
-        } elseif (is_numeric($relatedObject) && (int)$relatedObject > 0) {
-            $relatedObject = (int)$relatedObject;
-            $relatedObjectType = RelatedObjectType::fromContext($relatedObjectType)->value;
-        } else {
-            error_log('Application Logger dropped the relatedObject: it must be an element or an ID, got ' . get_debug_type($relatedObject));
-            $relatedObject = null;
-        }
-
-        // also true for an element which has not been saved yet
-        if (null === $relatedObject || null === $relatedObjectType) {
-            unset($context['relatedObject'], $context['relatedObjectType']);
-
-            return $record->with(context: $context);
-        }
-
-        $context['relatedObject'] = $relatedObject;
-        $context['relatedObjectType'] = $relatedObjectType;
-
-        return $record->with(context: $context);
+        return $this->processLoggingSource($record->with(context: ContextNormalizer::normalize($record->context)));
     }
 
     private function processLoggingSource(LogRecord $record): LogRecord
@@ -128,7 +64,7 @@ class ApplicationLoggerProcessor implements ProcessorInterface
             // filename.php::functionName():line
             $source = sprintf(
                 '%s::%s:%d',
-                $this->normalizeFilename($extra['file']),
+                ContextNormalizer::relativeFilename($extra['file']),
                 $extra['function'],
                 $extra['line']
             );
@@ -138,7 +74,7 @@ class ApplicationLoggerProcessor implements ProcessorInterface
             // filename.php:line
             $source = sprintf(
                 '%s:%d',
-                $this->normalizeFilename($extra['file']),
+                ContextNormalizer::relativeFilename($extra['file']),
                 $extra['line']
             );
         }
@@ -146,10 +82,5 @@ class ApplicationLoggerProcessor implements ProcessorInterface
         $context['source'] = $source;
 
         return $record->with(context: $context);
-    }
-
-    private function normalizeFilename(string $filename): string
-    {
-        return str_replace(PIMCORE_PROJECT_ROOT . '/', '', $filename);
     }
 }

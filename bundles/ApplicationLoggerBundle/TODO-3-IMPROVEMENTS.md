@@ -124,11 +124,14 @@ Mark `getInstance()` as `#[\Deprecated]` in favour of DI.
 the tasks because they belong to their write logic. `getInstance()` and `logExceptionObject()` still use the container:
 both are static public API without an instance to inject into.
 
-### [ ] I-15 – Deduplicate logic between `ApplicationLogger` and `ApplicationLoggerProcessor`
+### [x] I-15 – Deduplicate logic between `ApplicationLogger` and `ApplicationLoggerProcessor`
 Both implement file-object normalisation, related-object resolution, and `normalizeFilename()` separately and
 differently (`preg_replace` anchored vs `str_replace` anywhere; `Service::getElementType()` vs concrete `instanceof`
 chain). Let `ApplicationLogger` only enrich context and rely on the processor (it is always attached to the DB handler),
 or extract a shared `ContextNormalizer`.
+**Outcome:** `ApplicationLogger` cannot rely on the processor alone, its writers can be any PSR-3 logger. Both use `ContextNormalizer`
+now, with the stricter rules of the two: only the project root at the start of a path is stripped, and an ID must be
+positive.
 
 ### [ ] I-16 – Avoid double backtrace work
 `ApplicationLogger::resolveLoggingSource()` runs `debug_backtrace()` and then `IntrospectionProcessor` runs another one
