@@ -94,7 +94,7 @@ any project snapshot/diff tooling sees changed markup on every page with glossar
 **Fix:** compare `getPathInfo()` (normalised, trailing slash trimmed) and use one consistent request
 (`getCurrentRequest()` or explicit argument); strict comparisons.
 
-### [ ] B-10 – Filter crashes without an HTTP request (CLI, messenger workers, email rendering)
+### [x] B-10 – Filter crashes without an HTTP request (CLI, messenger workers, email rendering)
 **Files:** `src/Tool/Processor.php:62`, `:66-68`, `lib/Http/RequestHelper.php:71-79`
 `EditmodeResolver::isEditmode()` / `DocumentResolver::getDocument()` call `getCurrentRequest()` and
 `RequestHelper::getMainRequest()` throws `LogicException('There is no main request available.')`. Templates using

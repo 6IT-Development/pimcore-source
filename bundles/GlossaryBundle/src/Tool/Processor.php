@@ -59,6 +59,12 @@ class Processor
      */
     public function process(string $content, array $options): string
     {
+        // without a request (commands, messenger workers, e-mail rendering) there is no locale and no current page;
+        // parse() can be called with explicit values instead
+        if (!$this->requestHelper->hasMainRequest()) {
+            return $content;
+        }
+
         if ($this->editmodeResolver->isEditmode()) {
             return $content;
         }

@@ -451,4 +451,28 @@ class GlossaryTest extends TestCase
             . '<abbr class="pimcore_glossary" title="Hypertext Preprocessor">PHP</abbr></p>';
         $this->assertSame($expect, $result);
     }
+
+    public function testGlossaryLeavesContentUnchangedWithoutRequest(): void
+    {
+        $entry = new Glossary();
+        $entry->setText('Glossary');
+        $entry->setLink('/glossary');
+        $entry->setLanguage('en');
+        $entry->save();
+
+        // other tests may have pushed a request onto the shared stack, e.g. ModelTestCase::buildSession()
+        $requestStack = $this->getModule('\\' . Pimcore::class)->grabService('request_stack');
+        $requests = [];
+        while ($request = $requestStack->pop()) {
+            $requests[] = $request;
+        }
+
+        try {
+            $this->assertSame('<p>Glossary</p>', $this->processor->process('<p>Glossary</p>', []));
+        } finally {
+            foreach (array_reverse($requests) as $request) {
+                $requestStack->push($request);
+            }
+        }
+    }
 }
