@@ -1674,7 +1674,7 @@ add `objectid` and `loadedlazykeys` to a collection-specific forbidden list. Mak
 
 ---
 
-## [ ] C-45 – `classes-rebuild` drops field-collection columns (data loss) when a definition exists in both definition directories
+## [x] C-45 – `classes-rebuild` drops field-collection columns (data loss) when a definition exists in both definition directories
 
 **Files:** `models/DataObject/Fieldcollection/Definition/Listing.php:27-37`, `:57-77`;
 `models/DataObject/Traits/LocateFileTrait.php:25-34`; `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:155-164`;
