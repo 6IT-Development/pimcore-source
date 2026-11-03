@@ -59,7 +59,7 @@ when `$event->hasResponse()`/`$event->isPropagationStopped()`; verify with `debu
 **Fix direction:** `if (!$data) throw $this->createNotFoundException()`; `unserialize($value ?? '', ['allowed_classes'
 => false])` or better switch the column to JSON (migration needed); drop the by-reference `foreach`.
 
-### [ ] B-05 – `httpErrorLogAction`: negative/oversized paging values, malformed `sort` JSON
+### [x] B-05 – `httpErrorLogAction`: negative/oversized paging values, malformed `sort` JSON
 **File:** `src/Controller/MiscController.php:38-68`
 - `limit`/`start` come from `getInt()` and can be negative → `LIMIT -5,20` → SQL syntax error (500). `limit` is
   unbounded (`limit=100000000`).

@@ -35,22 +35,17 @@ class MiscController extends UserAwareController
 
         $db = Db::get();
 
-        $limit = $request->request->getInt('limit');
-        $offset = $request->request->getInt('start');
-        $sortInfo = ($request->request->has('sort') ? json_decode($request->request->getString('sort'), true)[0] : []);
-        $sort = $sortInfo['property'] ?? null;
-        $dir = $sortInfo['direction'] ?? null;
+        $limit = max(1, min($request->request->getInt('limit') ?: 20, 1000));
+        $offset = max(0, $request->request->getInt('start'));
+        $sortInfo = json_decode($request->request->getString('sort'), true);
+        $sortInfo = is_array($sortInfo) ? ($sortInfo[0] ?? null) : null;
+        $sort = is_array($sortInfo) ? ($sortInfo['property'] ?? null) : null;
+        $dir = is_array($sortInfo) ? ($sortInfo['direction'] ?? null) : null;
         $filter = $request->request->getString('filter');
-        if (!$limit) {
-            $limit = 20;
-        }
-        if (!$offset) {
-            $offset = 0;
-        }
-        if (!$sort || !in_array($sort, ['code', 'uri', 'date', 'count'])) {
+        if (!in_array($sort, ['code', 'uri', 'date', 'count'], true)) {
             $sort = 'count';
         }
-        if (!$dir || !in_array($dir, ['DESC', 'ASC'])) {
+        if (!in_array($dir, ['DESC', 'ASC'], true)) {
             $dir = 'DESC';
         }
 
