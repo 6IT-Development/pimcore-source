@@ -17,8 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
-use DateInterval;
-use DateTime;
+use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
 use Pimcore;
@@ -34,8 +33,9 @@ use Pimcore\Event\Cache\FullPage\PrepareResponseEvent;
 use Pimcore\Event\Cache\FullPage\PrepareTagsEvent;
 use Pimcore\Event\FullPageCacheEvents;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
-use Pimcore\Logger;
 use Pimcore\Tool;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -67,11 +67,17 @@ class FullPageCacheListener implements ResetInterface
 
     protected ?string $defaultCacheKey = null;
 
+    /**
+     * @var array{0: string, 1: string[]}|null configured exclude patterns and their parsed form
+     */
+    private ?array $parsedExcludePatterns = null;
+
     public function __construct(
         protected SessionStatus            $sessionStatus,
         protected EventDispatcherInterface $eventDispatcher,
         protected Config                   $config,
-        private readonly FullPageCacheState $state
+        private readonly FullPageCacheState $state,
+        private readonly LoggerInterface $logger = new NullLogger()
     )
     {
     }
@@ -156,113 +162,91 @@ class FullPageCacheListener implements ResetInterface
             return;
         }
 
-        $requestUri = $request->getRequestUri();
-        $excludePatterns = [];
-        $ignoredQueryParameters = [];
+        $conf = [];
 
-        // disable the output-cache if the client sends an authorization header
+        try {
+            $conf = $this->config['full_page_cache'] ?: [];
+            $disableReason = $this->getDisableReason($request, $conf);
+        } catch (Exception $e) {
+            $this->logger->error('Full page cache: checking the request failed', ['exception' => $e]);
+            $disableReason = 'ERROR: Exception (see log files in /var/log)';
+        }
+
+        if ($disableReason !== null) {
+            $this->disable($disableReason !== '' ? $disableReason : null);
+
+            return;
+        }
+
+        if (!empty($conf['lifetime'])) {
+            $this->setLifetime((int) $conf['lifetime']);
+        }
+
+        $this->defaultCacheKey = $this->buildCacheKey($request, (array) ($conf['ignore_query_parameters'] ?? []));
+        $this->serveCachedResponse($event, $this->defaultCacheKey);
+    }
+
+    /**
+     * Why the request can't be served from (or stored in) the full page cache
+     *
+     * @return string|null null if it can be cached, an empty string to disable the cache without a reason header
+     */
+    private function getDisableReason(Request $request, array $conf): ?string
+    {
         if ($request->headers->has('authorization')) {
-            $this->disable('authorization header in use');
-
-            return;
+            return 'authorization header in use';
         }
 
-        // only enable GET method
+        // only GET and HEAD
         if (!$request->isMethodCacheable()) {
-            $this->disable();
-
-            return;
+            return '';
         }
 
-        // disable the output-cache if browser wants the most recent version (e.g. a hard reload)
+        // the browser wants the most recent version (e.g. a hard reload)
         if ($request->headers->hasCacheControlDirective('no-cache')) {
-            $this->disable('HTTP Header Cache-Control: no-cache was sent');
-
-            return;
+            return 'HTTP Header Cache-Control: no-cache was sent';
         }
 
         if (str_contains(strtolower((string) $request->headers->get('Pragma')), 'no-cache')) {
-            $this->disable('HTTP Header Pragma: no-cache was sent');
-
-            return;
+            return 'HTTP Header Pragma: no-cache was sent';
         }
 
-        try {
-            if ($conf = $this->config['full_page_cache']) {
-                if (empty($conf['enabled'])) {
-                    $this->disable();
+        if (empty($conf['enabled'])) {
+            return '';
+        }
 
-                    return;
-                }
+        if (Pimcore::inDebugMode()) {
+            return 'Debug flag DISABLE_FULL_PAGE_CACHE is enabled';
+        }
 
-                if (Pimcore::inDebugMode()) {
-                    $this->disable('Debug flag DISABLE_FULL_PAGE_CACHE is enabled');
-
-                    return;
-                }
-
-                if (!empty($conf['lifetime'])) {
-                    $this->setLifetime((int)$conf['lifetime']);
-                }
-
-                if (!empty($conf['exclude_patterns'])) {
-                    $excludePatterns = $this->parseExcludePatterns((string) $conf['exclude_patterns']);
-                }
-
-                if (!empty($conf['ignore_query_parameters'])) {
-                    $ignoredQueryParameters = (array) $conf['ignore_query_parameters'];
-                }
-
-                if (!empty($conf['exclude_cookie'])) {
-                    $cookies = explode(',', (string)$conf['exclude_cookie']);
-
-                    foreach ($cookies as $cookie) {
-                        $cookie = trim($cookie);
-                        if ($cookie !== '' && $request->cookies->has($cookie)) {
-                            $this->disable('exclude cookie in system-settings matches');
-
-                            return;
-                        }
-                    }
-                }
-
-                if ($this->sessionStatus->isDisabledBySession($request)) {
-                    $this->disable('Session in use');
-
-                    return;
-                }
-
-                // output-cache is always disabled when logged in at the admin ui
-                if (null !== Tool\Authentication::authenticateSession($request)) {
-                    $this->disable('backend user is logged in');
-
-                    return;
-                }
-            } else {
-                $this->disable();
-
-                return;
+        foreach (explode(',', (string) ($conf['exclude_cookie'] ?? '')) as $cookie) {
+            $cookie = trim($cookie);
+            if ($cookie !== '' && $request->cookies->has($cookie)) {
+                return 'exclude cookie in system-settings matches';
             }
-        } catch (Exception $e) {
-            Logger::error((string)$e);
-
-            $this->disable('ERROR: Exception (see log files in /var/log)');
-
-            return;
         }
 
-        foreach ($excludePatterns as $pattern) {
+        if ($this->sessionStatus->isDisabledBySession($request)) {
+            return 'Session in use';
+        }
+
+        // output-cache is always disabled when logged in at the admin ui
+        if (null !== Tool\Authentication::authenticateSession($request)) {
+            return 'backend user is logged in';
+        }
+
+        $requestUri = $request->getRequestUri();
+        foreach ($this->getExcludePatterns((string) ($conf['exclude_patterns'] ?? '')) as $pattern) {
             if (preg_match($pattern, $requestUri)) {
-                $this->disable('exclude path pattern in system-settings matches');
-
-                return;
+                return 'exclude path pattern in system-settings matches';
             }
         }
 
-        $deviceDetector = Tool\DeviceDetector::getInstance();
-        $device = $deviceDetector->getDevice();
-        $deviceDetector->setWasUsed(false);
+        return null;
+    }
 
+    private function buildCacheKey(Request $request, array $ignoredQueryParameters): string
+    {
         $appendKey = '';
         // this is for example for the image-data-uri plugin
         $tags = $request->query->all()['pimcore_cache_tag_suffix'] ?? null;
@@ -276,23 +260,26 @@ class FullPageCacheListener implements ResetInterface
 
         $appendKey .= $request->getMethod();
 
-        $this->defaultCacheKey = 'output_' . md5(
+        return 'output_' . md5(
             $request->getScheme() . '://' . Tool::getHostname() . $this->getNormalizedUri($request, $ignoredQueryParameters) . $appendKey
         );
-        $cacheKeys = [
-            $this->defaultCacheKey . '_' . $device,
-            $this->defaultCacheKey,
-        ];
+    }
 
-        foreach ($cacheKeys as $cacheKey) {
-            $cacheItem = Cache::load($cacheKey);
-            if ($cacheItem) {
-                break;
+    /**
+     * Pages that used the device detector are stored with the device in the key, the others without
+     */
+    private function serveCachedResponse(RequestEvent $event, string $defaultCacheKey): void
+    {
+        $deviceDetector = Tool\DeviceDetector::getInstance();
+        $device = $deviceDetector->getDevice();
+        $deviceDetector->setWasUsed(false);
+
+        foreach ([$defaultCacheKey . '_' . $device, $defaultCacheKey] as $cacheKey) {
+            $response = Cache::load($cacheKey);
+            if (!$response instanceof Response) {
+                continue;
             }
-        }
 
-        if ($cacheItem instanceof Response) {
-            $response = $cacheItem;
             $response->headers->set('X-Pimcore-Output-Cache-Tag', $cacheKey);
 
             // a PREPARE_RESPONSE listener may have removed the date header
@@ -303,7 +290,27 @@ class FullPageCacheListener implements ResetInterface
 
             $event->setResponse($response);
             $this->stopResponsePropagation = true;
+
+            return;
         }
+    }
+
+    /**
+     * The configuration is the same for most requests, parse the patterns only when it changes
+     *
+     * @return string[]
+     */
+    private function getExcludePatterns(string $patterns): array
+    {
+        if (trim($patterns) === '') {
+            return [];
+        }
+
+        if ($this->parsedExcludePatterns === null || $this->parsedExcludePatterns[0] !== $patterns) {
+            $this->parsedExcludePatterns = [$patterns, $this->parseExcludePatterns($patterns)];
+        }
+
+        return $this->parsedExcludePatterns[1];
     }
 
     /**
@@ -334,7 +341,7 @@ class FullPageCacheListener implements ResetInterface
         }
 
         if ($buffer !== null && trim($buffer) !== '') {
-            Logger::warning(sprintf('Full page cache: ignoring invalid exclude pattern "%s"', trim($buffer)));
+            $this->logger->warning('Full page cache: ignoring invalid exclude pattern "{pattern}"', ['pattern' => trim($buffer)]);
         }
 
         return $result;
@@ -411,50 +418,50 @@ class FullPageCacheListener implements ResetInterface
             $response->headers->set('X-Pimcore-Output-Cache-Disable-Reason', $this->state->disableReason);
         }
 
-        $lifetime = $this->state->lifetime;
-
-        if ($this->state->enabled && $response->getStatusCode() === Response::HTTP_OK && $this->defaultCacheKey) {
-            try {
-                if ($lifetime && $this->state->expireHeaderEnabled) {
-                    // add cache control for proxies and http-caches like varnish, ...
-                    $response->headers->set('Cache-Control', 'public, max-age=' . $lifetime);
-
-                    // add expire header
-                    $date = new DateTime('now');
-                    $date->add(new DateInterval('PT' . $lifetime . 'S'));
-                    $response->headers->set('Expires', $date->format(DateTimeInterface::RFC1123));
-                }
-
-                $now = new DateTime('now');
-                $response->headers->set('X-Pimcore-Cache-Date', $now->format(DateTimeInterface::ATOM));
-
-                $cacheKey = $this->defaultCacheKey;
-                $deviceDetector = Tool\DeviceDetector::getInstance();
-                if ($deviceDetector->wasUsed()) {
-                    $cacheKey .= '_' . $deviceDetector->getDevice();
-                }
-
-                $event = new PrepareResponseEvent($request, $response);
-                $this->eventDispatcher->dispatch($event, FullPageCacheEvents::PREPARE_RESPONSE);
-                $cacheItem = $event->getResponse();
-
-                $event = new PrepareTagsEvent($request, $response);
-                $this->eventDispatcher->dispatch($event, FullPageCacheEvents::PREPARE_TAGS);
-                $tags = $event->getTags();
-
-                $tags[] = $lifetime ? 'output_lifetime' : 'output';
-
-                Cache::save($cacheItem, $cacheKey, $tags, $lifetime, 1000, true);
-            } catch (Exception $e) {
-                Logger::error((string)$e);
-
-                return;
-            }
-        } else {
+        if (!$this->state->enabled || $response->getStatusCode() !== Response::HTTP_OK || !$this->defaultCacheKey) {
             // output-cache was disabled: ignore the "output_inline" tag on save, so that no other "output_inline" tagged
             // elements like the inc and snippet cache get into the cache
             Cache::addIgnoredTagOnSave('output_inline');
+
+            return;
         }
+
+        try {
+            $this->storeResponse($request, $response, $this->defaultCacheKey);
+        } catch (Exception $e) {
+            $this->logger->error('Full page cache: storing the response failed', ['exception' => $e]);
+        }
+    }
+
+    private function storeResponse(Request $request, Response $response, string $cacheKey): void
+    {
+        $lifetime = $this->state->lifetime;
+
+        if ($lifetime && $this->state->expireHeaderEnabled) {
+            // cache control for proxies and http-caches like varnish, ...
+            $response->setPublic();
+            $response->setMaxAge($lifetime);
+            $response->setExpires(new DateTimeImmutable('+' . $lifetime . ' seconds'));
+        }
+
+        $response->headers->set('X-Pimcore-Cache-Date', (new DateTimeImmutable())->format(DateTimeInterface::ATOM));
+
+        $deviceDetector = Tool\DeviceDetector::getInstance();
+        if ($deviceDetector->wasUsed()) {
+            $cacheKey .= '_' . $deviceDetector->getDevice();
+        }
+
+        $event = new PrepareResponseEvent($request, $response);
+        $this->eventDispatcher->dispatch($event, FullPageCacheEvents::PREPARE_RESPONSE);
+        $cacheItem = $event->getResponse();
+
+        $event = new PrepareTagsEvent($request, $response);
+        $this->eventDispatcher->dispatch($event, FullPageCacheEvents::PREPARE_TAGS);
+        $tags = $event->getTags();
+
+        $tags[] = $lifetime ? 'output_lifetime' : 'output';
+
+        Cache::save($cacheItem, $cacheKey, $tags, $lifetime, 1000, true);
     }
 
     private function responseCanBeCached(Response $response): bool

@@ -971,7 +971,7 @@ written. `LocaleListener` loads the CLDR mapping once per process.
 Not done: stripping the WYSIWYG attributes at render time (the editable needs them in editmode, so the listener stays
 as the safety net), and the legacy `maintenance.php` `is_file()` check (one stat).
 
-### [ ] I-50 – `FullPageCacheListener` structure
+### [x] I-50 – `FullPageCacheListener` structure
 
 - `onKernelRequest()` is a 160-line method of `disable(); return;` blocks. Split it into `getDisableReason(Request):
   ?string` (pure) plus key building plus lookup. That makes the rules testable and keeps the reason in one place.
@@ -981,6 +981,15 @@ as the safety net), and the legacy `maintenance.php` `is_file()` check (one stat
   time (B-44).
 - `Logger::error()` static calls → injected logger.
 - Return early instead of `if ($conf = $this->config['full_page_cache']) { … } else { disable }` (lines 172-222).
+
+**Done:** `onKernelRequest()` is split into `getDisableReason()`, `buildCacheKey()` and `serveCachedResponse()`.
+`getDisableReason()` returns the reason, `''` (disable without header) or `null`; the exclude-pattern check is part of
+it. The lookup also tries the key without device when the device key holds no `Response`. The exclude patterns are
+parsed only when the configured string changes. `onKernelResponse()` returns early and stores via `storeResponse()`,
+which uses `setPublic()` / `setMaxAge()` / `setExpires()` (`Expires` is now in GMT as HTTP requires, before it was
+the server time zone). The static `Logger` calls are replaced by an injected `LoggerInterface` (optional constructor
+argument, the class is not `@internal`).
+Not done: array config nodes for `exclude_patterns` / `exclude_cookie`. That is a configuration tree change, see I-55.
 
 ### [ ] I-51 – `ResponseExceptionListener` logic
 
