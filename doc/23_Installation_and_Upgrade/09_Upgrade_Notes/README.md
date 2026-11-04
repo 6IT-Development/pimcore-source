@@ -151,6 +151,17 @@
   removed from `pimcore.objects.class_definitions.*.prefixes`. Add them to your configuration if you still have such
   classes.
 - The unused `@PimcoreCoreBundle/config/paginator.yaml` was removed. It was never loaded.
+- The Messenger handlers in `Pimcore\Messenger\Handler` are registered with `#[AsMessageHandler]` and autowiring
+  instead of hand-written definitions; service IDs are unchanged.
+- Removed the service definitions of the abstract `Placeholder\AbstractExtension` and `Placeholder\CacheBusterAware`, the
+  `Placeholder\Container` value class and the generic `Pimcore\Resolver\ClassResolver` (it could not be built, its
+  `$map` argument was never set). The `pimcore.class.resolver.*` services are unchanged.
+- The service `workflow.support_strategy.authorization_checker` (a second `AuthorizationChecker` instance) is now a
+  deprecated alias of `security.authorization_checker`. The alias of `SessionListener` is deprecated.
+- The FOSJsRouting routes are imported from `routing.php` instead of the deprecated `routing-sf4.xml`, which requires
+  `friendsofsymfony/jsrouting-bundle` 3.6 or newer.
+- Class names in `@PimcoreCoreBundle/config/pimcore/default.yaml` have no leading backslash anymore. The `redirect`
+  Monolog channel is declared in `monolog.channels`.
 - Unknown keys under `pimcore.objects`, `documents`, `full_page_cache`, `properties`, `perspectives` and `custom_views`
   were silently ignored, so typos (e.g. `full_page_cache.exclude_cookies`) went unnoticed. They are still ignored but
   trigger a deprecation naming the keys; Pimcore 12 will reject them with a configuration error.

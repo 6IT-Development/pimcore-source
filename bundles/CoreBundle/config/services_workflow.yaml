@@ -41,17 +41,18 @@ services:
         abstract: true
 
     workflow.support_strategy.authorization_checker:
-        class: Symfony\Component\Security\Core\Authorization\AuthorizationChecker
-        arguments:
-            $tokenStorage: '@security.token_storage'
-            $accessDecisionManager: '@security.access.decision_manager'
+        alias: security.authorization_checker
+        deprecated:
+            message: 'The "%alias_id%" service is deprecated, use "security.authorization_checker" instead.'
+            package: pimcore/pimcore
+            version: 11.5
 
     Pimcore\Workflow\ExpressionService:
         class: Pimcore\Workflow\ExpressionService
         arguments:
             - '@workflow.security.expression_language'
             - '@security.token_storage'
-            - '@workflow.support_strategy.authorization_checker'
+            - '@security.authorization_checker'
             - '@security.authentication.trust_resolver'
             - '@security.role_hierarchy'
             - '@validator'

@@ -1,4 +1,6 @@
 services:
+    # public, because core and project code fetch some of them via Pimcore::getContainer()->get(),
+    # e.g. TranslatorInterface (models/Element/Service.php)
     _defaults:
         public: true
 
@@ -6,10 +8,18 @@ services:
     Pimcore\Kernel: '@kernel'
 
     Symfony\Bridge\Twig\Extension\WebLinkExtension: '@twig.extension.weblink'
+    # DoctrineBundle only registers the ManagerRegistry alias, LongRunningHelper autowires the ConnectionRegistry
     Doctrine\Persistence\ConnectionRegistry: '@doctrine'
+    # the Pimcore translator itself: FrameworkBundle's alias points to "translator", which is the debug translator
+    # collector wrapping it in dev
     Symfony\Contracts\Translation\TranslatorInterface: '@Pimcore\Translation\Translator'
     GuzzleHttp\ClientInterface: '@pimcore.http_client'
-    Symfony\Component\HttpKernel\EventListener\SessionListener: '@session_listener'
+    Symfony\Component\HttpKernel\EventListener\SessionListener:
+        alias: session_listener
+        deprecated:
+            message: 'The "%alias_id%" alias is deprecated, it is not used by Pimcore.'
+            package: pimcore/pimcore
+            version: 11.5
 
     Pimcore\Document\Renderer\DocumentRenderer:
         alias: Pimcore\Document\Renderer\DocumentRendererInterface

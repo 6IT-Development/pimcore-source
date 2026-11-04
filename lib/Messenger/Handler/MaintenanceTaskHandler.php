@@ -19,10 +19,12 @@ namespace Pimcore\Messenger\Handler;
 
 use Pimcore\Maintenance\ExecutorInterface;
 use Pimcore\Messenger\MaintenanceTaskMessage;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * @internal
  */
+#[AsMessageHandler]
 readonly class MaintenanceTaskHandler
 {
     public function __construct(

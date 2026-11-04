@@ -16,7 +16,9 @@ services:
 
     Pimcore\Serializer\Serializer:
         public: true
-        arguments: ['@?', '@?']
+        arguments:
+            - !abstract 'normalizers, set by SerializerPass'
+            - !abstract 'encoders, set by SerializerPass'
 
     pimcore.serializer: '@Pimcore\Serializer\Serializer'
 

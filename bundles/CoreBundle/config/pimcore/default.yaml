@@ -155,7 +155,7 @@ doctrine:
 
 # Monolog Configuration
 monolog:
-    channels: ['pimcore', 'pimcore_api', 'session']
+    channels: ['pimcore', 'pimcore_api', 'session', 'redirect']
     handlers:
         redirect:
             type: stream
@@ -184,133 +184,133 @@ pimcore:
             class_definitions:
                 data:
                     map:
-                        asset: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Asset
-                        checkbox: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Checkbox
-                        date: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Date
-                        document: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Document
-                        input: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Input
-                        object: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\DataObject
-                        select: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Select
-                        textarea: \Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Textarea
+                        asset: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Asset
+                        checkbox: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Checkbox
+                        date: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Date
+                        document: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Document
+                        input: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Input
+                        object: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\DataObject
+                        select: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Select
+                        textarea: Pimcore\Model\Asset\MetaData\ClassDefinition\Data\Textarea
         type_definitions:
             map:
                 unknown:
-                    class: \Pimcore\Model\Asset\Unknown
+                    class: Pimcore\Model\Asset\Unknown
                     matching: [ "/\\.dwg$/", "/\\.stp$/" ]
                 image:
-                    class: \Pimcore\Model\Asset\Image
+                    class: Pimcore\Model\Asset\Image
                     matching: ['/image/', "/\\.eps$/", "/\\.ai$/", "/\\.psd$/", "/\\.svgz$/", "/\\.pcx$/", "/\\.iff$/", "/\\.pct$/", "/\\.wmf$/", '/photoshop/']
                 archive:
-                    class: \Pimcore\Model\Asset\Archive
+                    class: Pimcore\Model\Asset\Archive
                     matching: ['/zip/', '/tar/']
                 audio:
-                    class: \Pimcore\Model\Asset\Audio
+                    class: Pimcore\Model\Asset\Audio
                     matching: ['/audio/']
                 document:
-                    class: \Pimcore\Model\Asset\Document
+                    class: Pimcore\Model\Asset\Document
                     matching: ['/msword/', '/pdf/', '/powerpoint/', '/office/', '/excel/', '/opendocument/']
                 folder:
-                    class: \Pimcore\Model\Asset\Folder
+                    class: Pimcore\Model\Asset\Folder
                 text:
-                   class: \Pimcore\Model\Asset\Text
+                   class: Pimcore\Model\Asset\Text
                    matching: [ "/text\\//", "/xml$/", "/\\.json$/" ]
                 video:
-                   class: \Pimcore\Model\Asset\Video
+                   class: Pimcore\Model\Asset\Video
                    matching: [ "/video/" ]
 
     objects:
         class_definitions:
             data:
                 map:
-                    block: \Pimcore\Model\DataObject\ClassDefinition\Data\Block
-                    calculatedValue: \Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue
-                    checkbox: \Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox
-                    classificationstore: \Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore
-                    consent: \Pimcore\Model\DataObject\ClassDefinition\Data\Consent
-                    country: \Pimcore\Model\DataObject\ClassDefinition\Data\Country
-                    countrymultiselect: \Pimcore\Model\DataObject\ClassDefinition\Data\Countrymultiselect
-                    date: \Pimcore\Model\DataObject\ClassDefinition\Data\Date
-                    datetime: \Pimcore\Model\DataObject\ClassDefinition\Data\Datetime
-                    email: \Pimcore\Model\DataObject\ClassDefinition\Data\Email
-                    encryptedField: \Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField
-                    externalImage: \Pimcore\Model\DataObject\ClassDefinition\Data\ExternalImage
-                    fieldcollections: \Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections
-                    firstname: \Pimcore\Model\DataObject\ClassDefinition\Data\Firstname
-                    gender: \Pimcore\Model\DataObject\ClassDefinition\Data\Gender
-                    geobounds: \Pimcore\Model\DataObject\ClassDefinition\Data\Geobounds
-                    geopoint: \Pimcore\Model\DataObject\ClassDefinition\Data\Geopoint
-                    geopolygon: \Pimcore\Model\DataObject\ClassDefinition\Data\Geopolygon
-                    geopolyline: \Pimcore\Model\DataObject\ClassDefinition\Data\Geopolyline
-                    hotspotimage: \Pimcore\Model\DataObject\ClassDefinition\Data\Hotspotimage
-                    manyToOneRelation: \Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation
-                    image: \Pimcore\Model\DataObject\ClassDefinition\Data\Image
-                    imageGallery: \Pimcore\Model\DataObject\ClassDefinition\Data\ImageGallery
-                    input: \Pimcore\Model\DataObject\ClassDefinition\Data\Input
-                    language: \Pimcore\Model\DataObject\ClassDefinition\Data\Language
-                    languagemultiselect: \Pimcore\Model\DataObject\ClassDefinition\Data\Languagemultiselect
-                    lastname: \Pimcore\Model\DataObject\ClassDefinition\Data\Lastname
-                    link: \Pimcore\Model\DataObject\ClassDefinition\Data\Link
-                    localizedfields: \Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields
-                    manyToManyRelation: \Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation
-                    advancedManyToManyRelation: \Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation
-                    multiselect: \Pimcore\Model\DataObject\ClassDefinition\Data\Multiselect
-                    reverseObjectRelation: \Pimcore\Model\DataObject\ClassDefinition\Data\ReverseObjectRelation
-                    urlSlug: \Pimcore\Model\DataObject\ClassDefinition\Data\UrlSlug
-                    numeric: \Pimcore\Model\DataObject\ClassDefinition\Data\Numeric
-                    numericRange: \Pimcore\Model\DataObject\ClassDefinition\Data\NumericRange
-                    objectbricks: \Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks
-                    manyToManyObjectRelation: \Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyObjectRelation
-                    advancedManyToManyObjectRelation: \Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyObjectRelation
-                    password: \Pimcore\Model\DataObject\ClassDefinition\Data\Password
-                    rgbaColor: \Pimcore\Model\DataObject\ClassDefinition\Data\RgbaColor
-                    quantityValue: \Pimcore\Model\DataObject\ClassDefinition\Data\QuantityValue
-                    quantityValueRange: \Pimcore\Model\DataObject\ClassDefinition\Data\QuantityValueRange
-                    inputQuantityValue: \Pimcore\Model\DataObject\ClassDefinition\Data\InputQuantityValue
-                    select: \Pimcore\Model\DataObject\ClassDefinition\Data\Select
-                    slider: \Pimcore\Model\DataObject\ClassDefinition\Data\Slider
-                    structuredTable: \Pimcore\Model\DataObject\ClassDefinition\Data\StructuredTable
-                    table: \Pimcore\Model\DataObject\ClassDefinition\Data\Table
-                    textarea: \Pimcore\Model\DataObject\ClassDefinition\Data\Textarea
-                    time: \Pimcore\Model\DataObject\ClassDefinition\Data\Time
-                    user: \Pimcore\Model\DataObject\ClassDefinition\Data\User
-                    video: \Pimcore\Model\DataObject\ClassDefinition\Data\Video
-                    wysiwyg: \Pimcore\Model\DataObject\ClassDefinition\Data\Wysiwyg
+                    block: Pimcore\Model\DataObject\ClassDefinition\Data\Block
+                    calculatedValue: Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue
+                    checkbox: Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox
+                    classificationstore: Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore
+                    consent: Pimcore\Model\DataObject\ClassDefinition\Data\Consent
+                    country: Pimcore\Model\DataObject\ClassDefinition\Data\Country
+                    countrymultiselect: Pimcore\Model\DataObject\ClassDefinition\Data\Countrymultiselect
+                    date: Pimcore\Model\DataObject\ClassDefinition\Data\Date
+                    datetime: Pimcore\Model\DataObject\ClassDefinition\Data\Datetime
+                    email: Pimcore\Model\DataObject\ClassDefinition\Data\Email
+                    encryptedField: Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField
+                    externalImage: Pimcore\Model\DataObject\ClassDefinition\Data\ExternalImage
+                    fieldcollections: Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections
+                    firstname: Pimcore\Model\DataObject\ClassDefinition\Data\Firstname
+                    gender: Pimcore\Model\DataObject\ClassDefinition\Data\Gender
+                    geobounds: Pimcore\Model\DataObject\ClassDefinition\Data\Geobounds
+                    geopoint: Pimcore\Model\DataObject\ClassDefinition\Data\Geopoint
+                    geopolygon: Pimcore\Model\DataObject\ClassDefinition\Data\Geopolygon
+                    geopolyline: Pimcore\Model\DataObject\ClassDefinition\Data\Geopolyline
+                    hotspotimage: Pimcore\Model\DataObject\ClassDefinition\Data\Hotspotimage
+                    manyToOneRelation: Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation
+                    image: Pimcore\Model\DataObject\ClassDefinition\Data\Image
+                    imageGallery: Pimcore\Model\DataObject\ClassDefinition\Data\ImageGallery
+                    input: Pimcore\Model\DataObject\ClassDefinition\Data\Input
+                    language: Pimcore\Model\DataObject\ClassDefinition\Data\Language
+                    languagemultiselect: Pimcore\Model\DataObject\ClassDefinition\Data\Languagemultiselect
+                    lastname: Pimcore\Model\DataObject\ClassDefinition\Data\Lastname
+                    link: Pimcore\Model\DataObject\ClassDefinition\Data\Link
+                    localizedfields: Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields
+                    manyToManyRelation: Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation
+                    advancedManyToManyRelation: Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation
+                    multiselect: Pimcore\Model\DataObject\ClassDefinition\Data\Multiselect
+                    reverseObjectRelation: Pimcore\Model\DataObject\ClassDefinition\Data\ReverseObjectRelation
+                    urlSlug: Pimcore\Model\DataObject\ClassDefinition\Data\UrlSlug
+                    numeric: Pimcore\Model\DataObject\ClassDefinition\Data\Numeric
+                    numericRange: Pimcore\Model\DataObject\ClassDefinition\Data\NumericRange
+                    objectbricks: Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks
+                    manyToManyObjectRelation: Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyObjectRelation
+                    advancedManyToManyObjectRelation: Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyObjectRelation
+                    password: Pimcore\Model\DataObject\ClassDefinition\Data\Password
+                    rgbaColor: Pimcore\Model\DataObject\ClassDefinition\Data\RgbaColor
+                    quantityValue: Pimcore\Model\DataObject\ClassDefinition\Data\QuantityValue
+                    quantityValueRange: Pimcore\Model\DataObject\ClassDefinition\Data\QuantityValueRange
+                    inputQuantityValue: Pimcore\Model\DataObject\ClassDefinition\Data\InputQuantityValue
+                    select: Pimcore\Model\DataObject\ClassDefinition\Data\Select
+                    slider: Pimcore\Model\DataObject\ClassDefinition\Data\Slider
+                    structuredTable: Pimcore\Model\DataObject\ClassDefinition\Data\StructuredTable
+                    table: Pimcore\Model\DataObject\ClassDefinition\Data\Table
+                    textarea: Pimcore\Model\DataObject\ClassDefinition\Data\Textarea
+                    time: Pimcore\Model\DataObject\ClassDefinition\Data\Time
+                    user: Pimcore\Model\DataObject\ClassDefinition\Data\User
+                    video: Pimcore\Model\DataObject\ClassDefinition\Data\Video
+                    wysiwyg: Pimcore\Model\DataObject\ClassDefinition\Data\Wysiwyg
 
                 prefixes:
-                    - \Pimcore\Model\DataObject\ClassDefinition\Data\
+                    - Pimcore\Model\DataObject\ClassDefinition\Data\
 
             layout:
                 prefixes:
-                    - \Pimcore\Model\DataObject\ClassDefinition\Layout\
+                    - Pimcore\Model\DataObject\ClassDefinition\Layout\
 
     documents:
         type_definitions:
             map:
                 folder:
-                    class: \Pimcore\Model\Document\Folder
+                    class: Pimcore\Model\Document\Folder
                     translatable: false
                     translatable_inheritance: true
                 page:
-                    class: \Pimcore\Model\Document\Page
+                    class: Pimcore\Model\Document\Page
                     valid_table: 'page'
                     direct_route: true
                     predefined_document_types: true
                 snippet:
-                    class: \Pimcore\Model\Document\Snippet
+                    class: Pimcore\Model\Document\Snippet
                     valid_table: 'snippet'
                     children_supported: false
                     direct_route: true
                     predefined_document_types: true
                 link:
-                    class: \Pimcore\Model\Document\Link
+                    class: Pimcore\Model\Document\Link
                     translatable: false
                     valid_table: 'link'
                 hardlink:
-                    class: \Pimcore\Model\Document\Hardlink
+                    class: Pimcore\Model\Document\Hardlink
                     translatable: false
                     valid_table: 'hardlink'
                 email:
-                    class: \Pimcore\Model\Document\Email
+                    class: Pimcore\Model\Document\Email
                     valid_table: 'email'
                     translatable_inheritance: false
                     children_supported: false
@@ -318,7 +318,7 @@ pimcore:
                     predefined_document_types: true
         editables:
             prefixes:
-                - \Pimcore\Model\Document\Editable\
+                - Pimcore\Model\Document\Editable\
 
     # the routes below are used to determine the request context in PimcoreContextGuesser
     context:

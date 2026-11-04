@@ -26,10 +26,12 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\Exception\LockReleasingException;
 use Symfony\Component\Lock\LockFactory;
 use function sprintf;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * @internal
  */
+#[AsMessageHandler]
 class AssetUpdateTasksHandler
 {
     public function __construct(

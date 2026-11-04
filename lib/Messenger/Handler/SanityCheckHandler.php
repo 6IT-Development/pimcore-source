@@ -28,10 +28,12 @@ use Symfony\Component\Messenger\Handler\Acknowledger;
 use Symfony\Component\Messenger\Handler\BatchHandlerInterface;
 use Symfony\Component\Messenger\Handler\BatchHandlerTrait;
 use Throwable;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * @internal
  */
+#[AsMessageHandler]
 class SanityCheckHandler implements BatchHandlerInterface
 {
     use BatchHandlerTrait;

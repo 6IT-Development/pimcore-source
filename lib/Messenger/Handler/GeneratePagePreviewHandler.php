@@ -22,10 +22,12 @@ use Pimcore\Logger;
 use Pimcore\Messenger\GeneratePagePreviewMessage;
 use Pimcore\Model\Document\Service;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * @internal
  */
+#[AsMessageHandler]
 class GeneratePagePreviewHandler
 {
     public function __construct(protected LoggerInterface $logger)

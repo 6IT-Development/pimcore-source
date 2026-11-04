@@ -81,7 +81,7 @@ services:
 
     GuzzleHttp\Client:
         public: true
-        class: \GuzzleHttp\Client
+        class: GuzzleHttp\Client
         factory: ['@Pimcore\Http\ClientFactory', createClient]
 
     # DataObject Consent Service
@@ -100,7 +100,7 @@ services:
     Pimcore\Mail\Mailer:
         decorates: mailer
         arguments:
-            - '@Pimcore\Mail\Mailer.inner'
+            - '@.inner'
             - '@Pimcore\Mail\Plugins\RedirectingPlugin'
         public: true
 

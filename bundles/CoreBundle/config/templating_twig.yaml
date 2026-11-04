@@ -56,13 +56,7 @@ services:
 
     Pimcore\Twig\Extension\Templating\Placeholder: ~
 
-    Pimcore\Twig\Extension\Templating\Placeholder\AbstractExtension: ~
-
     Pimcore\Twig\Extension\Templating\Placeholder\ContainerService: ~
-
-    Pimcore\Twig\Extension\Templating\Placeholder\Container: ~
-
-    Pimcore\Twig\Extension\Templating\Placeholder\CacheBusterAware: ~
 
     Pimcore\Twig\Extension\AssetHelperExtensions: ~
 

@@ -10,7 +10,7 @@ services:
     Pimcore\Translation\Translator:
         decorates: translator
         arguments:
-            - '@Pimcore\Translation\Translator.inner'
+            - '@.inner'
         calls:
             - [setKernel, ['@kernel']]
 

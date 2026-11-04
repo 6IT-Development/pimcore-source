@@ -1180,7 +1180,7 @@ project configs, e.g. Pimcore 10 leftovers like `documents.web_to_print`. `ignor
 `removeUnknownKeys()`, which still drops unknown keys but triggers a deprecation naming them, so a typo is visible
 without breaking existing installs. Pimcore 12 can drop the method so unknown keys fail like elsewhere.
 
-### [ ] I-59 – Service YAML clean-up (extension-loaded `config/*.yaml`)
+### [x] I-59 – Service YAML clean-up (extension-loaded `config/*.yaml`)
 
 - `aliases.yaml`:
   - `_defaults: public: true` makes every alias public;
@@ -1213,6 +1213,19 @@ without breaking existing installs. Pimcore 12 can drop the method so unknown ke
     the 2.x option, `logging` is middleware-based with DBAL 4);
   - the `redirect` Monolog handler listens on a channel that is not in `monolog.channels`. It is created only by a
     `monolog.logger` tag elsewhere, so declare it.
+
+**Done:** handlers use `#[AsMessageHandler]`; `message_handler.yaml` keeps only `_defaults`, two `bind`s for the
+interface arguments that have no alias, and a prototype for `lib/Messenger/Handler`. The abstract/value Twig
+definitions and `ClassResolver: ~` are removed; `serializer.yaml` uses `!abstract`; `@.inner` for Mailer and
+Translator; the workflow checker became a deprecated alias of `security.authorization_checker`; FOSJsRouting via
+`routing.php` (`^3.6`, also covers that bullet of I-65); leading backslashes removed; `redirect` channel declared.
+Kept on purpose: `aliases.yaml` stays public (core calls `Pimcore::getContainer()->get(TranslatorInterface::class)`);
+the `TranslatorInterface` alias stays because Framework's `translator` is wrapped again by the debug collector in dev;
+the `ConnectionRegistry` alias is not provided by DoctrineBundle (only `ManagerRegistry`), so it stays; the 11.2
+aliases stay deprecated until 12; the `SessionListener` alias is deprecated. DoctrineBundle 2.x still has `logging` and
+`profiling`, nothing to change. The maintenance task `type` names stay: they are used in `pimcore:maintenance --job`
+and `excludedJobs`, and new tasks can use `#[AsMaintenanceTask]` (I-34). Checked by loading the extension and running
+`SerializerPass` against Symfony 7.4.
 
 ---
 

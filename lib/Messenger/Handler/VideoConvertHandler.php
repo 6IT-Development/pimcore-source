@@ -19,10 +19,12 @@ namespace Pimcore\Messenger\Handler;
 
 use Pimcore\Messenger\VideoConvertMessage;
 use Pimcore\Model\Asset\Video\Thumbnail\Processor;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * @internal
  */
+#[AsMessageHandler]
 class VideoConvertHandler
 {
     public function __invoke(VideoConvertMessage $message): void
