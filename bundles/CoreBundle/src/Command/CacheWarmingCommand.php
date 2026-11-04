@@ -21,6 +21,7 @@ use InvalidArgumentException;
 use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Cache\Tool\Warming;
 use Pimcore\Console\AbstractCommand;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -119,6 +120,7 @@ class CacheWarmingCommand extends AbstractCommand
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // --maintenance-mode is a global option, defined by Pimcore\Console\Application
         if ($input->getOption('maintenance-mode')) {
             // set the timeout between each iteration to 0 if maintenance mode is on, because
             // we don't have to care about the load on the server
@@ -126,11 +128,11 @@ class CacheWarmingCommand extends AbstractCommand
         }
 
         try {
-            $types = $this->getArrayOption('types', self::VALID_TYPES, 'type', true) ?? [];
-            $documentTypes = $this->getArrayOption('document-types', self::VALID_DOCUMENT_TYPES, 'document type') ?? [];
-            $assetTypes = $this->getArrayOption('asset-types', self::VALID_ASSET_TYPES, 'asset type') ?? [];
-            $objectTypes = $this->getArrayOption('object-types', self::VALID_OBJECT_TYPES, 'object type') ?? [];
-            $objectClasses = $this->input->getOption('classes') ?? [];
+            $types = $this->getArrayOption('types', self::VALID_TYPES, 'type') ?: self::VALID_TYPES;
+            $documentTypes = $this->getArrayOption('document-types', self::VALID_DOCUMENT_TYPES, 'document type');
+            $assetTypes = $this->getArrayOption('asset-types', self::VALID_ASSET_TYPES, 'asset type');
+            $objectTypes = $this->getArrayOption('object-types', self::VALID_OBJECT_TYPES, 'object type');
+            $objectClasses = $this->getObjectClasses();
         } catch (InvalidArgumentException $e) {
             $this->io->error($e->getMessage());
 
@@ -159,7 +161,7 @@ class CacheWarmingCommand extends AbstractCommand
     protected function writeWarmingMessage(string $type, array $types, string $extra = ''): void
     {
         $output = sprintf('Warming <comment>%s</comment> cache', $type);
-        if (null !== $types && count($types) > 0) {
+        if ($types) {
             $output .= sprintf(' for types %s', $this->humanList($types, 'and', '<info>%s</info>'));
         } else {
             $output .= ' for <info>all</info> types';
@@ -196,34 +198,48 @@ class CacheWarmingCommand extends AbstractCommand
     }
 
     /**
-     * Get one of types, document, asset or object types, handle "all" value
-     * and list input validation.
+     * Returns the values of an array option after checking them against $validValues
      *
+     * @param string[] $validValues
      *
+     * @return string[] empty if the option was not passed (= all types)
+     *
+     * @throws InvalidArgumentException if a value is not in $validValues
      */
-    protected function getArrayOption(string $option, array $validValues, string $singular, bool $fallback = false): mixed
+    protected function getArrayOption(string $option, array $validValues, string $singular): array
     {
-        $input = $this->input->getOption($option);
+        $values = $this->input->getOption($option);
 
-        // fall back to whole list if fallback is set
-        if (!$input || count($input) === 0) {
-            if ($fallback) {
-                $input = $validValues;
-            } else {
-                $input = null;
+        foreach ($values as $value) {
+            if (!in_array($value, $validValues, true)) {
+                throw new InvalidArgumentException(sprintf(
+                    'Invalid %s: %s. Valid options: %s',
+                    $singular,
+                    $value,
+                    $this->humanList($validValues)
+                ));
             }
         }
 
-        if (null !== $input) {
-            foreach ($input as $value) {
-                if (!in_array($value, $validValues)) {
-                    $message = sprintf('Invalid %s: %s', $singular, $value);
+        return $values;
+    }
 
-                    throw new InvalidArgumentException($message);
-                }
-            }
+    /**
+     * Returns the --classes values after checking that each one is the name of a class definition
+     *
+     * @return string[]
+     *
+     * @throws InvalidArgumentException if a class does not exist
+     */
+    private function getObjectClasses(): array
+    {
+        $classes = $this->input->getOption('classes');
+
+        $unknownClasses = array_filter($classes, static fn (string $class): bool => !ClassDefinition::getByName($class));
+        if ($unknownClasses) {
+            throw new InvalidArgumentException(sprintf('Unknown class(es): %s', implode(', ', $unknownClasses)));
         }
 
-        return $input;
+        return $classes;
     }
 }

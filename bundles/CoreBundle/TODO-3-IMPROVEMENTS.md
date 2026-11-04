@@ -316,7 +316,7 @@ New `--dump-format=dot|puml|mermaid` (Symfony's `PlantUmlDumper` / `MermaidDumpe
 separate one because Symfony's `workflow` tag also turns on tracing and validation; once I-32 adds that tag, the
 locator can switch to it.
 
-### [ ] I-20 – `CacheWarmingCommand` simplifications
+### [x] I-20 – `CacheWarmingCommand` simplifications
 
 **File:** `src/Command/CacheWarmingCommand.php:102-210`
 
@@ -327,6 +327,12 @@ locator can switch to it.
 - `--classes` is not validated against existing class definitions. Validate it and print unknown names.
 - The `maintenance-mode` option comes from `Pimcore\Console\Application`. Comment that so readers do not think it is
   undefined.
+
+**Done:** the dynamic property lookup was already gone (I-09). `getArrayOption()` now returns `array` (empty = all
+types), drops the `$fallback` flag (the caller falls back to `VALID_TYPES` with `?:`), compares strictly and lists the
+valid values in its error. `writeWarmingMessage()` tests `if ($types)`. `--classes` is checked with
+`ClassDefinition::getByName()`, and unknown names fail with exit code 2. Before, they went unescaped into the SQL
+condition of `Warming::objects()`. The `--maintenance-mode` check has a comment.
 
 ### [ ] I-21 – `MaintenanceModeCommand` UX
 
