@@ -162,7 +162,7 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
     public function setDataFromEditmode(mixed $data): static
     {
         if ((int)$data > 0) {
-            $this->id = $data;
+            $this->id = (int)$data;
             $this->snippet = Document\Snippet::getById($this->id);
         }
 

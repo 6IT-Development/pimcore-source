@@ -107,25 +107,28 @@ class Relation extends Model\Document\Editable implements IdRewriterInterface, E
 
     public function setDataFromResource(mixed $data): static
     {
-        $unserializedData = $this->getUnserializedData($data) ?? [];
-        $this->id = $unserializedData['id'] ?? null;
-        $this->type = $unserializedData['type'] ?? null;
-        $this->subtype = $unserializedData['subtype'] ?? null;
-
-        $this->setElement();
+        $this->setRelationData($this->getUnserializedData($data) ?? []);
 
         return $this;
     }
 
     public function setDataFromEditmode(mixed $data): static
     {
-        $this->id = $data['id'] ?? null;
-        $this->type = $data['type'] ?? null;
-        $this->subtype = $data['subtype'] ?? null;
-
-        $this->setElement();
+        $this->setRelationData(is_array($data) ? $data : []);
 
         return $this;
+    }
+
+    /**
+     * Editmode sends the id as a string, so the values are normalised for the typed properties.
+     */
+    private function setRelationData(array $data): void
+    {
+        $this->id = is_numeric($data['id'] ?? null) ? (int)$data['id'] : null;
+        $this->type = isset($data['type']) ? (string)$data['type'] : null;
+        $this->subtype = isset($data['subtype']) ? (string)$data['subtype'] : null;
+
+        $this->setElement();
     }
 
     /**

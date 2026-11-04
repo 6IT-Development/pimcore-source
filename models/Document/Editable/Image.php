@@ -331,15 +331,16 @@ class Image extends Model\Document\Editable implements IdRewriterInterface, Edit
 
     private function setData(array $data): void
     {
-        $this->id = $data['id'] ?? null;
+        // legacy rows can hold the id and the crop values as strings and cropPercent as 0 / 1
+        $this->id = is_numeric($data['id'] ?? null) && (int)$data['id'] > 0 ? (int)$data['id'] : null;
         $this->alt = (string)($data['alt'] ?? '');
-        $this->cropPercent = $data['cropPercent'] ?? false;
-        $this->cropWidth = $data['cropWidth'] ?? 0;
-        $this->cropHeight = $data['cropHeight'] ?? 0;
-        $this->cropTop = $data['cropTop'] ?? 0;
-        $this->cropLeft = $data['cropLeft'] ?? 0;
-        $this->marker = $data['marker'] ?? [];
-        $this->hotspots = $data['hotspots'] ?? [];
+        $this->cropPercent = (bool)($data['cropPercent'] ?? false);
+        $this->cropWidth = (float)($data['cropWidth'] ?? 0);
+        $this->cropHeight = (float)($data['cropHeight'] ?? 0);
+        $this->cropTop = (float)($data['cropTop'] ?? 0);
+        $this->cropLeft = (float)($data['cropLeft'] ?? 0);
+        $this->marker = is_array($data['marker'] ?? null) ? $data['marker'] : [];
+        $this->hotspots = is_array($data['hotspots'] ?? null) ? $data['hotspots'] : [];
         $this->thumbnail = $data['thumbnail'] ?? null;
     }
 
@@ -528,7 +529,7 @@ class Image extends Model\Document\Editable implements IdRewriterInterface, Edit
                         && in_array($type, ['object', 'asset', 'document'], true)
                         && is_numeric($value)
                     ) {
-                        $value = Element\Service::getElementById($type, (int) $value);
+                        $value = Element\Service::getElementById($type, (int)$value);
                     }
 
                     if ($value instanceof Element\ElementInterface) {

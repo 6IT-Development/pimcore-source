@@ -333,9 +333,9 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
         $unserializedData = $this->getUnserializedData($data) ?? [];
         $this->id = $unserializedData['id'] ?? null;
         $this->type = $unserializedData['type'] ?? null;
-        $this->poster = $unserializedData['poster'] ?? null;
-        $this->title = $unserializedData['title'] ?? '';
-        $this->description = $unserializedData['description'] ?? '';
+        $this->poster = is_numeric($unserializedData['poster'] ?? null) ? (int)$unserializedData['poster'] : null;
+        $this->title = (string)($unserializedData['title'] ?? '');
+        $this->description = (string)($unserializedData['description'] ?? '');
 
         return $this;
     }
@@ -349,11 +349,11 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
         }
 
         if (isset($data['title'])) {
-            $this->title = $data['title'];
+            $this->title = (string)$data['title'];
         }
 
         if (isset($data['description'])) {
-            $this->description = $data['description'];
+            $this->description = (string)$data['description'];
         }
 
         // this is to be backward compatible to <= v 1.4.7
@@ -361,15 +361,16 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
             $data['path'] = $data['id'];
         }
 
-        $video = Asset::getByPath((string)$data['path']);
+        $path = $data['path'] ?? null;
+        $video = is_string($path) && $path !== '' ? Asset::getByPath($path) : null;
         if ($video instanceof Asset\Video) {
             $this->id = $video->getId();
         } else {
-            $this->id = $data['path'];
+            $this->id = is_string($path) || is_int($path) ? $path : null;
         }
 
         $this->poster = null;
-        $poster = Asset::getByPath($data['poster']);
+        $poster = isset($data['poster']) && is_string($data['poster']) ? Asset::getByPath($data['poster']) : null;
         if ($poster instanceof Asset\Image) {
             $this->poster = $poster->getId();
         }

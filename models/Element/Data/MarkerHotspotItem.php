@@ -46,9 +46,9 @@ class MarkerHotspotItem implements ArrayAccess
         return $this->name;
     }
 
-    public function setName(string $name): void
+    public function setName(?string $name): void
     {
-        $this->name = $name;
+        $this->name = (string) $name;
     }
 
     public function getType(): string
@@ -56,9 +56,9 @@ class MarkerHotspotItem implements ArrayAccess
         return $this->type;
     }
 
-    public function setType(string $type): void
+    public function setType(?string $type): void
     {
-        $this->type = $type;
+        $this->type = (string) $type;
     }
 
     public function getValue(): mixed

@@ -66,14 +66,14 @@ class Input extends Model\Document\Editable implements EditmodeDataInterface
 
     public function setDataFromResource(mixed $data): static
     {
-        $this->text = $data;
+        $this->text = (string)$data;
 
         return $this;
     }
 
     public function setDataFromEditmode(mixed $data): static
     {
-        $data = html_entity_decode($data, ENT_HTML5); // this is because the input is now an div contenteditable -> therefore in entities
+        $data = html_entity_decode((string)$data, ENT_HTML5); // this is because the input is now an div contenteditable -> therefore in entities
         $this->text = $data;
 
         return $this;

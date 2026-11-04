@@ -103,8 +103,8 @@ class Embed extends Model\Document\Editable
 
     public function setDataFromEditmode(mixed $data): static
     {
-        if ($data['url']) {
-            $this->url = $data['url'];
+        if (is_array($data) && isset($data['url']) && $data['url'] !== '') {
+            $this->url = (string)$data['url'];
         }
 
         return $this;

@@ -2988,7 +2988,7 @@ instance from the cache loads its elements again.
 of a plain array entry by its type, so linked assets, documents and objects become dependency rows and cache tags again.
 The dependency type comes from the element itself.
 
-## [ ] B-163 – Editables assign unnormalised values to typed properties: `TypeError` while loading or saving
+## [x] B-163 – Editables assign unnormalised values to typed properties: `TypeError` while loading or saving
 
 **Files:** `models/Document/Editable/Image.php:332-344`; `models/Element/Data/MarkerHotspotItem.php:31-70`;
 `Snippet.php:159-167`; `Renderlet.php:204-214`; `Relation.php:120-129`; `Date.php` (`setDataFromEditmode()`,
@@ -3006,6 +3006,14 @@ The dependency type comes from the element itself.
   `$data['url']` / `$data['id']` unchecked.
 
 **Fix direction:** normalise in the setters (`(int)` / `(float)` / `(bool)` after validation), null-safe input handling.
+
+**Done:** The setters normalise what they assign to the typed properties. `Image::setData()` casts the id, `cropPercent`
+and the crop values and ignores non-array `marker` / `hotspots`; `MarkerHotspotItem::setName()` / `setType()` accept
+`null` as `''`. Snippet, Renderlet and Relation cast the editmode / resource id to `int` and type / subtype to `string`
+(Relation shares one private `setRelationData()`). `Date::setDataFromEditmode()` ignores a value `strtotime()` cannot
+parse. `Input` / `Textarea` cast the input to string before `html_entity_decode()` and `Textarea::frontend()` escapes
+`''` for an empty editable. `Video` only looks up `path` / `poster` when they are strings and casts the stored poster
+id, title and description; `Embed` and `Pdf` check `url` / `id` before using them, and `Pdf` casts the stored id.
 
 ## [ ] B-164 – Editor-supplied values are output without escaping
 

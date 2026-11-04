@@ -112,14 +112,15 @@ class Pdf extends Model\Document\Editable implements EditmodeDataInterface
     public function setDataFromResource(mixed $data): static
     {
         $unserializedData = $this->getUnserializedData($data) ?? [];
-        $this->id = $unserializedData['id'] ?? null;
+        $this->id = is_numeric($unserializedData['id'] ?? null) ? (int)$unserializedData['id'] : null;
 
         return $this;
     }
 
     public function setDataFromEditmode(mixed $data): static
     {
-        $pdf = $data['id'] ? Asset::getById($data['id']) : null;
+        $id = is_array($data) && is_numeric($data['id'] ?? null) ? (int)$data['id'] : 0;
+        $pdf = $id > 0 ? Asset::getById($id) : null;
         if ($pdf instanceof Asset\Document) {
             $this->id = $pdf->getId();
         }

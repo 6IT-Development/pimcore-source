@@ -187,9 +187,9 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
             }
         }
 
-        $this->id = $unserializedData['id'];
+        $this->id = $unserializedData['id'] === null ? null : (int)$unserializedData['id'];
         $this->type = (string)$unserializedData['type'];
-        $this->subtype = $unserializedData['subtype'];
+        $this->subtype = $unserializedData['subtype'] === null ? null : (string)$unserializedData['subtype'];
 
         $this->setElement();
 
@@ -204,9 +204,9 @@ class Renderlet extends Model\Document\Editable implements IdRewriterInterface, 
     public function setDataFromEditmode(mixed $data): static
     {
         if (is_array($data) && isset($data['id'])) {
-            $this->id = $data['id'];
-            $this->type = $data['type'];
-            $this->subtype = $data['subtype'];
+            $this->id = (int)$data['id'];
+            $this->type = isset($data['type']) ? (string)$data['type'] : null;
+            $this->subtype = isset($data['subtype']) ? (string)$data['subtype'] : null;
 
             $this->setElement();
         }
