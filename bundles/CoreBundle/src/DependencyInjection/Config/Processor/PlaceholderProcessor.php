@@ -22,10 +22,10 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 /**
  * @internal
  */
-class PlaceholderProcessor
+final class PlaceholderProcessor
 {
     /**
-     * Merges placeholders recursively into an an array structure. Replaces placeholders
+     * Merges placeholders recursively into an array structure. Replaces placeholders
      * in both keys and values.
      */
     public function mergePlaceholders(array $config, array $placeholders): array

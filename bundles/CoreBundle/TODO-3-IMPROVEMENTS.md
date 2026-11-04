@@ -1231,7 +1231,7 @@ and `excludedJobs`, and new tasks can use `#[AsMaintenanceTask]` (I-34). Checked
 
 ## O – PHP 8.4 / code style
 
-### [ ] I-60 – `Configuration.php` readability (2 051 lines, one flat fluent chain per section)
+### [x] I-60 – `Configuration.php` readability (2 051 lines, one flat fluent chain per section)
 
 - Every chain is written with zero nesting indentation (`->children()` … `->end()` all at the same level). Mistakes are
   only visible by counting `end()`s. Line 1829 calls `->addDefaultsIfNotSet()` on the root node a second time. Line
@@ -1250,6 +1250,18 @@ and `excludedJobs`, and new tasks can use `#[AsMaintenanceTask]` (I-34). Checked
 - `Config/Processor/PlaceholderProcessor`: mark it `final` and stateless. After B-56 it is only needed by the workflow
   node. Fix the "an an" docblock typo. The unit test lives in `tests/Unit/Tool/` and should move next to the
   DependencyInjection tests.
+
+**Done:** every builder chain is indented by nesting level (a small tokenizer script; only whitespace changed, checked
+by diffing the files with leading whitespace stripped), and the chains whose result is discarded now close back to
+their start (missing `->end()`s added, two surplus ones removed). Chains assigned to a variable (`$assetsNode = …`)
+stay open on purpose. Places, transitions and global actions of the workflow node are `createWorkflow*Node()`
+methods; image and video thumbnail definitions share `createThumbnailDefinitionsNode()` (the notes subtree was already
+shared by B-57). `prototype()` → typed prototypes, closures → `static fn` / `static function` (the
+`removeUnknownKeys()` ones keep `$this`), no-op closures and the second root `addDefaultsIfNotSet()` removed,
+`perspectives.dashboards` has one `children()`, `locale_params` has no prototype default, typos fixed, the twig
+sandbox `info` is one line. `PlaceholderProcessor` is `final` (it was already stateless), its test moved to
+`tests/Unit/DependencyInjection/`. Verified with the YAML and XML reference dumps and the normalized output of sample
+configs before and after: identical apart from the fixed texts.
 
 ### [ ] I-61 – `ConfigurationHelper`, `PimcoreCoreExtension` and compiler passes: smaller items (complements I-38, I-41)
 

@@ -15,7 +15,7 @@ declare(strict_types=1);
  * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
-namespace Pimcore\Tests\Unit\Tool;
+namespace Pimcore\Tests\Unit\DependencyInjection;
 
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Config\Processor\PlaceholderProcessor;
 use Pimcore\Tests\Support\Test\TestCase;
