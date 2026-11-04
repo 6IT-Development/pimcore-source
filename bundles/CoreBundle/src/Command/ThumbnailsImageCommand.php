@@ -48,6 +48,12 @@ class ThumbnailsImageCommand extends AbstractCommand
 
     private const string DATE_FORMAT = 'Y-m-d H:i:s';
 
+    /**
+     * Auto formats with a `--skip-<format>` shortcut for `--skip-formats`: the default formats of
+     * `pimcore.assets.image.thumbnails.auto_formats`. Listed here so that configure() does not read the config.
+     */
+    private const array SKIP_FORMAT_SHORTCUTS = ['avif', 'webp'];
+
     #[\Override]
     protected function configure(): void
     {
@@ -72,7 +78,12 @@ class ThumbnailsImageCommand extends AbstractCommand
                 'system',
                 's',
                 InputOption::VALUE_NONE,
-                'create system thumbnails (used for tree-preview, ...)'
+                'also create the system thumbnail (used for the tree preview, ...)'
+            )->addOption(
+                'system-only',
+                null,
+                InputOption::VALUE_NONE,
+                'only create the system thumbnail (used for the tree preview, ...), no other thumbnails'
             )->addOption(
                 'force',
                 'f',
@@ -88,17 +99,23 @@ class ThumbnailsImageCommand extends AbstractCommand
                 null,
                 InputOption::VALUE_NONE,
                 'do not generate high-res (@2x) versions of thumbnails'
+            )->addOption(
+                'skip-formats',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'if target image format is set to auto in config, do not generate images in these auto formats (comma separated eg.: avif,webp)',
+                null,
+                // a closure, so the config is only read for shell completion
+                static fn (): array => self::getEnabledAutoFormats()
             );
 
-        foreach (Image\Thumbnail\Config::getAutoFormats() as $autoFormat => $autoFormatConfig) {
-            if ($autoFormatConfig['enabled']) {
-                $this->addOption(
-                    'skip-' . $autoFormat,
-                    null,
-                    InputOption::VALUE_NONE,
-                    sprintf('if target image format is set to auto in config, do not generate %s images for them', $autoFormat)
-                );
-            }
+        foreach (self::SKIP_FORMAT_SHORTCUTS as $autoFormat) {
+            $this->addOption(
+                'skip-' . $autoFormat,
+                null,
+                InputOption::VALUE_NONE,
+                sprintf('same as <comment>--skip-formats=%s</comment>', $autoFormat)
+            );
         }
 
         $this->addDeprecatedOptionName('pathPattern', 'path-pattern');
@@ -131,41 +148,93 @@ class ThumbnailsImageCommand extends AbstractCommand
 
         $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
 
-        $assetIdsList = $list->loadIdList();
-        $thumbnailList = [];
-        $thumbnailList[] = Asset\Image\Thumbnail\Config::getPreviewConfig();
-        if (!$input->getOption('system')) {
-            $thumbnailList = new Asset\Image\Thumbnail\Config\Listing();
-            $thumbnailList = $thumbnailList->getThumbnails();
-        }
+        $thumbnailNames = $this->fetchThumbnailNames($input);
 
-        $allowedThumbs = $this->getCsvOptionValues($input, 'thumbnails');
-        if ($allowedThumbs) {
-            $availableThumbs = array_map(static fn (Image\Thumbnail\Config $config) => $config->getName(), $thumbnailList);
-            $unknownThumbs = array_diff($allowedThumbs, $availableThumbs);
-            if ($unknownThumbs) {
-                $this->io->note('Unknown thumbnail config(s), skipping: ' . implode(', ', $unknownThumbs));
-            }
+        $unknownFormats = array_diff($this->getSkippedAutoFormats($input), self::getEnabledAutoFormats());
+        if ($unknownFormats) {
+            $this->io->note('Unknown or disabled auto format(s) in --skip-formats: ' . implode(', ', $unknownFormats));
         }
 
         $items = [];
-        foreach ($assetIdsList as $assetId) {
-            foreach ($thumbnailList as $thumbnailConfig) {
-                $thumbName = $thumbnailConfig->getName();
-                if (empty($allowedThumbs) || in_array($thumbName, $allowedThumbs)) {
-                    $items[] = $assetId . '~~~' . $thumbName;
-                }
+        foreach ($list->loadIdList() as $assetId) {
+            foreach ($thumbnailNames as $thumbnailName) {
+                $items[] = self::encodeItem($assetId, $thumbnailName);
             }
         }
 
         return $items;
     }
 
+    /**
+     * @return string[] names of the thumbnail configs to generate for each image
+     *
+     * @throws InvalidArgumentException if --system-only is combined with --system or --thumbnails
+     */
+    private function fetchThumbnailNames(InputInterface $input): array
+    {
+        $allowedThumbs = $this->getCsvOptionValues($input, 'thumbnails');
+        $systemThumbnailName = Image\Thumbnail\Config::getPreviewConfig()->getName();
+
+        if ($input->getOption('system-only')) {
+            if ($input->getOption('system') || $allowedThumbs) {
+                throw new InvalidArgumentException('--system-only cannot be combined with --system or --thumbnails.');
+            }
+
+            return [$systemThumbnailName];
+        }
+
+        $thumbnailNames = array_map(
+            static fn (Image\Thumbnail\Config $config): string => $config->getName(),
+            (new Image\Thumbnail\Config\Listing())->getThumbnails()
+        );
+
+        if ($allowedThumbs) {
+            $unknownThumbs = array_diff($allowedThumbs, $thumbnailNames);
+            if ($unknownThumbs) {
+                $this->io->note('Unknown thumbnail config(s), skipping: ' . implode(', ', $unknownThumbs));
+            }
+            $thumbnailNames = array_intersect($thumbnailNames, $allowedThumbs);
+        }
+
+        if ($input->getOption('system')) {
+            // the system thumbnail can be a regular thumbnail config (pimcore.assets.preview_image_thumbnail)
+            $thumbnailNames[] = $systemThumbnailName;
+        }
+
+        return array_values(array_unique($thumbnailNames));
+    }
+
+    private static function encodeItem(int $assetId, string $thumbnailName): string
+    {
+        return json_encode([$assetId, $thumbnailName], JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @return array{int, string} the asset ID and the thumbnail config name
+     *
+     * @throws InvalidArgumentException if the item was not created by encodeItem()
+     */
+    private static function decodeItem(string $item): array
+    {
+        try {
+            $decoded = json_decode($item, true, 2, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            $decoded = null;
+        }
+
+        if (!is_array($decoded) || !array_is_list($decoded) || count($decoded) !== 2
+            || !is_int($decoded[0]) || !is_string($decoded[1])) {
+            throw new InvalidArgumentException(sprintf('Invalid item "%s", expected [<asset ID>, "<thumbnail name>"].', $item));
+        }
+
+        return $decoded;
+    }
+
     protected function runSingleCommand(string $item, InputInterface $input, OutputInterface $output): void
     {
-        [$assetId, $thumbnailConfigName] = explode('~~~', $item, 2);
+        [$assetId, $thumbnailConfigName] = self::decodeItem($item);
 
-        $image = Image::getById((int)$assetId);
+        $image = Image::getById($assetId);
         if (!$image) {
             $this->io->error('No image with ID=' . $assetId . ' found. Has the image been deleted or is the asset of another type?');
 
@@ -212,32 +281,37 @@ class ThumbnailsImageCommand extends AbstractCommand
             return [];
         }
 
-        $thumbnailsToGenerate = [$thumbnailConfig];
+        $resolutions = $input->getOption('skip-high-res') ? [1.0] : [1.0, 2.0];
+        $skippedFormats = $this->getSkippedAutoFormats($input);
 
-        $medias = array_merge(['default' => 'defaultMedia'], $thumbnailConfig->getMedias() ?: []);
-        foreach ($medias as $mediaName => $media) {
-            $configMedia = clone $thumbnailConfig;
-            if ($mediaName !== 'default') {
-                $configMedia->selectMedia($mediaName);
+        $thumbnailsToGenerate = [];
+
+        // the config as it is, unless its factor is one the loop below generates anyway (no factor = 1)
+        if (!in_array((float) ($thumbnailConfig->getHighResolution() ?: 1), $resolutions, true)) {
+            $thumbnailsToGenerate[] = $thumbnailConfig;
+        }
+
+        $mediaConfigs = [$thumbnailConfig];
+        if (!$input->getOption('skip-medias')) {
+            foreach (array_keys($thumbnailConfig->getMedias()) as $mediaName) {
+                $mediaName = (string) $mediaName;
+                if ($mediaName !== 'default') {
+                    $mediaConfig = clone $thumbnailConfig;
+                    $mediaConfig->selectMedia($mediaName);
+                    $mediaConfigs[] = $mediaConfig;
+                }
             }
+        }
 
-            if ($input->getOption('skip-medias') && $mediaName !== 'default') {
-                continue;
-            }
-
-            $resolutions = [1, 2];
-            if ($input->getOption('skip-high-res')) {
-                $resolutions = [1];
-            }
-
+        foreach ($mediaConfigs as $mediaConfig) {
             foreach ($resolutions as $resolution) {
-                $resConfig = clone $configMedia;
+                $resConfig = clone $mediaConfig;
                 $resConfig->setHighResolution($resolution);
                 $thumbnailsToGenerate[] = $resConfig;
 
                 if ($resConfig->getFormat() === 'SOURCE') {
                     foreach ($resConfig->getAutoFormatThumbnailConfigs() as $autoFormat => $autoFormatThumbnailConfig) {
-                        if (!$input->getOption('skip-' . $autoFormat)) {
+                        if (!in_array($autoFormat, $skippedFormats, true)) {
                             $thumbnailsToGenerate[] = $autoFormatThumbnailConfig;
                         }
                     }
@@ -246,6 +320,32 @@ class ThumbnailsImageCommand extends AbstractCommand
         }
 
         return $thumbnailsToGenerate;
+    }
+
+    /**
+     * @return string[] the auto formats from --skip-formats and the --skip-<format> shortcuts
+     */
+    private function getSkippedAutoFormats(InputInterface $input): array
+    {
+        $formats = $this->getCsvOptionValues($input, 'skip-formats');
+        foreach (self::SKIP_FORMAT_SHORTCUTS as $autoFormat) {
+            if ($input->getOption('skip-' . $autoFormat)) {
+                $formats[] = $autoFormat;
+            }
+        }
+
+        return array_values(array_unique($formats));
+    }
+
+    /**
+     * @return string[]
+     */
+    private static function getEnabledAutoFormats(): array
+    {
+        return array_keys(array_filter(
+            Image\Thumbnail\Config::getAutoFormats(),
+            static fn (array $autoFormatConfig): bool => (bool) $autoFormatConfig['enabled']
+        ));
     }
 
     protected function getItemName(?int $count): string

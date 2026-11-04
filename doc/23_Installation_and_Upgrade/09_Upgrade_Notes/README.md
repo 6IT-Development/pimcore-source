@@ -112,6 +112,9 @@
   `pimcore:migrate:thumbnails-folder-structure` (Pimcore 10 thumbnail folders) are deprecated and hidden from
   `bin/console list`. The `pimcore:image:svg-preview` alias of `pimcore:image:low-quality-preview` is deprecated, as is
   its `--generator` option, which is ignored. All of them will be removed in Pimcore 12.
+- `pimcore:thumbnails:image --system` now generates the system thumbnail in addition to the other thumbnails. Use the
+  new `--system-only` for the old behaviour. `--skip-<format>` flags only exist for `avif` and `webp`; skip other auto
+  formats with the new `--skip-formats=<format>,...`.
 #### [Classification Store]
 - `StoreConfig::delete()` now also deletes the collections, groups and keys of the store (through their models, so
   their delete events are dispatched), and with them the object data of the store. Before, it only deleted the store
