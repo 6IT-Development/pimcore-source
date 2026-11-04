@@ -1223,7 +1223,7 @@ value, and for non-string values it cannot parse at all (which threw a `TypeErro
 stored as empty instead of `false`. No validation error is raised: the admin date field sends timestamps, so only API
 callers can send such values, and an empty date is what they got displayed before as well.
 
-## [ ] B-79 – Embedded metadata marked as extracted even when extraction failed
+## [x] B-79 – Embedded metadata marked as extracted even when extraction failed
 
 **File:** `models/Asset/MetaData/EmbeddedMetaDataTrait.php:66-98`
 
@@ -1231,6 +1231,12 @@ callers can send such values, and an empty date is what they got displayed befor
   never retried (`:48`).
 
 **Fix direction:** set the flag only on success; explicit timeout; `isSuccessful()`.
+
+**Done:** `readEmbeddedMetaData()` sets `embeddedMetaDataExtracted` only when the extraction finished, and removes it
+otherwise, so a failed read (including one after a data change of an already-extracted asset) is retried by the next update
+tasks of the asset. exiftool runs with an explicit 120 s timeout, like the Ghostscript calls. A non-zero exit code
+counts as a failure only when there is no JSON output, because exiftool also exits with an error for files it cannot parse
+and still reports them in JSON. Retrying those every time would re-run exiftool on every save without ever getting a result.
 
 ## [ ] B-80 – `Video::getThumbnail()` enriches a never-written `medias` key; by-reference loop leaks reference
 

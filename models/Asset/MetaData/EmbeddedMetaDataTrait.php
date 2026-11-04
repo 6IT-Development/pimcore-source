@@ -57,6 +57,7 @@ trait EmbeddedMetaDataTrait
     {
         $exiftool = Console::getExecutable('exiftool');
         $embeddedMetaData = [];
+        $extracted = false;
 
         try {
             if (!$filePath) {
@@ -65,9 +66,14 @@ trait EmbeddedMetaDataTrait
 
             if ($exiftool && $useExifTool) {
                 $process = new Process([$exiftool, '-j', $filePath]);
+                $process->setTimeout(120);
                 $process->run();
                 $output = $process->getOutput();
                 $outputArray = json_decode($output, true);
+                // exiftool also exits with an error for files it cannot parse, but then still describes them in JSON
+                if (!$process->isSuccessful() && !is_array($outputArray)) {
+                    throw new RuntimeException('exiftool failed for ' . $filePath . ': ' . $process->getErrorOutput());
+                }
                 if ($outputArray) {
                     $embeddedMetaData = $this->flattenArray($outputArray[0]);
 
@@ -90,12 +96,18 @@ trait EmbeddedMetaDataTrait
                 $exif = $this->flattenArray($this->getEXIFData($filePath));
                 $embeddedMetaData = array_merge(array_merge($xmp, $exif), $iptc);
             }
+            $extracted = true;
         } catch (Exception $e) {
             Logger::error($e->getMessage());
         }
 
         $this->setCustomSetting('embeddedMetaData', $embeddedMetaData);
-        $this->setCustomSetting('embeddedMetaDataExtracted', true);
+        // a failed extraction is retried with the next update tasks of the asset
+        if ($extracted) {
+            $this->setCustomSetting('embeddedMetaDataExtracted', true);
+        } else {
+            $this->removeCustomSetting('embeddedMetaDataExtracted');
+        }
 
         return $embeddedMetaData;
     }
