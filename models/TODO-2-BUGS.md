@@ -1749,7 +1749,7 @@ requirement with an invalid type with a warning, so one broken relation does not
 `requiredBy` to `[]` like the unfiltered helpers, so a search without matches returns an empty list. Merging the four
 helpers stays with I-47.
 
-## [ ] B-106 – Sync dependency handler errors make a committed element save look failed and skip `POST_*` events
+## [x] B-106 – Sync dependency handler errors make a committed element save look failed and skip `POST_*` events
 
 **Files:** `models/Asset.php:611` (before `POST_UPDATE`/`POST_ADD` at `:622-629`, failure events `:633-644`), `models/Document.php:386`,
 `models/DataObject/AbstractObject.php:609`; `lib/Messenger/Handler/ElementDependenciesHandler.php`
@@ -1763,6 +1763,11 @@ helpers stays with I-47.
 
 **Fix direction:** catch and log dependency failures in `addToDependenciesQueue()` (the graph can be rebuilt), or move
 the dispatch after the `POST_*` event. Long term, route `ElementDependenciesMessage` async by default.
+
+**Done:** `AbstractElement::addToDependenciesQueue()` catches every `Throwable` of the dispatch (the sync handler's
+`HandlerFailedException` as well as transport errors) and logs it with the element type and id. `Asset`, `Document`
+and `DataObject` saves that were committed return normally, dispatch `POST_ADD` / `POST_UPDATE` and no longer the
+failure events. Async routing by default is not changed.
 
 ---
 

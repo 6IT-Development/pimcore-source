@@ -25,12 +25,14 @@ use Pimcore\Config;
 use Pimcore\Event\ElementEvents;
 use Pimcore\Event\Model\ElementEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
+use Pimcore\Logger;
 use Pimcore\Messenger\ElementDependenciesMessage;
 use Pimcore\Model;
 use Pimcore\Model\Element\Traits\DirtyIndicatorTrait;
 use Pimcore\Model\User;
 use Pimcore\Tool\Admin;
 use Pimcore\Workflow\Manager;
+use Throwable;
 
 /**
  * @method Model\Document\Dao|Model\Asset\Dao|Model\DataObject\AbstractObject\Dao getDao()
@@ -418,10 +420,18 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         // the rows are rewritten for the saved state, getDependencies() must load them again
         $this->dependencies = null;
 
-        if (Config::getSystemConfiguration()['dependency']['enabled']) {
+        if (!Config::getSystemConfiguration()['dependency']['enabled']) {
+            return;
+        }
+
+        try {
             Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
                 new ElementDependenciesMessage(Service::getElementType($this), $this->getId())
             );
+        } catch (Throwable $e) {
+            // the element save is committed at this point and the rows can be rebuilt by saving it again: a failure of
+            // the sync handler must neither make the save look failed nor skip its POST_* events
+            Logger::error(sprintf('Saving the dependencies of %s %d failed: %s', Service::getElementType($this), $this->getId(), $e));
         }
     }
 
