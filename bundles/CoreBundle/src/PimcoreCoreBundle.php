@@ -20,18 +20,16 @@ namespace Pimcore\Bundle\CoreBundle;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\AreabrickAutoloadPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\AreabrickPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\CacheFallbackPass;
-use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\HtmlSanitizerPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\ImageAdapterAliasPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\LongRunningHelperPass;
-use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MessageBusPublicPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MonologPsrLogMessageProcessorPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MonologPublicLoggerPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\ProfilerAliasPass;
+use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\PublicServicesPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\RegisterMaintenanceTaskPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\RoutingLoaderPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\SerializerPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\ServiceControllersPass;
-use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\TranslationSanitizerPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\WorkflowPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\PimcoreCoreExtension;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
@@ -90,9 +88,7 @@ class PimcoreCoreBundle extends Bundle
         // services and aliases defined by the extensions; before RemoveUnusedDefinitionsPass (TYPE_REMOVE) drops private ones
         $container->addCompilerPass(new RoutingLoaderPass(), $beforeOptimization, 0);
         $container->addCompilerPass(new ProfilerAliasPass(), $beforeOptimization, 0);
-        $container->addCompilerPass(new MessageBusPublicPass(), $beforeOptimization, 0);
-        $container->addCompilerPass(new HtmlSanitizerPass(), $beforeOptimization, 0);
-        $container->addCompilerPass(new TranslationSanitizerPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new PublicServicesPass(), $beforeOptimization, 0);
         $container->addCompilerPass(new ImageAdapterAliasPass(), $beforeOptimization, 0);
     }
 

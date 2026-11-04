@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license GPLv3 and PCL
+ */
+namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
+
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+
+/**
+ * Makes the services public that Pimcore fetches with Pimcore::getContainer()->get(). A service that an app removed
+ * is skipped instead of breaking the container build; an alias is made public itself.
+ *
+ * @internal
+ */
+final class PublicServicesPass implements CompilerPassInterface
+{
+    private const array SERVICE_IDS = [
+        'html_sanitizer.sanitizer.pimcore.wysiwyg_sanitizer',
+        'html_sanitizer.sanitizer.pimcore.translation_sanitizer',
+        'messenger.bus.pimcore-core',
+    ];
+
+    public function process(ContainerBuilder $container): void
+    {
+        foreach (self::SERVICE_IDS as $id) {
+            if ($container->hasAlias($id)) {
+                $container->getAlias($id)->setPublic(true);
+            } elseif ($container->hasDefinition($id)) {
+                $container->getDefinition($id)->setPublic(true);
+            }
+        }
+    }
+}

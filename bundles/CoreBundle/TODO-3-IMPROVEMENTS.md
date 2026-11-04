@@ -678,7 +678,7 @@ loop (upgrade notes).
 
 ## H – Logic / structure
 
-### [ ] I-39 – Merge the "make service public" passes and guard them
+### [x] I-39 – Merge the "make service public" passes and guard them
 
 **Files:** `HtmlSanitizerPass.php`, `TranslationSanitizerPass.php`, `MessageBusPublicPass.php`, `MonologPublicLoggerPass.php`
 
@@ -687,6 +687,11 @@ loop (upgrade notes).
 - Merge them into one `PublicServicesPass` with a list of IDs and `has()` / `findDefinition()` guards. That works for
   aliases too.
 - Long term: replace the `Pimcore::getContainer()->get(...)` callers so these services can stay private.
+
+**Done:** `HtmlSanitizerPass`, `TranslationSanitizerPass` and `MessageBusPublicPass` are merged into
+`PublicServicesPass`, which skips missing services and makes aliases public themselves. `MonologPublicLoggerPass`
+stays separate: it works on a prefix and must run after Monolog's `LoggerChannelPass` (I-35). The callers still use
+`Pimcore::getContainer()->get()` (long-term item, open).
 
 ### [ ] I-40 – `WorkflowPass` readability
 
