@@ -15,6 +15,7 @@
 
 namespace Pimcore\Bundle\UuidBundle;
 
+use Pimcore\Bundle\UuidBundle\Migrations\Version20230203160742;
 use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 
@@ -24,6 +25,14 @@ class Installer extends SettingsStoreAwareInstaller
     {
         $this->installDatabaseTable();
         parent::install();
+    }
+
+    /**
+     * install.sql creates the final schema, so installing marks all bundle migrations up to this one as executed.
+     */
+    public function getLastMigrationVersionClassName(): ?string
+    {
+        return Version20230203160742::class;
     }
 
     public function uninstall(): void

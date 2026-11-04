@@ -25,13 +25,30 @@ final class Version20230203160742 extends AbstractMigration
         return 'Modify `itemId` column type in `uuids` db table';
     }
 
+    /**
+     * MySQL commits DDL implicitly, so a wrapping transaction would only fail on commit.
+     */
+    public function isTransactional(): bool
+    {
+        return false;
+    }
+
     public function up(Schema $schema): void
     {
+        // the migration path is registered even when the bundle is not installed; install.sql creates the final schema
+        if (!$schema->hasTable('uuids')) {
+            return;
+        }
+
         $this->addSql('ALTER TABLE `uuids` MODIFY COLUMN `itemId` VARCHAR(50) NOT NULL;');
     }
 
     public function down(Schema $schema): void
     {
+        if (!$schema->hasTable('uuids')) {
+            return;
+        }
+
         $this->addSql('ALTER TABLE `uuids` MODIFY COLUMN `itemId` int(11) unsigned NOT NULL;');
     }
 }

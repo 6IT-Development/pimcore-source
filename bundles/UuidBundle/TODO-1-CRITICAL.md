@@ -38,7 +38,7 @@ Not addressed: the N+1 query in `Listing\Dao::load()` (I-10) and the docs (B-02 
 
 ---
 
-## [ ] C-02 – Migration `Version20230203160742` fails when the bundle is registered but not installed
+## [x] C-02 – Migration `Version20230203160742` fails when the bundle is registered but not installed
 
 **Files:** `src/Migrations/Version20230203160742.php:28-31`, `src/Installer.php`, `config/pimcore/doctrine_migrations.yaml`
 
@@ -54,6 +54,13 @@ Not addressed: the N+1 query in `Listing\Dao::load()` (I-10) and the docs (B-02 
 **Fix direction:** guard `up()`/`down()` with `$schema->hasTable('uuids')` (or `skipIf()`), and override
 `getLastMigrationVersionClassName()` in `Installer` to return `Version20230203160742::class`, so that installing marks
 the migrations as done. Mark the migration `isTransactional(): false`, because MySQL DDL commits implicitly (see I-15).
+
+**Done:** `up()` and `down()` of `Version20230203160742` return without SQL when the `uuids` table does not exist, the
+same guard style as the core migrations, so a registered but not installed bundle no longer stops
+`doctrine:migrations:migrate`. The migration is `isTransactional(): false`.
+`Installer::getLastMigrationVersionClassName()` returns `Version20230203160742::class`, so `pimcore:bundle:install`
+marks the bundle migrations as executed and uninstalling unmarks them. Not addressed: `declare(strict_types=1)` (I-15)
+and the irreversible `down()` (B-07).
 
 ---
 
