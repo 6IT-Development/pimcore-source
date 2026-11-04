@@ -16,6 +16,7 @@
 namespace Pimcore\Model\Translation;
 
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
@@ -101,12 +102,10 @@ class Dao extends Model\Dao\AbstractDao
      * @param bool $onlyMissing insert only the languages that have no row yet, never overwrite existing texts
      *
      * @throws AccessDeniedException if the modifying user changed a language they may not edit
+     * @throws TableNotFoundException if the domain table is missing and the caller has a transaction open
      */
     public function save(bool $onlyMissing = false): void
     {
-        //Create Domain table if doesn't exist
-        $this->createOrUpdateTable();
-
         $this->updateModificationInfos();
         $sanitizer = $this->model->getTranslationSanitizer();
 
@@ -144,7 +143,7 @@ class Dao extends Model\Dao\AbstractDao
         }
 
         // all languages or none: a failure in between must not leave the key partially saved
-        $this->db->transactional(function () use ($rows, $onlyMissing, $editableLanguages, $user): void {
+        $write = function () use ($rows, $onlyMissing, $editableLanguages, $user): void {
             $existing = $this->db->fetchAllAssociativeIndexed(
                 'SELECT `language`, `text`, `type` FROM ' . $this->db->quoteIdentifier($this->getDatabaseTableName()) . ' WHERE `key` = ?',
                 [$this->model->getKey()]
@@ -178,7 +177,20 @@ class Dao extends Model\Dao\AbstractDao
                 // the creation date and owner of an existing language stay as they are
                 $this->insertOrUpdate($data, $onlyMissing ? [] : ['type', 'text', 'modificationDate', 'userModification']);
             }
-        });
+        };
+
+        try {
+            $this->db->transactional($write);
+        } catch (TableNotFoundException $e) {
+            // CREATE TABLE commits implicitly in MySQL, so it runs only for a missing table and never inside a
+            // transaction of the caller, whose earlier writes a later rollback could not undo any more
+            if ($this->db->isTransactionActive()) {
+                throw $e;
+            }
+
+            $this->createOrUpdateTable();
+            $this->db->transactional($write);
+        }
     }
 
     /**
@@ -268,6 +280,11 @@ class Dao extends Model\Dao\AbstractDao
         }
     }
 
+    /**
+     * Creates the domain table if it does not exist, an existing table is not changed.
+     *
+     * DDL commits an open transaction implicitly in MySQL, do not call it inside one.
+     */
     public function createOrUpdateTable(): void
     {
         $table = $this->getDatabaseTableName();

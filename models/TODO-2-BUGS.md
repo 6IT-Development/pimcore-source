@@ -1903,7 +1903,7 @@ merely holds (the admin grid sends all of them) do not count. `saveMissingLangua
 auto-create, skips the editor check, so missing locales are created once instead of being queued on every request.
 A CSV import with such a change now stops with the exception instead of counting the row as imported.
 
-## [ ] B-112 – `createOrUpdateTable()` runs DDL on every save: implicit commit of the caller's transaction
+## [x] B-112 – `createOrUpdateTable()` runs DDL on every save: implicit commit of the caller's transaction
 
 **File:** `models/Translation/Dao.php:82-86`, `:191-211`
 
@@ -1919,6 +1919,12 @@ A CSV import with such a change now stops with the exception instead of counting
 **Fix direction:** create the domain tables at install/migration time, or when the domain list changes, plus a
 console command (I-62). If lazy creation must stay, run it only after `TableNotFoundException`, never inside an open
 transaction.
+
+**Done:** `Dao::save()` no longer runs `CREATE TABLE IF NOT EXISTS` up front. The table is created lazily only when the
+write fails with a `TableNotFoundException` and no transaction is open, then the write is retried once. Inside a
+caller's transaction the exception is rethrown, so nothing is committed implicitly. Saves to an existing table take no
+metadata lock any more. `createOrUpdateTable()` stays (BC) and documents that it never changes an existing table. One
+schema definition and creating the tables of all configured domains up front stay with I-62 / B-120.
 
 ## [ ] B-113 – `delete()`: stale runtime cache, a queued auto-create re-creates the key, inconsistent cache/event order
 
