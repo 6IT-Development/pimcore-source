@@ -175,6 +175,38 @@ final class UUID extends Model\AbstractModel
     }
 
     /**
+     * Returns the element or class definition the UUID belongs to, resolved from type and item id when the model was
+     * loaded from the database; null when it no longer exists.
+     */
+    public function getItem(): Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface|null
+    {
+        if (!$this->item instanceof Model\Element\ElementInterface
+            && !$this->item instanceof Model\DataObject\ClassDefinitionInterface
+        ) {
+            $this->item = $this->resolveItem();
+        }
+
+        return $this->item;
+    }
+
+    private function resolveItem(): Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface|null
+    {
+        if (!isset($this->type, $this->itemId)) {
+            return null;
+        }
+
+        if ($this->type === 'class') {
+            return Model\DataObject\ClassDefinition::getById((string)$this->itemId);
+        }
+
+        if (!is_numeric($this->itemId)) {
+            return null;
+        }
+
+        return Model\Element\Service::getElementById($this->type, (int)$this->itemId);
+    }
+
+    /**
      *
      *
      * @throws Exception

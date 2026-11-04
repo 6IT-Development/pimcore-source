@@ -19,9 +19,13 @@ use Pimcore\Bundle\UuidBundle\Model\Tool;
   
 //get UUID for given element (document, asset, class, object)
 $uuid = Tool\UUID::getByItem($document);
+$uuidString = $uuid->getUuid();
  
-//get element for given UUID
-$document = Tool\UUID::getByUuid($uuid);
+//get the UUID model for a given UUID string, null if the UUID is unknown
+$uuid = Tool\UUID::getByUuid($uuidString);
+
+//get element for given UUID (null if the element no longer exists)
+$document = $uuid?->getItem();
  
 //create and save uuid for given element
 $uuid = Tool\UUID::create($document);

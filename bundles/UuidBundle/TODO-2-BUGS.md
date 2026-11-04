@@ -30,7 +30,7 @@ so `foreach`, `getData()` and the other `Iterator` methods work and the query ru
 
 ---
 
-## [ ] B-02 – Documented "get element for given UUID" does not exist
+## [x] B-02 – Documented "get element for given UUID" does not exist
 
 **Files:** `src/Model/Tool/UUID.php:57-61, 162-175`, `doc/19_Development_Tools_and_Details/19_UUID_Support.md:23-24`
 
@@ -40,6 +40,12 @@ so `foreach`, `getData()` and the other `Iterator` methods work and the query ru
 
 **Fix direction:** add `getItem(): ElementInterface|ClassDefinitionInterface|null`, which resolves lazily from
 `type` + `itemId` (`Element\Service::getElementById()`, or `ClassDefinition::getById()` for `class`). Correct the docs.
+
+**Done:** new `UUID::getItem(): ElementInterface|ClassDefinitionInterface|null` returns the item passed to
+`setItem()`, or resolves it lazily from `type` + `itemId`: `ClassDefinition::getById()` for `class`,
+`Element\Service::getElementById()` with an `int` id for the element types. A missing element or a non-numeric element
+id gives `null`. The docs now show `getByUuid()` returning the model (or `null`) and `getItem()` returning the
+element. Not addressed: the rest of the doc rewrite (I-17).
 
 ---
 
