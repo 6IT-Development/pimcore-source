@@ -185,9 +185,9 @@ final class Site extends AbstractModel
     }
 
     /**
-     * Register the current site
+     * Register the current site, null unregisters it (e.g. to restore the state before a site was set)
      */
-    public static function setCurrentSite(Site $site): void
+    public static function setCurrentSite(?Site $site): void
     {
         self::$currentSite = $site;
     }

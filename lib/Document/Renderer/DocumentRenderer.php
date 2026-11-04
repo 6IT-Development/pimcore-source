@@ -85,6 +85,7 @@ class DocumentRenderer implements DocumentRendererInterface
         );
 
         $tempLocale = $this->localeService->getLocale();
+        $tempSite = Site::isSiteRequest() ? Site::getCurrentSite() : null;
 
         try {
             // add document route to request if no route is set
@@ -139,6 +140,9 @@ class DocumentRenderer implements DocumentRendererInterface
             // restore the state even if rendering fails, otherwise the next document (e.g. in the static page
             // generator) or the rest of the parent page renders with the locale and placeholders of this one
             $this->localeService->setLocale($tempLocale);
+            // outside a request the site of this document was set; a later document of the same CLI / Messenger
+            // process must not be rendered (paths, links) with it
+            Site::setCurrentSite($tempSite);
 
             $this->eventDispatcher->dispatch(
                 new DocumentEvent($document, $attributes),

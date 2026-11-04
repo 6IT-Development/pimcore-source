@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\EventListener;
 
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model\Asset;
+use Pimcore\Model\Site;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Event\WorkerMessageReceivedEvent;
 
@@ -38,5 +39,7 @@ class MessengerClearRuntimeCacheListener implements EventSubscriberInterface
     {
         RuntimeCache::clear();
         Asset\Dao::resetThumbnailStatusCache();
+        // a message must not run inside the site of a document rendered by a previous one
+        Site::resetCurrentSite();
     }
 }

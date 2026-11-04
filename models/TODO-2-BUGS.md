@@ -2214,7 +2214,7 @@ can no longer end up in a cached instance either.
 
 ## Site (Scope 5)
 
-## [ ] B-126 – `Site::$currentSite` cannot be unset: CLI / Messenger rendering keeps the first document's site for every later document
+## [x] B-126 – `Site::$currentSite` cannot be unset: CLI / Messenger rendering keeps the first document's site for every later document
 
 **Files:** `models/Site.php:38`, `:166-193`; `lib/Document/Renderer/DocumentRenderer.php:95-103`;
 `models/Document.php:696-764`, `:812-822`
@@ -2232,6 +2232,12 @@ can no longer end up in a cached instance either.
 **Fix direction:** add `Site::resetCurrentSite()` (or make `setCurrentSite(?Site)`), restore the previous site in
 `DocumentRenderer` with `try/finally`, reset it on `kernel.reset`. Long term, replace the static with the
 `SiteResolver` / request attribute (I-68).
+
+**Done:** `setCurrentSite()` accepts `null`, next to `resetCurrentSite()` from CoreBundle C-08 (which also resets the
+site at the start of every main request). `DocumentRenderer::render()` remembers the current site and restores it in
+its `finally` block, so a CLI / Messenger process that renders documents of several sites no longer keeps the site of
+an earlier document, and a page rendered inside a request does not leave its site behind either.
+`MessengerClearRuntimeCacheListener` resets the current site before every message. The static itself stays (I-68).
 
 ## [ ] B-127 – `Site::getBy()` throws `TypeError` for a numeric string
 
