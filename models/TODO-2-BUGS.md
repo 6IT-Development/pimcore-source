@@ -1946,7 +1946,7 @@ same domain and key from the dumper (`TranslationEntriesDumper::removeFromSaveQu
 re-create the deleted key. `save()` and `delete()` both clear the runtime and translator caches before the `POST_*`
 event. `Dao::delete()` treats a missing domain table as nothing to delete.
 
-## [ ] B-114 – `getByKeyLocalized()`: explicit `$language` is ignored for the admin domain; session lookup in the model; unknown language returns `null`
+## [x] B-114 – `getByKeyLocalized()`: explicit `$language` is ignored for the admin domain; session lookup in the model; unknown language returns `null`
 
 **File:** `models/Translation.php:313-345`
 
@@ -1962,6 +1962,11 @@ event. `Dao::delete()` treats a missing domain table as nothing to delete.
 
 **Fix direction:** only resolve a language when `$language === null`. Get the user from the token storage only.
 Return `$id` when `$returnIdIfEmpty` is set and the language has no row.
+
+**Done:** an explicit `$language` is now used as it is, also for the admin domain. Only without one,
+`resolveLanguage()` picks the current admin user's language (token storage only, the `authenticateSession()` fallback
+is gone), then the current locale, then the system default language for the admin domain (`['general']['language'] ??
+null`). With `$returnIdIfEmpty`, a language without a row or with an empty text returns `$id` instead of `null`.
 
 ## [ ] B-115 – `TranslationEntriesDumper`: queue keyed by key only (domains overwrite each other); one failing save aborts the dump and keeps a poison queue
 

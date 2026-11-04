@@ -370,42 +370,54 @@ final class Translation extends AbstractModel
 
     /**
      * @param bool $create - creates an empty translation entry if the key doesn't exists
-     * @param bool $returnIdIfEmpty - returns $id if no translation is available
+     * @param bool $returnIdIfEmpty - returns $id if no translation is available, also for a language without a row
+     * @param string|null $language - used as it is, without it the language of the current admin user (admin domain)
+     * or the current locale
      *
      * @throws Exception
      */
     public static function getByKeyLocalized(string $id, string $domain = self::DOMAIN_DEFAULT, bool $create = false, bool $returnIdIfEmpty = false, ?string $language = null): ?string
     {
-        if ($domain == self::DOMAIN_ADMIN) {
-            if ($user = Admin::getCurrentUser()) {
-                $language = $user->getLanguage();
-            } elseif ($user = Tool\Authentication::authenticateSession()) {
-                $language = $user->getLanguage();
-            }
-
-            if (!$language) {
-                $language = Pimcore::getContainer()->get(LocaleServiceInterface::class)->findLocale();
-            }
-
-            if (!in_array($language, Admin::getLanguages())) {
-                $config = SystemSettingsConfig::get()['general'];
-                $language = $config['language'] ?? null;
-            }
-        }
-
         if (!$language) {
-            $language = Pimcore::getContainer()->get(LocaleServiceInterface::class)->findLocale();
+            $language = self::resolveLanguage($domain);
             if (!$language) {
                 return null;
             }
         }
 
         $translationItem = self::getByKey($id, $domain, $create, $returnIdIfEmpty);
-        if ($translationItem instanceof self) {
-            return $translationItem->getTranslation($language);
+        if (!$translationItem instanceof self) {
+            return null;
         }
 
-        return null;
+        $text = $translationItem->getTranslation($language);
+
+        // getByKey() fills only the valid languages of the domain with the key
+        if ($returnIdIfEmpty && ($text === null || $text === '')) {
+            return $id;
+        }
+
+        return $text;
+    }
+
+    /**
+     * The user comes from the token storage only: reading the session here would unserialize the security token on
+     * every call outside the admin firewall
+     */
+    private static function resolveLanguage(string $domain): ?string
+    {
+        $localeService = Pimcore::getContainer()->get(LocaleServiceInterface::class);
+
+        if ($domain !== self::DOMAIN_ADMIN) {
+            return $localeService->findLocale() ?: null;
+        }
+
+        $language = Admin::getCurrentUser()?->getLanguage() ?: $localeService->findLocale();
+        if (!in_array($language, Admin::getLanguages(), true)) {
+            $language = SystemSettingsConfig::get()['general']['language'] ?? null;
+        }
+
+        return $language ?: null;
     }
 
     public static function isAValidDomain(string $domain): bool
