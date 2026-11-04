@@ -37,7 +37,7 @@ use Symfony\Component\Console\Output\OutputInterface;
     name: 'pimcore:documents:generate-page-previews',
     description: 'Generates the previews shown in the tree on hover'
 )]
-class GeneratePagePreviews extends AbstractCommand
+class GeneratePagePreviewsCommand extends AbstractCommand
 {
     use DeprecatedOptionNameTrait;
 

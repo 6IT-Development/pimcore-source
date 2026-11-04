@@ -120,8 +120,7 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
     }
 
     /**
-     * Validate and return path to JSON file
-     *
+     * Returns the path argument after checking that the file can be read
      */
     protected function getPath(): string
     {
@@ -151,9 +150,7 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
     }
 
     /**
-     * Ask for confirmation before overwriting
-     *
-     *
+     * Asks whether the existing definition $name should be overwritten
      */
     protected function askConfirmation(string $name): bool
     {
@@ -164,36 +161,31 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
     }
 
     /**
-     * Get type
-     *
+     * Name of the definition type, used in the argument and option descriptions and in messages (e.g. "Class")
      */
     abstract protected function getType(): string;
 
     /**
-     * Get definition name from filename (e.g. class_Customer_export.json -> Customer)
+     * Extracts the definition name from the export file name (e.g. class_Customer_export.json -> Customer)
      *
-     *
+     * @return string|null null if the file name does not match the expected format
      */
     abstract protected function getDefinitionName(string $filename): ?string;
 
     /**
-     * Try to load definition by name
-     *
-     *
+     * Loads the existing definition, null if there is none
      */
     abstract protected function loadDefinition(string $name): ?ModelInterface;
 
     /**
-     * Create a new definition
-     *
-     *
+     * Creates a new, unsaved definition, null if it can not be created
      */
     abstract protected function createDefinition(string $name): ?ModelInterface;
 
     /**
-     * Process import
+     * Imports the JSON export into the definition and saves it
      *
-     *
+     * @return bool false if the import failed
      */
     abstract protected function import(ModelInterface $definition, string $json): bool;
 }

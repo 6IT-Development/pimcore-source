@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
-use Exception;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
@@ -48,11 +47,6 @@ class MaintenanceModeCommand extends AbstractCommand
             ->addOption('disable', null, InputOption::VALUE_NONE, 'Disable maintenance mode');
     }
 
-    /**
-     *
-     *
-     * @throws Exception
-     */
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {

@@ -152,7 +152,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
 - `$row[] = $row[] = $row[] = $row[] = false;` (`ListCommand:91`) → `array_push($row, false, false, false, false)`, or
   build the row as an associative array keyed by header.
 
-### [ ] I-10 – Docblock noise and copy-paste errors
+### [x] I-10 – Docblock noise and copy-paste errors
 
 - `Definition/Import/*` and `AbstractStructureImportCommand`: docblocks such as `/** Get type * * */` repeat the method
   name and contain empty lines. Remove them or turn them into real documentation.

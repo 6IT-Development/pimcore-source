@@ -27,6 +27,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 
+/**
+ * @internal
+ */
 #[AsCommand(
     name: 'pimcore:documents:migrate-elements',
     description: 'Migrates document elements to editables',

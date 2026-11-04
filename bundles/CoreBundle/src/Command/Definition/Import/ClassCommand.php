@@ -32,20 +32,11 @@ use Symfony\Component\Console\Attribute\AsCommand;
 )]
 class ClassCommand extends AbstractStructureImportCommand
 {
-    /**
-     * Get type
-     *
-     */
     protected function getType(): string
     {
         return 'Class';
     }
 
-    /**
-     * Get definition name from filename (e.g. class_Customer_export.json -> Customer)
-     *
-     *
-     */
     protected function getDefinitionName(string $filename): ?string
     {
         $parts = [];
@@ -56,21 +47,11 @@ class ClassCommand extends AbstractStructureImportCommand
         return null;
     }
 
-    /**
-     * Try to load definition by name
-     *
-     *
-     */
     protected function loadDefinition(string $name): ?ModelInterface
     {
         return ClassDefinition::getByName($name);
     }
 
-    /**
-     * Create a new definition
-     *
-     *
-     */
     protected function createDefinition(string $name): ClassDefinition
     {
         $class = new ClassDefinition();
@@ -79,11 +60,6 @@ class ClassCommand extends AbstractStructureImportCommand
         return $class;
     }
 
-    /**
-     * Process import
-     *
-     *
-     */
     protected function import(ModelInterface $definition, string $json): bool
     {
         if (!$definition instanceof ClassDefinition) {

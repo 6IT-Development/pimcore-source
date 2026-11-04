@@ -72,20 +72,11 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
         return parent::execute($input, $output);
     }
 
-    /**
-     * Get type.
-     *
-     */
     protected function getType(): string
     {
         return 'Customlayout';
     }
 
-    /**
-     * Get definition name from filename (e.g. custom_definition_Customer_export.json -> Customer).
-     *
-     *
-     */
     protected function getDefinitionName(string $filename): ?string
     {
         $parts = [];
@@ -97,10 +88,6 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
     }
 
     /**
-     * Try to load definition by name.
-     *
-     *
-     *
      * @throws Exception
      */
     protected function loadDefinition(string $name): ?ModelInterface

@@ -29,6 +29,9 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 
+/**
+ * @internal
+ */
 #[AsCommand(
     name: 'pimcore:documents:cleanup',
     description: 'Cleans up unused document types. Removes type from enums and tables if exist'

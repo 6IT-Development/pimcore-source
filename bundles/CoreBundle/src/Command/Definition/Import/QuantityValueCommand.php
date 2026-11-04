@@ -27,6 +27,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @internal
+ */
 #[AsCommand(
     name: 'pimcore:definition:import:units',
     description: 'Import quantity value units from a JSON export',
@@ -60,8 +63,7 @@ class QuantityValueCommand extends AbstractCommand
     }
 
     /**
-     * Validate and return path to JSON file
-     *
+     * Returns the path argument after checking that the file can be read
      */
     private function getPath(): string
     {

@@ -32,20 +32,11 @@ use Symfony\Component\Console\Attribute\AsCommand;
 )]
 class FieldCollectionCommand extends AbstractStructureImportCommand
 {
-    /**
-     * Get type
-     *
-     */
     protected function getType(): string
     {
         return 'FieldCollection';
     }
 
-    /**
-     * Get definition name from filename (e.g. class_Customer_export.json -> Customer)
-     *
-     *
-     */
     protected function getDefinitionName(string $filename): ?string
     {
         $parts = [];
@@ -56,21 +47,11 @@ class FieldCollectionCommand extends AbstractStructureImportCommand
         return null;
     }
 
-    /**
-     * Try to load definition by name
-     *
-     *
-     */
     protected function loadDefinition(string $name): ?ModelInterface
     {
         return Definition::getByKey($name);
     }
 
-    /**
-     * Create a new definition
-     *
-     *
-     */
     protected function createDefinition(string $name): Definition
     {
         $definition = new Definition();
@@ -79,11 +60,6 @@ class FieldCollectionCommand extends AbstractStructureImportCommand
         return $definition;
     }
 
-    /**
-     * Process import
-     *
-     *
-     */
     protected function import(ModelInterface $definition, string $json): bool
     {
         if (!$definition instanceof Definition) {
