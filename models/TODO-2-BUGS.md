@@ -1502,7 +1502,7 @@ source types (I-50).
 `getRequiredByWithPath()` does, so a filtered "required by" list finds the real sources of every type and no longer
 matches unrelated elements of the target type with the same id. The test with mixed source types stays with I-50.
 
-## [ ] B-94 – Filter value is an unescaped, case-sensitive regex: uppercase never matches, `.`/`(`/`[` misbehave, empty value errors
+## [x] B-94 – Filter value is an unescaped, case-sensitive regex: uppercase never matches, `.`/`(`/`[` misbehave, empty value errors
 
 **File:** `models/Dependency/Dao.php:94-104`, `:153-163`; schema `install.sql` (`objects`/`documents`/`assets`
 `path`, `key`, `filename` are `utf8_bin`)
@@ -1516,6 +1516,11 @@ matches unrelated elements of the target type with the same id. The test with mi
 
 **Fix direction:** treat the value as a literal: `LIKE :value` with `'%' . Helper::escapeLike(mb_strtolower($value)) . '%'`
 (and `LOWER()` on both sides, or a `_ci` collation in the expression). Reject or short-circuit an empty value.
+
+**Done:** Both filter queries compare `LOWER(CONCAT(…)) LIKE :value`. The new `Dao::getFilterValuePattern()`
+lower-cases the value, escapes `\`, `%` and `_` and wraps it in `%…%`, so the value is a case-insensitive literal
+substring: `Logo` matches `/Logo.png`, `image.jpg` no longer matches `imageXjpg`, and `[`, `(` or a trailing `\` cannot
+cause a regex error. An empty or `null` value matches every path, as an empty filter field should.
 
 ## [ ] B-95 – Search value goes through `sprintf()`: `%` in the filter text throws or rewrites the query
 

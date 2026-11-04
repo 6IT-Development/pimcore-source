@@ -92,17 +92,17 @@ class Dao extends Model\Dao\AbstractDao
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN objects o ON o.id = d.targetid AND d.targettype= 'object'
-            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(o.path, o.key)) RLIKE :value
+            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(o.path, o.key)) LIKE :value
             UNION
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN documents doc ON doc.id = d.targetid AND d.targettype= 'document'
-            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(doc.path, doc.key)) RLIKE :value
+            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(doc.path, doc.key)) LIKE :value
             UNION
             SELECT d.targetid as id, d.targettype as type
             FROM dependencies d
             INNER JOIN assets a ON a.id = d.targetid AND d.targettype= 'asset'
-            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(a.path, a.filename)) RLIKE :value
+            WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(a.path, a.filename)) LIKE :value
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
@@ -114,7 +114,7 @@ class Dao extends Model\Dao\AbstractDao
         $requiresByPath = $this->db->fetchAllAssociative($query, [
             'type' => $sourceType,
             'id' => $sourceId,
-            'value' => (string)$value,
+            'value' => $this->getFilterValuePattern($value),
         ]);
 
         if (count($requiresByPath) > 0) {
@@ -156,17 +156,17 @@ class Dao extends Model\Dao\AbstractDao
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN objects o ON o.id = d.sourceid AND d.sourcetype = 'object'
-            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(o.path, o.key)) RLIKE :value
+            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(o.path, o.key)) LIKE :value
             UNION
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN documents doc ON doc.id = d.sourceid AND d.sourcetype = 'document'
-            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(doc.path, doc.key)) RLIKE :value
+            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(doc.path, doc.key)) LIKE :value
             UNION
             SELECT d.sourceid as id, d.sourcetype as type
             FROM dependencies d
             INNER JOIN assets a ON a.id = d.sourceid AND d.sourcetype = 'asset'
-            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(a.path, a.filename)) RLIKE :value
+            WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(a.path, a.filename)) LIKE :value
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
@@ -178,7 +178,7 @@ class Dao extends Model\Dao\AbstractDao
         $requiredByPath = $this->db->fetchAllAssociative($query, [
             'type' => $targetType,
             'id' => $targetId,
-            'value' => (string)$value,
+            'value' => $this->getFilterValuePattern($value),
         ]);
 
         if (count($requiredByPath) > 0) {
@@ -186,6 +186,17 @@ class Dao extends Model\Dao\AbstractDao
         } else {
             return [];
         }
+    }
+
+    /**
+     * The filter value is a literal part of the path that editors type, not a pattern: the paths are compared lower case
+     * and LIKE wildcards in the value are escaped. An empty value matches every path.
+     */
+    private function getFilterValuePattern(?string $value): string
+    {
+        $value = str_replace('\\', '\\\\', mb_strtolower((string)$value));
+
+        return '%' . Helper::escapeLike($value) . '%';
     }
 
     /**
