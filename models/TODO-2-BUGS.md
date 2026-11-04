@@ -1989,7 +1989,7 @@ saves each entry in its own `try/catch`: a failure is logged through the injecte
 entries are still saved, and a long-running process does not retry the failing entry on every later request.
 Flushing in Messenger workers stays with CoreBundle I-52.
 
-## [ ] B-116 – CSV import: shared fixed temp files (concurrent imports mix data), temp files never removed, silent no-ops, lossy comparisons
+## [x] B-116 – CSV import: shared fixed temp files (concurrent imports mix data), temp files never removed, silent no-ops, lossy comparisons
 
 **File:** `models/Translation.php:386-496`
 
@@ -2014,6 +2014,15 @@ Flushing in Messenger workers stays with CoreBundle I-52.
 
 **Fix direction:** read the uploaded file directly as a stream (no temp copy), or use `tempnam()` and remove the file
 in `finally`. Fail on a missing `key` column. Use strict comparisons (`!==`, `=== ''`). See I-57.
+
+**Done:** the import writes one private `tempnam()` copy (used for the dialect detection and the parsing) and removes it
+in `finally`; the fixed `import_translations` / `…_original` files are gone. A failed `file_get_contents()` and a header
+without a `key` column throw. Values beyond the header are ignored, the header is trimmed of `"` only (the BOM is
+already removed from the whole file), and a key `"0"` is imported. Comparisons are strict, so `"1.0"` → `"1"` is
+imported and `"0"` is not overwritten as empty in merge mode. New keys are no longer loaded with
+`getByKey(create: true)`: a row without texts creates nothing, and a new key is saved once with the languages from the
+file (the other languages are auto-created by the Translator without the editor check, B-111). `&quot;` is still
+decoded, because the admin UI export writes `"` that way. The service, `league/csv` and batching stay with I-57.
 
 ## [ ] B-117 – Listing persistent cache key ignores bound condition values and `languages`: wrong results
 

@@ -521,6 +521,9 @@ final class Translation extends AbstractModel
 
             //read import data
             $tmpData = file_get_contents($file);
+            if ($tmpData === false) {
+                throw new Exception("$file could not be read");
+            }
 
             //replace magic excel bytes
             $tmpData = str_replace("\xEF\xBB\xBF", '', $tmpData);
@@ -528,71 +531,83 @@ final class Translation extends AbstractModel
             //convert to utf-8 if needed
             $tmpData = Tool\Text::convertToUTF8($tmpData);
 
-            //store data for further usage
+            // a copy per import: with a fixed file name, concurrent imports would read each other's data
             $filesystem = new Filesystem();
-            $importFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/import_translations';
-            $filesystem->dumpFile($importFile, $tmpData);
+            $filesystem->mkdir(PIMCORE_SYSTEM_TEMP_DIRECTORY);
+            $importFile = $filesystem->tempnam(PIMCORE_SYSTEM_TEMP_DIRECTORY, 'import_translations_');
 
-            $importFileOriginal = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/import_translations_original';
-            $filesystem->dumpFile($importFileOriginal, $tmpData);
+            try {
+                $filesystem->dumpFile($importFile, $tmpData);
 
-            // determine csv type if not set
-            if (empty($dialect)) {
-                $dialect = Admin::determineCsvDialect(PIMCORE_SYSTEM_TEMP_DIRECTORY . '/import_translations_original');
-            }
-
-            //read data
-            $data = [];
-            if (($handle = fopen(PIMCORE_SYSTEM_TEMP_DIRECTORY . '/import_translations', 'r')) !== false) {
-                while (($rowData = fgetcsv($handle, 0, $dialect->delimiter, $dialect->quotechar, $dialect->escapechar)) !== false) {
-                    $data[] = $rowData;
+                // determine csv type if not set
+                if (empty($dialect)) {
+                    $dialect = Admin::determineCsvDialect($importFile);
                 }
-                fclose($handle);
+
+                //read data
+                $data = [];
+                if (($handle = fopen($importFile, 'r')) !== false) {
+                    while (($rowData = fgetcsv($handle, 0, $dialect->delimiter, $dialect->quotechar, $dialect->escapechar)) !== false) {
+                        $data[] = $rowData;
+                    }
+                    fclose($handle);
+                }
+            } finally {
+                $filesystem->remove($importFile);
             }
 
             //process translations
             if (count($data) > 1) {
-                $keys = $data[0];
-                // remove wrong quotes in some export/import constellations
-                $keys = array_map(function ($value) {
-                    return trim($value, '﻿"');
-                }, $keys);
+                // remove wrong quotes in some export/import constellations, the BOM is already removed above
+                $keys = array_map(fn ($value) => trim((string)$value, '"'), $data[0]);
+                if (!in_array('key', $keys, true)) {
+                    throw new Exception('The CSV file has no "key" column, check its delimiter and header row');
+                }
+
                 $data = array_slice($data, 1);
                 foreach ($data as $row) {
                     $keyValueArray = [];
                     $row = Service::unEscapeCsvRecord($row);
-                    for ($counter = 0; $counter < count($row); $counter++) {
-                        $rd = str_replace('&quot;', '"', $row[$counter]);
-                        $keyValueArray[$keys[$counter]] = $rd;
+                    // values beyond the header row have no column to go to
+                    foreach (array_slice($row, 0, count($keys)) as $counter => $value) {
+                        // the export of the admin UI writes double quotes as &quot;
+                        $keyValueArray[$keys[$counter]] = str_replace('&quot;', '"', (string)$value);
                     }
 
-                    $textKey = $keyValueArray['key'] ?? null;
-                    if ($textKey) {
-                        $t = Translation::getByKey($textKey, $domain, true);
+                    $textKey = $keyValueArray['key'] ?? '';
+                    if ($textKey !== '') {
+                        // not getByKey(create: true): that queues every new key for the dumper with empty texts,
+                        // also when the row has no text to import
+                        $t = Translation::getByKey($textKey, $domain);
+                        if (!$t) {
+                            $t = new Translation();
+                            $t->setDomain($domain);
+                            $t->setKey($textKey);
+                        }
+
                         $dirty = false;
                         foreach ($keyValueArray as $key => $value) {
-                            if (in_array($key, $languages)) {
-                                $currentTranslation = $t->getTranslation($key);
+                            if (in_array($key, $languages, true)) {
+                                // strict comparisons: "1.0" and "1" are different texts, "0" is not empty
+                                $currentTranslation = $t->getTranslation($key) ?? '';
                                 if ($replaceExistingTranslations) {
-                                    $t->addTranslation($key, $value);
-                                    if ($currentTranslation != $value) {
+                                    if ($currentTranslation !== $value) {
+                                        $t->addTranslation($key, $value);
                                         $dirty = true;
                                     }
-                                } else {
-                                    if (!$currentTranslation) {
+                                } elseif ($currentTranslation === '') {
+                                    if ($value !== '') {
                                         $t->addTranslation($key, $value);
-                                        if ($currentTranslation != $value) {
-                                            $dirty = true;
-                                        }
-                                    } elseif ($currentTranslation != $value && $value) {
-                                        $delta[] =
-                                            [
-                                                'lg' => $key,
-                                                'key' => $textKey,
-                                                'text' => $t->getTranslation($key),
-                                                'csv' => $value,
-                                            ];
+                                        $dirty = true;
                                     }
+                                } elseif ($currentTranslation !== $value && $value !== '') {
+                                    $delta[] =
+                                        [
+                                            'lg' => $key,
+                                            'key' => $textKey,
+                                            'text' => $currentTranslation,
+                                            'csv' => $value,
+                                        ];
                                 }
                             }
                         }
