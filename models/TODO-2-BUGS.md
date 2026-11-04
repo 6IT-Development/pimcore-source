@@ -2852,7 +2852,7 @@ without them by the old `create()` can be loaded and read without an `Error`. `g
 
 ## Document editables (Scope 6)
 
-## [ ] B-156 – Scheduled block: wrong index in the frontend, stale active entry in long-running processes
+## [x] B-156 – Scheduled block: wrong index in the frontend, stale active entry in long-running processes
 
 **File:** `models/Document/Editable/Scheduledblock.php:43-56`, `:70-104`, `:171-212`, `:239-243`
 
@@ -2863,6 +2863,13 @@ without them by the old `create()` can be loaded and read without an `Error`. `g
 - `setDataFromEditmode()` assigns unvalidated data and `usort()`s it (`TypeError` for non-arrays).
 
 **Fix direction:** iterate the filtered list; reset the cache per render; validate input.
+
+**Done:** `blockStart()` and `getCurrentIndex()` read the filtered entries (`filterElements()`) like `blockConstruct()`,
+so the frontend iterator yields the key of the active entry and the block entry carries its key and date; in editmode
+the filtered list is the whole (re-indexed) list. `loop()` clears `cachedCurrentElement` at the start of every render
+(`current === 0`), so an instance kept in the runtime cache of a worker or CLI process switches to the next scheduled
+entry. `setDataFromEditmode()` accepts only a list of entries with numeric `key` and `date`, casts both to `int`, drops
+anything else (a non-array becomes an empty list) and sorts by date.
 
 ## [ ] B-157 – Areablock: brick limits are counted across renders; positional and pointer-based iteration are mixed
 

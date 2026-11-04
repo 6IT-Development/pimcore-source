@@ -42,15 +42,18 @@ class Scheduledblock extends Block implements BlockInterface
 
     public function setDataFromEditmode(mixed $data): static
     {
-        $this->indices = $data;
-
-        usort($this->indices, function ($left, $right) {
-            if ($left['date'] == $right['date']) {
-                return 0;
+        // keep only well-formed entries, the iteration and the stored data rely on numeric key and date
+        $this->indices = [];
+        foreach (is_array($data) ? $data : [] as $entry) {
+            if (is_array($entry) && is_numeric($entry['key'] ?? null) && is_numeric($entry['date'] ?? null)) {
+                $this->indices[] = [
+                    'key' => (int) $entry['key'],
+                    'date' => (int) $entry['date'],
+                ];
             }
+        }
 
-            return ($left['date'] < $right['date']) ? -1 : 1;
-        });
+        usort($this->indices, fn (array $left, array $right) => $left['date'] <=> $right['date']);
 
         return $this;
     }
@@ -70,7 +73,7 @@ class Scheduledblock extends Block implements BlockInterface
     private function filterElements(): ?array
     {
         if ($this->getEditmode()) {
-            return $this->indices;
+            return array_values($this->indices);
         } else {
             if ($this->cachedCurrentElement) {
                 return [$this->cachedCurrentElement];
@@ -133,6 +136,10 @@ class Scheduledblock extends Block implements BlockInterface
     public function loop(): bool
     {
         $this->setDefault();
+        if ($this->current === 0) {
+            // a new render: an instance kept in a long-running process must switch to the entry active now
+            $this->cachedCurrentElement = null;
+        }
         $elements = $this->filterElements();
 
         if (empty($elements)) {
@@ -193,9 +200,11 @@ class Scheduledblock extends Block implements BlockInterface
             'data-real-name' => $this->getRealName(),
         ];
 
+        // the filtered entries, in the frontend only the active one is iterated
+        $element = $this->filterElements()[$this->current];
         $outerAttributes = [
-            'key' => $this->indices[$this->current]['key'],
-            'date' => $this->indices[$this->current]['date'],
+            'key' => $element['key'],
+            'date' => $element['date'],
         ];
 
         $attr = HtmlUtils::assembleAttributeString($attributes);
@@ -209,7 +218,7 @@ class Scheduledblock extends Block implements BlockInterface
 
     public function getCurrentIndex(): int
     {
-        return (int)$this->indices[$this->getCurrent()]['key'];
+        return (int)$this->filterElements()[$this->getCurrent()]['key'];
     }
 
     public function getIterator(): Generator
