@@ -107,6 +107,16 @@ abstract class PageSnippet extends Model\Document
      */
     protected array $inheritedEditables = [];
 
+    /**
+     * Names of the stored editables that could not be loaded (unknown type, unreadable data); their rows are kept
+     * on save unless an editable of the same name replaces them
+     *
+     * @internal
+     *
+     * @var string[]
+     */
+    protected array $unloadableEditableNames = [];
+
     private static bool $getInheritedValues = false;
 
     /**
@@ -148,7 +158,9 @@ abstract class PageSnippet extends Model\Document
     {
         // update elements
         $editables = $this->getEditables();
-        $this->getDao()->deleteAllEditables();
+        $this->getDao()->deleteAllEditables(
+            array_diff($this->unloadableEditableNames, array_keys($this->editables ?? []))
+        );
 
         parent::update($params);
 
@@ -526,6 +538,16 @@ abstract class PageSnippet extends Model\Document
         }
 
         return $this->editables;
+    }
+
+    /**
+     * @internal
+     *
+     * @param string[] $names
+     */
+    public function setUnloadableEditableNames(array $names): void
+    {
+        $this->unloadableEditableNames = $names;
     }
 
     /**

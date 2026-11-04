@@ -2611,7 +2611,7 @@ stops at an id it has already visited, so a cycle stored further up the chain en
 inheritance and inherits nothing from a document already on that stack: a cycle stored before this fix renders the
 own editables instead of overflowing the stack. `$validate` is kept for compatibility and no longer changes anything.
 
-## [ ] B-143 – One unknown or corrupt editable row breaks the whole document
+## [x] B-143 – One unknown or corrupt editable row breaks the whole document
 
 **Files:** `models/Document/PageSnippet/Dao.php:45-63`; `models/Document/Editable.php:713-728`
 
@@ -2620,6 +2620,12 @@ own editables instead of overflowing the stack. `$validate` is kept for compatib
   the document cannot be opened in the admin to fix it, versions and the recycle bin fail as well.
 
 **Fix direction:** skip unknown / broken rows with a warning (keep the raw row so a re-save does not lose it).
+
+**Done:** `PageSnippet\Dao::getEditables()` catches any `\Throwable` from building or hydrating a row, logs a warning
+with the document id, name and type, skips the row and records its name on the document
+(`setUnloadableEditableNames()`). `update()` passes those names to `deleteAllEditables()`, which keeps their rows unless
+the document now has an own editable of the same name, so opening and re-saving the document does not lose the raw
+data. The names are serialized with the document, like `$editables`.
 
 ## [ ] B-144 – `Document\Service\Dao::getTranslations()` loses links and can fatal
 
