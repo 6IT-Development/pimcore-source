@@ -54,14 +54,14 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
         $className = $input->getOption('class-name');
         if ($className) {
             if (!DataObject\ClassDefinition::getByName($className)) {
-                $this->writeError(sprintf('Class "%s" does not exist', $className));
+                $this->io->error(sprintf('Class "%s" does not exist', $className));
 
                 return self::INVALID;
             }
         } else {
             $name = $this->getDefinitionName(basename($input->getArgument('path')));
             if (null !== $name && null === $this->loadDefinition($name)) {
-                $this->writeError('--class-name is required to create a new custom layout');
+                $this->io->error('--class-name is required to create a new custom layout');
 
                 return self::INVALID;
             }
@@ -139,7 +139,7 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
 
         $importData = json_decode($json, true);
         if (!is_array($importData) || !is_array($importData['layoutDefinitions'] ?? null)) {
-            $this->writeError('Invalid export file: "layoutDefinitions" is missing');
+            $this->io->error('Invalid export file: "layoutDefinitions" is missing');
 
             return false;
         }
@@ -147,7 +147,7 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
         try {
             $layout = DataObject\ClassDefinition\Service::generateLayoutTreeFromArray($importData['layoutDefinitions'], true);
             if (!$layout instanceof DataObject\ClassDefinition\Layout) {
-                $this->writeError('Invalid export file: "layoutDefinitions" does not describe a layout');
+                $this->io->error('Invalid export file: "layoutDefinitions" does not describe a layout');
 
                 return false;
             }
@@ -162,7 +162,7 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
             return true;
         } catch (Exception $e) {
             Logger::error($e->getMessage());
-            $this->writeError($e->getMessage());
+            $this->io->error($e->getMessage());
         }
 
         return false;

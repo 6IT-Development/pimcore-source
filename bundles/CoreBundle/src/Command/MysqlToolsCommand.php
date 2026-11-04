@@ -57,13 +57,13 @@ class MysqlToolsCommand extends AbstractCommand
 
         // display error message
         if (!$mode) {
-            $this->writeError('Please specify the mode!');
+            $this->io->error('Please specify the mode!');
 
             return self::INVALID;
         }
 
         if (!in_array($mode, self::MODES, true)) {
-            $this->writeError(sprintf('Invalid mode "%s", allowed modes are: %s', $mode, implode(', ', self::MODES)));
+            $this->io->error(sprintf('Invalid mode "%s", allowed modes are: %s', $mode, implode(', ', self::MODES)));
 
             return self::INVALID;
         }

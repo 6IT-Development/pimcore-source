@@ -57,7 +57,7 @@ class EmailLogsCleanupCommand extends AbstractCommand
         );
 
         if ($daysAgo === false) {
-            $this->writeError('The "--older-than-days" option is required and must be a positive integer');
+            $this->io->error('The "--older-than-days" option is required and must be a positive integer');
 
             return self::INVALID;
         }

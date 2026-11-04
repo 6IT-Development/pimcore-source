@@ -66,7 +66,7 @@ class RequirementsCheckCommand extends AbstractCommand
         };
 
         if ($levelsToDisplay === null) {
-            $this->writeError(sprintf('Invalid min-level "%s", allowed values are: %s', $minLevel, implode(', ', self::MIN_LEVELS)));
+            $this->io->error(sprintf('Invalid min-level "%s", allowed values are: %s', $minLevel, implode(', ', self::MIN_LEVELS)));
 
             return self::INVALID;
         }
@@ -88,13 +88,13 @@ class RequirementsCheckCommand extends AbstractCommand
         }
 
         if (in_array(Requirements\Check::STATE_ERROR, $states, true)) {
-            $this->writeError('Some system requirements are not met.');
+            $this->io->error('Some system requirements are not met.');
 
             return self::FAILURE;
         }
 
         if ($input->getOption('strict') && in_array(Requirements\Check::STATE_WARNING, $states, true)) {
-            $this->writeError('Some system requirements reported warnings (--strict).');
+            $this->io->error('Some system requirements reported warnings (--strict).');
 
             return self::FAILURE;
         }

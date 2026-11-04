@@ -73,7 +73,7 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
             if ($force) {
                 $this->output->writeln(sprintf('%s already exists', $logName));
             } elseif (!$this->input->isInteractive()) {
-                $this->writeError(sprintf('%s already exists, use --force to overwrite it', $logName));
+                $this->io->error(sprintf('%s already exists, use --force to overwrite it', $logName));
 
                 return self::FAILURE;
             } elseif (!$this->askConfirmation($name)) {
@@ -90,7 +90,7 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
                 $this->output->writeln(sprintf('Creating %s', $logName));
                 $definition = $this->createDefinition($name);
                 if (null === $definition) {
-                    $this->writeError(sprintf('Could not create %s', $logName));
+                    $this->io->error(sprintf('Could not create %s', $logName));
 
                     return self::INVALID;
                 }

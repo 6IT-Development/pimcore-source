@@ -153,7 +153,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
 
         $video = Asset\Video::getById((int)$assetId);
         if (!$video) {
-            $this->writeError('No video with ID=' . $assetId . ' found. Has the video been deleted or is the asset of another type?');
+            $this->io->error('No video with ID=' . $assetId . ' found. Has the video been deleted or is the asset of another type?');
 
             return;
         }
@@ -162,7 +162,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
 
         $thumbnail = Asset\Video\Thumbnail\Config::getByName($thumbnailConfigName);
         if (!$thumbnail) {
-            $this->writeError('Video thumbnail config "' . $thumbnailConfigName . '" not found. Has it been deleted?');
+            $this->io->error('Video thumbnail config "' . $thumbnailConfigName . '" not found. Has it been deleted?');
         } else {
             if ($output->isVerbose()) {
                 $this->output->writeln(' generating thumbnail for video: ' . $video->getRealFullPath() . ' | ' . $video->getId() . ' | Thumbnail: ' . $thumbnailConfigName . ' : ' . formatBytes(memory_get_usage()));
@@ -199,7 +199,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
             if (!$video instanceof Asset\Video) {
                 $message = 'video [' . $videoId . '] could not be found. Skipping ...';
                 Logger::error($message);
-                $this->writeError($message);
+                $this->io->error($message);
 
                 return;
             }
@@ -231,7 +231,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
             if ($remaining <= 0) {
                 $message = 'video [' . $videoId . '] with thumbnail [' . $thumbnailName . '] is still in progress after ' . $maxWait . 's. Is a messenger worker running? Skipping ...';
                 Logger::warning($message);
-                $this->writeError($message);
+                $this->io->error($message);
 
                 return;
             }

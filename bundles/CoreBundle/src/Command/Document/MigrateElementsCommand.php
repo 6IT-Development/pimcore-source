@@ -23,10 +23,8 @@ use Pimcore\Db;
 use Pimcore\Model\Version;
 use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Throwable;
 
 #[AsCommand(
@@ -56,7 +54,7 @@ class MigrateElementsCommand extends AbstractCommand
                 $migrated++;
             } catch (Throwable $e) {
                 $failed++;
-                $this->writeError(sprintf('version %d, document id: %d: %s', $versionRaw['vId'], $versionRaw['dId'], $e->getMessage()));
+                $this->io->error(sprintf('version %d, document id: %d: %s', $versionRaw['vId'], $versionRaw['dId'], $e->getMessage()));
             }
 
             if (($migrated + $failed) % 100 === 0) {
@@ -98,16 +96,9 @@ class MigrateElementsCommand extends AbstractCommand
 
     protected function interact(InputInterface $input, OutputInterface $output): void
     {
-        /** @var QuestionHelper $helper */
-        $helper = $this->getHelper('question');
-
-        $this->output->writeln('<error>WARNING:</error> This command is potentially dangerous. Please use with caution and make sure you have a proper backup! '
+        $this->io->warning('This command is potentially dangerous. Please use with caution and make sure you have a proper backup! '
             . 'See issue https://github.com/pimcore/pimcore/issues/7384 first');
-        $this->io->newLine();
-        $question = new ConfirmationQuestion('Do you want to continue? (y/n) ', false);
 
-        $this->runCommand = $helper->ask($input, $output, $question);
-
-        $this->io->newLine();
+        $this->runCommand = $this->io->confirm('Do you want to continue?', false);
     }
 }

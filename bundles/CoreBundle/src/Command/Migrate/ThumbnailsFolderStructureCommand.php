@@ -22,7 +22,6 @@ use League\Flysystem\StorageAttributes;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Tool\Storage;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -69,7 +68,7 @@ class ThumbnailsFolderStructureCommand extends AbstractCommand
         });
 
         $iterator = $thumbnailFiles->toArray();
-        $progressBar = new ProgressBar($output, count($iterator));
+        $progressBar = $this->io->createProgressBar(count($iterator));
 
         $progressBar->start();
 

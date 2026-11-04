@@ -64,7 +64,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
 
         $validLanguages = Tool::getValidLanguages();
         if (!$validLanguages) {
-            $this->writeError('No valid languages are configured, aborting to not delete the data of all languages');
+            $this->io->error('No valid languages are configured, aborting to not delete the data of all languages');
 
             return self::FAILURE;
         }

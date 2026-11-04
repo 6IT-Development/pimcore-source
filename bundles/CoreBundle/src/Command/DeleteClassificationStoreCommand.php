@@ -50,14 +50,14 @@ class DeleteClassificationStoreCommand extends AbstractCommand
     {
         $storeId = filter_var($input->getArgument('storeId'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if ($storeId === false) {
-            $this->writeError('Invalid store ID');
+            $this->io->error('Invalid store ID');
 
             return self::INVALID;
         }
 
         $store = StoreConfig::getById($storeId);
         if (!$store) {
-            $this->writeError(sprintf('Classification store with ID %d does not exist', $storeId));
+            $this->io->error(sprintf('Classification store with ID %d does not exist', $storeId));
 
             return self::INVALID;
         }

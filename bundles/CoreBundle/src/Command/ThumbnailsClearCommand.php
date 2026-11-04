@@ -73,13 +73,13 @@ class ThumbnailsClearCommand extends AbstractCommand
     {
         $possibleOptions = ['image', 'video'];
         if (!in_array($input->getOption('type'), $possibleOptions)) {
-            $this->writeError(sprintf('Input option `type` must be one of %s', implode(',', $possibleOptions)));
+            $this->io->error(sprintf('Input option `type` must be one of %s', implode(',', $possibleOptions)));
 
             return self::INVALID;
         }
 
         if (!$input->getOption('name')) {
-            $this->writeError('Input option `name` is required');
+            $this->io->error('Input option `name` is required');
 
             return self::INVALID;
         }
@@ -88,7 +88,7 @@ class ThumbnailsClearCommand extends AbstractCommand
         /** @var Asset\Image\Thumbnail\Config|Asset\Video\Thumbnail\Config|null $thumbConfig */
         $thumbConfig = $configClass::getByName($input->getOption('name'));
         if (!$thumbConfig) {
-            $this->writeError(sprintf('Unable to find %s thumbnail config with name: %s. Nevertheless trying to delete remaining files', $input->getOption('type'), $input->getOption('name')));
+            $this->io->error(sprintf('Unable to find %s thumbnail config with name: %s. Nevertheless trying to delete remaining files', $input->getOption('type'), $input->getOption('name')));
             $thumbConfig = new $configClass();
             $thumbConfig->setName($input->getOption('name'));
         }

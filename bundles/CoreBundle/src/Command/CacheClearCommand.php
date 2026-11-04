@@ -24,7 +24,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -67,8 +66,7 @@ class CacheClearCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io = new SymfonyStyle($input, $output);
-        $io->newLine();
+        $this->io->newLine();
 
         $tagOptions = $input->getOption('tags');
         $selectedModes = array_keys(array_filter([
@@ -78,7 +76,7 @@ class CacheClearCommand extends AbstractCommand
         ]));
 
         if (count($selectedModes) > 1) {
-            $io->error('The options ' . implode(', ', $selectedModes) . ' cannot be combined.');
+            $this->io->error('The options ' . implode(', ', $selectedModes) . ' cannot be combined.');
 
             return self::INVALID;
         }
@@ -86,22 +84,22 @@ class CacheClearCommand extends AbstractCommand
         if ([] !== $tagOptions) {
             $tags = $this->prepareTags($tagOptions);
             if ([] === $tags) {
-                $io->error('No valid tags given.');
+                $this->io->error('No valid tags given.');
 
                 return self::INVALID;
             }
 
             Cache::clearTags($tags);
-            $io->success('Pimcore data cache cleared tags: ' . implode(',', $tags));
+            $this->io->success('Pimcore data cache cleared tags: ' . implode(',', $tags));
         } elseif ($input->getOption('output')) {
             Cache::clearTag('output');
-            $io->success('Pimcore output cache cleared successfully');
+            $this->io->success('Pimcore output cache cleared successfully');
         } else {
             Cache::clearAll();
 
             $this->eventDispatcher->dispatch(new GenericEvent(), SystemEvents::CACHE_CLEAR);
 
-            $io->success('Pimcore data cache cleared successfully');
+            $this->io->success('Pimcore data cache cleared successfully');
         }
 
         return self::SUCCESS;

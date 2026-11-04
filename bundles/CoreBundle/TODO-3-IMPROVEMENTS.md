@@ -92,7 +92,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
 - Option names are public API. Add the kebab-case name, keep the old one hidden for one release with a deprecation
   notice, then remove it.
 
-### [ ] I-06 – Use `$this->io` (SymfonyStyle) consistently
+### [x] I-06 – Use `$this->io` (SymfonyStyle) consistently
 
 - `CacheClearCommand.php:70` creates a second `SymfonyStyle` although `AbstractCommand` already provides
   `$this->io`.

@@ -130,7 +130,7 @@ class CacheWarmingCommand extends AbstractCommand
             $objectTypes = $this->getArrayOption('object-types', 'validObjectTypes', 'object type') ?? [];
             $objectClasses = $this->input->getOption('classes') ?? [];
         } catch (InvalidArgumentException $e) {
-            $this->writeError($e->getMessage());
+            $this->io->error($e->getMessage());
 
             return self::INVALID;
         }

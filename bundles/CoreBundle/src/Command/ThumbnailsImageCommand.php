@@ -182,7 +182,7 @@ class ThumbnailsImageCommand extends AbstractCommand
             $availableThumbs = array_map(static fn (Image\Thumbnail\Config $config) => $config->getName(), $thumbnailList);
             $unknownThumbs = array_diff($allowedThumbs, $availableThumbs);
             if ($unknownThumbs) {
-                $this->writeComment('Unknown thumbnail config(s), skipping: ' . implode(', ', $unknownThumbs));
+                $this->io->note('Unknown thumbnail config(s), skipping: ' . implode(', ', $unknownThumbs));
             }
         }
 
@@ -205,14 +205,14 @@ class ThumbnailsImageCommand extends AbstractCommand
 
         $image = Image::getById((int)$assetId);
         if (!$image) {
-            $this->writeError('No image with ID=' . $assetId . ' found. Has the image been deleted or is the asset of another type?');
+            $this->io->error('No image with ID=' . $assetId . ' found. Has the image been deleted or is the asset of another type?');
 
             return;
         }
 
         $thumbnailsToGenerate = $this->fetchThumbnailConfigs($input, $thumbnailConfigName);
         if (!$thumbnailsToGenerate) {
-            $this->writeError('Thumbnail config "' . $thumbnailConfigName . '" not found. Has it been deleted or renamed?');
+            $this->io->error('Thumbnail config "' . $thumbnailConfigName . '" not found. Has it been deleted or renamed?');
 
             return;
         }

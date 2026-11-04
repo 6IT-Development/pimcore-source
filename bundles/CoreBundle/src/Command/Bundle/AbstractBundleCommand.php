@@ -52,7 +52,7 @@ abstract class AbstractBundleCommand extends AbstractCommand
 
     protected function handlePrerequisiteError(string $message): int
     {
-        if ($this->io->getInput()->getOption('fail-without-error')) {
+        if ($this->input->getOption('fail-without-error')) {
             $this->io->warning($message);
 
             return self::SUCCESS;
@@ -65,7 +65,7 @@ abstract class AbstractBundleCommand extends AbstractCommand
 
     protected function getBundle(): PimcoreBundleInterface
     {
-        $bundleId = $this->io->getInput()->getArgument('bundle');
+        $bundleId = $this->input->getArgument('bundle');
         $bundleId = $this->normalizeBundleIdentifier($bundleId);
 
         $activeBundles = $this->bundleManager->getActiveBundles(false);

@@ -85,7 +85,7 @@ class ResetPasswordCommand extends AbstractCommand
         }
 
         if (!$user) {
-            $this->writeError('User with name/ID ' . $userArgument . ' could not be found. Exiting');
+            $this->io->error('User with name/ID ' . $userArgument . ' could not be found. Exiting');
 
             return self::INVALID;
         }
@@ -96,19 +96,19 @@ class ResetPasswordCommand extends AbstractCommand
             $this->io->warning('Passing the password as option exposes it in the shell history and the process list. Omit --password to be prompted for it instead.');
 
             if ($error = $this->validatePassword($plainPassword)) {
-                $this->writeError($error);
+                $this->io->error($error);
 
                 return self::INVALID;
             }
         } elseif (!$input->isInteractive()) {
-            $this->writeError('No password given. Pass --password or run the command interactively to be prompted for it.');
+            $this->io->error('No password given. Pass --password or run the command interactively to be prompted for it.');
 
             return self::INVALID;
         } else {
             $plainPassword = $this->askForPassword();
 
             if ($plainPassword === null) {
-                $this->writeError('The passwords do not match. Password was not changed.');
+                $this->io->error('The passwords do not match. Password was not changed.');
 
                 return self::FAILURE;
             }

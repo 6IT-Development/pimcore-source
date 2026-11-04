@@ -23,7 +23,6 @@ use Pimcore\Console\AbstractCommand;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -79,7 +78,7 @@ class StorageCommand extends AbstractCommand
             $this->io->newLine();
             $this->io->info(sprintf('Migrating storage "%s"', $storageName));
 
-            $progressBar = new ProgressBar($output);
+            $progressBar = $this->io->createProgressBar();
             $progressBar->setFormat('%current% [%bar%] %message%');
             $progressBar->start();
 
