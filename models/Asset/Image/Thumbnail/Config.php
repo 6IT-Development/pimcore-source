@@ -268,7 +268,8 @@ final class Config extends Model\AbstractModel
         $customPreviewImageThumbnail = \Pimcore\Config::getSystemConfiguration('assets')['preview_image_thumbnail'];
         $thumbnail = null;
 
-        if ($customPreviewImageThumbnail) {
+        // the system name itself would make getByName() call this method again
+        if ($customPreviewImageThumbnail && $customPreviewImageThumbnail !== self::PREVIEW_THUMBNAIL_NAME) {
             $thumbnail = self::getByName($customPreviewImageThumbnail);
         }
 

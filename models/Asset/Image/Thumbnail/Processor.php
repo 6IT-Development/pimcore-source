@@ -375,10 +375,8 @@ class Processor
                 $storage->writeStream($storagePath, $stream);
                 fclose($stream);
 
-                if ($statusCacheEnabled && $asset instanceof Asset\Image) {
-                    //update thumbnail dimensions to cache
-                    $asset->addThumbnailFileToCache($tmpFsPath, $filename, $config);
-                }
+                //update thumbnail dimensions to cache
+                self::addToStatusCache($asset, $tmpFsPath, $filename, $config);
 
                 // delete dynamic thumbnail configs out of the TmpStore as soon as we've generated the thumbnail file
                 // (unconditionally: the deferred route may have changed the config before it was passed here)
@@ -405,6 +403,26 @@ class Processor
             'type' => 'thumbnail',
             'storagePath' => $storagePath,
         ];
+    }
+
+    /**
+     * Stores the dimensions of a generated thumbnail file in the status cache, if it is enabled. Only image assets
+     * use the status cache.
+     *
+     * @return bool whether the file was added to the status cache
+     *
+     * @throws Exception
+     */
+    public static function addToStatusCache(Asset $asset, string $localFile, string $filename, Config $config): bool
+    {
+        if (!$asset instanceof Asset\Image
+            || !PimcoreConfig::getSystemConfiguration('assets')['image']['thumbnails']['status_cache']) {
+            return false;
+        }
+
+        $asset->addThumbnailFileToCache($localFile, $filename, $config);
+
+        return true;
     }
 
     /**

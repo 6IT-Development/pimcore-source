@@ -181,15 +181,14 @@ trait ImageThumbnailTrait
                 if (null !== $localFile && isset($pathReference['storagePath']) && $config = $this->getConfig()) {
                     $asset = $this->getAsset();
                     $filename = basename($pathReference['storagePath']);
-                    $asset->addThumbnailFileToCache(
-                        $localFile,
-                        $filename,
-                        $config
-                    );
-                    $thumbnail = $asset->getDao()->getCachedThumbnail($config->getName(), $filename);
-                    if (isset($thumbnail['width'], $thumbnail['height'])) {
-                        $dimensions['width'] = $thumbnail['width'];
-                        $dimensions['height'] = $thumbnail['height'];
+                    if (Processor::addToStatusCache($asset, $localFile, $filename, $config)) {
+                        $thumbnail = $asset->getDao()->getCachedThumbnail($config->getName(), $filename);
+                        if (isset($thumbnail['width'], $thumbnail['height'])) {
+                            $dimensions['width'] = $thumbnail['width'];
+                            $dimensions['height'] = $thumbnail['height'];
+                        }
+                    } else {
+                        $dimensions = Asset::readImageFileDimensions($localFile);
                     }
                 }
             } catch (Exception) {

@@ -946,7 +946,7 @@ carries the media filename suffix and matches the srcset variant; the no-op `res
 **Done:** `__clone()` rebuilds the overlay paths of `$this->items` and of every media item list through the new
 private `rebuildOverlayPaths()`.
 
-## [ ] B-60 – Infinite recursion when `assets.preview_image_thumbnail` = `pimcore-system-treepreview`; inconsistent status-cache writes
+## [x] B-60 – Infinite recursion when `assets.preview_image_thumbnail` = `pimcore-system-treepreview`; inconsistent status-cache writes
 
 **Files:** `models/Asset/Image/Thumbnail/Config.php:195-196`, `:253-254`; `Processor.php:349` vs `ImageThumbnailTrait.php:182`
 
@@ -955,6 +955,13 @@ private `rebuildOverlayPaths()`.
   disabled (impact unverified).
 
 **Fix direction:** skip custom lookup when equal to the system name; one guarded helper for status-cache writes.
+
+**Done:** `getPreviewConfig()` ignores a configured `preview_image_thumbnail` equal to the system name and builds the
+default preview config. Status-cache rows are written only through the new internal `Processor::addToStatusCache()`,
+which checks `status_cache` and the asset type (`Asset\Image`) for both the Processor and
+`ImageThumbnailTrait::readDimensionsFromFile()`; when nothing is cached the trait reads the dimensions from the file via
+the new internal `Asset::readImageFileDimensions()` (split out of `addThumbnailFileToCache()`). Video and document
+image thumbnails therefore no longer get status-cache rows from the dimension fallback.
 
 ---
 

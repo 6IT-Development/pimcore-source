@@ -2109,22 +2109,7 @@ class Asset extends Element\AbstractElement
      */
     public function addThumbnailFileToCache(string $localFile, string $filename, ThumbnailConfig $config): void
     {
-        //try to get the dimensions with getimagesize because it is much faster than e.g. the Imagick-Adapter
-        if ($imageSize = @getimagesize($localFile)) {
-            $dimensions = [
-                'width' => $imageSize[0],
-                'height' => $imageSize[1],
-            ];
-        } else {
-            //fallback to Default Adapter
-            $image = Image::getInstance();
-            if ($image->load($localFile)) {
-                $dimensions = [
-                    'width' => $image->getWidth(),
-                    'height' => $image->getHeight(),
-                ];
-            }
-        }
+        $dimensions = self::readImageFileDimensions($localFile);
 
         if (!empty($dimensions)) {
             $this->getDao()->addToThumbnailCache(
@@ -2135,5 +2120,34 @@ class Asset extends Element\AbstractElement
                 $dimensions['height']
             );
         }
+    }
+
+    /**
+     * @return array{width?: int, height?: int}
+     *
+     * @throws Exception
+     *
+     * @internal
+     */
+    public static function readImageFileDimensions(string $localFile): array
+    {
+        //try to get the dimensions with getimagesize because it is much faster than e.g. the Imagick-Adapter
+        if ($imageSize = @getimagesize($localFile)) {
+            return [
+                'width' => $imageSize[0],
+                'height' => $imageSize[1],
+            ];
+        }
+
+        //fallback to Default Adapter
+        $image = Image::getInstance();
+        if ($image->load($localFile)) {
+            return [
+                'width' => $image->getWidth(),
+                'height' => $image->getHeight(),
+            ];
+        }
+
+        return [];
     }
 }
