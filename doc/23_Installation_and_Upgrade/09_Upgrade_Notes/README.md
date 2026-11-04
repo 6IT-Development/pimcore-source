@@ -87,6 +87,10 @@
   and `HEAD` requests. The common files route no longer lists `robots.txt` (the `/robots.txt` route answers it) and
   matches any `*.crl` file in the root, not only `/.crl`. The thumbnail route requirements are
   `Asset\Service::THUMBNAIL_URI_REQUIREMENTS`.
+- The SEO bundle serves `/robots.txt` (route `pimcore_bundle_seo_robots_txt`, `Cache-Control: public, max-age=3600`
+  with an `ETag`), so a saved change can take up to an hour to reach clients and proxies. Without the SEO bundle,
+  CoreBundle's `_pimcore_service_robots_txt` route (now imported after `_pimcore_bundle_auto`) answers "allow all".
+  `PublicServicesController::robotsTxtAction()` no longer reads the SEO configuration.
 #### [Profiler]
 - The deprecated template `@PimcoreCore/Profiler/key_value_table.html.twig` was removed. Copy it into your project if
   you still include it.

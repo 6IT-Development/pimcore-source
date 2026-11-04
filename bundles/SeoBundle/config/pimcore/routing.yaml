@@ -4,3 +4,8 @@ _pimcore_bundle_seo_backend:
     prefix:   /admin/bundle/seo
     options:
         expose: true
+# imported via _pimcore_bundle_auto, before the "allow all" fallback route of CoreBundle
+pimcore_bundle_seo_robots_txt:
+    path: /robots.txt
+    methods: [GET, HEAD]
+    controller: Pimcore\Bundle\SeoBundle\Controller\RobotsTxtController

@@ -18,10 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Controller;
 
 use DateTimeImmutable;
-use Pimcore\Bundle\SeoBundle\Config;
-use Pimcore\Bundle\SeoBundle\PimcoreSeoBundle;
 use Pimcore\Controller\Controller;
-use Pimcore\Http\Request\Resolver\SiteResolver;
 use Pimcore\Model\Asset;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -68,19 +65,12 @@ final class PublicServicesController extends Controller
         return $response;
     }
 
-    public function robotsTxtAction(Request $request, SiteResolver $siteResolver): Response
+    /**
+     * Fallback when the SEO bundle, which serves the robots.txt configured per site, is not enabled
+     */
+    public function robotsTxtAction(): Response
     {
-        // the site the routing layer resolved for this request
-        $siteId = $siteResolver->getSite($request)?->getId() ?? 0;
-
-        // the SEO bundle may be installed but not enabled
-        $config = [];
-        if (in_array(PimcoreSeoBundle::class, $this->getParameter('kernel.bundles'), true)) {
-            $config = Config::getRobotsConfig();
-        }
-
-        // an empty robots.txt configured for the site is served as is
-        return new Response($config[$siteId] ?? self::DEFAULT_ROBOTS_TXT, Response::HTTP_OK, [
+        return new Response(self::DEFAULT_ROBOTS_TXT, Response::HTTP_OK, [
             'Content-Type' => 'text/plain; charset=UTF-8',
         ]);
     }

@@ -1,10 +1,6 @@
 # Order matters: these routes, and the thumbnail route in particular, must come before _pimcore_bundle_auto and the
-# document routes (catch-all), so they are kept in YAML instead of #[Route] attributes.
-
-_pimcore_service_robots_txt:
-    path: /robots.txt
-    methods: [GET, HEAD]
-    defaults: { _controller: Pimcore\Bundle\CoreBundle\Controller\PublicServicesController::robotsTxtAction }
+# document routes (catch-all), so they are kept in YAML instead of #[Route] attributes. The robots.txt fallback comes
+# after _pimcore_bundle_auto, so the route of the SEO bundle wins when it is enabled.
 
 # files that browsers and clients request on their own: answered with a 404 instead of going through the document
 # routing; *.crl are certificate revocation lists
@@ -36,6 +32,12 @@ _fos_js_routing:
 _pimcore_bundle_auto:
     resource: .
     type: pimcore_bundle
+
+# "allow all" when the SEO bundle (robots.txt per site) is not enabled
+_pimcore_service_robots_txt:
+    path: /robots.txt
+    methods: [GET, HEAD]
+    defaults: { _controller: Pimcore\Bundle\CoreBundle\Controller\PublicServicesController::robotsTxtAction }
 
 pimcore_webdav:
     path: /asset/webdav{path}

@@ -1483,7 +1483,7 @@ the site is resolved from it). `commonFilesAction()` returns a plain-text 404 wi
 without parameters; it keeps a plain response instead of the error page, which would render a document for every
 favicon request. `match` has a trailing comma.
 
-### [ ] I-69 – Move `robots.txt` delivery into SeoBundle
+### [x] I-69 – Move `robots.txt` delivery into SeoBundle
 
 **Files:** `src/Controller/PublicServicesController.php:21,66-101`, `config/routing.yaml:1-3`
 
@@ -1492,6 +1492,12 @@ favicon request. `match` has a trailing comma.
   too, with CoreBundle keeping only the "allow all" fallback (or none – a missing `robots.txt` is a 404 that means
   "allow all" to crawlers).
 - Add `Cache-Control: public, max-age=…` (and invalidate on save) – the file changes rarely and is requested often.
+
+**Done:** SeoBundle's invokable `RobotsTxtController` (route `pimcore_bundle_seo_robots_txt` in its
+`config/pimcore/routing.yaml`, `GET`/`HEAD`) serves the configured robots.txt per site with `Cache-Control: public,
+max-age=3600` and an `ETag` (304 for conditional requests). The caches cannot be purged on save, so a change can take up
+to the max age to show. CoreBundle keeps `_pimcore_service_robots_txt` as the "allow all" fallback, imported after
+`_pimcore_bundle_auto` so the SEO route wins; it no longer imports SeoBundle classes.
 
 ### [ ] I-70 – `SelectOptionsOptionsProvider` polish
 
