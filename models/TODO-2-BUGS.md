@@ -1773,7 +1773,7 @@ failure events. Async routing by default is not changed.
 
 ## Translation (Scope 4)
 
-## [ ] B-107 – `getByKey()` runtime cache: the key ignores `$create` / `$returnIdIfEmpty`, one shared mutable instance, never invalidated
+## [x] B-107 – `getByKey()` runtime cache: the key ignores `$create` / `$returnIdIfEmpty`, one shared mutable instance, never invalidated
 
 **File:** `models/Translation.php:248-255`, `:283-294`, `:354-373`
 
@@ -1790,6 +1790,13 @@ failure events. Async routing by default is not changed.
 
 **Fix direction:** cache the persisted state only (no presentation flags), return a clone or treat the object as
 immutable, and update/remove the entry in `save()` / `delete()`. Use `=== ''` instead of `empty()`.
+
+**Done:** the runtime cache holds only what the DAO loaded, one entry per domain and key
+(`translation_<domain>~<key>`, `~` cannot occur in a domain) with the loaded language subsets, or `false` for a key
+that is not in the DB. `getByKey()` returns a clone on every call and applies `$returnIdIfEmpty` to that clone only,
+so presentation fills and caller changes never reach later callers. The auto-create queue always gets its own copy.
+`save()`, `saveMissingLanguages()` and `delete()` drop the entry of the key. `$returnIdIfEmpty` replaces only missing
+and `''` texts, a translation `"0"` is kept. DB errors other than "not found" are not cached.
 
 ## [ ] B-108 – `getByKey()` swallows every `Exception`, but not `TypeError`; DB failures look like "not found"
 

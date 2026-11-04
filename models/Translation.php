@@ -269,29 +269,48 @@ final class Translation extends AbstractModel
     }
 
     /**
-     *
+     * Returns a copy on every call: changes of the caller (e.g. addTranslation() before a save) must not leak into the
+     * runtime cache, which holds only the persisted state of the key.
      *
      * @throws Exception
      */
     public static function getByKey(string $id, string $domain = self::DOMAIN_DEFAULT, bool $create = false, bool $returnIdIfEmpty = false, ?array $languages = null): ?Translation
     {
-        $cacheKey = 'translation_' . $id . '_' . $domain;
-        if (is_array($languages)) {
-            $cacheKey .= '_' . implode('-', $languages);
-        }
-
-        if (RuntimeCache::isRegistered($cacheKey)) {
-            return RuntimeCache::get($cacheKey);
-        }
-
         $translation = new Translation();
         $translation->setDomain($domain);
         $idOriginal = $id;
         $languages = $languages ? array_intersect(Translation::getValidLanguages($domain), $languages) : Translation::getValidLanguages($domain);
 
-        try {
-            $translation->getDao()->getByKey($id, $languages);
-        } catch (Exception $e) {
+        // one entry per key with the loaded language subsets, so save() / delete() can drop all of them
+        $cacheKey = self::getRuntimeCacheKey($domain, $id);
+        $languagesKey = implode(',', $languages);
+        $cache = (RuntimeCache::isRegistered($cacheKey) ? RuntimeCache::get($cacheKey) : null) ?? [];
+
+        $notFound = false;
+        $failed = false;
+        if (array_key_exists($languagesKey, $cache)) {
+            // false: the key is not in the DB
+            if ($cache[$languagesKey] instanceof self) {
+                $translation = clone $cache[$languagesKey];
+            } else {
+                $notFound = true;
+            }
+        } else {
+            try {
+                $translation->getDao()->getByKey($id, $languages);
+                $cache[$languagesKey] = clone $translation;
+            } catch (Exception $e) {
+                $failed = true;
+                $notFound = $e instanceof NotFoundResourceException || $e instanceof TableNotFoundException;
+                if ($notFound) {
+                    $cache[$languagesKey] = false;
+                }
+            }
+
+            RuntimeCache::set($cacheKey, $cache);
+        }
+
+        if ($notFound || $failed) {
             if (!$create && !$returnIdIfEmpty) {
                 return null;
             }
@@ -300,32 +319,37 @@ final class Translation extends AbstractModel
             $translation->setCreationDate(time());
             $translation->setModificationDate(time());
 
-            if ($create && ($e instanceof NotFoundResourceException || $e instanceof TableNotFoundException)) {
+            if ($create && $notFound) {
                 $translations = [];
                 foreach ($languages as $lang) {
                     $translations[$lang] = '';
                 }
                 $translation->setTranslations($translations);
-                // $returnIdIfEmpty fills the empty languages with the key below, which is for presentation only:
-                // queue a copy, otherwise the key would be saved as the text of every language
-                TranslationEntriesDumper::addToSaveQueue($returnIdIfEmpty ? clone $translation : $translation);
+                // queue a copy: $returnIdIfEmpty fills the empty languages with the key below, which is for
+                // presentation only, and the caller may change the returned object
+                TranslationEntriesDumper::addToSaveQueue(clone $translation);
             }
         }
 
         if ($returnIdIfEmpty) {
             $translations = $translation->getTranslations();
             foreach ($languages as $language) {
-                if (!array_key_exists($language, $translations) || empty($translations[$language])) {
+                if (($translations[$language] ?? '') === '') {
                     $translations[$language] = $idOriginal;
                 }
             }
             $translation->setTranslations($translations);
         }
 
-        // add to key cache
-        RuntimeCache::set($cacheKey, $translation);
-
         return $translation;
+    }
+
+    /**
+     * The domain is a plain identifier (DOMAIN_PATTERN), so the `~` separator keeps different domain / key pairs apart
+     */
+    private static function getRuntimeCacheKey(string $domain, string $key): string
+    {
+        return 'translation_' . $domain . '~' . $key;
     }
 
     /**
@@ -404,6 +428,7 @@ final class Translation extends AbstractModel
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::PRE_SAVE);
 
         $this->getDao()->save($onlyMissing);
+        $this->clearRuntimeCache();
 
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::POST_SAVE);
 
@@ -415,9 +440,17 @@ final class Translation extends AbstractModel
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::PRE_DELETE);
 
         $this->getDao()->delete();
+        $this->clearRuntimeCache();
         self::clearDependentCache();
 
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::POST_DELETE);
+    }
+
+    private function clearRuntimeCache(): void
+    {
+        if ($this->key !== null) {
+            RuntimeCache::set(self::getRuntimeCacheKey($this->domain, $this->key), null);
+        }
     }
 
     /**
