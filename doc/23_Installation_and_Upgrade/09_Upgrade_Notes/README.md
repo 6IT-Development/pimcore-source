@@ -134,6 +134,15 @@
 - `general.valid_languages` / `general.required_languages` given as a string are now trimmed (`"en, de"` gives `de`
   instead of ` de`). To set them from an env var, use `'%env(csv:LANGUAGES)%'`. A plain `'%env(LANGUAGES)%'` is used
   as one single language.
+- `pimcore` options are type-checked: `assets|objects|documents.versions.days/steps`, `full_page_cache.lifetime` and
+  `httpclient.proxy_port` must be non-negative integers or `null` (integer strings are converted, `''` means `null`);
+  `httpclient.adapter` must be `Socket` or `Proxy`; `documents.allow_trailing_slash` must be `no` or `yes` (booleans
+  are converted); `dependency.enabled` and `custom_views.definitions.*.showroot` are booleans. `tree_paging_limit`
+  must be at least `1`, `auto_save_interval` and the `maintenance.housekeeping.*` seconds at least `0`,
+  `assets.thumbnails.max_scaling_factor` and `assets.image.max_pixels` at least `1`. Other values used to be accepted
+  and cast by the consumers; they are now rejected with a configuration error.
+- The `pimcore.applicationlog` options are deprecated, they were never read. Configure `pimcore_application_logger`
+  (ApplicationLoggerBundle) instead.
 - `@PimcoreCoreBundle/config/routing_dev.yaml` imports the PHP route files of the WebProfilerBundle instead of the XML
   ones, which are deprecated in Symfony 7.4. The file itself is deprecated: replace its import in your
   `config/routes/dev/*.yaml` with the `config/routes/web_profiler.yaml` of the Symfony recipe:

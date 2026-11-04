@@ -1083,7 +1083,7 @@ say so.
 
 ## N – Symfony 7.4 / configuration
 
-### [ ] I-55 – Give config nodes real types and ranges (`scalarNode` used for numbers, booleans and enums)
+### [x] I-55 – Give config nodes real types and ranges (`scalarNode` used for numbers, booleans and enums)
 
 **File:** `src/DependencyInjection/Configuration.php`
 
@@ -1103,6 +1103,16 @@ say so.
 - `security.password.algorithm` (1127-1137): `PASSWORD_DEFAULT` and `PASSWORD_BCRYPT` are both `'2y'`, and the
   `defined()` checks are dead because the constants are imported with `use const`. Build the list once:
   `array_values(array_unique([PASSWORD_BCRYPT, …defined argon]))`.
+
+**Done:** nullable numbers (`versions.days/steps` ×3, `full_page_cache.lifetime`, `httpclient.proxy_port`) stay scalar
+nodes, because `IntegerNode` rejects `null` and the system settings write `null`. Integer strings are converted, `''`
+becomes `null`, and a `validate()` rejects anything but a non-negative integer, `null` or an env placeholder.
+`httpclient.adapter` and `documents.allow_trailing_slash` are enums (booleans map to `yes`/`no`); `dependency.enabled`
+and `showroot` are boolean nodes. The ranges are added. The `applicationlog` node turned out to have no consumer at
+all (`ApplicationLoggerBundle` reads its own `pimcore_application_logger` tree, which already has `archive_threshold`),
+so the whole node is deprecated instead of typed. The password algorithm list is deduplicated; the `defined()` checks
+stay, the Argon constants only exist when PHP is built with Argon2 (`use const` does not change that). Checked with
+`Processor` against Symfony 7.4: bundled `config/pimcore/*.yaml`, admin-form strings, env placeholders.
 
 ### [ ] I-56 – Make the tree self-contained: `addDefaultsIfNotSet()` where the extension/consumers read unguarded
 

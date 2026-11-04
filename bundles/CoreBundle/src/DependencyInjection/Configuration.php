@@ -173,10 +173,12 @@ final class Configuration implements ConfigurationInterface
             ->children()
             ->integerNode('cleanup_tmp_files_atime_older_than')
             ->info('Integer value in seconds.')
+            ->min(0)
             ->defaultValue(7_776_000) // 90 days
             ->end()
             ->integerNode('cleanup_profiler_files_atime_older_than')
             ->info('Integer value in seconds.')
+            ->min(0)
             ->defaultValue(1800)
             ->end();
     }
@@ -305,14 +307,23 @@ final class Configuration implements ConfigurationInterface
             ->arrayNode('httpclient')
             ->addDefaultsIfNotSet()
             ->children()
-            ->scalarNode('adapter')
+            ->enumNode('adapter')
             ->info('Set to `Proxy` if proxy server should be used')
+            ->values(['Socket', 'Proxy'])
             ->defaultValue('Socket')
             ->end()
             ->scalarNode('proxy_host')
             ->defaultNull()
             ->end()
             ->scalarNode('proxy_port')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
             ->defaultNull()
             ->end()
             ->scalarNode('proxy_user')
@@ -331,6 +342,7 @@ final class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
             ->arrayNode('applicationlog')
+            ->setDeprecated('pimcore/pimcore', '11.5', 'The "%path%.%node%" option is not used and will be removed in Pimcore 12, configure "pimcore_application_logger" instead.')
             ->addDefaultsIfNotSet()
             ->children()
             ->arrayNode('mail_notification')
@@ -401,6 +413,7 @@ final class Configuration implements ConfigurationInterface
             ->scalarPrototype()->end()
             ->end()
             ->floatNode('max_scaling_factor')
+            ->min(1)
             ->defaultValue(5.0)
             ->end()
             ->end()
@@ -426,6 +439,7 @@ final class Configuration implements ConfigurationInterface
             ->defaultValue('_default_upload_bucket')
             ->end()
             ->integerNode('tree_paging_limit')
+            ->min(1)
             ->defaultValue(100)
             ->end()
             ->arrayNode('image')
@@ -433,6 +447,7 @@ final class Configuration implements ConfigurationInterface
             ->children()
             ->integerNode('max_pixels')
             ->info('Maximum number of pixels an image can have when added (width × height).')
+            ->min(1)
             ->defaultValue(40_000_000)
             ->end()
             ->arrayNode('low_quality_image_preview')
@@ -626,9 +641,25 @@ final class Configuration implements ConfigurationInterface
             ->addDefaultsIfNotSet()
             ->children()
             ->scalarNode('days')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
             ->defaultNull()
             ->end()
             ->scalarNode('steps')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
             ->defaultNull()
             ->end()
             ->booleanNode('use_hardlinks')
@@ -739,15 +770,37 @@ final class Configuration implements ConfigurationInterface
             ->defaultFalse()
             ->end()
             ->integerNode('tree_paging_limit')
+            ->min(1)
             ->defaultValue(30)
             ->end()
             ->integerNode('auto_save_interval')
+            ->min(0)
             ->defaultValue(60)
             ->end()
             ->arrayNode('versions')
             ->children()
-            ->scalarNode('days')->defaultNull()->end()
-            ->scalarNode('steps')->defaultNull()->end()
+            ->scalarNode('days')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
+            ->defaultNull()
+            ->end()
+            ->scalarNode('steps')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
+            ->defaultNull()
+            ->end()
             ->booleanNode('disable_stack_trace')
             ->beforeNormalization()
             ->ifString()
@@ -877,9 +930,25 @@ final class Configuration implements ConfigurationInterface
             ->arrayNode('versions')
             ->children()
             ->scalarNode('days')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
             ->defaultNull()
             ->end()
             ->scalarNode('steps')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
             ->defaultNull()
             ->end()
             ->booleanNode('disable_stack_trace')
@@ -912,7 +981,13 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->end()
             ->end()
-            ->scalarNode('allow_trailing_slash')
+            ->enumNode('allow_trailing_slash')
+            ->info('"no" redirects document URLs with a trailing slash to the URL without it')
+            ->beforeNormalization()
+            ->ifTrue(fn($v) => is_bool($v))
+            ->then(fn(bool $v) => $v ? 'yes' : 'no')
+            ->end()
+            ->values(['no', 'yes'])
             ->defaultValue('no')
             ->end()
             ->booleanNode('generate_preview')
@@ -926,6 +1001,7 @@ final class Configuration implements ConfigurationInterface
             ->defaultValue('')
             ->end()
             ->integerNode('tree_paging_limit')
+            ->min(1)
             ->defaultValue(50)
             ->end()
             ->arrayNode('editables')
@@ -953,6 +1029,7 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->end()
             ->integerNode('auto_save_interval')
+            ->min(0)
             ->defaultValue(60)
             ->end()
             ->arrayNode('static_page_router')
@@ -1123,12 +1200,13 @@ final class Configuration implements ConfigurationInterface
             ->enumNode('algorithm')
             ->info('The hashing algorithm to use for backend users and objects containing a "password" field.')
             ->example('!php/const PASSWORD_BCRYPT')
-            ->values(array_filter([
+            ->values(array_values(array_unique(array_filter([
                 PASSWORD_DEFAULT,
                 PASSWORD_BCRYPT,
+                // only defined when PHP is built with Argon2 support
                 defined('PASSWORD_ARGON2I') ? PASSWORD_ARGON2I : null,
                 defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : null,
-            ]))
+            ]))))
             ->defaultValue(PASSWORD_DEFAULT)
             ->end()
             ->arrayNode('options')
@@ -1250,6 +1328,14 @@ final class Configuration implements ConfigurationInterface
             ->children()
             ->scalarNode('lifetime')
             ->info('Optional output-cache lifetime (in seconds) after the cache expires, if not defined the cache will be cleaned on every action inside the CMS, otherwise not (for high traffic sites)')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeNullableIntString($v))
+            ->end()
+            ->validate()
+            ->ifTrue(fn($v) => self::isInvalidNullableInt($v))
+            ->thenInvalid('Expected a non-negative integer or null, got %s.')
+            ->end()
             ->defaultNull()
             ->end()
             ->scalarNode('exclude_patterns')
@@ -1912,7 +1998,13 @@ final class Configuration implements ConfigurationInterface
             ->scalarNode('condition')->end()
             ->scalarNode('icon')->end()
             ->scalarNode('rootfolder')->end()
-            ->scalarNode('showroot')->end()
+            ->booleanNode('showroot')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeBoolString($v))
+            ->end()
+            ->treatNullLike(false)
+            ->end()
             ->variableNode('classes')->end()
             ->scalarNode('position')->end()
             ->scalarNode('sort')->end()
@@ -1997,8 +2089,12 @@ final class Configuration implements ConfigurationInterface
             ->arrayNode('dependency')
             ->addDefaultsIfNotSet()
             ->children()
-            ->scalarNode('enabled')
-            ->defaultValue(true)
+            ->booleanNode('enabled')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeBoolString($v))
+            ->end()
+            ->defaultTrue()
             ->end()
             ->end()
             ->end()
@@ -2035,6 +2131,42 @@ final class Configuration implements ConfigurationInterface
     }
 
     /**
+     * Integer strings (system settings form, quoted YAML values) become integers and empty strings null. Other strings,
+     * including env placeholders, are kept: invalid values are rejected by isInvalidNullableInt().
+     */
+    private static function normalizeNullableIntString(string $value): int|string|null
+    {
+        if (trim($value) === '') {
+            return null;
+        }
+
+        return filter_var(trim($value), FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? $value;
+    }
+
+    /**
+     * Nullable integers are scalar nodes because IntegerNode rejects null. Env placeholders are only resolved at
+     * runtime, so they are accepted here.
+     */
+    private static function isInvalidNullableInt(mixed $value): bool
+    {
+        if ($value === null || (is_string($value) && self::isEnvPlaceholder($value))) {
+            return false;
+        }
+
+        return !is_int($value) || $value < 0;
+    }
+
+    /**
+     * Placeholder format: env_<unique prefix>_<env with ":" replaced by "_">_<hash>, see EnvPlaceholderParameterBag.
+     *
+     * @param-out array<int, string> $matches
+     */
+    private static function isEnvPlaceholder(string $value, ?array &$matches = null): bool
+    {
+        return (bool) preg_match('/^env_[0-9a-f]{16}_(\w+)_[0-9a-f]{32}$/', $value, $matches);
+    }
+
+    /**
      * Splits a comma-separated string into a list of trimmed values.
      *
      * Env placeholders are only resolved by Symfony after the normalization closures: placeholders of the array
@@ -2045,8 +2177,7 @@ final class Configuration implements ConfigurationInterface
      */
     private static function normalizeCsvString(string $value): string|array
     {
-        // placeholder format: env_<unique prefix>_<env with ":" replaced by "_">_<hash>, see EnvPlaceholderParameterBag
-        if (preg_match('/^env_[0-9a-f]{16}_(\w+)_[0-9a-f]{32}$/', $value, $matches)) {
+        if (self::isEnvPlaceholder($value, $matches)) {
             return preg_match('/(?:^|_)(?:csv|json)_/', $matches[1]) ? $value : [$value];
         }
 
