@@ -88,10 +88,10 @@ class Listing extends Model\Listing\AbstractListing implements PaginateListingIn
 
         if ($condition) {
             if (Document::doHideUnpublished() && !$this->getUnpublished()) {
-                $condition = ' (' . $condition . ') AND published = 1';
+                $condition = ' (' . $condition . ') AND documents.published = 1';
             }
         } elseif (Document::doHideUnpublished() && !$this->getUnpublished()) {
-            $condition = 'published = 1';
+            $condition = 'documents.published = 1';
         }
 
         return $condition;

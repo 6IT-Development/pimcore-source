@@ -2817,7 +2817,7 @@ the lowest id (`ORDER BY id LIMIT 1`), so remaining duplicates resolve the same 
 already rejected by `Document::correctPath()`: `pathExists()` goes through the pretty URL fallback and reports a
 duplicate path.
 
-## [ ] B-154 – Document tree counts and listings: published flag and unqualified column
+## [x] B-154 – Document tree counts and listings: published flag and unqualified column
 
 **Files:** `models/Document/Dao.php:329-389`; `models/Document/Listing.php:85-98`
 
@@ -2827,6 +2827,12 @@ duplicate path.
   (`Element\Service::addTreeFilterJoins()`) to a table that also has `published` the query fails (ambiguous column).
 
 **Fix direction:** same filter in both methods; `documents.published`.
+
+**Done:** `Dao::getChildAmount()` takes `$includingUnpublished` like `hasChildren()` (default
+`!Document::doHideUnpublished()`) and applies the same `d.published = 1` filter, so the child count and "has children"
+agree; in the admin, where unpublished documents are shown, nothing changes. `Listing::getCondition()` appends
+`documents.published = 1`, so custom-view joins to tables with their own `published` column no longer make the query
+ambiguous.
 
 ## [ ] B-155 – `DocType::create()` persists an invalid definition; lookups hide errors
 

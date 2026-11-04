@@ -44,7 +44,7 @@ use Throwable;
 /**
  * @method Dao getDao()
  * @method bool __isBasedOnLatestData()
- * @method int getChildAmount($user = null)
+ * @method int getChildAmount($user = null, ?bool $includingUnpublished = null)
  * @method string getCurrentFullPath()
  */
 class Document extends Element\AbstractElement

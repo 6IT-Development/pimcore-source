@@ -340,7 +340,7 @@ class Dao extends Model\Element\Dao
 
         $includingUnpublished ??= !Document::doHideUnpublished();
         if (!$includingUnpublished) {
-            $sql .= ' AND published = 1';
+            $sql .= ' AND d.published = 1';
         }
 
         $sql .= ' LIMIT 1';
@@ -351,11 +351,11 @@ class Dao extends Model\Element\Dao
     }
 
     /**
-     * Returns the amount of children (not recursively),
+     * Returns the amount of children (not recursively), with the same published filter as hasChildren()
      *
      * @param Model\User|null $user
      */
-    public function getChildAmount(?User $user = null): int
+    public function getChildAmount(?User $user = null, ?bool $includingUnpublished = null): int
     {
         if (!$this->model->getId()) {
             return 0;
@@ -373,6 +373,11 @@ class Dao extends Model\Element\Dao
             $isDisallowedCurrentRow = 'EXISTS(SELECT list FROM users_workspaces_document WHERE userId IN (' . implode(',', $userIds) . ')  AND cid = id AND list=0)';
 
             $sql .= ' AND IF(' . $anyAllowedRowOrChildren . ',1,IF(' . $inheritedPermission . ', ' . $isDisallowedCurrentRow . ' = 0, 0)) = 1';
+        }
+
+        $includingUnpublished ??= !Document::doHideUnpublished();
+        if (!$includingUnpublished) {
+            $sql .= ' AND d.published = 1';
         }
 
         return (int)$this->db->fetchOne($sql, [$this->model->getId()]);
