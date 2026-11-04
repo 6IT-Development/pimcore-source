@@ -235,26 +235,25 @@ final class Config implements ArrayAccess
                 $cacheTags = ['website_config', 'system', 'config', 'output'];
 
                 $list = new Model\WebsiteSetting\Listing();
+                $list->setOrderKey('id');
+                $list->setOrder('ASC');
                 $list = $list->load();
 
+                // the rank of the setting in $config per name, same rule as WebsiteSetting::getByName()
+                $ranks = [];
                 foreach ($list as $item) {
-                    $itemSiteId = $item->getSiteId();
-
-                    if ($itemSiteId && $itemSiteId !== $siteId) {
-                        continue;
-                    }
-
-                    $itemLanguage = $item->getLanguage();
-
-                    if ($itemLanguage && $language !== $itemLanguage) {
+                    $rank = Model\WebsiteSetting::getOverrideRank($item->getSiteId(), $item->getLanguage(), $siteId, $language);
+                    if ($rank === null) {
                         continue;
                     }
 
                     $key = $item->getName();
 
-                    if (!$itemLanguage && isset($config[$key])) {
+                    // equal rank: the lower id, loaded first, wins
+                    if (isset($ranks[$key]) && $ranks[$key] >= $rank) {
                         continue;
                     }
+                    $ranks[$key] = $rank;
 
                     $data = match ($item->getType()) {
                         'document', 'asset', 'object' => $item->getData(),
@@ -270,6 +269,9 @@ final class Config implements ArrayAccess
 
                     if (isset($data)) {
                         $config[$key] = $data;
+                    } else {
+                        // the winning setting has no value, do not fall back to a lower ranked one
+                        unset($config[$key]);
                     }
                 }
 

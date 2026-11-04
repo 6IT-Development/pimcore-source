@@ -52,7 +52,7 @@ class Dao extends Model\Dao\AbstractDao
         if ($name != null) {
             $this->model->setName($name);
         }
-        $data = $this->db->fetchAssociative(
+        $rows = $this->db->fetchAllAssociative(
             "SELECT *
             FROM website_settings
             WHERE name = ?
@@ -66,9 +66,25 @@ class Dao extends Model\Dao\AbstractDao
                     OR language = ''
                     OR language = ?
                 )
-            ORDER BY CONCAT(siteId, language) DESC, siteId DESC, language DESC",
+            ORDER BY id",
             [$this->model->getName(), $siteId, $language]
         );
+
+        // rank in PHP with the same rule as Config::getWebsiteConfig(), the first row wins a tie
+        $data = null;
+        $bestRank = null;
+        foreach ($rows as $row) {
+            $rank = WebsiteSetting::getOverrideRank(
+                $row['siteId'] === null ? null : (int)$row['siteId'],
+                (string)$row['language'],
+                $siteId,
+                $language
+            );
+            if ($rank !== null && ($bestRank === null || $rank > $bestRank)) {
+                $data = $row;
+                $bestRank = $rank;
+            }
+        }
 
         if ($data) {
             $this->assignVariablesToModel($data);

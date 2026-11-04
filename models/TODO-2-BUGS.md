@@ -1281,7 +1281,7 @@ undefined key. The remaining steps of the config are still applied.
 
 ## WebsiteSetting (Scope 2)
 
-## [ ] B-83 – `pimcore_website_config()` and `WebsiteSetting::getByName()` resolve overrides differently; result depends on row id order
+## [x] B-83 – `pimcore_website_config()` and `WebsiteSetting::getByName()` resolve overrides differently; result depends on row id order
 
 **Files:** `lib/Config.php:207-237` vs `models/WebsiteSetting/Dao.php:50-78`; `models/WebsiteSetting/Listing/Dao.php:32`
 
@@ -1300,6 +1300,13 @@ undefined key. The remaining steps of the config are still applied.
 **Fix direction:** implement one precedence rule (site+language > site > language > global, matching
 `WebsiteSettingTest`) in a shared resolver used by both APIs; order the listing explicitly. Extend the test for
 `getWebsiteConfig()` parity (I-40).
+
+**Done:** `WebsiteSetting::getOverrideRank()` (`@internal`) holds the one precedence rule, site + language > site >
+language > neutral, with `null` and `0` both meaning "all sites". `Dao::getByName()` loads the candidate rows ordered by
+id and picks the highest rank in PHP with it, and `getWebsiteConfig()` keeps the highest-ranked row per name from a
+listing that is now ordered by id. On equal rank (duplicate rows, B-86) both take the lowest id. When the winning row
+has no value (unknown type, deleted element), `getWebsiteConfig()` drops the key instead of keeping a lower-ranked
+value, so both APIs agree. The test extension is left to I-40.
 
 ## [ ] B-84 – `siteId = 0` and `siteId IS NULL` are ranked differently in `getByName()`
 

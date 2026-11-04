@@ -63,6 +63,36 @@ final class WebsiteSetting extends AbstractModel
         return $name . '~~~' . $siteId . '~~~' . $language;
     }
 
+    /**
+     * Ranks a setting for a lookup on a site and language; the highest rank wins, the lowest id breaks ties.
+     * A site specific setting beats a language specific one: site + language > site > language > neutral.
+     * Settings without site (`null` or the legacy `0`) apply to all sites, settings without language to all languages.
+     *
+     * @return int|null null when the setting does not apply to the site or language
+     *
+     * @internal
+     */
+    public static function getOverrideRank(?int $settingSiteId, string $settingLanguage, ?int $siteId, ?string $language): ?int
+    {
+        if ($settingSiteId) {
+            if ($settingSiteId !== $siteId) {
+                return null;
+            }
+            $rank = 2;
+        } else {
+            $rank = 0;
+        }
+
+        if ($settingLanguage !== '') {
+            if ($settingLanguage !== $language) {
+                return null;
+            }
+            $rank++;
+        }
+
+        return $rank;
+    }
+
     public static function getById(int $id): ?WebsiteSetting
     {
         $cacheKey = 'website_setting_' . $id;
