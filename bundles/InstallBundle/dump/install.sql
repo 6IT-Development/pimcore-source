@@ -194,7 +194,7 @@ CREATE TABLE `edit_lock` (
   `date` int(11) unsigned default NULL,
   PRIMARY KEY  (`id`),
   KEY `ctype` (`ctype`),
-  KEY `cidtype` (`cid`,`ctype`)
+  UNIQUE KEY `cidtype` (`cid`,`ctype`)
 ) DEFAULT CHARSET=utf8mb4;
 
 

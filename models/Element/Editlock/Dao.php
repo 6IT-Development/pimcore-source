@@ -15,7 +15,7 @@
 
 namespace Pimcore\Model\Element\Editlock;
 
-use Pimcore\Db\Helper;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Pimcore\Model;
 use Pimcore\Model\Element\Editlock;
 
@@ -32,7 +32,8 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function getByElement(int $cid, string $ctype): void
     {
-        $data = $this->db->fetchAssociative('SELECT * FROM edit_lock WHERE cid = ? AND ctype = ?', [$cid, $ctype]);
+        // the newest lock, in case the unique index is not there yet
+        $data = $this->db->fetchAssociative('SELECT * FROM edit_lock WHERE cid = ? AND ctype = ? ORDER BY id DESC LIMIT 1', [$cid, $ctype]);
 
         if (!$data) {
             throw new Model\Exception\NotFoundException('Lock with cid ' . $cid . ' and ctype ' . $ctype . ' not found');
@@ -55,16 +56,41 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function save(): bool
     {
-        $version = $this->model->getObjectVars();
+        // one row per element: the lock of the element is replaced, LAST_INSERT_ID(id) returns the id of that row
+        $this->db->executeStatement(
+            'INSERT INTO edit_lock (cid, ctype, userId, sessionId, date) VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), userId = VALUES(userId), sessionId = VALUES(sessionId), date = VALUES(date)',
+            [$this->model->getCid(), $this->model->getCtype(), $this->model->getUserId(), $this->model->getSessionId(), $this->model->getDate()]
+        );
 
-        Helper::upsert($this->db, 'edit_lock', array_filter($version, fn($key) => in_array($key, $this->getValidTableColumns('edit_lock'), true), ARRAY_FILTER_USE_KEY), $this->getPrimaryKey('edit_lock'));
+        $this->model->setId((int)$this->db->lastInsertId());
 
-        $lastInsertId = $this->db->lastInsertId();
-        if (!$this->model->getId() && $lastInsertId) {
-            $this->model->setId((int)$lastInsertId);
+        return true;
+    }
+
+    /**
+     * Removes an expired lock or the session's own lock, then inserts the new one; the unique index on (cid, ctype)
+     * rejects the insert while another session holds the lock.
+     */
+    public function tryLock(int $cid, string $ctype, int $userId, string $sessionId, int $expiredBefore): bool
+    {
+        $this->db->executeStatement(
+            'DELETE FROM edit_lock WHERE cid = ? AND ctype = ? AND (sessionId = ? OR date IS NULL OR date < ?)',
+            [$cid, $ctype, $sessionId, $expiredBefore]
+        );
+
+        try {
+            $this->db->insert('edit_lock', ['cid' => $cid, 'ctype' => $ctype, 'userId' => $userId, 'sessionId' => $sessionId, 'date' => time()]);
+        } catch (UniqueConstraintViolationException) {
+            return false;
         }
 
         return true;
+    }
+
+    public function deleteByElement(int $cid, string $ctype): void
+    {
+        $this->db->delete('edit_lock', ['cid' => $cid, 'ctype' => $ctype]);
     }
 
     /**

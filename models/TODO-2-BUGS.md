@@ -3123,7 +3123,7 @@ serialized. The binaries, tags and sites of an item are stored in `<type>/<id>/`
 directory; the `<type>/<id>_…` files of older items are still read, and the type directory is only listed for an older
 asset item. The listing skips rows deleted since the ids were fetched. Upgrade notes added.
 
-## [ ] B-169 – Edit locks: several rows per element, unlock removes one, uninitialised `cpath`
+## [x] B-169 – Edit locks: several rows per element, unlock removes one, uninitialised `cpath`
 
 **Files:** `models/Element/Editlock.php:47-112`, `:202-205`; `models/Element/Editlock/Dao.php:33-68`;
 `bundles/InstallBundle/dump/install.sql:188-198`
@@ -3134,6 +3134,14 @@ asset item. The listing skips rows deleted since the ids were fetched. Upgrade n
 - `getCpath()` throws `Error` when the element no longer exists (typed, uninitialised).
 
 **Fix direction:** unique index + upsert; atomic insert-if-free; nullable `cpath`.
+
+**Done:** `(cid, ctype)` of `edit_lock` is unique (`install.sql`, migration `Version20261104000400` keeps the newest row
+per element). `Dao::save()` upserts the element's row (`LAST_INSERT_ID(id)` gives the id of a replaced row), so `lock()`
+keeps its "take over" behaviour that "open anyway" relies on; `unlock()` deletes every row of the element and
+`getByElement()` reads the newest. The new `Editlock::tryLock()` removes an expired or the session's own lock and
+inserts the new one, the unique index rejects it while another session holds the lock, so only one of two concurrent
+editors gets it. The `isLocked()` + `lock()` sequence in the admin controllers (`admin-ui-classic-bundle`) should move
+to `tryLock()`. `cpath` is `?string`, `null` when the element no longer exists.
 
 ## [ ] B-170 – Notes: `POST_ADD` never fires; element ids are loaded as strings
 

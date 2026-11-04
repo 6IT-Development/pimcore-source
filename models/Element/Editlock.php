@@ -30,6 +30,11 @@ use Pimcore\Tool\Admin;
  */
 final class Editlock extends Model\AbstractModel
 {
+    /**
+     * A lock older than this is ignored and replaced
+     */
+    private const EXPIRY_SECONDS = 3600;
+
     protected ?int $id = null;
 
     protected int $cid;
@@ -42,12 +47,15 @@ final class Editlock extends Model\AbstractModel
 
     protected int $date;
 
-    protected string $cpath;
+    /**
+     * The path of the element, null when it no longer exists
+     */
+    protected ?string $cpath = null;
 
     public static function isLocked(int $cid, string $ctype, string $sessionId): bool
     {
         if ($lock = self::getByElement($cid, $ctype)) {
-            if ((time() - $lock->getDate()) > 3600 || $lock->getSessionId() === $sessionId) {
+            if ((time() - $lock->getDate()) > self::EXPIRY_SECONDS || $lock->getSessionId() === $sessionId) {
                 // lock is out of date unlock it
                 self::unlock($cid, $ctype);
 
@@ -84,6 +92,10 @@ final class Editlock extends Model\AbstractModel
         }
     }
 
+    /**
+     * Locks the element for the session, replacing the lock of another session (to open the element anyway).
+     * Use {@see tryLock()} to lock only an element that is not locked by another session.
+     */
     public static function lock(int $cid, string $ctype, string $sessionId): Editlock|bool
     {
         // try to get user
@@ -102,11 +114,26 @@ final class Editlock extends Model\AbstractModel
         return $lock;
     }
 
+    /**
+     * Locks the element for the session unless another session holds a lock that is not expired. Unlike
+     * {@see isLocked()} followed by {@see lock()}, only one of two sessions opening the element at the same time gets
+     * the lock.
+     *
+     * @return bool false if there is no current user or the element is locked by another session
+     */
+    public static function tryLock(int $cid, string $ctype, string $sessionId): bool
+    {
+        if (!$user = Admin::getCurrentUser()) {
+            return false;
+        }
+
+        return (new self())->getDao()->tryLock($cid, $ctype, $user->getId(), $sessionId, time() - self::EXPIRY_SECONDS);
+    }
+
     public static function unlock(int $cid, string $ctype): bool
     {
-        if ($lock = self::getByElement($cid, $ctype)) {
-            $lock->delete();
-        }
+        // all rows, older installations can have several locks per element
+        (new self())->getDao()->deleteByElement($cid, $ctype);
 
         return true;
     }
@@ -192,14 +219,14 @@ final class Editlock extends Model\AbstractModel
         return $this;
     }
 
-    public function setCpath(string $cpath): Editlock
+    public function setCpath(?string $cpath): Editlock
     {
         $this->cpath = $cpath;
 
         return $this;
     }
 
-    public function getCpath(): string
+    public function getCpath(): ?string
     {
         return $this->cpath;
     }
