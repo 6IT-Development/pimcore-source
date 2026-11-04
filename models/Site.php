@@ -547,8 +547,15 @@ final class Site extends AbstractModel
         }
     }
 
+    /**
+     * @throws InvalidArgumentException for a site that was never saved
+     */
     public function delete(): void
     {
+        if (!$this->id) {
+            throw new InvalidArgumentException('Unable to delete a site without ID');
+        }
+
         $preDeleteEvent = new SiteEvent($this);
         $this->dispatchEvent($preDeleteEvent, SiteEvents::PRE_DELETE);
 

@@ -15,6 +15,8 @@
 
 namespace Pimcore\Model\Site;
 
+use Pimcore\Cache;
+use Pimcore\Config;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
@@ -225,13 +227,24 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
-     * Deletes site from database
+     * Deletes site from database, together with the URL slugs and website settings of the site, which no lookup can
+     * reach any more. Data of other bundles is cleaned up by their SiteEvents::POST_DELETE listeners.
      */
     public function delete(): void
     {
-        $this->db->delete('sites', ['id' => $this->model->getId()]);
-        //clean slug table
-        Model\DataObject\Data\UrlSlug::handleSiteDeleted($this->model->getId());
+        $siteId = $this->model->getId();
+        $websiteSettingsDeleted = $this->db->transactional(function () use ($siteId): bool {
+            $this->db->delete('sites', ['id' => $siteId]);
+            //clean slug table
+            Model\DataObject\Data\UrlSlug::handleSiteDeleted($siteId);
+
+            return $this->db->delete('website_settings', ['siteId' => $siteId]) > 0;
+        });
+
+        if ($websiteSettingsDeleted) {
+            Cache::clearTags(['website_config', 'output']);
+            Config::clearWebsiteConfigRuntimeCache();
+        }
 
         $this->model->clearDependentCache();
     }

@@ -2444,7 +2444,7 @@ exception.
 current-site root path in the hardlink branch. A site disabled this way still serves its domains from the main tree,
 as a host without a site does.
 
-## [ ] B-135 – `delete()`: not atomic, leaves references to the deleted site, keeps runtime caches
+## [x] B-135 – `delete()`: not atomic, leaves references to the deleted site, keeps runtime caches
 
 **Files:** `models/Site.php:399-408`; `models/Site/Dao.php:149-159`;
 `bundles/InstallBundle/dump/install.sql:603-615` (`website_settings.siteId`)
@@ -2460,6 +2460,12 @@ as a host without a site does.
 
 **Fix direction:** transaction around the delete and the cleanup; move the cleanup of dependent data into
 `SiteEvents::POST_DELETE` listeners in the owning bundles (or document it); throw when `id` is `null`.
+
+**Done:** `Dao::delete()` deletes the `sites` row, its URL slugs and its website settings (`website_settings.siteId`,
+unreachable once the site is gone) in one transaction and then clears the website config caches. `Site::delete()`
+throws `InvalidArgumentException` for an unsaved site instead of firing events for nothing. Runtime caches are cleared
+since B-132. The SeoBundle redirects / robots.txt entries and static route `siteId` lists are left to `POST_DELETE`
+listeners in those bundles (SeoBundle B-27), as the `Dao::delete()` docblock now says.
 
 ## [ ] B-136 – Error documents are stored as unvalidated paths: renaming or deleting the error page silently breaks error handling
 
