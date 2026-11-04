@@ -121,11 +121,21 @@ class Dao extends Model\Dao\AbstractDao
         $this->model->clearDependentCache();
     }
 
+    /**
+     * @throws NotFoundException
+     */
     public function update(): void
     {
         $this->model->setModificationDate(time());
 
-        $this->db->update('website_settings', array_filter($this->model->getObjectVars(), fn($key) => in_array($key, $this->getValidTableColumns('website_settings'), true), ARRAY_FILTER_USE_KEY), ['id' => $this->model->getId()]);
+        $affectedRows = $this->db->update('website_settings', array_filter($this->model->getObjectVars(), fn($key) => in_array($key, $this->getValidTableColumns('website_settings'), true), ARRAY_FILTER_USE_KEY), ['id' => $this->model->getId()]);
+
+        // 0 affected rows can also mean unchanged values, unless the client flag for found rows is set
+        if ($affectedRows === 0
+            && !$this->db->fetchOne('SELECT id FROM website_settings WHERE id = ?', [$this->model->getId()])
+        ) {
+            throw new NotFoundException('Website Setting with id: ' . $this->model->getId() . ' does not exist');
+        }
 
         $this->model->clearDependentCache();
     }

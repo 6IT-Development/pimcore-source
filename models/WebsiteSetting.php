@@ -369,11 +369,13 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @throws ValidationException when the name is empty, a setting with the same name, site and language exists or
      *                             the data of an element type is no element id
+     * @throws NotFoundException when the id is set but there is no setting with it
      */
     public function save(): void
     {
         $event = new WebsiteSettingEvent($this);
-        $isAdd = $this->id === null;
+        // the same check as in Dao::save(), id 0 is never stored
+        $isAdd = !$this->id;
 
         $this->dispatchEvent($event, $isAdd ? WebsiteSettingEvents::PRE_ADD : WebsiteSettingEvents::PRE_UPDATE);
 

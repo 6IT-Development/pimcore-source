@@ -1389,7 +1389,7 @@ earlier saves could have stored for an invalid type, is read as `null`, so such 
 data is allowed), which catches `setType('document')->setData('hello')`. The backed enum stays with I-33. A setting
 without any type (`null`) still has no value in `pimcore_website_config()`; that is the existing meaning of "no type".
 
-## [ ] B-88 – `save()` with a manually set id that does not exist silently does nothing; add/update detection differs from the DAO
+## [x] B-88 – `save()` with a manually set id that does not exist silently does nothing; add/update detection differs from the DAO
 
 **Files:** `models/WebsiteSetting.php:136-141`, `:291-301`; `models/WebsiteSetting/Dao.php:80-87`, `:95-102`
 
@@ -1400,6 +1400,11 @@ without any type (`null`) still has no value in `pimcore_website_config()`; that
 
 **Fix direction:** use one `isNew()` check in both places; make `update()` throw `NotFoundException` when no row is
 affected (or make `setId()` `@internal`).
+
+**Done:** `save()` decides "add" by a falsy id like `Dao::save()`, so id `0` dispatches `PRE_ADD` / `POST_ADD` for the
+insert it is. `Dao::update()` throws a `NotFoundException` when no row was affected and the id does not exist (the
+extra lookup tells a missing row apart from unchanged values), before the cache is cleared; `POST_UPDATE` is then not
+dispatched. Marking `setId()` `@internal` is left to I-32.
 
 ## [ ] B-89 – `Dao::create()` is a non-atomic INSERT + UPDATE
 
