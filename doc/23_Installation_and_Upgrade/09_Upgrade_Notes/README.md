@@ -52,6 +52,9 @@
   etc. were not applied to them. They are now registered by `AreabrickAutoloadPass` before autoconfiguration and tagged
   with `pimcore.area.brick` (service and brick IDs are unchanged). Tagged brick services whose class is a parameter or
   inherited from a parent definition are now supported; a tagged service without a class gives a clear error.
+#### [Profiler]
+- The deprecated template `@PimcoreCore/Profiler/key_value_table.html.twig` was removed. Copy it into your project if
+  you still include it.
 #### [Service tags]
 - Maintenance tasks can be registered with the `#[AsMaintenanceTask(type: 'my_task')]` attribute
   (`Pimcore\Maintenance\Attribute\AsMaintenanceTask`) instead of the `pimcore.maintenance.task` tag. All tags of a

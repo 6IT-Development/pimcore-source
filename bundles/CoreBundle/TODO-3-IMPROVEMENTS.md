@@ -630,7 +630,7 @@ extension in `$this->extension`.
 request attribute (`null`, shown as `~`, if the context listener did not set it). The getters already use `?? null`.
 The optional extra data is not added.
 
-### [ ] I-37 – Profiler template clean-up
+### [x] I-37 – Profiler template clean-up
 
 **Files:** `templates/Profiler/data_collector.html.twig`, `templates/Profiler/key_value_table.html.twig`
 
@@ -641,6 +641,10 @@ The optional extra data is not added.
   null fallback (B-34). Show `~` for a null context.
 - `key_value_table.html.twig` carries `{% deprecated … removed in pimcore/pimcore 12 %}` and has no users in this repo.
   Remove it, since this fork has its own versioning.
+
+**Done:** the `macros` import is used by a `revision` macro that shows the first 8 characters with the full revision
+in a `title` and `~` for null (toolbar and panel). The `link` comment is fixed. The inline padding stays, with a
+comment: a collector template cannot add toolbar CSS. `key_value_table.html.twig` is removed (upgrade note).
 
 ### [ ] I-38 – Docblock / copy-paste errors and small code-style fixes in compiler passes
 

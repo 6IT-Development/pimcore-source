@@ -4,7 +4,8 @@
     {% import _self as macros %}
 
     {% set icon %}
-        {# this is the content displayed as a panel in the toolbar #}
+        {# this is the content displayed as a panel in the toolbar; collectors cannot add toolbar CSS, so the logo
+           (wider than the 24px toolbar icons) is centred with an inline padding #}
         <div style="padding-top: 3px">
             {{ include("@PimcoreCore/Profiler/logo.svg.twig") }}
         </div>
@@ -21,7 +22,7 @@
 
         <div class="sf-toolbar-info-piece">
             <b>Version</b>
-            <span>{{ collector.version ?: '~' }} build {{ collector.revision ?: '~' }}</span>
+            <span>{{ collector.version ?: '~' }} build {{ macros.revision(collector.revision) }}</span>
         </div>
 
         <div class="sf-toolbar-info-piece">
@@ -30,8 +31,7 @@
         </div>
     {% endset %}
 
-    {# the 'link' value set to 'false' means that this panel doesn't
-       show a section in the web profiler #}
+    {# 'link: true' links the toolbar item to the panel below; 'false' would hide the panel in the web profiler #}
     {{ include('@WebProfiler/Profiler/toolbar_item.html.twig', { link: true }) }}
 {% endblock %}
 
@@ -61,7 +61,7 @@
         </div>
 
         <div class="metric">
-            <span class="value">{{ collector.revision ?: '~' }}</span>
+            <span class="value">{{ macros.revision(collector.revision) }}</span>
             <span class="label">Build</span>
         </div>
 
@@ -71,3 +71,12 @@
         </div>
     </div>
 {% endblock %}
+
+{# a git SHA is shortened to 8 characters, with the full revision in the title #}
+{% macro revision(revision) %}
+    {%- if revision -%}
+        <abbr title="{{ revision }}">{{ revision|slice(0, 8) }}</abbr>
+    {%- else -%}
+        ~
+    {%- endif -%}
+{% endmacro %}
