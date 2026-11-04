@@ -298,7 +298,7 @@ say "[Deprecated]" in their description and trigger a deprecation plus a warning
 warns when called through the `pimcore:image:svg-preview` alias or with `--generator`, which is ignored (the option text
 now says so). Listed in the upgrade notes.
 
-### [ ] I-19 – `WorkflowDumpCommand`: inject workflows instead of pulling from the kernel container
+### [x] I-19 – `WorkflowDumpCommand`: inject workflows instead of pulling from the kernel container
 
 **File:** `src/Command/WorkflowDumpCommand.php:57-80`
 
@@ -308,6 +308,13 @@ now says so). Listed in the upgrade notes.
   dumpers through the constructor.
 - Validate the `marking` places against `$definition->getPlaces()`.
 - Optionally add `--dump-format=dot|puml|mermaid` on par with Symfony's command.
+
+**Done:** `WorkflowPass` tags every Pimcore workflow and state machine with `pimcore.workflow` (`name`). The command gets
+them through `#[AutowireLocator('pimcore.workflow', indexAttribute: 'name')]`, and the two Graphviz dumpers through
+the constructor; the `Manager` dependency is gone. Unknown marking places are rejected with the list of valid places.
+New `--dump-format=dot|puml|mermaid` (Symfony's `PlantUmlDumper` / `MermaidDumper` for the last two). The tag is a
+separate one because Symfony's `workflow` tag also turns on tracing and validation; once I-32 adds that tag, the
+locator can switch to it.
 
 ### [ ] I-20 – `CacheWarmingCommand` simplifications
 

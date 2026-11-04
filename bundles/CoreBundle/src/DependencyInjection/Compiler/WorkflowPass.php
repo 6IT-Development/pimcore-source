@@ -187,6 +187,8 @@ final class WorkflowPass implements CompilerPassInterface
                 $workflowDefinition->replaceArgument(1, $markingStoreDefinition);
             }
             $workflowDefinition->setPublic(true);
+            // indexed by name for pimcore:workflow:dump (a separate tag: Symfony's "workflow" tag also enables tracing)
+            $workflowDefinition->addTag('pimcore.workflow', ['name' => $workflowName]);
             $workflowDefinition->replaceArgument(3, $workflowName);
             $workflowDefinition->replaceArgument(4, $workflowConfig['events_to_dispatch'] ?? null);
 

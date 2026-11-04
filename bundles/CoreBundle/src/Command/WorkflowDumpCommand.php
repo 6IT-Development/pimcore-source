@@ -15,18 +15,26 @@ declare(strict_types=1);
  * @license    http://www.pimcore.org/license GPLv3 and PCL
  */
 
+
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Workflow\Dumper\GraphvizDumper;
 use Pimcore\Workflow\Dumper\StateMachineGraphvizDumper;
-use Pimcore\Workflow\Manager;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
+use Symfony\Component\Workflow\Dumper\DumperInterface;
+use Symfony\Component\Workflow\Dumper\MermaidDumper;
+use Symfony\Component\Workflow\Dumper\PlantUmlDumper;
 use Symfony\Component\Workflow\Marking;
+use Symfony\Component\Workflow\StateMachine;
+use Symfony\Component\Workflow\WorkflowInterface;
+use Symfony\Contracts\Service\ServiceProviderInterface;
 
 /**
  * @internal
@@ -36,15 +44,25 @@ use Symfony\Component\Workflow\Marking;
     description: 'Dump a workflow',
     help: <<<'EOT'
         The <info>%command.name%</info> command dumps the graphical representation of a
-        workflow in DOT format
+        workflow in DOT (default), PlantUML or Mermaid format
 
             %command.full_name% <workflow name> | dot -Tpng > workflow.png
+            %command.full_name% <workflow name> --dump-format=puml | java -jar plantuml.jar -p > workflow.png
         EOT
 )]
 class WorkflowDumpCommand extends AbstractCommand
 {
-    public function __construct(private readonly Manager $workflowManager)
-    {
+    private const array DUMP_FORMATS = ['dot', 'puml', 'mermaid'];
+
+    /**
+     * @param ServiceProviderInterface<WorkflowInterface> $workflows the Pimcore workflows and state machines, by workflow name
+     */
+    public function __construct(
+        #[AutowireLocator('pimcore.workflow', indexAttribute: 'name')]
+        private readonly ServiceProviderInterface $workflows,
+        private readonly GraphvizDumper $graphvizDumper,
+        private readonly StateMachineGraphvizDumper $stateMachineGraphvizDumper,
+    ) {
         parent::__construct();
     }
 
@@ -53,34 +71,62 @@ class WorkflowDumpCommand extends AbstractCommand
     {
         $this
             ->setDefinition([
-                new InputArgument('name', InputArgument::REQUIRED, 'A workflow name', null, fn () => $this->workflowManager->getAllWorkflows()),
+                new InputArgument('name', InputArgument::REQUIRED, 'A workflow name', null, fn () => array_keys($this->workflows->getProvidedServices())),
                 new InputArgument('marking', InputArgument::IS_ARRAY, 'A marking (a list of places)'),
+                new InputOption('dump-format', null, InputOption::VALUE_REQUIRED, 'The dump format', 'dot', self::DUMP_FORMATS),
             ]);
     }
 
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $container = $this->getApplication()->getKernel()->getContainer();
-        $serviceId = $input->getArgument('name');
-        if ($container->has('workflow.' . $serviceId)) {
-            $workflow = $container->get('workflow.' . $serviceId);
-            $dumper = $container->get(GraphvizDumper::class);
-        } elseif ($container->has('state_machine.' . $serviceId)) {
-            $workflow = $container->get('state_machine.' . $serviceId);
-            $dumper = $container->get(StateMachineGraphvizDumper::class);
-        } else {
-            throw new InvalidArgumentException(sprintf('No service found for "workflow.%1$s" nor "state_machine.%1$s".', $serviceId));
+        $name = $input->getArgument('name');
+        if (!$this->workflows->has($name)) {
+            throw new InvalidArgumentException(sprintf('No workflow or state machine named "%s" found.', $name), self::INVALID);
         }
 
-        $marking = new Marking();
+        $workflow = $this->workflows->get($name);
+        $definition = $workflow->getDefinition();
 
+        $marking = new Marking();
+        $unknownPlaces = [];
         foreach ($input->getArgument('marking') as $place) {
+            if (!in_array($place, $definition->getPlaces(), true)) {
+                $unknownPlaces[] = $place;
+            }
             $marking->mark($place);
         }
 
-        $output->writeln($dumper->dump($workflow->getDefinition(), $marking, ['workflowName' => $workflow->getName()]));
+        if ($unknownPlaces) {
+            throw new InvalidArgumentException(sprintf(
+                'The workflow "%s" has no place(s) %s. Valid places: %s.',
+                $name,
+                implode(', ', $unknownPlaces),
+                implode(', ', $definition->getPlaces())
+            ), self::INVALID);
+        }
+
+        $output->writeln($this->getDumper($workflow, $input->getOption('dump-format'))->dump($definition, $marking, [
+            'workflowName' => $workflow->getName(),
+            'title' => $workflow->getName(),
+        ]));
 
         return self::SUCCESS;
+    }
+
+    private function getDumper(WorkflowInterface $workflow, string $format): DumperInterface
+    {
+        $isStateMachine = $workflow instanceof StateMachine;
+
+        return match ($format) {
+            'dot' => $isStateMachine ? $this->stateMachineGraphvizDumper : $this->graphvizDumper,
+            'puml' => new PlantUmlDumper($isStateMachine ? PlantUmlDumper::STATEMACHINE_TRANSITION : PlantUmlDumper::WORKFLOW_TRANSITION),
+            'mermaid' => new MermaidDumper($isStateMachine ? MermaidDumper::TRANSITION_TYPE_STATEMACHINE : MermaidDumper::TRANSITION_TYPE_WORKFLOW),
+            default => throw new InvalidArgumentException(sprintf(
+                'Invalid --dump-format "%s", expected one of: %s.',
+                $format,
+                implode(', ', self::DUMP_FORMATS)
+            ), self::INVALID),
+        };
     }
 }
