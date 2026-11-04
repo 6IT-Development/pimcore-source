@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
+use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Maintenance\Executor;
 use Pimcore\Maintenance\ExecutorInterface;
@@ -37,6 +38,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 )]
 class MaintenanceCommand extends AbstractCommand
 {
+    use DeprecatedOptionNameTrait;
+
     public function __construct(
         #[Autowire(service: Executor::class)]
         private readonly ExecutorInterface $maintenanceExecutor,
@@ -68,19 +71,21 @@ class MaintenanceCommand extends AbstractCommand
                 fn () => $this->maintenanceExecutor->getTaskNames()
             )
             ->addOption(
-                'excludedJobs',
+                'excluded-jobs',
                 'J',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
                 'Exclude specific job(s) (see <comment>--help</comment> for a list of valid jobs)',
                 null,
                 fn () => $this->maintenanceExecutor->getTaskNames()
             );
+
+        $this->addDeprecatedOptionName('excludedJobs', 'excluded-jobs');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $validJobs = $this->getArrayOptionValue($input, 'job');
-        $excludedJobs = $this->getArrayOptionValue($input, 'excludedJobs');
+        $excludedJobs = $this->getArrayOptionValue($input, 'excluded-jobs');
 
         $this->maintenanceExecutor->executeMaintenance(
             $validJobs,

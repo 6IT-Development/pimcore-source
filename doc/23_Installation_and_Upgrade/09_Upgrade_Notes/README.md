@@ -101,6 +101,13 @@
 - `Thumbnail::getImageTag()` adds the `srcset` (or `data-srcset`) attribute before `$removeAttributes` and the
   `imgCallback` option are applied, so both can now remove or change it. Before, a `srcset` set or removed there was
   overwritten.
+#### [Commands]
+- Options with camelCase names were renamed to kebab-case: `--pathPattern` → `--path-pattern`
+  (`pimcore:image:low-quality-preview`, `pimcore:thumbnails:image`), `--urlPrefix` → `--url-prefix`
+  (`pimcore:documents:generate-page-previews`), `--excludedJobs` → `--excluded-jobs` (`pimcore:maintenance`),
+  `--documentTypes`, `--assetTypes`, `--objectTypes` → `--document-types`, `--asset-types`, `--object-types`
+  (`pimcore:cache:warming`). The old names still work but are deprecated and will be removed; the shortcuts are
+  unchanged.
 
 ### Security
 #### [Twig]

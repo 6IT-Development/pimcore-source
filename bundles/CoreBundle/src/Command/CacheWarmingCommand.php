@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use InvalidArgumentException;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Cache\Tool\Warming;
 use Pimcore\Console\AbstractCommand;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -34,6 +35,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class CacheWarmingCommand extends AbstractCommand
 {
+    use DeprecatedOptionNameTrait;
+
     protected array $validTypes = [
         'document',
         'asset',
@@ -76,7 +79,7 @@ class CacheWarmingCommand extends AbstractCommand
                 $this->validTypes
             )
             ->addOption(
-                'documentTypes',
+                'document-types',
                 'd',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
                 sprintf('Restrict warming to these types of documents. Valid options: %s', $this->humanList($this->validDocumentTypes)),
@@ -84,7 +87,7 @@ class CacheWarmingCommand extends AbstractCommand
                 $this->validDocumentTypes
             )
             ->addOption(
-                'assetTypes',
+                'asset-types',
                 'a',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
                 sprintf('Restrict warming to these types of assets. Valid options: %s', $this->humanList($this->validAssetTypes)),
@@ -92,7 +95,7 @@ class CacheWarmingCommand extends AbstractCommand
                 $this->validAssetTypes
             )
             ->addOption(
-                'objectTypes',
+                'object-types',
                 'o',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
                 sprintf('Restrict warming to these types of objects. Valid options: %s', $this->humanList($this->validObjectTypes)),
@@ -105,6 +108,11 @@ class CacheWarmingCommand extends AbstractCommand
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
                 'Restrict object warming to these classes (only valid for objects!). Valid options: class names of your classes defined in Pimcore'
             );
+
+        $this
+            ->addDeprecatedOptionName('documentTypes', 'document-types')
+            ->addDeprecatedOptionName('assetTypes', 'asset-types')
+            ->addDeprecatedOptionName('objectTypes', 'object-types');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -117,9 +125,9 @@ class CacheWarmingCommand extends AbstractCommand
 
         try {
             $types = $this->getArrayOption('types', 'validTypes', 'type', true) ?? [];
-            $documentTypes = $this->getArrayOption('documentTypes', 'validDocumentTypes', 'document type') ?? [];
-            $assetTypes = $this->getArrayOption('assetTypes', 'validAssetTypes', 'asset type') ?? [];
-            $objectTypes = $this->getArrayOption('objectTypes', 'validObjectTypes', 'object type') ?? [];
+            $documentTypes = $this->getArrayOption('document-types', 'validDocumentTypes', 'document type') ?? [];
+            $assetTypes = $this->getArrayOption('asset-types', 'validAssetTypes', 'asset type') ?? [];
+            $objectTypes = $this->getArrayOption('object-types', 'validObjectTypes', 'object type') ?? [];
             $objectClasses = $this->input->getOption('classes') ?? [];
         } catch (InvalidArgumentException $e) {
             $this->writeError($e->getMessage());

@@ -82,7 +82,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
   `ThumbnailsClearCommand --type` (+ closure listing config names), `RequirementsCheckCommand --min-level`,
   `MaintenanceCommand --job` (`$executor->getTaskNames()`), `WorkflowDumpCommand name`, `ResetPasswordCommand user`.
 
-### [ ] I-05 – Consistent option naming (kebab-case)
+### [x] I-05 – Consistent option naming (kebab-case)
 
 - These options use camelCase while their siblings use kebab-case (`path-pattern`, `older-than-days`):
   - `pathPattern` (`LowQualityImagePreview`, `ThumbnailsImage`)

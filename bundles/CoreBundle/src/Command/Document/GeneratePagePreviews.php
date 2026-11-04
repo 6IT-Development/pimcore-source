@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command\Document;
 
 use Exception;
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
 use Pimcore\Model\Document;
@@ -38,11 +39,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class GeneratePagePreviews extends AbstractCommand
 {
+    use DeprecatedOptionNameTrait;
+
     protected function configure(): void
     {
         $this
             ->addOption(
-                'urlPrefix',
+                'url-prefix',
                 'u',
                 InputOption::VALUE_REQUIRED,
                 'Prefix for the document path, eg. https://example.com, if not specified, Pimcore will try use the main domain from system settings.'
@@ -59,6 +62,8 @@ class GeneratePagePreviews extends AbstractCommand
                 InputOption::VALUE_REQUIRED,
                 'Excludes all documents whose path property matches the regex pattern.'
             );
+
+        $this->addDeprecatedOptionName('urlPrefix', 'url-prefix');
     }
 
     /**
@@ -119,7 +124,7 @@ class GeneratePagePreviews extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $hostUrl = $input->getOption('urlPrefix');
+        $hostUrl = $input->getOption('url-prefix');
         if (!$hostUrl) {
             $hostUrl = Tool::getHostUrl();
         }

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use DateTime;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\Parallelization;
@@ -39,6 +40,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class ThumbnailsImageCommand extends AbstractCommand
 {
+    use DeprecatedOptionNameTrait;
     use IdOptionTrait;
     use Parallelization;
 
@@ -63,7 +65,7 @@ class ThumbnailsImageCommand extends AbstractCommand
                 'only create thumbnails of images with this (IDs)'
             )
             ->addOption(
-                'pathPattern',
+                'path-pattern',
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Filter images against the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
@@ -111,6 +113,8 @@ class ThumbnailsImageCommand extends AbstractCommand
                 );
             }
         }
+
+        $this->addDeprecatedOptionName('pathPattern', 'path-pattern');
     }
 
     protected function fetchItems(InputInterface $input, OutputInterface $output): array
@@ -152,7 +156,7 @@ class ThumbnailsImageCommand extends AbstractCommand
             $conditionVariables[] = $lastModifiedSinceDate->getTimestamp();
         }
 
-        if ($regex = $input->getOption('pathPattern')) {
+        if ($regex = $input->getOption('path-pattern')) {
             $conditions[] = 'CONCAT(`path`, filename) REGEXP ?';
             $conditionVariables[] = $regex;
         }

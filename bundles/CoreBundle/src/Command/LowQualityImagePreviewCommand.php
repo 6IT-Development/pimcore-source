@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
@@ -39,6 +40,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class LowQualityImagePreviewCommand extends AbstractCommand
 {
     use AssetBatchTrait;
+    use DeprecatedOptionNameTrait;
     use IdOptionTrait;
 
     protected function configure(): void
@@ -57,7 +59,7 @@ class LowQualityImagePreviewCommand extends AbstractCommand
                 'only create thumbnails of images in this folder (ID)'
             )
             ->addOption(
-                'pathPattern',
+                'path-pattern',
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Filter images against the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
@@ -69,6 +71,8 @@ class LowQualityImagePreviewCommand extends AbstractCommand
                 'generate preview regardless if it already exists or not'
             )
             ->addOption('generator', 'g', InputOption::VALUE_REQUIRED, 'Force a generator, either `svg` or `imagick`');
+
+        $this->addDeprecatedOptionName('pathPattern', 'path-pattern');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -97,7 +101,7 @@ class LowQualityImagePreviewCommand extends AbstractCommand
             $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
         }
 
-        if ($regex = $input->getOption('pathPattern')) {
+        if ($regex = $input->getOption('path-pattern')) {
             $conditions[] = 'CONCAT(`path`, filename) REGEXP ?';
             $conditionVariables[] = $regex;
         }
