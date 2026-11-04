@@ -50,6 +50,10 @@ abstract class AbstractBundleCommand extends AbstractCommand
         return $this;
     }
 
+    /**
+     * Reports that a bundle cannot be (un)installed: as warning with SUCCESS if --fail-without-error is set, otherwise
+     * as error with FAILURE. Errors of the installer itself are not passed here, they fail the command.
+     */
     protected function handlePrerequisiteError(string $message): int
     {
         if ($this->input->getOption('fail-without-error')) {
@@ -111,14 +115,15 @@ abstract class AbstractBundleCommand extends AbstractCommand
         return str_replace('/', '\\', $bundleIdentifier);
     }
 
-    protected function getShortClassName(string $className): ?string
+    /**
+     * @throws InvalidArgumentException if the class does not exist
+     */
+    protected function getShortClassName(string $className): string
     {
         if (!class_exists($className)) {
             throw new InvalidArgumentException(sprintf('Class "%s" does not exist', $className));
         }
 
-        $parts = explode('\\', $className);
-
-        return array_pop($parts);
+        return new \ReflectionClass($className)->getShortName();
     }
 }

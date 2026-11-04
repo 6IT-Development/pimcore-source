@@ -401,7 +401,7 @@ if they cannot be read the command fails instead of falling back to the core typ
 with `$db->quote()` and runs through `executeStatement()`. Errors print their message, the trace follows with `-vvv`.
 `documentTypes` is required. (The table layout is unchanged; the command only alters the ENUM as before.)
 
-### [ ] I-25 – `AbstractBundleCommand` tidy-up
+### [x] I-25 – `AbstractBundleCommand` tidy-up
 
 **File:** `src/Command/Bundle/AbstractBundleCommand.php`
 
@@ -410,6 +410,10 @@ with `$db->quote()` and runs through `executeStatement()`. Errors print their me
 - `getShortClassName()` is declared `?string` but never returns `null`. Use `new \ReflectionClass($c)->getShortName()`
   or `substr(strrchr(...))`.
 - `handlePrerequisiteError()` is also used for non-prerequisite errors (B-05). Rename it or split it.
+
+**Done:** `setupInstaller()` was already removed and `handlePrerequisiteError()` is only called for prerequisites
+since B-05 (installer errors fail the command); its docblock now says so. `getShortClassName()` returns `string` via
+`ReflectionClass::getShortName()`.
 
 ### [ ] I-26 – `MaintenanceCommand` / `StorageCommand` / `OptimizeImageThumbnailsCommand` small items
 
