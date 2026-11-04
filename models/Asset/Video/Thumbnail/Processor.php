@@ -117,7 +117,8 @@ class Processor
             $thumbDir = $asset->getRealPath() . '/' . $asset->getId() . '/video-thumb__' . $asset->getId() . '__' . $config->getName();
             $filename = preg_replace('/\.' . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '/', '', $asset->getFilename()) . '.' . $format;
             $storagePath = $thumbDir . '/' . $filename;
-            $tmpPath = File::getLocalTempFilePath($format);
+            // not removed at the end of this request: the worker writes the file later and removes it
+            $tmpPath = File::getLocalTempFilePath($format, true);
 
             if ($converter = Video::getInstance()) {
                 // both bitrates are optional in the config, the adapter keeps its defaults then
@@ -273,41 +274,28 @@ class Processor
                     Logger::info('finished video ' . $converter->getFormat() . ' to ' . $converter->getDestinationFile());
 
                     if ($success) {
-                        $source = fopen($converter->getDestinationFile(), 'rb');
-                        if (false === $source) {
-                            $conversionStatus = 'error';
-                            Logger::info('could not open stream resource at path "' . $converter->getDestinationFile() . '" for Video conversion.');
+                        $uploaded = self::writeToStorage($converter->getDestinationFile(), $converter->getStorageFile());
 
-                            continue;
-                        }
-                        Storage::get('thumbnail')->writeStream($converter->getStorageFile(), $source);
-
-                        fclose($source);
-
-                        unlink($converter->getDestinationFile());
-
-                        if ($converter->getFormat() === 'mpd') {
-                            $streamFilesPath = str_replace('.mpd', '-stream*.mp4', $converter->getDestinationFile());
-                            $streams = glob($streamFilesPath);
+                        if ($uploaded && $converter->getFormat() === 'mpd') {
                             $parentPath = dirname($converter->getStorageFile());
 
-                            foreach ($streams as $steam) {
-                                $storagePath = $parentPath . '/' . basename($steam);
-                                $source = fopen($steam, 'rb');
-                                Storage::get('thumbnail')->writeStream($storagePath, $source);
-
-                                if (is_resource($source)) {
-                                    fclose($source);
+                            foreach (self::getDashStreamFiles($converter) as $stream) {
+                                if (!self::writeToStorage($stream, $parentPath . '/' . basename($stream))) {
+                                    $uploaded = false;
                                 }
                             }
                         }
 
-                        $formats[$converter->getFormat()] = preg_replace(
-                            '/' . preg_quote($asset->getRealPath(), '/') . '/',
-                            '',
-                            $converter->getStorageFile(),
-                            1
-                        );
+                        if ($uploaded) {
+                            $formats[$converter->getFormat()] = preg_replace(
+                                '/' . preg_quote($asset->getRealPath(), '/') . '/',
+                                '',
+                                $converter->getStorageFile(),
+                                1
+                            );
+                        } else {
+                            $conversionStatus = 'error';
+                        }
                     } else {
                         $conversionStatus = 'error';
                     }
@@ -317,6 +305,13 @@ class Processor
                     Logger::error((string)$e);
                 } finally {
                     $converter->destroy();
+
+                    // process() created these paths with $keep, so the worker removes the files
+                    foreach ([$converter->getDestinationFile(), ...self::getDashStreamFiles($converter)] as $file) {
+                        if (is_file($file)) {
+                            @unlink($file);
+                        }
+                    }
                 }
             }
         } catch (Throwable $e) {
@@ -356,6 +351,38 @@ class Processor
         } finally {
             TmpStore::delete($instance->getJobStoreId());
         }
+    }
+
+    private static function writeToStorage(string $localFile, string $storagePath): bool
+    {
+        $source = fopen($localFile, 'rb');
+        if (false === $source) {
+            Logger::error('could not open stream resource at path "' . $localFile . '" for Video conversion.');
+
+            return false;
+        }
+
+        try {
+            Storage::get('thumbnail')->writeStream($storagePath, $source);
+        } finally {
+            if (is_resource($source)) {
+                fclose($source);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return string[] the local segment files ffmpeg writes next to a DASH manifest
+     */
+    private static function getDashStreamFiles(Adapter $converter): array
+    {
+        if ($converter->getFormat() !== 'mpd') {
+            return [];
+        }
+
+        return glob(str_replace('.mpd', '-stream*.mp4', $converter->getDestinationFile())) ?: [];
     }
 
     public function save(): bool

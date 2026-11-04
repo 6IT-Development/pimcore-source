@@ -998,7 +998,7 @@ instead of dispatching the conversion again; a failure before the formats run (e
 the same way and still writes the status. `$converter->destroy()` runs in a `finally`. The lock was already released in
 a `finally` (C-11).
 
-## [ ] B-63 – Temp files leak in the video conversion worker
+## [x] B-63 – Temp files leak in the video conversion worker
 
 **File:** `models/Asset/Video/Thumbnail/Processor.php:119`, `:259`, `:262-274`, `:283-284`
 
@@ -1007,6 +1007,11 @@ a `finally` (C-11).
   `fopen()` → `false` passed to `writeStream()`.
 
 **Fix direction:** unlink in `finally`; check `fopen`.
+
+**Done:** `process()` creates the destination path with `keep: true`, so the web request no longer registers a cleanup
+for a file only the worker writes. `execute()` removes the destination file and the DASH segment files in a `finally`
+per format, on success and on failure. Uploads go through the new private `writeToStorage()`, which checks `fopen()`
+and closes the stream in a `finally`; a failed upload of the file or of a DASH segment sets the status `error`.
 
 ## [ ] B-64 – DASH (`mpd`) conversion drops main-config transformations/bitrates and mangles media options
 
