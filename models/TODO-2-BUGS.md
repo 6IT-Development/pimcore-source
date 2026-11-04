@@ -1094,7 +1094,7 @@ return `null` without setting `CUSTOM_SETTING_PROCESSING_FAILED`. When ffmpeg ra
 now set the flag (in memory), so a broken video no longer starts ffmpeg on every call. A video whose values were never
 stored (e.g. uploaded before its update task ran) is read again in every request until the update task has run.
 
-## [ ] B-69 – Document thumbnail returns the error placeholder under concurrency
+## [x] B-69 – Document thumbnail returns the error placeholder under concurrency
 
 **File:** `models/Asset/Document/ImageThumbnail.php:141-142`, `:164-166`; `models/Asset/Document.php:106`
 
@@ -1102,6 +1102,10 @@ stored (e.g. uploaded before its update task ran) is read again in every request
   placeholder. Video blocks (`Video/ImageThumbnail.php:135-136`) – inconsistent.
 
 **Fix direction:** blocking acquire with timeout, or re-check `fileExists` after a wait.
+
+**Done:** `getCacheFileStream()` now works like the video frame: a blocking `acquire(true)`, then a second
+`fileExists()` check, and the page image is rendered only when it is still missing. A request that waited reads the
+image the other one wrote instead of returning the placeholder. The temp PNG is removed in a `finally`.
 
 ## [ ] B-70 – Video image thumbnail with format `original`/`source` writes PNG data under `.mp4`
 

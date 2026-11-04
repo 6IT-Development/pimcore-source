@@ -138,32 +138,36 @@ final class ImageThumbnail implements ImageThumbnailInterface
         );
 
         if (!$storage->fileExists($cacheFilePath)) {
+            // wait for a request that renders the same page, like the video frame does, instead of failing
             $lock = Pimcore::getContainer()->get(LockFactory::class)->createLock($cacheFilePath);
-            if ($lock->acquire()) {
-                $tempFile = File::getLocalTempFilePath('png');
+            $lock->acquire(true);
 
-                try {
-                    $converter = Document::getInstance();
-                    $converter->load($this->asset);
-                    if (false === $converter->saveImage($tempFile, $this->page)) {
-                        Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is failed.');
+            try {
+                // after we got the lock, check again if the image exists in the meantime - if not - generate it
+                if (!$storage->fileExists($cacheFilePath)) {
+                    $tempFile = File::getLocalTempFilePath('png');
 
-                        return null;
+                    try {
+                        $converter = Document::getInstance();
+                        $converter->load($this->asset);
+                        if (false === $converter->saveImage($tempFile, $this->page)) {
+                            Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is failed.');
+
+                            return null;
+                        }
+                        $tempFileContent = file_get_contents($tempFile);
+                        if (false === $tempFileContent) {
+                            Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is failed.');
+
+                            return null;
+                        }
+                        $storage->write($cacheFilePath, $tempFileContent);
+                    } finally {
+                        @unlink($tempFile);
                     }
-                    $tempFileContent = file_get_contents($tempFile);
-                    if (false === $tempFileContent) {
-                        Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is failed.');
-
-                        return null;
-                    }
-                    $storage->write($cacheFilePath, $tempFileContent);
-                } finally {
-                    $lock->release();
                 }
-            } else {
-                Logger::info('Creation of cache file stream of document ' . $this->asset->getRealFullPath() . ' is locked');
-
-                return null;
+            } finally {
+                $lock->release();
             }
         }
 
