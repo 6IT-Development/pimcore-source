@@ -24,7 +24,6 @@ use Pimcore\Model\Document;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
@@ -37,7 +36,6 @@ final class PimcoreContextListener implements EventSubscriberInterface
 
     public function __construct(
         private readonly PimcoreContextResolver $resolver,
-        private readonly RequestStack           $requestStack,
         private readonly LoggerInterface $logger
     )
     {
@@ -59,16 +57,11 @@ final class PimcoreContextListener implements EventSubscriberInterface
         if ($event->isMainRequest() || $event->getRequest()->attributes->has(self::ATTRIBUTE_PIMCORE_CONTEXT_FORCE_RESOLVING)) {
             $context = $this->resolver->getPimcoreContext($request);
 
-            if ($context) {
-                $this->logger->debug('Resolved pimcore context for path {path} to {context}', [
-                    'path' => $request->getPathInfo(),
-                    'context' => $context,
-                ]);
-            } else {
-                $this->logger->debug('Could not resolve a pimcore context for path {path}', [
-                    'path' => $request->getPathInfo(),
-                ]);
-            }
+            // the guesser falls back to the default context, so there always is one
+            $this->logger->debug('Resolved pimcore context for path {path} to {context}', [
+                'path' => $request->getPathInfo(),
+                'context' => $context,
+            ]);
 
             $this->initializeContext($context, $request);
         }

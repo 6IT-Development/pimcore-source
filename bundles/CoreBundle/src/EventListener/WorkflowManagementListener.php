@@ -17,21 +17,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener;
 
-use Exception;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\ElementEventInterface;
 use Pimcore\Model\Asset;
-use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\Concrete as ConcreteObject;
 use Pimcore\Model\Document;
-use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Element\WorkflowState;
 use Pimcore\Workflow\Manager;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
  * @internal
@@ -108,38 +104,6 @@ final class WorkflowManagementListener implements EventSubscriberInterface
         foreach ($list->load() as $item) {
             $item->delete();
         }
-    }
-
-    private function enrichNotes(DataObject\AbstractObject $object, array $notes): array
-    {
-        if (!empty($notes['commentGetterFn'])) {
-            $commentGetterFn = $notes['commentGetterFn'];
-            $notes['commentPrefill'] = $object->$commentGetterFn();
-        } elseif (!empty($notes)) {
-            $notes['commentPrefill'] = '';
-        }
-
-        return $notes;
-    }
-
-    /**
-     * @throws Exception
-     */
-    private static function extractElementFromEvent(GenericEvent $e): ElementInterface
-    {
-        $element = null;
-
-        foreach (['object', 'asset', 'document'] as $type) {
-            if ($e->hasArgument($type)) {
-                $element = $e->getArgument($type);
-            }
-        }
-
-        if (empty($element)) {
-            throw new Exception('No element found in event');
-        }
-
-        return $element;
     }
 
     public function enable(): void

@@ -75,7 +75,7 @@ final class DocumentFallbackListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            // before Symfony's LocaleListener (16) and the EditmodeListener
+            // before Symfony's LocaleListener (16)
             KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::DOCUMENT_FALLBACK],
             KernelEvents::CONTROLLER => ['onKernelController', ListenerPriority::DOCUMENT_FALLBACK_CONTROLLER],
         ];

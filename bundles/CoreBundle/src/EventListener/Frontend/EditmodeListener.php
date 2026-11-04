@@ -28,7 +28,6 @@ use Pimcore\Security\User\UserLoader;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
@@ -61,26 +60,8 @@ final class EditmodeListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::REQUEST => 'onKernelRequest',
             KernelEvents::RESPONSE => 'onKernelResponse',
         ];
-    }
-
-    public function onKernelRequest(RequestEvent $event): void
-    {
-        $request = $event->getRequest();
-
-        if (!$event->isMainRequest()) {
-            return; // only resolve editmode in frontend
-        }
-
-        if (!$this->matchesPimcoreContext($request, PimcoreContextResolver::CONTEXT_DEFAULT)) {
-            return;
-        }
-
-        // trigger this once to make sure it is resolved properly
-        // TODO is this needed?
-        $this->editmodeResolver->isEditmode($request);
     }
 
     public function onKernelResponse(ResponseEvent $event): void

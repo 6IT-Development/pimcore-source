@@ -909,7 +909,7 @@ properties of `FullPageCacheState`; the listener's `disable()` / `enable()` keep
 `$_SERVER` and no container parameter mirrors it. `PreviewRequestTrait` is removed in I-48. The other comparisons
 were already strict.
 
-### [ ] I-48 – Remove dead code
+### [x] I-48 – Remove dead code
 
 - `Traits/PreviewRequestTrait.php`: no user in the repo.
 - `Traits/ResponseInjectionTrait::injectBeforeHeadEnd()`: no caller. `MaintenancePageListener` uses the trait but none
@@ -923,6 +923,15 @@ were already strict.
   `#[Required]` setter with a non-nullable property is enough. Also remove the empty docblock lines 38-41.
 - `EditmodeListener::onKernelRequest()` (72-87): "TODO is this needed?". It warms the resolver cache and can go if
   nothing relies on the side effect.
+
+**Done:** removed `PreviewRequestTrait`, the unused `ResponseInjectionTrait` use in `MaintenancePageListener`, the two
+private `WorkflowManagementListener` helpers and their imports, `PimcoreContextListener`'s `$requestStack` and its dead
+log branch, and `EditmodeListener::onKernelRequest()`. Nothing reads the `_editmode` attribute directly, and
+`GlobalTemplateVariablesListener` resolves editmode for every default-context main request at `kernel.controller`.
+`StaticPageContextAwareTrait` now has a non-nullable property set by the `#[Required]` setter (like
+`ResponseInjectionTrait`), without the empty docblock lines.
+Kept: `ResponseInjectionTrait::injectBeforeHeadEnd()`, which the admin-ui-classic-bundle's
+`EnablePreviewTimeSliderListener` uses.
 
 ---
 

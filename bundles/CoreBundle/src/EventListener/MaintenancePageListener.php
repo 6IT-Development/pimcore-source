@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener;
 
-use Pimcore\Bundle\CoreBundle\EventListener\Traits\ResponseInjectionTrait;
 use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
 use InvalidArgumentException;
@@ -34,8 +33,6 @@ use Symfony\Component\HttpKernel\KernelInterface;
  */
 final class MaintenancePageListener implements EventSubscriberInterface
 {
-    use ResponseInjectionTrait;
-
     /**
      * used when no template could be loaded, so the maintenance page is never empty
      */

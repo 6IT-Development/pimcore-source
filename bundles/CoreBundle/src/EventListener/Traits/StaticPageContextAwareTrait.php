@@ -26,7 +26,7 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 trait StaticPageContextAwareTrait
 {
-    private ?StaticPageResolver $staticPageResolver = null;
+    private StaticPageResolver $staticPageResolver;
 
     #[Required]
     public function setStaticPageResolver(StaticPageResolver $staticPageResolver): void
@@ -36,8 +36,6 @@ trait StaticPageContextAwareTrait
 
     /**
      * Check if the request has static page context
-     *
-     *
      */
     protected function matchesStaticPageContext(Request $request): bool
     {

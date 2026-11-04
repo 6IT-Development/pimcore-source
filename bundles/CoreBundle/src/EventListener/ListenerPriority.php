@@ -23,9 +23,9 @@ namespace Pimcore\Bundle\CoreBundle\EventListener;
  *
  * kernel.request:
  *   512 ROUTING, 256 [ValidateRequestListener], 128 [SessionListener], 126 MAINTENANCE_PAGE, 120 FULL_PAGE_CACHE,
- *   32 [RouterListener], 24 PIMCORE_CONTEXT, 20 DOCUMENT_FALLBACK, 16 [LocaleListener] (default locale: 100), 8 [Firewall],
- *   7 STATIC_PAGE_GENERATOR, 1 LOCALE, 0 editmode / block state / translation debug / output timestamp,
- *   -118 WEB_DEBUG_TOOLBAR
+ *   100 [LocaleListener::setDefaultLocale], 32 [RouterListener], 24 PIMCORE_CONTEXT, 20 DOCUMENT_FALLBACK,
+ *   16 [LocaleListener], 8 [Firewall], 7 STATIC_PAGE_GENERATOR, 1 LOCALE, 0 block state / translation debug /
+ *   output timestamp, -118 WEB_DEBUG_TOOLBAR
  * kernel.controller:
  *   50 DOCUMENT_FALLBACK_CONTROLLER, 30 ELEMENT, 15 GLOBAL_TEMPLATE_VARIABLES, 0 evented controllers
  * kernel.controller_arguments:
@@ -66,8 +66,7 @@ final class ListenerPriority
     public const int PIMCORE_CONTEXT = 24;
 
     /**
-     * After the Pimcore context, before Symfony's LocaleListener and the editmode listener, which use the fallback
-     * document's locale and document.
+     * After the Pimcore context, before Symfony's LocaleListener, so the locale of the fallback document is used.
      */
     public const int DOCUMENT_FALLBACK = 20;
 
