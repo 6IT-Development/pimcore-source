@@ -20,10 +20,10 @@ use Exception;
 use Pimcore\Db\Helper;
 use Pimcore\Logger;
 use Pimcore\Model;
+use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Translation;
 use Pimcore\Model\User;
 use Pimcore\Tool\Admin;
-use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 /**
  * @internal
@@ -44,7 +44,7 @@ class Dao extends Model\Dao\AbstractDao
 
     /**
      *
-     * @throws NotFoundResourceException
+     * @throws NotFoundException
      * @throws \Doctrine\DBAL\Exception
      */
     public function getByKey(string $key, ?array $languages = null): void
@@ -73,7 +73,7 @@ class Dao extends Model\Dao\AbstractDao
                 $this->model->setUserModification($d['userModification']);
             }
         } else {
-            throw new NotFoundResourceException("Translation-Key -->'" . $key . "'<-- not found");
+            throw new NotFoundException("Translation-Key -->'" . $key . "'<-- not found");
         }
     }
 

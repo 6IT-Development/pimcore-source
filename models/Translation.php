@@ -29,6 +29,7 @@ use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Event\TranslationEvents;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\Element\Service;
+use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Translation\Dao;
 use Pimcore\SystemSettingsConfig;
 use Pimcore\Tool;
@@ -37,7 +38,6 @@ use Pimcore\Translation\TranslationEntriesDumper;
 use stdClass;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
-use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 /**
  * @method Dao getDao()
@@ -272,7 +272,7 @@ final class Translation extends AbstractModel
      * Returns a copy on every call: changes of the caller (e.g. addTranslation() before a save) must not leak into the
      * runtime cache, which holds only the persisted state of the key.
      *
-     * @throws Exception
+     * @throws \Doctrine\DBAL\Exception if loading the key fails for another reason than a missing key or domain table
      */
     public static function getByKey(string $id, string $domain = self::DOMAIN_DEFAULT, bool $create = false, bool $returnIdIfEmpty = false, ?array $languages = null): ?Translation
     {
@@ -287,7 +287,6 @@ final class Translation extends AbstractModel
         $cache = (RuntimeCache::isRegistered($cacheKey) ? RuntimeCache::get($cacheKey) : null) ?? [];
 
         $notFound = false;
-        $failed = false;
         if (array_key_exists($languagesKey, $cache)) {
             // false: the key is not in the DB
             if ($cache[$languagesKey] instanceof self) {
@@ -296,21 +295,20 @@ final class Translation extends AbstractModel
                 $notFound = true;
             }
         } else {
+            // only a missing key (or domain table) means "not found", other DB errors must not look like it: the
+            // auto-create below would queue empty texts for a key that may exist
             try {
                 $translation->getDao()->getByKey($id, $languages);
                 $cache[$languagesKey] = clone $translation;
-            } catch (Exception $e) {
-                $failed = true;
-                $notFound = $e instanceof NotFoundResourceException || $e instanceof TableNotFoundException;
-                if ($notFound) {
-                    $cache[$languagesKey] = false;
-                }
+            } catch (NotFoundException|TableNotFoundException) {
+                $notFound = true;
+                $cache[$languagesKey] = false;
             }
 
             RuntimeCache::set($cacheKey, $cache);
         }
 
-        if ($notFound || $failed) {
+        if ($notFound) {
             if (!$create && !$returnIdIfEmpty) {
                 return null;
             }
@@ -319,7 +317,7 @@ final class Translation extends AbstractModel
             $translation->setCreationDate(time());
             $translation->setModificationDate(time());
 
-            if ($create && $notFound) {
+            if ($create) {
                 $translations = [];
                 foreach ($languages as $lang) {
                     $translations[$lang] = '';

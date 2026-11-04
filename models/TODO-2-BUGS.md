@@ -1798,7 +1798,7 @@ so presentation fills and caller changes never reach later callers. The auto-cre
 `save()`, `saveMissingLanguages()` and `delete()` drop the entry of the key. `$returnIdIfEmpty` replaces only missing
 and `''` texts, a translation `"0"` is kept. DB errors other than "not found" are not cached.
 
-## [ ] B-108 – `getByKey()` swallows every `Exception`, but not `TypeError`; DB failures look like "not found"
+## [x] B-108 – `getByKey()` swallows every `Exception`, but not `TypeError`; DB failures look like "not found"
 
 **File:** `models/Translation.php:262-281`; `models/Translation/Listing/Dao.php:117-123`
 
@@ -1813,6 +1813,12 @@ and `''` texts, a translation `"0"` is kept. DB errors other than "not found" ar
 
 **Fix direction:** catch only the "not found" case (an own `NotFoundException` from the DAO, plus
 `TableNotFoundException` during the transition). Let other DB errors propagate. Log the rest.
+
+**Done:** `Translation\Dao::getByKey()` throws `Model\Exception\NotFoundException` instead of Symfony's translation
+loader exception, and `Translation::getByKey()` catches only that and `TableNotFoundException`. Connection losses, lock
+timeouts and SQL errors propagate instead of returning `null` or a fake translation from the key, and they are no
+longer turned into an auto-create of empty texts. Hydration `TypeError`s on `NULL` dates are B-109, the short listing
+pages B-118.
 
 ## [ ] B-109 – Hydration keeps the newest `creationDate` and the last row's owner/type; `save()` writes them to every language; `NULL` dates crash
 
