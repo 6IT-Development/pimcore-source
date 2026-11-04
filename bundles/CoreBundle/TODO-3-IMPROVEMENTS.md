@@ -429,7 +429,7 @@ since B-05 (installer errors fail the command); its docblock now says so. `getSh
 private. `OptimizeImageThumbnailsCommand` filters files with `listContents()->filter()`, drops `clearstatcache()`,
 catches errors per file, has `--dry-run` and ends with a summary (exit code `FAILURE` if a file failed).
 
-### [ ] I-27 – Internal generator commands
+### [x] I-27 – Internal generator commands
 
 **Files:** `InternalModelDaoMappingGeneratorCommand.php`, `InternalUnicodeCldrLanguageTerritoryGeneratorCommand.php`,
 `InternalMigrationHelpersCommand.php`
@@ -439,6 +439,8 @@ catches errors per file, has `--dry-run` and ends with a summary (exit code `FAI
 - `usort` comparator → `fn ($a, $b) => $b['population'] <=> $a['population']`.
 - `InternalMigrationHelpersCommand`: `$this->metadataStorage->__invoke($this->dependencyFactory)` → `($this->metadataStorage)($this->dependencyFactory)`.
   The unused `?string $name` ctor parameter can go.
+
+**Done:** all four bullets as proposed.
 
 ### [ ] I-28 – `MysqlToolsCommand` / `RequirementsCheckCommand` output
 

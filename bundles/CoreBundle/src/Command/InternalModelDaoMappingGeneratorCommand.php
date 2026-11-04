@@ -19,7 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Pimcore\Console\AbstractCommand;
 use Pimcore\File;
-use Pimcore\Model\Asset;
+use Pimcore\Model\AbstractModel;
 use ReflectionClass;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -51,16 +51,11 @@ class InternalModelDaoMappingGeneratorCommand extends AbstractCommand
             $className = str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $file->getRelativePathname());
             $className = 'Pimcore\\Model\\' . $className;
 
-            if (class_exists($className)) {
-                $parents = class_parents($className);
-                if (is_array($parents) && in_array('Pimcore\\Model\\AbstractModel', $parents)) {
-                    $reflection = new ReflectionClass($className);
-                    if (!$reflection->isAbstract()) {
-                        $daoClass = Asset::locateDaoClass($className);
-                        if ($daoClass) {
-                            $map[$className] = $daoClass;
-                        }
-                    }
+            if (class_exists($className) && is_subclass_of($className, AbstractModel::class)
+                && !new ReflectionClass($className)->isAbstract()) {
+                $daoClass = AbstractModel::locateDaoClass($className);
+                if ($daoClass) {
+                    $map[$className] = $daoClass;
                 }
             }
         }

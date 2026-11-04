@@ -101,13 +101,8 @@ class InternalUnicodeCldrLanguageTerritoryGeneratorCommand extends AbstractComma
         $finalData = [];
 
         foreach ($languageRawData as $languageCode => $rawLanguage) {
-            usort($rawLanguage, function ($a, $b) {
-                if ($a['population'] == $b['population']) {
-                    return 0;
-                }
-
-                return ($a['population'] > $b['population']) ? -1 : 1;
-            });
+            // most speakers first
+            usort($rawLanguage, static fn (array $a, array $b): int => $b['population'] <=> $a['population']);
 
             $finalData[$languageCode] = [];
             foreach ($rawLanguage as $territory) {

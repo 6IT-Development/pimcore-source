@@ -37,9 +37,12 @@ use Throwable;
 )]
 class InternalMigrationHelpersCommand extends AbstractCommand
 {
-    public function __construct(private readonly DependencyFactory $dependencyFactory, private readonly FilteredTableMetadataStorage $metadataStorage, ?string $name = null)
+    public function __construct(
+        private readonly DependencyFactory $dependencyFactory,
+        private readonly FilteredTableMetadataStorage $metadataStorage
+    )
     {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     #[\Override]
@@ -60,7 +63,7 @@ class InternalMigrationHelpersCommand extends AbstractCommand
         if ($input->getOption('is-installed')) {
             try {
                 if (Pimcore::isInstalled()) {
-                    $this->metadataStorage->__invoke($this->dependencyFactory);
+                    ($this->metadataStorage)($this->dependencyFactory);
                     $this->metadataStorage->ensureInitialized();
                     $output->write('1');
                 }
