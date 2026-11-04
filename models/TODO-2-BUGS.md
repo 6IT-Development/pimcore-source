@@ -1075,7 +1075,7 @@ is called from the ffmpeg output callback, and the Processor uses it to `refresh
 conversion longer than the TTL keeps it. The callback is set only in the worker and reset afterwards, so it is never
 stored with the job in the TmpStore.
 
-## [ ] B-68 – Video getters save the asset and permanently flag processing as failed when ffmpeg is unavailable on the web node
+## [x] B-68 – Video getters save the asset and permanently flag processing as failed when ffmpeg is unavailable on the web node
 
 **File:** `models/Asset/Video.php:197-205`, `:222-233`
 
@@ -1085,6 +1085,14 @@ stored with the job in the TmpStore.
   on workers that do have ffmpeg. `getDuration()` never sets the flag, so broken videos spawn ffmpeg on every call.
 
 **Fix direction:** no saves in getters; set the failed flag only when the backend actually ran and failed.
+
+**Done:** `getDuration()` and `getDimensions()` (and with them `getWidth()` / `getHeight()`) no longer save the asset;
+a value read with ffmpeg is kept in the custom settings in memory only, and the update task
+(`AssetUpdateTasksHandler::processVideo()`) stays the place that stores it. The new private `canReadFromBackend()` asks
+ffmpeg only when processing has not failed and `Pimcore\Video::isAvailable()`; on a host without ffmpeg the getters
+return `null` without setting `CUSTOM_SETTING_PROCESSING_FAILED`. When ffmpeg ran and returned nothing, both getters
+now set the flag (in memory), so a broken video no longer starts ffmpeg on every call. A video whose values were never
+stored (e.g. uploaded before its update task ran) is read again in every request until the update task has run.
 
 ## [ ] B-69 – Document thumbnail returns the error placeholder under concurrency
 

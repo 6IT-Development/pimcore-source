@@ -196,14 +196,12 @@ class Video extends Model\Asset
     public function getDuration(): float|int|null
     {
         $duration = $this->getCustomSetting('duration');
-        if (!$duration && !$this->getCustomSetting(self::CUSTOM_SETTING_PROCESSING_FAILED)) {
+        if (!$duration && $this->canReadFromBackend()) {
             $duration = $this->getDurationFromBackend();
             if ($duration) {
                 $this->setCustomSetting('duration', $duration);
-
-                Model\Version::disable();
-                $this->save(); // auto save
-                Model\Version::enable();
+            } else {
+                $this->setCustomSetting(self::CUSTOM_SETTING_PROCESSING_FAILED, true);
             }
         }
 
@@ -221,7 +219,7 @@ class Video extends Model\Asset
                 'width' => $width,
                 'height' => $height,
             ];
-        } elseif (!$this->getCustomSetting(self::CUSTOM_SETTING_PROCESSING_FAILED)) {
+        } elseif ($this->canReadFromBackend()) {
             $dimensions = $this->getDimensionsFromBackend();
             if ($dimensions) {
                 $this->setCustomSetting('videoWidth', (int)$dimensions['width']);
@@ -229,13 +227,19 @@ class Video extends Model\Asset
             } else {
                 $this->setCustomSetting(self::CUSTOM_SETTING_PROCESSING_FAILED, true);
             }
-
-            Model\Version::disable();
-            $this->save(); // auto save
-            Model\Version::enable();
         }
 
         return $dimensions;
+    }
+
+    /**
+     * Whether a getter may read a missing value with ffmpeg. The value is only kept in memory, the update task stores
+     * it, so a read does not save the asset. Without ffmpeg on this host nothing is flagged as failed, because a
+     * worker that has it can still process the video.
+     */
+    private function canReadFromBackend(): bool
+    {
+        return !$this->getCustomSetting(self::CUSTOM_SETTING_PROCESSING_FAILED) && Pimcore\Video::isAvailable();
     }
 
     public function getWidth(): ?int
