@@ -109,6 +109,14 @@ abstract class PageSnippet extends Model\Document
 
     private static bool $getInheritedValues = false;
 
+    /**
+     * Ids of the documents whose editables are being inherited from their content-main document, so that a cycle
+     * stored before the chain was validated ends the inheritance instead of recursing without end
+     *
+     * @var array<int, true>
+     */
+    private static array $contentMainResolution = [];
+
     public function __construct()
     {
         $this->contentMasterDocumentId = &$this->contentMainDocumentId;
@@ -374,7 +382,10 @@ abstract class PageSnippet extends Model\Document
             // check for content main document (inherit data)
             $contentMainDocument = $this->getContentMainDocument();
             if ($contentMainDocument instanceof self && $contentMainDocument->getId() != $this->getId()) {
-                $inheritedEditable = $contentMainDocument->getEditable($name);
+                $inheritedEditable = $this->inheritFromContentMain(
+                    $contentMainDocument,
+                    fn (self $document) => $document->getEditable($name)
+                );
                 if ($inheritedEditable) {
                     $inheritedEditable = clone $inheritedEditable;
                     $inheritedEditable->setInherited(true);
@@ -387,6 +398,34 @@ abstract class PageSnippet extends Model\Document
     }
 
     /**
+     * Runs $resolve on the content-main document unless that document is already resolving its own inheritance
+     * further up the call stack (a content-main cycle), in which case nothing is inherited
+     *
+     * @template T
+     *
+     * @param callable(self): T $resolve
+     *
+     * @return T|null
+     */
+    private function inheritFromContentMain(self $contentMainDocument, callable $resolve): mixed
+    {
+        if (isset(self::$contentMainResolution[(int) $contentMainDocument->getId()])) {
+            return null;
+        }
+
+        $id = (int) $this->getId();
+        self::$contentMainResolution[$id] = true;
+
+        try {
+            return $resolve($contentMainDocument);
+        } finally {
+            unset(self::$contentMainResolution[$id]);
+        }
+    }
+
+    /**
+     * The whole content-main chain is checked whatever $validate is: a cycle would make every inherited editable
+     * lookup recurse without end.
      *
      * @return $this
      *
@@ -407,13 +446,15 @@ abstract class PageSnippet extends Model\Document
         // Don't set the content main document if the document is already part of the main document chain
         if ($contentMainDocumentId) {
             if ($currentContentMainDocument = Document\PageSnippet::getById($contentMainDocumentId)) {
-                $maxDepth = 20;
+                // the visited ids also end a cycle stored further up the chain, which does not contain this document
+                $visited = [];
                 do {
                     if ($currentContentMainDocument->getId() === $this->getId()) {
                         throw new Exception('This document is already part of the main document chain, please choose a different one.');
                     }
+                    $visited[$currentContentMainDocument->getId()] = true;
                     $currentContentMainDocument = $currentContentMainDocument->getContentMainDocument();
-                } while ($currentContentMainDocument && $maxDepth-- > 0 && $validate);
+                } while ($currentContentMainDocument && !isset($visited[$currentContentMainDocument->getId()]));
             } else {
                 // Content main document was deleted or don't exist
                 $contentMainDocumentId = null;
@@ -468,10 +509,15 @@ abstract class PageSnippet extends Model\Document
         }
 
         if (self::getGetInheritedValues() && $this->supportsContentMain() && $contentMainDocument = $this->getContentMainDocument()) {
+            $contentMainEditables = $this->inheritFromContentMain(
+                $contentMainDocument,
+                fn (self $document) => $document->getEditables()
+            ) ?? [];
+
             // the inherited editables are clones flagged as inherited, as in getEditable(), and are not kept as the
             // document's own: save() would store them for this document and point the main document's instances to it
             $editables = [];
-            foreach ($contentMainDocument->getEditables() as $name => $contentMainEditable) {
+            foreach ($contentMainEditables as $name => $contentMainEditable) {
                 $editables[$name] = $this->editables[$name]
                     ?? ($this->inheritedEditables[$name] ??= (clone $contentMainEditable)->setInherited(true));
             }

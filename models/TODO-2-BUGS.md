@@ -2595,7 +2595,7 @@ flag, and an inheriting copy is rendered with the main document's editables. The
 every call instead of being fixed by the first call, and `update()` skips the inherited clones, so a save neither
 flattens the inheritance nor re-points the main document's editables. Content-main cycles: B-142.
 
-## [ ] B-142 – Content-main cycles are accepted: the chain is only checked with `$validate = true`
+## [x] B-142 – Content-main cycles are accepted: the chain is only checked with `$validate = true`
 
 **Files:** `models/Document/PageSnippet.php:393-424`, `:359-385`, `:431-438`
 
@@ -2604,6 +2604,12 @@ flattens the inheritance nor re-points the main document's editables. Content-ma
   overflow on render. Chains longer than 20 are accepted silently.
 
 **Fix direction:** always walk the full chain; guard `getEditable()` with a visited set.
+
+**Done:** `setContentMainDocumentId()` walks the whole chain whatever `$validate` is, without the depth limit, and
+stops at an id it has already visited, so a cycle stored further up the chain ends the walk. `getEditable()` and
+`getEditables()` inherit through `inheritFromContentMain()`, which tracks the documents currently resolving their
+inheritance and inherits nothing from a document already on that stack: a cycle stored before this fix renders the
+own editables instead of overflowing the stack. `$validate` is kept for compatibility and no longer changes anything.
 
 ## [ ] B-143 – One unknown or corrupt editable row breaks the whole document
 
