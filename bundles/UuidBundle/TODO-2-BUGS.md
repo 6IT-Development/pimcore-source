@@ -243,7 +243,7 @@ addressed: a Doctrine `Schema` definition and the key changes of I-11 (I-14).
 
 ---
 
-## [ ] B-12 – `Listing\Dao::getTotalCount()` hides every error as `0`
+## [x] B-12 – `Listing\Dao::getTotalCount()` hides every error as `0`
 
 **Files:** `src/Model/Tool/UUID/Listing/Dao.php:49-56`
 
@@ -251,3 +251,7 @@ addressed: a Doctrine `Schema` definition and the key changes of I-11 (I-14).
 errors. Callers then see "no UUIDs" instead of the error.
 
 **Fix direction:** remove the try/catch, or catch only the specific DBAL exception and log it.
+
+**Done:** the `try/catch (Exception) { return 0; }` around the count query is removed, so SQL errors in conditions, a
+missing table and connection errors reach the caller (`count($listing)` included) instead of reading as "no UUIDs".
+The unused `use Exception;` is gone.

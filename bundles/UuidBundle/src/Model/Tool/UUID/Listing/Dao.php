@@ -15,7 +15,6 @@
 
 namespace Pimcore\Bundle\UuidBundle\Model\Tool\UUID\Listing;
 
-use Exception;
 use Pimcore\Bundle\UuidBundle\Model\Tool\UUID;
 use Pimcore\Bundle\UuidBundle\Model\Tool\UUID\Listing;
 use Pimcore\Model;
@@ -53,10 +52,6 @@ class Dao extends Model\Listing\Dao\AbstractDao
      */
     public function getTotalCount(): int
     {
-        try {
-            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM ' . UUID\Dao::TABLE_NAME . ' ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception) {
-            return 0;
-        }
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM ' . UUID\Dao::TABLE_NAME . ' ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }
