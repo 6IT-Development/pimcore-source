@@ -19,10 +19,9 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
-use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
-use Pimcore\Db\Helper;
 use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -40,31 +39,14 @@ use Symfony\Component\Console\Output\OutputInterface;
 class LowQualityImagePreviewCommand extends AbstractCommand
 {
     use AssetBatchTrait;
+    use AssetFilterOptionsTrait;
     use DeprecatedOptionNameTrait;
-    use IdOptionTrait;
 
     #[\Override]
     protected function configure(): void
     {
         $this
-            ->addOption(
-                'id',
-                null,
-                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'only create thumbnails of images with this (IDs)'
-            )
-            ->addOption(
-                'parent',
-                'p',
-                InputOption::VALUE_REQUIRED,
-                'only create thumbnails of images in this folder (ID)'
-            )
-            ->addOption(
-                'path-pattern',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Filter images against the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
-            )
+            ->addAssetFilterOptions('images')
             ->addOption(
                 'force',
                 'f',
@@ -88,31 +70,11 @@ class LowQualityImagePreviewCommand extends AbstractCommand
         // get only images
         $conditions = ["type = 'image'"];
 
-        if ($input->getOption('parent')) {
-            $parent = Asset::getById((int)$input->getOption('parent'));
-            if ($parent instanceof Asset\Folder) {
-                $conditions[] = 'path LIKE ?';
-                $conditionVariables[] = Helper::escapeLike($parent->getRealFullPath()) . '/%';
-            } else {
-                $this->io->error($input->getOption('parent') . ' is not a valid asset folder ID!');
-                return self::INVALID;
-            }
-        }
-
-        if ($ids = $this->getIdOptionValues($input)) {
-            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
-        }
-
-        if ($regex = $input->getOption('path-pattern')) {
-            $conditions[] = 'CONCAT(`path`, filename) REGEXP ?';
-            $conditionVariables[] = $regex;
-        }
+        $this->addAssetFilterConditions($input, $conditions, $conditionVariables);
 
         $force = $input->getOption('force');
 
-        $list = new Asset\Listing();
-        $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
-        $progressBar = $this->io->createProgressBar($list->getTotalCount());
+        $progressBar = $this->io->createProgressBar($this->countAssets($conditions, $conditionVariables));
 
         $generated = 0;
         $errors = 0;

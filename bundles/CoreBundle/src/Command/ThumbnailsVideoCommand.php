@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\Parallelization;
 use Pimcore\Logger;
@@ -39,6 +40,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class ThumbnailsVideoCommand extends AbstractCommand
 {
+    use AssetFilterOptionsTrait;
     use Parallelization;
 
     private const DEFAULT_MAX_WAIT = 1800;
@@ -52,12 +54,8 @@ class ThumbnailsVideoCommand extends AbstractCommand
         self::configureCommand($this);
 
         $this
-            ->addOption(
-                'parent',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'only create thumbnails of images in this folder (ID)'
-            )
+            // no -p shortcut for --parent: it is taken by --processes
+            ->addAssetFilterOptions('videos', null)
             ->addOption(
                 'thumbnails',
                 't',
@@ -98,16 +96,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
 
         // get only videos
         $conditions = ["type = 'video'"];
-        if ($parentId = $input->getOption('parent')) {
-            $parent = Asset::getById((int)$parentId);
-            if ($parent instanceof Asset\Folder) {
-                $conditions[] = 'path LIKE ?';
-                $conditionVariables[] = $list->escapeLike($parent->getRealFullPath()) . '/%';
-            } else {
-                // no exit(): it would skip the console TERMINATE event (e.g. --maintenance-mode would stay active)
-                throw new InvalidArgumentException($input->getOption('parent') . ' is not a valid asset folder ID!');
-            }
-        }
+        $this->addAssetFilterConditions($input, $conditions, $conditionVariables);
 
         $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
         $assetIdsList = $list->loadIdList();

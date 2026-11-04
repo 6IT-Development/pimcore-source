@@ -18,14 +18,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command\Asset;
 
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
-use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db\Helper;
-use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -38,31 +36,14 @@ use Symfony\Component\Console\Output\OutputInterface;
 class RemoveCustomSettingCommand extends AbstractCommand
 {
     use AssetBatchTrait;
-    use IdOptionTrait;
+    use AssetFilterOptionsTrait;
 
     #[\Override]
     protected function configure(): void
     {
         $this
             ->addArgument('name', InputArgument::REQUIRED, 'Name of the custom setting to remove')
-            ->addOption(
-                'id',
-                null,
-                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'only remove custom-setting for assets with this (IDs)'
-            )
-            ->addOption(
-                'parent',
-                'p',
-                InputOption::VALUE_REQUIRED,
-                'only remove custom-setting for assets in this folder (ID)'
-            )
-            ->addOption(
-                'path-pattern',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'only remove custom-setting for the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
-            );
+            ->addAssetFilterOptions();
     }
 
     #[\Override]
@@ -77,25 +58,7 @@ class RemoveCustomSettingCommand extends AbstractCommand
         $conditions = ['customSettings LIKE ?'];
         $conditionVariables = ['%' . Helper::escapeLike(str_replace('\\', '\\\\', $serializedKey)) . '%'];
 
-        if ($input->getOption('parent')) {
-            $parent = Asset::getById((int)$input->getOption('parent'));
-            if ($parent instanceof Asset\Folder) {
-                $conditions[] = 'path LIKE ?';
-                $conditionVariables[] = Helper::escapeLike($parent->getRealFullPath()) . '/%';
-            } else {
-                $this->io->error($input->getOption('parent') . ' is not a valid asset folder ID!');
-                return self::INVALID;
-            }
-        }
-
-        if ($ids = $this->getIdOptionValues($input)) {
-            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
-        }
-
-        if ($regex = $input->getOption('path-pattern')) {
-            $conditions[] = 'CONCAT(`path`, filename) REGEXP ?';
-            $conditionVariables[] = $regex;
-        }
+        $this->addAssetFilterConditions($input, $conditions, $conditionVariables);
 
         // keyset pagination: processed assets no longer match the customSettings condition, so an OFFSET would skip
         // assets of the shrinking result set

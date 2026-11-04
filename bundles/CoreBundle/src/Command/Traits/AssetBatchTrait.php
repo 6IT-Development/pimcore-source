@@ -36,10 +36,10 @@ trait AssetBatchTrait
      *
      * @return iterable<Asset>
      */
-    protected function iterateAssets(array $conditions, array $conditionVariables = [], int $batchSize = 10): iterable
+    protected function iterateAssets(array $conditions, array $conditionVariables = [], int $batchSize = 100): iterable
     {
         $conditions[] = 'id > ?';
-        $condition = implode(' AND ', array_map(static fn (string $condition) => '(' . $condition . ')', $conditions));
+        $condition = $this->combineAssetConditions($conditions);
         $lastId = 0;
 
         do {
@@ -58,5 +58,26 @@ trait AssetBatchTrait
 
             Pimcore::collectGarbage();
         } while (count($assets) === $batchSize);
+    }
+
+    /**
+     * Counts the assets matching all conditions, e.g. for the length of a progress bar.
+     *
+     * @param string[] $conditions SQL conditions, combined with AND
+     */
+    protected function countAssets(array $conditions, array $conditionVariables = []): int
+    {
+        $list = new Asset\Listing();
+        $list->setCondition($this->combineAssetConditions($conditions), $conditionVariables);
+
+        return $list->getTotalCount();
+    }
+
+    /**
+     * @param string[] $conditions
+     */
+    private function combineAssetConditions(array $conditions): string
+    {
+        return implode(' AND ', array_map(static fn (string $condition) => '(' . $condition . ')', $conditions));
     }
 }

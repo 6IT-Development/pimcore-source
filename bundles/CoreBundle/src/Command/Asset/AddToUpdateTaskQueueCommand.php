@@ -18,9 +18,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command\Asset;
 
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
-use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
 use Pimcore\Console\AbstractCommand;
-use Pimcore\Db\Helper;
 use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -37,7 +36,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class AddToUpdateTaskQueueCommand extends AbstractCommand
 {
     use AssetBatchTrait;
-    use IdOptionTrait;
+    use AssetFilterOptionsTrait;
 
     private const array TYPES = ['image', 'video', 'document'];
 
@@ -45,31 +44,13 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
     protected function configure(): void
     {
         $this
-            ->addOption(
-                'id',
-                null,
-                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'only add assets with this IDs (comma-separated) to the update task queue'
-            )
-            ->addOption(
-                'parent',
-                'p',
-                InputOption::VALUE_REQUIRED,
-                'only add assets in this folder (ID) to the update task queue'
-            )
-            ->addOption(
-                'path-pattern',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'only add assets matching the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
-            )
+            ->addAssetFilterOptions()
             ->addOption(
                 'retry-failed',
                 'f',
                 InputOption::VALUE_NONE,
                 'retry assets that previously failed to be processed'
             );
-
     }
 
     #[\Override]
@@ -81,26 +62,7 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
             "`type` IN ('" . implode("','", self::TYPES) . "')",
         ];
 
-        if ($input->getOption('parent')) {
-            $parent = Asset::getById((int)$input->getOption('parent'));
-            if ($parent instanceof Asset\Folder) {
-                $conditions[] = 'path LIKE ?';
-                $conditionVariables[] = Helper::escapeLike($parent->getRealFullPath()) . '/%';
-            } else {
-                $this->io->error($input->getOption('parent') . ' is not a valid asset folder ID!');
-
-                return self::INVALID;
-            }
-        }
-
-        if ($ids = $this->getIdOptionValues($input)) {
-            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
-        }
-
-        if ($regex = $input->getOption('path-pattern')) {
-            $conditions[] = 'CONCAT(`path`, filename) REGEXP ?';
-            $conditionVariables[] = $regex;
-        }
+        $this->addAssetFilterConditions($input, $conditions, $conditionVariables);
 
         if ($input->getOption('retry-failed')) {
             $conditions[] = sprintf(

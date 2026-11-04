@@ -169,7 +169,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
 
 ## C – Shared logic / duplication
 
-### [ ] I-11 – Extract the shared asset filter + batching logic
+### [x] I-11 – Extract the shared asset filter + batching logic
 
 **Files:** `Asset/AddToUpdateTaskQueueCommand`, `Asset/GenerateChecksumCommand`, `Asset/RemoveCustomSettingCommand`,
 `LowQualityImagePreviewCommand`, partly `ThumbnailsImageCommand` / `ThumbnailsVideoCommand`
@@ -181,6 +181,13 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
 **Direction:** an `AssetFilterOptions` trait (configure + build `Asset\Listing`), plus a keyset-pagination iterator
 (`iterateAssets(Listing $list, int $batchSize = 100): iterable`) that calls `collectGarbage()` between batches. Use a
 batch size larger than 10.
+
+**Done:** `Traits/AssetFilterOptionsTrait` adds `--id`, `--parent` and `--path-pattern` (`addAssetFilterOptions()`) and
+builds their SQL conditions (`addAssetFilterConditions()`). All six commands use it. `--parent` accepts comma-separated
+folder IDs everywhere, and an invalid folder throws an `InvalidArgumentException` with exit code 2. `ThumbnailsVideoCommand`
+gains `--id` and `--path-pattern`. `AssetBatchTrait::iterateAssets()` (keyset pagination, from B-02/B-03) now defaults to
+batches of 100, and the new `countAssets()` gives `LowQualityImagePreviewCommand` its progress bar length with the same
+conditions.
 
 ### [ ] I-12 – Extract the "older-than-days" cleanup pattern and delete in batches
 

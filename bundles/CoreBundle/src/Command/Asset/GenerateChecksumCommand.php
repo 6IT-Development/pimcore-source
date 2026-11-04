@@ -19,10 +19,8 @@ namespace Pimcore\Bundle\CoreBundle\Command\Asset;
 
 use Exception;
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
-use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
 use Pimcore\Console\AbstractCommand;
-use Pimcore\Db\Helper;
-use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -38,35 +36,18 @@ use Symfony\Component\Console\Output\OutputInterface;
 class GenerateChecksumCommand extends AbstractCommand
 {
     use AssetBatchTrait;
-    use IdOptionTrait;
+    use AssetFilterOptionsTrait;
 
     #[\Override]
     protected function configure(): void
     {
         $this
-            ->addOption(
-                'id',
-                null,
-                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'only generate checksum for assets with this (IDs)'
-            )
-            ->addOption(
-                'parent',
-                'p',
-                InputOption::VALUE_REQUIRED,
-                'only generate checksum for assets in this folder (ID)'
-            )
+            ->addAssetFilterOptions()
             ->addOption(
                 'missing-only',
                 'm',
                 InputOption::VALUE_NONE,
                 'only generate checksum for assets which have no checksum yet'
-            )
-            ->addOption(
-                'path-pattern',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'only generate checksum for the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
             );
     }
 
@@ -78,25 +59,7 @@ class GenerateChecksumCommand extends AbstractCommand
 
         $conditions = [];
 
-        if ($input->getOption('parent')) {
-            $parent = Asset::getById((int)$input->getOption('parent'));
-            if ($parent instanceof Asset\Folder) {
-                $conditions[] = 'path LIKE ?';
-                $conditionVariables[] = Helper::escapeLike($parent->getRealFullPath()) . '/%';
-            } else {
-                $this->io->error($input->getOption('parent') . ' is not a valid asset folder ID!');
-                return self::INVALID;
-            }
-        }
-
-        if ($ids = $this->getIdOptionValues($input)) {
-            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
-        }
-
-        if ($regex = $input->getOption('path-pattern')) {
-            $conditions[] = 'CONCAT(`path`, filename) REGEXP ?';
-            $conditionVariables[] = $regex;
-        }
+        $this->addAssetFilterConditions($input, $conditions, $conditionVariables);
 
         foreach ($this->iterateAssets($conditions, $conditionVariables) as $asset) {
             try {

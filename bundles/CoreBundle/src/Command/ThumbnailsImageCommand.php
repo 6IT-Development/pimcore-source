@@ -18,8 +18,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use DateTime;
+use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
-use Pimcore\Bundle\CoreBundle\Command\Traits\IdOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\Parallelization;
 use Pimcore\Model\Asset;
@@ -40,8 +40,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class ThumbnailsImageCommand extends AbstractCommand
 {
+    use AssetFilterOptionsTrait;
     use DeprecatedOptionNameTrait;
-    use IdOptionTrait;
     use Parallelization;
 
     private const string DATE_FORMAT = 'Y-m-d H:i:s';
@@ -53,24 +53,8 @@ class ThumbnailsImageCommand extends AbstractCommand
         self::configureCommand($this);
 
         $this
-            ->addOption(
-                'parent',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'only create thumbnails of images in this folder (comma separated IDs e.g. 543,1077)'
-            )
-            ->addOption(
-                'id',
-                null,
-                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'only create thumbnails of images with this (IDs)'
-            )
-            ->addOption(
-                'path-pattern',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Filter images against the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
-            )
+            // no -p shortcut for --parent: it is taken by --processes
+            ->addAssetFilterOptions('images', null)
             ->addOption(
                 'last-modified-since',
                 null,
@@ -126,26 +110,12 @@ class ThumbnailsImageCommand extends AbstractCommand
         $list->setOrderKey('modificationDate');
         $list->setOrder('DESC');
 
-        $parentConditions = [];
         $conditionVariables = [];
 
         // get only images
         $conditions = ["type = 'image'"];
 
-        if ($input->getOption('parent')) {
-            $parentIds = explode(',', $input->getOption('parent'));
-            foreach ($parentIds as $parentId) {
-                $parent = Asset::getById((int)$parentId);
-                if ($parent instanceof Asset\Folder) {
-                    $parentConditions[] = 'path LIKE ?';
-                    $conditionVariables[] = $list->escapeLike($parent->getRealFullPath()) . '/%';
-                } else {
-                    // no exit(): it would skip the console TERMINATE event (e.g. --maintenance-mode would stay active)
-                    throw new InvalidArgumentException(trim($parentId) . ' is not a valid asset folder ID!');
-                }
-            }
-            $conditions[] = '(' . implode(' OR ', $parentConditions) . ')';
-        }
+        $this->addAssetFilterConditions($input, $conditions, $conditionVariables);
 
         if ($lastModifiedSince = $input->getOption('last-modified-since')) {
             $lastModifiedSinceDate = DateTime::createFromFormat(self::DATE_FORMAT, $lastModifiedSince);
@@ -155,15 +125,6 @@ class ThumbnailsImageCommand extends AbstractCommand
             }
             $conditions[] = 'modificationDate >= ?';
             $conditionVariables[] = $lastModifiedSinceDate->getTimestamp();
-        }
-
-        if ($regex = $input->getOption('path-pattern')) {
-            $conditions[] = 'CONCAT(`path`, filename) REGEXP ?';
-            $conditionVariables[] = $regex;
-        }
-
-        if ($ids = $this->getIdOptionValues($input)) {
-            $conditions[] = sprintf('id IN (%s)', implode(',', $ids));
         }
 
         $list->setCondition(implode(' AND ', $conditions), $conditionVariables);
