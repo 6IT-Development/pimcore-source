@@ -134,21 +134,25 @@ final class Site extends AbstractModel
     }
 
     /**
+     * Resolves a site by its ID (also as a string of digits, e.g. a route parameter), its domain or the site itself
+     *
      * @throws Exception
      */
-    public static function getBy(mixed $mixed): ?Site
+    public static function getBy(int|string|Site $mixed): ?Site
     {
-        $site = null;
-
-        if (is_numeric($mixed)) {
-            $site = self::getById($mixed);
-        } elseif (is_string($mixed)) {
-            $site = self::getByDomain($mixed);
-        } elseif ($mixed instanceof Site) {
-            $site = $mixed;
+        if ($mixed instanceof Site) {
+            return $mixed;
         }
 
-        return $site;
+        if (is_int($mixed)) {
+            return self::getById($mixed);
+        }
+
+        if (ctype_digit($mixed)) {
+            return self::getById((int) $mixed);
+        }
+
+        return self::getByDomain($mixed);
     }
 
     public static function create(array $data): Site

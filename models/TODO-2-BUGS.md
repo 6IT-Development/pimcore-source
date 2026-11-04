@@ -2239,7 +2239,7 @@ its `finally` block, so a CLI / Messenger process that renders documents of seve
 an earlier document, and a page rendered inside a request does not leave its site behind either.
 `MessengerClearRuntimeCacheListener` resets the current site before every message. The static itself stays (I-68).
 
-## [ ] B-127 – `Site::getBy()` throws `TypeError` for a numeric string
+## [x] B-127 – `Site::getBy()` throws `TypeError` for a numeric string
 
 **File:** `models/Site.php:139-152`
 
@@ -2250,6 +2250,11 @@ an earlier document, and a page rendered inside a request does not leave its sit
 
 **Fix direction:** type the parameter as `int|string|Site`, cast with `(int)` after an `ctype_digit()` check, and throw
 `InvalidArgumentException` for unsupported values.
+
+**Done:** `getBy()` is typed `int|string|Site`: an int and a string of digits (`ctype_digit()`, cast to `int`) load by
+ID, any other string by domain, and a site is returned as it is. Unsupported values (arrays, `null`, documents) now fail
+with a `TypeError` at the call instead of silently returning `null`; a non-strict caller passing `5.0` gets it
+coerced to `5`.
 
 ## [ ] B-128 – Domains are stored un-normalised: IDN domains never match, uppercase causes redirect loops, wildcards are case-sensitive
 
