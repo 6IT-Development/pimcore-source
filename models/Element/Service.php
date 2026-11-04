@@ -581,7 +581,8 @@ class Service extends Model\AbstractModel
             }
         }
         if (!$found) {
-            $newElement = Element\Service::getElementById($new->getType(), $new->getId());
+            // getType() is the subtype (page, folder, image, variant ...), not the element type
+            $newElement = Element\Service::getElementById(self::getElementType($new), $new->getId()) ?? $new;
             $listing = $target->getChildren();
             $listing->setData(array_merge($listing->getData(), [$newElement]));
             $target->setChildren($listing);

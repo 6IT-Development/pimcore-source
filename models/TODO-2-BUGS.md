@@ -2766,7 +2766,7 @@ in the middle of the path are still used as parents on purpose: pages and object
 key, filename, type and path, so they can override the default owner (`1`), modification user (`0`) and dates, but no
 longer the structural fields.
 
-## [ ] B-151 – `Element\Service::updateChildren()` resolves the copy by subtype: `null` ends up in the target's children
+## [x] B-151 – `Element\Service::updateChildren()` resolves the copy by subtype: `null` ends up in the target's children
 
 **File:** `models/Element/Service.php:569-586`; callers `models/Document/Service.php:138`, `:202`,
 `models/DataObject/Service.php:173`, `:198`
@@ -2776,6 +2776,9 @@ longer the structural fields.
   entry; iterating `$target->getChildren()` later in the same request (recursive copy, navigation) hits `null`.
 
 **Fix direction:** append `$new` directly or use `getElementType($new)`.
+
+**Done:** `updateChildren()` resolves the copy with `getElementType($new)` and falls back to `$new` itself, so the
+target's cached children listing never gets a `null` entry, for documents, assets and objects of every subtype.
 
 ## [ ] B-152 – `Element\Service::correctPath()` URL-decodes stored keys: object paths with `%xx` resolve to another element
 
