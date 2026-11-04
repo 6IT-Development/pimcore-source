@@ -3056,7 +3056,7 @@ Documented in the editable pages and the security upgrade notes.
 neither loads nor writes the persistent cache, so each unsaved element gets the inherited properties of its own parent.
 Saved elements keep the `<type>_properties_<id>` cache entry.
 
-## [ ] B-166 – `getUserPermissions()` and `isAllowed()` disagree for admins and workflow denials
+## [x] B-166 – `getUserPermissions()` and `isAllowed()` disagree for admins and workflow denials
 
 **File:** `models/Element/AbstractElement.php:439-515`
 
@@ -3065,6 +3065,11 @@ Saved elements keep the `<type>_properties_<id>` cache entry.
 - Without a user: CLI gets all `1`, HTTP all `0` – undocumented.
 
 **Fix direction:** apply `isDeniedInWorkflow()` per permission type in both paths.
+
+**Done:** `getUserPermissions()` applies `isDeniedInWorkflow()` per permission type like `isAllowed()`: an admin gets
+`0` for what the workflow denies, for other users the denial is applied before the `ELEMENT_PERMISSION_IS_ALLOWED` event
+(as in `isAllowed()`). The no-user behaviour (all allowed on the CLI, nothing otherwise) is unchanged and now documented
+on the method.
 
 ## [ ] B-167 – Workspace path matching is not anchored for documents and objects (B-28 extended)
 

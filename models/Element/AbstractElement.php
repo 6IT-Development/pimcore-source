@@ -532,7 +532,10 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
     }
 
     /**
+     * The permissions of the user on this element, decided as {@see isAllowed()} does: without a user everything is
+     * allowed on the CLI and nothing otherwise, an admin has every permission the workflow does not deny.
      *
+     * @return array<string, int|bool>
      *
      * @throws Exception
      *
@@ -563,13 +566,30 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
             $permissions[$name] = $defaultValue;
         }
 
-        if (!$user || $user->isAdmin() || !$user->isAllowed(Service::getElementType($this) . 's')) {
+        if (!$user || (!$user->isAdmin() && !$user->isAllowed(Service::getElementType($this) . 's'))) {
+            return $permissions;
+        }
+
+        /** @var Manager $workflowManager */
+        $workflowManager = Pimcore::getContainer()->get(Manager::class);
+
+        if ($user->isAdmin()) {
+            foreach (array_keys($permissions) as $type) {
+                if ($workflowManager->isDeniedInWorkflow($this, $type)) {
+                    $permissions[$type] = 0;
+                }
+            }
+
             return $permissions;
         }
 
         $permissions = $this->getDao()->areAllowed($columns, $user);
 
         foreach ($permissions as $type => $isAllowed) {
+            if ($workflowManager->isDeniedInWorkflow($this, $type)) {
+                $isAllowed = false;
+            }
+
             $event = new ElementEvent($this, ['isAllowed' => $isAllowed, 'permissionType' => $type, 'user' => $user]);
             Pimcore::getEventDispatcher()->dispatch($event, ElementEvents::ELEMENT_PERMISSION_IS_ALLOWED);
 
