@@ -741,7 +741,7 @@ loaded in a loop. `Pimcore::disableShutdown()` and `.container.dumper.inline_cla
 
 ## I – Tests
 
-### [ ] I-42 – Tests for compiler passes and the collector
+### [x] I-42 – Tests for compiler passes and the collector
 
 - There are no `ContainerBuilder`-based tests for any pass in `src/DependencyInjection/Compiler`.
 - Minimum set:
@@ -749,6 +749,12 @@ loaded in a loop. `Pimcore::disableShutdown()` and `.container.dumper.inline_cla
   - `WorkflowPass` with two transitions with and without `customHtml` (B-28) and audit trail channel (B-29);
   - `AreabrickPass` with tag + attribute on the same service (B-30);
   - `PimcoreDataCollector` with null version data / after `reset()` (B-34).
+
+**Done:** `CacheFallbackPass` was already covered (`CacheFallbackPassTest`). New: `WorkflowPassTest` (custom HTML per
+transition, audit trail channel and events, state machine transitions), `AreabrickPassTest` (tag + attribute once,
+conflicting IDs, generated ID), `ServiceRegistrationPassesTest` (every maintenance task tag, missing `type`,
+`PublicServicesPass` with alias and missing service) and `DataCollector/PimcoreDataCollectorTest` (null after
+`reset()`, context not written to the request, template).
 
 ---
 
