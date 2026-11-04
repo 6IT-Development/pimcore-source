@@ -20,6 +20,8 @@ namespace Pimcore\Model\Document;
 use Pimcore;
 use Pimcore\Config;
 use Pimcore\Messenger\GeneratePagePreviewMessage;
+use Pimcore\Model\Document;
+use Pimcore\Model\Element\ValidationException;
 use Pimcore\Tool;
 use Pimcore\Tool\Frontend;
 use Pimcore\Tool\Text;
@@ -115,6 +117,54 @@ class Page extends PageSnippet
     public function getPreviewImageFilesystemPath(): string
     {
         return PIMCORE_SYSTEM_TEMP_DIRECTORY . '/document-page-previews/document-page-screenshot-' . $this->getId() . '@2x.jpg';
+    }
+
+    protected function update(array $params = []): void
+    {
+        $this->validatePrettyUrl();
+
+        parent::update($params);
+    }
+
+    /**
+     * A pretty URL must be unique within the site of the page and must not be the real path of another document in
+     * that site, otherwise the routing resolves one of them arbitrarily. Only checked when the pretty URL or the path
+     * of the page changed, so already stored collisions do not block unrelated saves.
+     *
+     * @throws ValidationException
+     */
+    private function validatePrettyUrl(): void
+    {
+        $prettyUrl = $this->getPrettyUrl();
+        if ($prettyUrl === null) {
+            return;
+        }
+
+        $stored = $this->getDao()->getStoredPrettyUrlAndFullPath();
+        if ($stored && $stored['prettyUrl'] === $prettyUrl && $stored['fullPath'] === $this->getRealFullPath()) {
+            return;
+        }
+
+        $site = Frontend::getSiteForDocument($this);
+
+        foreach ($this->getDao()->getOtherPageIdsByPrettyUrl($prettyUrl) as $otherPageId) {
+            $otherPage = Document::getById($otherPageId);
+            if ($otherPage && Frontend::getSiteIdForDocument($otherPage) === $site?->getId()) {
+                throw new ValidationException(sprintf(
+                    'Pretty URL "%s" is already used by document %s in the same site',
+                    $prettyUrl,
+                    $otherPage->getRealFullPath()
+                ));
+            }
+        }
+
+        $sitePath = $site ? rtrim((string) $site->getRootPath(), '/') : '';
+        if ($this->getDao()->getOtherDocumentIdByRealFullPath($sitePath . $prettyUrl) !== null) {
+            throw new ValidationException(sprintf(
+                'Pretty URL "%s" is the path of another document in the same site',
+                $prettyUrl
+            ));
+        }
     }
 
     public function save(array $parameters = []): static

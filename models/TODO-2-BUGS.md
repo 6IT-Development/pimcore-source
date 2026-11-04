@@ -2797,7 +2797,7 @@ still decoded: their keys cannot contain `%` (`getValidKey()`), so callers that 
 Request routing already decodes the path info itself. The trailing-space trim is harmless: `getValidKey()` trims keys,
 so no stored key ends with a space.
 
-## [ ] B-153 – Pretty URLs are not validated: duplicates and collisions resolve arbitrarily
+## [x] B-153 – Pretty URLs are not validated: duplicates and collisions resolve arbitrarily
 
 **Files:** `models/Document/Page.php:96-108`; `models/Document/Dao.php:61-80`; `models/Document/Service/Dao.php:31-39`
 
@@ -2806,6 +2806,16 @@ so no stored key ends with a space.
   served. `prettyUrl` has no index, so every unknown path scans `documents_page`.
 
 **Fix direction:** validate on save (unique per site, no clash with real paths); add an index.
+
+**Done:** `Page::update()` validates the pretty URL inside the save transaction (after the path is corrected) and throws
+a `ValidationException` when another page of the same site (or of no site) uses it, compared with the column collation
+like the routing lookups, or when it is the real path of another document in that site (site root path + pretty URL).
+The check runs only when the pretty URL or the page's path differs from the stored row, so collisions already in the
+database do not block unrelated saves. `Dao::getByPath()` and `Service\Dao::getDocumentIdByPrettyUrlInSite()` now pick
+the lowest id (`ORDER BY id LIMIT 1`), so remaining duplicates resolve the same way every time. The index already exists
+(`KEY prettyUrl` in `install.sql`). The reverse case, a new document whose real path is another page's pretty URL, is
+already rejected by `Document::correctPath()`: `pathExists()` goes through the pretty URL fallback and reports a
+duplicate path.
 
 ## [ ] B-154 – Document tree counts and listings: published flag and unqualified column
 

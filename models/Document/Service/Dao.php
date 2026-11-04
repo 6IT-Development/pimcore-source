@@ -33,7 +33,8 @@ class Dao extends Model\Dao\AbstractDao
         return (int)$this->db->fetchOne(
             'SELECT documents.id FROM documents
             LEFT JOIN documents_page ON documents.id = documents_page.id
-            WHERE documents.path LIKE ? AND documents_page.prettyUrl = ?',
+            WHERE documents.path LIKE ? AND documents_page.prettyUrl = ?
+            ORDER BY documents.id LIMIT 1',
             [Helper::escapeLike($site->getRootPath()) . '/%', rtrim($path, '/')]
         );
     }

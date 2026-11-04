@@ -67,7 +67,7 @@ class Dao extends Model\Element\Dao
             $this->assignVariablesToModel($data);
         } else {
             // try to find a page with a pretty URL (use the original $path)
-            $data = $this->db->fetchAssociative('SELECT id FROM documents_page WHERE prettyUrl = :prettyUrl', [
+            $data = $this->db->fetchAssociative('SELECT id FROM documents_page WHERE prettyUrl = :prettyUrl ORDER BY id LIMIT 1', [
                 'prettyUrl' => $path,
             ]);
 

@@ -52,6 +52,51 @@ class Dao extends Model\Document\PageSnippet\Dao
         }
     }
 
+    /**
+     * The pretty URL and the real full path of the page as currently stored, or null if the page has no type row
+     *
+     * @return array{prettyUrl: string|null, fullPath: string}|null
+     */
+    public function getStoredPrettyUrlAndFullPath(): ?array
+    {
+        $data = $this->db->fetchAssociative(
+            'SELECT documents_page.prettyUrl, CONCAT(documents.path, documents.`key`) AS fullPath FROM documents
+            INNER JOIN documents_page ON documents.id = documents_page.id
+            WHERE documents.id = ?',
+            [$this->model->getId()]
+        );
+
+        return $data ?: null;
+    }
+
+    /**
+     * Ids of the other pages using the given pretty URL, compared like the routing lookups do (collation of the column)
+     *
+     * @return int[]
+     */
+    public function getOtherPageIdsByPrettyUrl(string $prettyUrl): array
+    {
+        return array_map('intval', $this->db->fetchFirstColumn(
+            'SELECT id FROM documents_page WHERE prettyUrl = ? AND id != ? ORDER BY id',
+            [$prettyUrl, (int) $this->model->getId()]
+        ));
+    }
+
+    /**
+     * Id of another document whose real full path is the given path, or null
+     */
+    public function getOtherDocumentIdByRealFullPath(string $fullPath): ?int
+    {
+        $params = $this->extractKeyAndPath($fullPath);
+        $params['id'] = (int) $this->model->getId();
+        $id = $this->db->fetchOne(
+            'SELECT id FROM documents WHERE `path` = BINARY :path AND `key` = BINARY :key AND id != :id',
+            $params
+        );
+
+        return $id === false ? null : (int) $id;
+    }
+
     public function create(): void
     {
         parent::create();
