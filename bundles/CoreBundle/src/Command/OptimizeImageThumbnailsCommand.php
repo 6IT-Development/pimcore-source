@@ -45,6 +45,7 @@ class OptimizeImageThumbnailsCommand extends AbstractCommand
         parent::__construct();
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $storage = Storage::get('thumbnail');

@@ -42,6 +42,7 @@ class InternalMigrationHelpersCommand extends AbstractCommand
         parent::__construct($name);
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -53,6 +54,7 @@ class InternalMigrationHelpersCommand extends AbstractCommand
             );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if ($input->getOption('is-installed')) {

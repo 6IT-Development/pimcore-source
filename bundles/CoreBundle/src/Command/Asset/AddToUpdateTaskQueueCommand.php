@@ -39,8 +39,9 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
     use AssetBatchTrait;
     use IdOptionTrait;
 
-    protected array $types = ['image', 'video', 'document'];
+    private const array TYPES = ['image', 'video', 'document'];
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -71,12 +72,13 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
 
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $conditionVariables = [];
 
         $conditions = [
-            "`type` IN ('" . implode("','", $this->types) . "')",
+            "`type` IN ('" . implode("','", self::TYPES) . "')",
         ];
 
         if ($input->getOption('parent')) {

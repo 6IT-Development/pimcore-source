@@ -40,16 +40,17 @@ use Symfony\Component\Console\Output\OutputInterface;
 class ClassesDefinitionsBuildCommand extends AbstractCommand
 {
     public function __construct(
-        protected PHPClassDumperInterface                     $classDumper,
-        protected PHPFieldCollectionClassDumperInterface      $collectionClassDumper,
-        protected PHPObjectBrickClassDumperInterface          $brickClassDumper,
-        protected PHPObjectBrickContainerClassDumperInterface $brickContainerClassDumper,
-        protected PHPSelectOptionsEnumDumperInterface         $selectOptionsEnumDumper,
+        private readonly PHPClassDumperInterface $classDumper,
+        private readonly PHPFieldCollectionClassDumperInterface $collectionClassDumper,
+        private readonly PHPObjectBrickClassDumperInterface $brickClassDumper,
+        private readonly PHPObjectBrickContainerClassDumperInterface $brickContainerClassDumper,
+        private readonly PHPSelectOptionsEnumDumperInterface $selectOptionsEnumDumper,
     )
     {
         parent::__construct();
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $cacheStatus = Cache::isEnabled();

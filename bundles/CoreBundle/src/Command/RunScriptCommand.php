@@ -35,6 +35,7 @@ class RunScriptCommand extends AbstractCommand
 {
     use DryRun;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -47,11 +48,12 @@ class RunScriptCommand extends AbstractCommand
         $this->configureDryRunOption();
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $script = $input->getArgument('script');
 
-        if (!(preg_match('/\.php$/', $script) && file_exists($script))) {
+        if (!(str_ends_with($script, '.php') && file_exists($script))) {
             $output->writeln(sprintf(
                 '<error>Script %s does not exist or doesn\'t have a .php extension</error>',
                 $script

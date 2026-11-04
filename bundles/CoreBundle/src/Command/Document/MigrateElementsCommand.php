@@ -36,6 +36,7 @@ class MigrateElementsCommand extends AbstractCommand
 {
     private bool $runCommand = true;
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (!$this->runCommand) {
@@ -94,6 +95,7 @@ class MigrateElementsCommand extends AbstractCommand
         $this->output->writeln(sprintf('saved version %d, document id: %d, document key: %s', $vId, $documentId, $dKey));
     }
 
+    #[\Override]
     protected function interact(InputInterface $input, OutputInterface $output): void
     {
         $this->io->warning('This command is potentially dangerous. Please use with caution and make sure you have a proper backup! '

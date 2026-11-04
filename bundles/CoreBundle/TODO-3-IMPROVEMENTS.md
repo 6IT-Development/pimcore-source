@@ -130,7 +130,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
 
 ## B – PHP 8.4 / code style
 
-### [ ] I-09 – PHP 8.3/8.4 idioms
+### [x] I-09 – PHP 8.3/8.4 idioms
 
 - `#[\Override]` on every overridden `configure()`, `execute()`, `initialize()`, `interact()`, `runSingleCommand()`,
   `fetchItems()`, `getItemName()`. It catches signature drift on the next Symfony upgrade.

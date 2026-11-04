@@ -39,11 +39,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class GenerateStaticPagesCommand extends AbstractCommand
 {
-    public function __construct(protected StaticPageGenerator $staticPageGenerator)
+    public function __construct(private readonly StaticPageGenerator $staticPageGenerator)
     {
         parent::__construct();
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -55,6 +56,7 @@ class GenerateStaticPagesCommand extends AbstractCommand
             );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $path = $input->getOption('path');

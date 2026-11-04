@@ -51,8 +51,10 @@ class ThumbnailsClearCommand extends AbstractCommand
             return self::INVALID;
         }
 
-        $configClass = 'Pimcore\Model\Asset\\' . ucfirst($type) . '\Thumbnail\Config';
-        /** @var Asset\Image\Thumbnail\Config|Asset\Video\Thumbnail\Config|null $thumbConfig */
+        $configClass = match ($type) {
+            'image' => Asset\Image\Thumbnail\Config::class,
+            'video' => Asset\Video\Thumbnail\Config::class,
+        };
         $thumbConfig = $configClass::getByName($name);
         if (!$thumbConfig) {
             $this->io->error(sprintf('Unable to find %s thumbnail config with name: %s. Nevertheless trying to delete remaining files', $type, $name));
@@ -75,8 +77,8 @@ class ThumbnailsClearCommand extends AbstractCommand
     public function suggestConfigNames(CompletionInput $input): array
     {
         $configs = match ($input->getOption('type')) {
-            'image' => (new Asset\Image\Thumbnail\Config\Listing())->getThumbnails(),
-            'video' => (new Asset\Video\Thumbnail\Config\Listing())->getThumbnails(),
+            'image' => new Asset\Image\Thumbnail\Config\Listing()->getThumbnails(),
+            'video' => new Asset\Video\Thumbnail\Config\Listing()->getThumbnails(),
             default => [],
         };
 

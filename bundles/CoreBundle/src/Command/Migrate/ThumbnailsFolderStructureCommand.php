@@ -43,6 +43,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class ThumbnailsFolderStructureCommand extends AbstractCommand
 {
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $thumbnailStorage = Storage::get('thumbnail');

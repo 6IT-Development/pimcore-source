@@ -43,6 +43,7 @@ class LowQualityImagePreviewCommand extends AbstractCommand
     use DeprecatedOptionNameTrait;
     use IdOptionTrait;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -75,6 +76,7 @@ class LowQualityImagePreviewCommand extends AbstractCommand
         $this->addDeprecatedOptionName('pathPattern', 'path-pattern');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (null !== $input->getOption('generator')) {

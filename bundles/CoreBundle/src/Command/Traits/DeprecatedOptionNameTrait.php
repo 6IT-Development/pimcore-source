@@ -63,6 +63,7 @@ trait DeprecatedOptionNameTrait
         );
     }
 
+    #[\Override]
     protected function initialize(InputInterface $input, OutputInterface $output): void
     {
         parent::initialize($input, $output);

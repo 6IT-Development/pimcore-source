@@ -36,6 +36,7 @@ use const JSON_THROW_ON_ERROR;
 )]
 class ListCommand extends AbstractBundleCommand
 {
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -54,6 +55,7 @@ class ListCommand extends AbstractBundleCommand
             ->addOption('json', null, InputOption::VALUE_NONE, 'Return data as JSON');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $details = $input->getOption('details');
@@ -100,8 +102,7 @@ class ListCommand extends AbstractBundleCommand
                     $row[] = '';
                     $row[] = '';
                 }
-                $row[] = $row[] = $row[] = $row[] = false;
-                $row[] = 0;
+                array_push($row, false, false, false, false, 0);
             }
 
             $returnData['rows'][] = $row;

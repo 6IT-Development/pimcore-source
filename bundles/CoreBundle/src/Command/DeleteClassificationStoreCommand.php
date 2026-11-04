@@ -39,6 +39,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class DeleteClassificationStoreCommand extends AbstractCommand
 {
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -46,6 +47,7 @@ class DeleteClassificationStoreCommand extends AbstractCommand
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Delete without asking for confirmation');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $storeId = filter_var($input->getArgument('storeId'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);

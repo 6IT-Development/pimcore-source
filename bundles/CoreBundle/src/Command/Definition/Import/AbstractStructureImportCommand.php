@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command\Definition\Import;
 
 use InvalidArgumentException;
+use JsonException;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\DryRun;
 use Pimcore\Model\ModelInterface;
@@ -33,6 +34,7 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
 {
     use DryRun;
 
+    #[\Override]
     protected function configure(): void
     {
         $type = $this->getType();
@@ -53,6 +55,7 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
         $this->configureDryRunOption();
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $path = $this->getPath();
@@ -137,8 +140,10 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
     {
         $content = file_get_contents($path);
 
-        // try to decode json here as we want to fail early if file is no valid JSON
-        json_decode($content, flags: JSON_THROW_ON_ERROR);
+        // validate the JSON here as we want to fail early if the file is no valid JSON
+        if (!json_validate($content)) {
+            throw new JsonException(json_last_error_msg());
+        }
 
         // return string content as service import
         // methods decode JSON by their own

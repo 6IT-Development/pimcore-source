@@ -37,9 +37,7 @@ class RequirementsCheckCommand extends AbstractCommand
 {
     private const MIN_LEVELS = ['warning', 'error'];
 
-    /** @var int[] $levelsToDisplay */
-    protected array $levelsToDisplay = [];
-
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -54,6 +52,7 @@ class RequirementsCheckCommand extends AbstractCommand
             ->addOption('strict', null, InputOption::VALUE_NONE, 'Also return a failure exit code if any check reports a warning');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $minLevel = $input->getOption('min-level');
@@ -71,21 +70,14 @@ class RequirementsCheckCommand extends AbstractCommand
             return self::INVALID;
         }
 
-        $this->levelsToDisplay = $levelsToDisplay;
-
         $allChecks = Requirements::checkAll(Db::get());
 
-        $this->display($allChecks['checksPHP'], 'PHP');
-        $this->display($allChecks['checksMySQL'], 'MySQL');
-        $this->display($allChecks['checksFS'], 'Filesystem');
-        $this->display($allChecks['checksApps'], 'CLI Tools & Applications');
+        $this->display($allChecks['checksPHP'], $levelsToDisplay, 'PHP');
+        $this->display($allChecks['checksMySQL'], $levelsToDisplay, 'MySQL');
+        $this->display($allChecks['checksFS'], $levelsToDisplay, 'Filesystem');
+        $this->display($allChecks['checksApps'], $levelsToDisplay, 'CLI Tools & Applications');
 
-        $states = [];
-        foreach ($allChecks as $checks) {
-            foreach ($checks as $check) {
-                $states[] = $check->getState();
-            }
-        }
+        $states = array_map(static fn (Requirements\Check $check) => $check->getState(), array_merge(...array_values($allChecks)));
 
         if (in_array(Requirements\Check::STATE_ERROR, $states, true)) {
             $this->io->error('Some system requirements are not met.');
@@ -104,13 +96,14 @@ class RequirementsCheckCommand extends AbstractCommand
 
     /**
      * @param Requirements\Check[] $checks
+     * @param int[] $levelsToDisplay
      */
-    protected function display(array $checks, string $title = ''): void
+    protected function display(array $checks, array $levelsToDisplay, string $title = ''): void
     {
         $checksTab = [];
 
         foreach ($checks as $check) {
-            if (in_array($check->getState(), $this->levelsToDisplay)) {
+            if (in_array($check->getState(), $levelsToDisplay, true)) {
                 $checksTab[] = [$check->getName(), $this->displayState($check->getState())];
             }
         }

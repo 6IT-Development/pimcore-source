@@ -43,6 +43,7 @@ class ClassesRebuildCommand extends AbstractCommand
         parent::__construct();
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -66,6 +67,7 @@ class ClassesRebuildCommand extends AbstractCommand
             );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if ($input->getOption('delete-classes')) {

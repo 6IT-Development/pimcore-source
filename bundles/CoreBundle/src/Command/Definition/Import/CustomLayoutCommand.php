@@ -37,6 +37,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class CustomLayoutCommand extends AbstractStructureImportCommand
 {
+    #[\Override]
     protected function configure(): void
     {
         parent::configure();
@@ -49,6 +50,7 @@ class CustomLayoutCommand extends AbstractStructureImportCommand
         );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $className = $input->getOption('class-name');

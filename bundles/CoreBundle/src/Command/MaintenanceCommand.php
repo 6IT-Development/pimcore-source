@@ -49,6 +49,7 @@ class MaintenanceCommand extends AbstractCommand
         parent::__construct();
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $help = $this->getDescription() . '. Valid jobs are: ' . "\n\n";
@@ -80,6 +81,7 @@ class MaintenanceCommand extends AbstractCommand
         $this->addDeprecatedOptionName('excludedJobs', 'excluded-jobs');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $validJobs = $this->getArrayOptionValue($input, 'job');

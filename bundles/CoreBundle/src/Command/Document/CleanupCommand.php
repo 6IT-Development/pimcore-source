@@ -46,6 +46,7 @@ class CleanupCommand extends AbstractCommand
 
     private const array PROTECTED_DOCUMENT_TYPES = ['page', 'link', 'snippet', 'folder', 'hardlink', 'email'];
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -55,6 +56,7 @@ class CleanupCommand extends AbstractCommand
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Clean up without asking for confirmation');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $documentTypes = $input->getArgument('documentTypes');

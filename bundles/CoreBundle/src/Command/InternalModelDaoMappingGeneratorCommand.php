@@ -36,6 +36,7 @@ use Symfony\Component\Finder\Finder;
 )]
 class InternalModelDaoMappingGeneratorCommand extends AbstractCommand
 {
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $finder = new Finder();

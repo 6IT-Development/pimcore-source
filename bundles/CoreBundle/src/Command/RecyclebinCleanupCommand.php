@@ -38,6 +38,7 @@ class RecyclebinCleanupCommand extends AbstractCommand
 {
     private const BATCH_SIZE = 500;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -49,6 +50,7 @@ class RecyclebinCleanupCommand extends AbstractCommand
             );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $daysAgo = filter_var(

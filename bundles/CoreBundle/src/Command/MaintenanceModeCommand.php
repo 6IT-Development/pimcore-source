@@ -35,11 +35,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class MaintenanceModeCommand extends AbstractCommand
 {
-    public function __construct(protected MaintenanceModeHelperInterface $maintenanceModeHelper)
+    public function __construct(private readonly MaintenanceModeHelperInterface $maintenanceModeHelper)
     {
         parent::__construct();
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -52,6 +53,7 @@ class MaintenanceModeCommand extends AbstractCommand
      *
      * @throws Exception
      */
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         //Default behavior is 'enable'

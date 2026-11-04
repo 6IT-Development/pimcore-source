@@ -40,6 +40,7 @@ class RemoveCustomSettingCommand extends AbstractCommand
     use AssetBatchTrait;
     use IdOptionTrait;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -64,6 +65,7 @@ class RemoveCustomSettingCommand extends AbstractCommand
             );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $name = $input->getArgument('name');

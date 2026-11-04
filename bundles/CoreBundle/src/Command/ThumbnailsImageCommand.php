@@ -46,6 +46,7 @@ class ThumbnailsImageCommand extends AbstractCommand
 
     private const string DATE_FORMAT = 'Y-m-d H:i:s';
 
+    #[\Override]
     protected function configure(): void
     {
         parent::configure();

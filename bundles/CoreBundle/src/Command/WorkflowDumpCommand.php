@@ -48,6 +48,7 @@ class WorkflowDumpCommand extends AbstractCommand
         parent::__construct();
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -57,6 +58,7 @@ class WorkflowDumpCommand extends AbstractCommand
             ]);
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $container = $this->getApplication()->getKernel()->getContainer();

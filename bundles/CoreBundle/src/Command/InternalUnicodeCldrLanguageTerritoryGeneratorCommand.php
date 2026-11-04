@@ -48,6 +48,7 @@ class InternalUnicodeCldrLanguageTerritoryGeneratorCommand extends AbstractComma
         parent::__construct();
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $source = 'https://raw.githubusercontent.com/unicode-org/cldr/' . self::CLDR_RELEASE . '/common/supplemental/supplementalData.xml';

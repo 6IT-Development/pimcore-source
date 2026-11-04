@@ -45,6 +45,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
 
     private const MAX_POLL_INTERVAL = 30;
 
+    #[\Override]
     protected function configure(): void
     {
         parent::configure();

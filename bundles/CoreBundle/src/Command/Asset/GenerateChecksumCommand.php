@@ -40,6 +40,7 @@ class GenerateChecksumCommand extends AbstractCommand
     use AssetBatchTrait;
     use IdOptionTrait;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -69,6 +70,7 @@ class GenerateChecksumCommand extends AbstractCommand
             );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $conditionVariables = [];

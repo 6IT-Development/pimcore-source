@@ -37,20 +37,20 @@ class CacheWarmingCommand extends AbstractCommand
 {
     use DeprecatedOptionNameTrait;
 
-    protected array $validTypes = [
+    private const array VALID_TYPES = [
         'document',
         'asset',
         'object',
     ];
 
-    protected array $validDocumentTypes = [
+    private const array VALID_DOCUMENT_TYPES = [
         'page',
         'snippet',
         'folder',
         'link',
     ];
 
-    protected array $validAssetTypes = [
+    private const array VALID_ASSET_TYPES = [
         'archive',
         'audio',
         'document',
@@ -61,12 +61,13 @@ class CacheWarmingCommand extends AbstractCommand
         'video',
     ];
 
-    protected array $validObjectTypes = [
+    private const array VALID_OBJECT_TYPES = [
         'object',
         'folder',
         'variant',
     ];
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -74,33 +75,33 @@ class CacheWarmingCommand extends AbstractCommand
                 'types',
                 't',
                 InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                sprintf('Perform warming only for this types of elements. Valid options: %s', $this->humanList($this->validTypes)),
+                sprintf('Perform warming only for this types of elements. Valid options: %s', $this->humanList(self::VALID_TYPES)),
                 null,
-                $this->validTypes
+                self::VALID_TYPES
             )
             ->addOption(
                 'document-types',
                 'd',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of documents. Valid options: %s', $this->humanList($this->validDocumentTypes)),
+                sprintf('Restrict warming to these types of documents. Valid options: %s', $this->humanList(self::VALID_DOCUMENT_TYPES)),
                 null,
-                $this->validDocumentTypes
+                self::VALID_DOCUMENT_TYPES
             )
             ->addOption(
                 'asset-types',
                 'a',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of assets. Valid options: %s', $this->humanList($this->validAssetTypes)),
+                sprintf('Restrict warming to these types of assets. Valid options: %s', $this->humanList(self::VALID_ASSET_TYPES)),
                 null,
-                $this->validAssetTypes
+                self::VALID_ASSET_TYPES
             )
             ->addOption(
                 'object-types',
                 'o',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of objects. Valid options: %s', $this->humanList($this->validObjectTypes)),
+                sprintf('Restrict warming to these types of objects. Valid options: %s', $this->humanList(self::VALID_OBJECT_TYPES)),
                 null,
-                $this->validObjectTypes
+                self::VALID_OBJECT_TYPES
             )
             ->addOption(
                 'classes',
@@ -115,6 +116,7 @@ class CacheWarmingCommand extends AbstractCommand
             ->addDeprecatedOptionName('objectTypes', 'object-types');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if ($input->getOption('maintenance-mode')) {
@@ -124,10 +126,10 @@ class CacheWarmingCommand extends AbstractCommand
         }
 
         try {
-            $types = $this->getArrayOption('types', 'validTypes', 'type', true) ?? [];
-            $documentTypes = $this->getArrayOption('document-types', 'validDocumentTypes', 'document type') ?? [];
-            $assetTypes = $this->getArrayOption('asset-types', 'validAssetTypes', 'asset type') ?? [];
-            $objectTypes = $this->getArrayOption('object-types', 'validObjectTypes', 'object type') ?? [];
+            $types = $this->getArrayOption('types', self::VALID_TYPES, 'type', true) ?? [];
+            $documentTypes = $this->getArrayOption('document-types', self::VALID_DOCUMENT_TYPES, 'document type') ?? [];
+            $assetTypes = $this->getArrayOption('asset-types', self::VALID_ASSET_TYPES, 'asset type') ?? [];
+            $objectTypes = $this->getArrayOption('object-types', self::VALID_OBJECT_TYPES, 'object type') ?? [];
             $objectClasses = $this->input->getOption('classes') ?? [];
         } catch (InvalidArgumentException $e) {
             $this->io->error($e->getMessage());
@@ -199,14 +201,14 @@ class CacheWarmingCommand extends AbstractCommand
      *
      *
      */
-    protected function getArrayOption(string $option, string $property, string $singular, bool $fallback = false): mixed
+    protected function getArrayOption(string $option, array $validValues, string $singular, bool $fallback = false): mixed
     {
         $input = $this->input->getOption($option);
 
         // fall back to whole list if fallback is set
         if (!$input || count($input) === 0) {
             if ($fallback) {
-                $input = $this->$property;
+                $input = $validValues;
             } else {
                 $input = null;
             }
@@ -214,7 +216,7 @@ class CacheWarmingCommand extends AbstractCommand
 
         if (null !== $input) {
             foreach ($input as $value) {
-                if (!in_array($value, $this->$property)) {
+                if (!in_array($value, $validValues)) {
                     $message = sprintf('Invalid %s: %s', $singular, $value);
 
                     throw new InvalidArgumentException($message);

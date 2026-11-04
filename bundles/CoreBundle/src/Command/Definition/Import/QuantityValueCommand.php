@@ -41,6 +41,7 @@ class QuantityValueCommand extends AbstractCommand
         parent::__construct();
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -79,15 +80,15 @@ class QuantityValueCommand extends AbstractCommand
     {
         $content = file_get_contents($path);
 
-        // try to decode json here as we want to fail early if file is no valid JSON
-        $json = json_decode($content);
-        if (null === $json) {
+        // validate the JSON here as we want to fail early if the file is no valid JSON
+        if (!json_validate($content)) {
             throw new InvalidArgumentException('JSON could not be decoded');
         }
 
         return $content;
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $path = $this->getPath();

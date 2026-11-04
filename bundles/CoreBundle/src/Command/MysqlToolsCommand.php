@@ -38,6 +38,7 @@ class MysqlToolsCommand extends AbstractCommand
 {
     private const MODES = ['optimize', 'warmup'];
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -51,6 +52,7 @@ class MysqlToolsCommand extends AbstractCommand
             );
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $mode = $input->getOption('mode');

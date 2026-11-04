@@ -40,6 +40,7 @@ class InstallCommand extends AbstractBundleCommand
         parent::__construct($bundleManager);
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -49,6 +50,7 @@ class InstallCommand extends AbstractBundleCommand
         PostStateChange::configureStateChangeCommandOptions($this);
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $bundle = $this->getBundle();

@@ -43,6 +43,7 @@ class ResetPasswordCommand extends AbstractCommand
 
     private const MAX_PASSWORD_LENGTH = 4096;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -74,6 +75,7 @@ class ResetPasswordCommand extends AbstractCommand
         return array_map(static fn (User\AbstractUser $user) => (string) $user->getName(), $listing->getUsers());
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $userArgument = $input->getArgument('user');

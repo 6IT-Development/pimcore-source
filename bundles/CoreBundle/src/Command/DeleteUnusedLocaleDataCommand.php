@@ -37,6 +37,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
 {
     use DryRun;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -51,6 +52,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
         $this->configureDryRunOption('Just output the delete localized queries to be executed.');
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $db = Db::get();

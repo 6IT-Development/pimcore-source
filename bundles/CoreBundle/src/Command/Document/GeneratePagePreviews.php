@@ -41,6 +41,7 @@ class GeneratePagePreviews extends AbstractCommand
 {
     use DeprecatedOptionNameTrait;
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -122,6 +123,7 @@ class GeneratePagePreviews extends AbstractCommand
         } while (count($pages) === $batchSize);
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $hostUrl = $input->getOption('url-prefix');
