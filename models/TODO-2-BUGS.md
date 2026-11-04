@@ -1265,13 +1265,17 @@ entry without `formats` returns an empty list instead of a warning.
 tasks. The extension check is case-insensitive, so `.MP4` / `.WebM` files are read as well. A missing binary is now
 logged as the spherical metadata warning instead of being read as an empty substitute stream.
 
-## [ ] B-82 – `Video\Thumbnail\Processor::applyTransformations()` crashes on an unknown method
+## [x] B-82 – `Video\Thumbnail\Processor::applyTransformations()` crashes on an unknown method
 
 **File:** `models/Asset/Video/Thumbnail/Processor.php:175`
 
 - `self::$argumentMapping[$method]` → `null` → `array_search` / `count` `TypeError`.
 
 **Fix direction:** validate the method and skip with a log entry (same as B-47 for images).
+
+**Done:** `applyTransformations()` skips a step whose method has no argument mapping (or no method at all) with a
+warning, instead of passing `null` to `array_search()` / `count()`. A step without `arguments` no longer reads an
+undefined key. The remaining steps of the config are still applied.
 
 ---
 

@@ -227,9 +227,15 @@ class Processor
         foreach ($transformations as $transformation) {
             if (!empty($transformation)) {
                 $arguments = [];
-                $mapping = self::$argumentMapping[$transformation['method']];
+                $method = $transformation['method'] ?? null;
+                $mapping = is_string($method) ? self::$argumentMapping[$method] ?? null : null;
+                if ($mapping === null) {
+                    Logger::warning('Unknown video thumbnail transformation "' . (is_scalar($method) ? $method : get_debug_type($method)) . '" skipped');
 
-                if (is_array($transformation['arguments'])) {
+                    continue;
+                }
+
+                if (is_array($transformation['arguments'] ?? null)) {
                     foreach ($transformation['arguments'] as $key => $value) {
                         $position = array_search($key, $mapping);
                         if ($position !== false) {
