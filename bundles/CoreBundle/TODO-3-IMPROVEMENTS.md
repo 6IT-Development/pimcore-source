@@ -1008,7 +1008,7 @@ log is removed, because Symfony's `ErrorListener::logKernelException()` logs eve
 failing error page is logged once, with the exception in the context. In debug mode, `?pimcore_show_error_page=1`
 renders the configured error page. Upgrade notes added.
 
-### [ ] I-52 – Messenger / console workers: reset all static frontend state, flush translation entries
+### [x] I-52 – Messenger / console workers: reset all static frontend state, flush translation entries
 
 **Files:** `src/EventListener/MessengerClearRuntimeCacheListener.php`, `src/EventListener/DumpTranslationEntriesListener.php`
 
@@ -1023,6 +1023,12 @@ renders the configured error page. Upgrade notes added.
 - `DumpTranslationEntriesListener` only dumps on `kernel.terminate` / `console.terminate`. A Messenger worker that
   runs for hours keeps collecting missing-translation entries in memory and writes them only on exit (or never, if it
   is killed). Also dump on `WorkerMessageHandledEvent`, or every N messages.
+
+**Done:** `MessengerClearRuntimeCacheListener` records admin mode, both hide-unpublished flags, inherited values and
+fallback values before the first message (the worker's defaults) and restores them before every later one. The site
+was already reset (B-126). `kernel.reset` is not used, because these are static flags, not services.
+`DumpTranslationEntriesListener` also saves after `WorkerMessageHandledEvent` and `WorkerMessageFailedEvent`. Test
+added in `LongRunningProcessStateTest`.
 
 ### [ ] I-53 – Response headers
 

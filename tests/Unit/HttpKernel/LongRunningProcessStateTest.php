@@ -17,14 +17,18 @@ declare(strict_types=1);
 
 namespace Pimcore\Tests\Unit\HttpKernel;
 
+use Pimcore;
 use Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener;
 use Pimcore\Bundle\CoreBundle\EventListener\Frontend\LocaleListener;
+use Pimcore\Bundle\CoreBundle\EventListener\MessengerClearRuntimeCacheListener;
 use Pimcore\Bundle\CoreBundle\EventListener\ResponseStackListener;
 use Pimcore\Cache\FullPage\FullPageCacheState;
 use Pimcore\Cache\FullPage\SessionStatus;
 use Pimcore\Config;
 use Pimcore\Http\ResponseStack;
+use Pimcore\Model\DataObject;
 use Pimcore\Model\Site;
+use stdClass;
 use Pimcore\Tests\Support\Test\TestCase;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,6 +36,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Event\WorkerMessageReceivedEvent;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -109,6 +115,35 @@ class LongRunningProcessStateTest extends TestCase
 
         Site::resetCurrentSite();
         $this->assertFalse(Site::isSiteRequest());
+    }
+
+    public function testMessengerWorkerRestoresTheStaticFlagsBeforeEachMessage(): void
+    {
+        $adminMode = Pimcore::inAdmin();
+        $inheritedValues = DataObject::getGetInheritedValues();
+        $fallbackValues = DataObject\Localizedfield::getGetFallbackValues();
+
+        $listener = new MessengerClearRuntimeCacheListener();
+        $event = new WorkerMessageReceivedEvent(new Envelope(new stdClass()), 'async');
+
+        try {
+            $listener->handle($event);
+
+            // e.g. a handler that renders a document in the frontend context
+            $adminMode ? Pimcore::unsetAdminMode() : Pimcore::setAdminMode();
+            DataObject::setGetInheritedValues(!$inheritedValues);
+            DataObject\Localizedfield::setGetFallbackValues(!$fallbackValues);
+
+            $listener->handle($event);
+
+            $this->assertSame($adminMode, Pimcore::inAdmin());
+            $this->assertSame($inheritedValues, DataObject::getGetInheritedValues());
+            $this->assertSame($fallbackValues, DataObject\Localizedfield::getGetFallbackValues());
+        } finally {
+            $adminMode ? Pimcore::setAdminMode() : Pimcore::unsetAdminMode();
+            DataObject::setGetInheritedValues($inheritedValues);
+            DataObject\Localizedfield::setGetFallbackValues($fallbackValues);
+        }
     }
 
     private function createResponseEvent(Request $request, ?Response $response = null): ResponseEvent

@@ -23,8 +23,13 @@ use Symfony\Component\Console\Event\ConsoleTerminateEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\TerminateEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
+use Symfony\Component\Messenger\Event\WorkerMessageHandledEvent;
 
 /**
+ * Saves the translations that were missing while handling a request, a console command or a Messenger message. A
+ * worker runs for hours and can be killed, so it saves after each message instead of only on exit.
+ *
  * @internal
  */
 final class DumpTranslationEntriesListener implements EventSubscriberInterface
@@ -39,6 +44,8 @@ final class DumpTranslationEntriesListener implements EventSubscriberInterface
         return [
             KernelEvents::TERMINATE => 'onKernelTerminate',
             ConsoleEvents::TERMINATE => 'onConsoleTerminate',
+            WorkerMessageHandledEvent::class => 'onWorkerMessageDone',
+            WorkerMessageFailedEvent::class => 'onWorkerMessageDone',
         ];
     }
 
@@ -48,6 +55,11 @@ final class DumpTranslationEntriesListener implements EventSubscriberInterface
     }
 
     public function onConsoleTerminate(ConsoleTerminateEvent $event): void
+    {
+        $this->dumper->dumpToDb();
+    }
+
+    public function onWorkerMessageDone(WorkerMessageHandledEvent|WorkerMessageFailedEvent $event): void
     {
         $this->dumper->dumpToDb();
     }
