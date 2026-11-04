@@ -98,8 +98,16 @@ final class StaticPageGeneratorListener implements EventSubscriberInterface
         }
 
         $routePattern = $config['static_page_router']['route_pattern'];
-        if (!empty($routePattern) && !@preg_match($routePattern, $request->getPathInfo())) {
-            return;
+        if (!empty($routePattern)) {
+            // the pattern comes from the system settings, an invalid one must not break every request
+            $matches = @preg_match($routePattern, $request->getPathInfo());
+            if ($matches === false) {
+                Logger::warning(sprintf('Static page router: invalid route_pattern "%s"', $routePattern));
+            }
+
+            if (!$matches) {
+                return;
+            }
         }
 
         $storage = Storage::get('document_static');

@@ -22,8 +22,10 @@ use Pimcore\Document\Editmode\EditmodeAssetProviderInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleManager;
 use Pimcore\Model\Document;
 use Pimcore\Tool\Admin;
+use Pimcore\Tool\Storage;
 use Pimcore\Version;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Contracts\Cache\CacheInterface;
 
 /**
  * Editmode assets of the classic admin UI (PimcoreAdminBundle, pimcore/admin-ui-classic-bundle) and the
@@ -36,7 +38,8 @@ final readonly class AdminUiClassicEditmodeAssetProvider implements EditmodeAsse
 {
     public function __construct(
         private PimcoreBundleManager $bundleManager,
-        private RouterInterface      $router
+        private RouterInterface      $router,
+        private CacheInterface       $cache
     )
     {
     }
@@ -66,21 +69,11 @@ final readonly class AdminUiClassicEditmodeAssetProvider implements EditmodeAsse
                 $headHtml .= "\n";
             }
         } else {
-            $scriptContents = '';
-            $externalScripts = [];
-            foreach ($this->getScripts() as $scriptUrl) {
-                // bundle paths can be absolute URLs or generated routes, which can't be read from the web root
-                $file = PIMCORE_WEB_ROOT . $scriptUrl;
-                if (str_starts_with($scriptUrl, '/') && !str_starts_with($scriptUrl, '//') && is_file($file) && ($content = file_get_contents($file)) !== false) {
-                    $scriptContents .= $content . "\n\n\n";
-                } else {
-                    $externalScripts[] = $scriptUrl;
-                }
-            }
+            $combined = $this->getCombinedScripts();
 
-            $headHtml .= '<script src="' . $this->router->generate('pimcore_admin_misc_scriptproxy', Admin::getMinimizedScriptPath($scriptContents)) . '"></script>' . "\n";
+            $headHtml .= '<script src="' . $this->router->generate('pimcore_admin_misc_scriptproxy', $combined['scriptProxyParameters']) . '"></script>' . "\n";
 
-            foreach ($externalScripts as $script) {
+            foreach ($combined['externalScripts'] as $script) {
                 $headHtml .= '<script src="' . $this->addCacheBuster($script) . '"></script>' . "\n";
             }
         }
@@ -107,6 +100,67 @@ final readonly class AdminUiClassicEditmodeAssetProvider implements EditmodeAsse
     public function getBodyHtml(Document $document): string
     {
         return "\n\n" . '<script src="' . $this->addCacheBuster('/bundles/pimcoreadmin/js/pimcore/document/edit/startup.js') . '"></script>' . "\n\n";
+    }
+
+    /**
+     * Reading and writing the ~35 scripts on every editmode request is slow. The result only changes with the revision
+     * and the scripts (paths of the installed bundles, file modification times).
+     *
+     * @return array{scriptProxyParameters: array<string, string>, externalScripts: string[]}
+     */
+    private function getCombinedScripts(): array
+    {
+        $files = [];
+        $key = Version::getRevision();
+        foreach ($this->getScripts() as $scriptUrl) {
+            $file = $this->getLocalScriptFile($scriptUrl);
+            $files[$scriptUrl] = $file;
+            $key .= "\n" . $scriptUrl . ($file !== null ? ':' . filemtime($file) : '');
+        }
+
+        $cacheKey = 'pimcore_editmode_combined_scripts_' . md5($key);
+        $combined = $this->cache->get($cacheKey, fn (): array => $this->combineScripts($files));
+
+        // the combined file is gone if the admin storage was cleared
+        if (!Storage::get('admin')->fileExists($combined['scriptProxyParameters']['storageFile'])) {
+            $this->cache->delete($cacheKey);
+            $combined = $this->cache->get($cacheKey, fn (): array => $this->combineScripts($files));
+        }
+
+        return $combined;
+    }
+
+    /**
+     * @param array<string, string|null> $files script URL => local file, null for scripts that can't be read
+     *
+     * @return array{scriptProxyParameters: array<string, string>, externalScripts: string[]}
+     */
+    private function combineScripts(array $files): array
+    {
+        $scriptContents = '';
+        $externalScripts = [];
+        foreach ($files as $scriptUrl => $file) {
+            if ($file !== null && ($content = file_get_contents($file)) !== false) {
+                $scriptContents .= $content . "\n\n\n";
+            } else {
+                $externalScripts[] = $scriptUrl;
+            }
+        }
+
+        return [
+            'scriptProxyParameters' => Admin::getMinimizedScriptPath($scriptContents),
+            'externalScripts' => $externalScripts,
+        ];
+    }
+
+    /**
+     * Bundle paths can be absolute URLs or generated routes, which can't be read from the web root
+     */
+    private function getLocalScriptFile(string $scriptUrl): ?string
+    {
+        $file = PIMCORE_WEB_ROOT . $scriptUrl;
+
+        return str_starts_with($scriptUrl, '/') && !str_starts_with($scriptUrl, '//') && is_file($file) ? $file : null;
     }
 
     private function addCacheBuster(string $url): string

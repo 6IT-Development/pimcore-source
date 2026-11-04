@@ -17,6 +17,9 @@ bin/console pimcore:maintenance-mode --status
 
 Each call prints whether the maintenance mode is active afterwards. `--status` only prints it.
 
+The state is checked on every request. If APCu is available, web servers keep it for up to 5 seconds, so a change
+made on the console or on another server takes up to 5 seconds to apply.
+
 ## Customize Maintenance Page
 
 Overwrite the service `Pimcore\Bundle\CoreBundle\EventListener\MaintenancePageListener` in your `config/services.yaml`. 

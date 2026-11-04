@@ -30,6 +30,15 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
 {
     protected const string ENTRY_ID = 'maintenance_mode';
 
+    /**
+     * The MaintenancePageListener asks on every request, even for full page cache hits. With APCu the entry is kept
+     * per server for this many seconds, so activating or deactivating from another process (e.g. the console)
+     * takes effect after at most this delay.
+     */
+    private const int LOCAL_CACHE_TTL = 5;
+
+    private const string LOCAL_CACHE_KEY = 'pimcore_maintenance_mode_entry';
+
     public function __construct(protected RequestStack $requestStack, protected Connection $db)
     {
     }
@@ -58,15 +67,27 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
 
     public function isActive(?string $matchSessionId = null): bool
     {
-        try {
-            if (!$this->db->isConnected()) {
-                $this->db->connect();
+        $useLocalCache = self::isLocalCacheAvailable();
+        $maintenanceModeEntry = $useLocalCache ? apcu_fetch(self::LOCAL_CACHE_KEY, $cached) : null;
+
+        if (!$useLocalCache || !$cached) {
+            try {
+                if (!$this->db->isConnected()) {
+                    $this->db->connect();
+                }
+            } catch (Exception) {
+                return false;
             }
-        } catch (Exception) {
-            return false;
+
+            $maintenanceModeEntry = $this->getEntry();
+
+            if ($useLocalCache) {
+                // an empty string for "not active", false can't be told apart from a miss
+                apcu_store(self::LOCAL_CACHE_KEY, (string) $maintenanceModeEntry, self::LOCAL_CACHE_TTL);
+            }
         }
 
-        if ($maintenanceModeEntry = $this->getEntry()) {
+        if ($maintenanceModeEntry) {
             if ($matchSessionId === null || $matchSessionId !== $maintenanceModeEntry) {
                 return true;
             }
@@ -78,6 +99,7 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
     protected function addEntry(string $sessionId): void
     {
         TmpStore::add(self::ENTRY_ID, $sessionId);
+        self::clearLocalCache();
     }
 
     protected function getEntry(): ?string
@@ -98,6 +120,20 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
             TmpStore::delete(self::ENTRY_ID);
         } catch (Exception) {
             //nothing to log as the tmp doesn't exist
+        }
+
+        self::clearLocalCache();
+    }
+
+    private static function isLocalCacheAvailable(): bool
+    {
+        return function_exists('apcu_enabled') && apcu_enabled();
+    }
+
+    private static function clearLocalCache(): void
+    {
+        if (self::isLocalCacheAvailable()) {
+            apcu_delete(self::LOCAL_CACHE_KEY);
         }
     }
 }

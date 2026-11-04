@@ -937,7 +937,7 @@ Kept: `ResponseInjectionTrait::injectBeforeHeadEnd()`, which the admin-ui-classi
 
 ## L – Logic / performance
 
-### [ ] I-49 – Work done on every request
+### [x] I-49 – Work done on every request
 
 - `MaintenancePageListener` (REQUEST 126, **before** the full page cache):
   - `MaintenanceModeHelper::isActive()` connects to the DB and queries `TmpStore`;
@@ -959,6 +959,17 @@ Kept: `ResponseInjectionTrait::injectBeforeHeadEnd()`, which the admin-ui-classi
   compute the minimised-script path. Compute it once per revision (cache key `Version::getRevision()`).
 - `LocaleListener` `include`s the CLDR territory mapping file on every locale change (line 63). Load it once (static
   property or compiled PHP constant).
+
+**Done:** `MaintenanceModeHelper::isActive()` keeps the entry in APCu for 5 s when available. `activate()` and
+`deactivate()` clear it, other processes and servers see the change after the TTL (doc updated). A cache hit needs
+no DB connection. `cache.app` is not used, because by default it ends up in `pimcore.cache.pool`, which can be the DB.
+The static page generator already had a context check (C-09); an invalid `route_pattern` is now logged instead of
+silently ignored. The WYSIWYG filter only runs its regex when the page contains ` pimcore_`. The combined editmode
+script (now in `AdminUiClassicEditmodeAssetProvider`, I-46) is cached in `cache.app`, keyed by revision, script paths
+and file modification times. It is rebuilt when the stored file is gone, so files are only stat'ed, not read and
+written. `LocaleListener` loads the CLDR mapping once per process.
+Not done: stripping the WYSIWYG attributes at render time (the editable needs them in editmode, so the listener stays
+as the safety net), and the legacy `maintenance.php` `is_file()` check (one stat).
 
 ### [ ] I-50 – `FullPageCacheListener` structure
 

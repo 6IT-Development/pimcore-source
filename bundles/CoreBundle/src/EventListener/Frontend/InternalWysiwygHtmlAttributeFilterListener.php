@@ -67,8 +67,9 @@ final class InternalWysiwygHtmlAttributeFilterListener implements EventSubscribe
 
         $content = $response->getContent();
 
-        // false for responses without in-memory content (e.g. streamed responses)
-        if (!is_string($content)) {
+        // false for responses without in-memory content (e.g. streamed responses); the plain string search is much
+        // cheaper than the regex and most pages have no WYSIWYG attributes
+        if (!is_string($content) || !str_contains($content, ' pimcore_')) {
             return;
         }
 

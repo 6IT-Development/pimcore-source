@@ -46,6 +46,11 @@ final class LocaleListener implements EventSubscriberInterface
      */
     private ?string $lastLocale = null;
 
+    /**
+     * @var array<string, string[]>|null
+     */
+    private static ?array $languageRegionMapping = null;
+
     #[\Override]
     public static function getSubscribedEvents(): array
     {
@@ -106,7 +111,7 @@ final class LocaleListener implements EventSubscriberInterface
         } else {
             // try to get a list of territories for this language
             // usually OS have no "language only" locale, only the combination language-territory (eg. Debian)
-            $languageRegionMapping = include dirname(__DIR__, 3) . '/public/misc/cldr-language-territory-mapping.php';
+            $languageRegionMapping = self::getLanguageRegionMapping();
             if (isset($languageRegionMapping[$primaryLanguage])) {
                 foreach ($languageRegionMapping[$primaryLanguage] as $territory) {
                     $localeList[] = $primaryLanguage . '_' . $territory . '.utf8';
@@ -150,5 +155,15 @@ final class LocaleListener implements EventSubscriberInterface
         $contentType = $response->headers->get('Content-Type');
 
         return $contentType === null || str_contains(strtolower($contentType), 'html');
+    }
+
+    /**
+     * The CLDR mapping is the same for every request, load it once per process
+     *
+     * @return array<string, string[]>
+     */
+    private static function getLanguageRegionMapping(): array
+    {
+        return self::$languageRegionMapping ??= include dirname(__DIR__, 3) . '/public/misc/cldr-language-territory-mapping.php';
     }
 }
