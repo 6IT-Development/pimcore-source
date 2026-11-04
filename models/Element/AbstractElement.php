@@ -110,6 +110,14 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
      */
     protected ?int $parentId = null;
 
+    /**
+     * Post-commit work (events, messages, cache clearing) of the deletes inside the running outermost delete, null
+     * outside a delete
+     *
+     * @var list<callable(): void>|null
+     */
+    private static ?array $afterDeleteCommitCallbacks = null;
+
     public function getPath(): ?string
     {
         return $this->path;
@@ -413,6 +421,79 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         }
 
         return array_merge(...$dependencies);
+    }
+
+    /**
+     * Collects the work of afterDeleteCommit() until runAfterDeleteCommitCallbacks() or
+     * discardAfterDeleteCommitCallbacks(). A nested delete commits only a nesting level: a later failure rolls its rows
+     * back, so its POST_DELETE, version deletion and cache clearing must wait for the outermost commit.
+     *
+     * @internal
+     *
+     * @return bool false if an outer delete collects it already, the caller must then neither run nor discard it
+     */
+    protected static function collectAfterDeleteCommitCallbacks(): bool
+    {
+        if (self::$afterDeleteCommitCallbacks !== null) {
+            return false;
+        }
+
+        self::$afterDeleteCommitCallbacks = [];
+
+        return true;
+    }
+
+    /**
+     * Runs $callback after the outermost delete is committed, or at once outside a delete
+     *
+     * @internal
+     *
+     * @param callable(): void $callback
+     */
+    protected static function afterDeleteCommit(callable $callback): void
+    {
+        if (self::$afterDeleteCommitCallbacks === null) {
+            $callback();
+
+            return;
+        }
+
+        self::$afterDeleteCommitCallbacks[] = $callback;
+    }
+
+    /**
+     * Runs the collected work in delete order (children first); a failing callback does not skip the others, the first
+     * exception is rethrown afterwards
+     *
+     * @internal
+     *
+     * @throws Throwable
+     */
+    protected static function runAfterDeleteCommitCallbacks(): void
+    {
+        $callbacks = self::$afterDeleteCommitCallbacks ?? [];
+        self::$afterDeleteCommitCallbacks = null;
+
+        $exception = null;
+        foreach ($callbacks as $callback) {
+            try {
+                $callback();
+            } catch (Throwable $e) {
+                $exception ??= $e;
+            }
+        }
+
+        if ($exception) {
+            throw $exception;
+        }
+    }
+
+    /**
+     * @internal
+     */
+    protected static function discardAfterDeleteCommitCallbacks(): void
+    {
+        self::$afterDeleteCommitCallbacks = null;
     }
 
     protected function addToDependenciesQueue(): void

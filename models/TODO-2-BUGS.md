@@ -2531,7 +2531,7 @@ and returns their full path before the update as `oldPath`, which `save()` now u
 document's own old path, so `Document::getByPath()` of an old path no longer returns the moved document in the same
 process.
 
-## [ ] B-139 – Recursive delete fires the children's `POST_DELETE` and side effects before the parent's transaction commits
+## [x] B-139 – Recursive delete fires the children's `POST_DELETE` and side effects before the parent's transaction commits
 
 **Files:** `models/Document.php:621-690`; `models/DataObject/AbstractObject.php:429-492`;
 `models/Document/PageSnippet.php:220-231`; `models/DataObject/Concrete.php:216-226`
@@ -2545,6 +2545,15 @@ process.
 
 **Fix direction:** collect the subtree ids, delete in one transaction, dispatch events / messages after commit
 (DBAL after-commit callback or `DispatchAfterCurrentBusStamp`); `finally` for the flag.
+
+**Done:** `Element\AbstractElement` collects post-commit work like `Dependency::collectSanityChecks()` does:
+`collectAfterDeleteCommitCallbacks()` / `afterDeleteCommit()` / `runAfterDeleteCommitCallbacks()` /
+`discardAfterDeleteCommitCallbacks()`. `Document::delete()` and `DataObject\AbstractObject::delete()` queue their cache
+clearing, registry cleanup and `POST_DELETE`, and `PageSnippet::doDelete()` / `Concrete::doDelete()` queue their
+`VersionDeleteMessage`. The outermost delete runs the queue after its commit, children first, and a failing callback
+does not skip the others; a rollback discards it, so no listener sees children deleted that are restored afterwards.
+The `hideUnpublished` flag was already reset in a `finally`. Loading the subtree through recursive `getChildren(true)`
+stays as is; assets defer only their versions (B-17).
 
 ## [ ] B-140 – `missingRequiredEditable` is never re-evaluated once it is `true`
 

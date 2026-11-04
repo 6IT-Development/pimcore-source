@@ -659,6 +659,8 @@ class Document extends Element\AbstractElement
         $this->beginTransaction();
         // dispatched after the commit, a sanity check run before it would restore the rows of this document
         $dispatchesSanityChecks = Dependency::collectSanityChecks();
+        // the children's POST_DELETE, version deletion and cache clearing wait for the outermost commit as well
+        $runsAfterCommitCallbacks = self::collectAfterDeleteCommitCallbacks();
 
         try {
             if ($this->getId() == 1) {
@@ -686,6 +688,9 @@ class Document extends Element\AbstractElement
             if ($dispatchesSanityChecks) {
                 Dependency::discardSanityChecks();
             }
+            if ($runsAfterCommitCallbacks) {
+                self::discardAfterDeleteCommitCallbacks();
+            }
 
             try {
                 $this->rollBack();
@@ -702,14 +707,20 @@ class Document extends Element\AbstractElement
             throw $e;
         }
 
-        // clear cache
-        $this->clearDependentCache();
+        self::afterDeleteCommit(function (): void {
+            // clear cache
+            $this->clearDependentCache();
 
-        //clear document from registry
-        RuntimeCache::set(self::getCacheKey($this->getId()), null);
-        RuntimeCache::set(self::getPathCacheKey($this->getRealFullPath()), null);
+            //clear document from registry
+            RuntimeCache::set(self::getCacheKey($this->getId()), null);
+            RuntimeCache::set(self::getPathCacheKey($this->getRealFullPath()), null);
 
-        $this->dispatchEvent(new DocumentEvent($this), DocumentEvents::POST_DELETE);
+            $this->dispatchEvent(new DocumentEvent($this), DocumentEvents::POST_DELETE);
+        });
+
+        if ($runsAfterCommitCallbacks) {
+            self::runAfterDeleteCommitCallbacks();
+        }
     }
 
     public function getFullPath(bool $force = false): string

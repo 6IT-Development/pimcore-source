@@ -454,6 +454,8 @@ abstract class AbstractObject extends Model\Element\AbstractElement
         $this->beginTransaction();
         // dispatched after the commit, a sanity check run before it would restore the rows of this object
         $dispatchesSanityChecks = Model\Dependency::collectSanityChecks();
+        // the children's POST_DELETE, version deletion and cache clearing wait for the outermost commit as well
+        $runsAfterCommitCallbacks = self::collectAfterDeleteCommitCallbacks();
 
         try {
             $this->doDelete();
@@ -477,6 +479,9 @@ abstract class AbstractObject extends Model\Element\AbstractElement
             if ($dispatchesSanityChecks) {
                 Model\Dependency::discardSanityChecks();
             }
+            if ($runsAfterCommitCallbacks) {
+                self::discardAfterDeleteCommitCallbacks();
+            }
 
             try {
                 $this->rollBack();
@@ -494,13 +499,19 @@ abstract class AbstractObject extends Model\Element\AbstractElement
             throw $e;
         }
 
-        // empty object cache
-        $this->clearDependentCache();
+        self::afterDeleteCommit(function (): void {
+            // empty object cache
+            $this->clearDependentCache();
 
-        //clear object from registry
-        RuntimeCache::set(self::getCacheKey($this->getId()), null);
+            //clear object from registry
+            RuntimeCache::set(self::getCacheKey($this->getId()), null);
 
-        $this->dispatchEvent(new DataObjectEvent($this), DataObjectEvents::POST_DELETE);
+            $this->dispatchEvent(new DataObjectEvent($this), DataObjectEvents::POST_DELETE);
+        });
+
+        if ($runsAfterCommitCallbacks) {
+            self::runAfterDeleteCommitCallbacks();
+        }
     }
 
     public function save(array $parameters = []): static

@@ -216,10 +216,11 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
 
     protected function doDelete(): void
     {
-        // Dispatch Symfony Message Bus to delete versions
-        Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
+        // Dispatch Symfony Message Bus to delete versions, after the commit: a non-transactional transport would not
+        // roll back with it
+        self::afterDeleteCommit(fn () => Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
             new VersionDeleteMessage(Model\Element\Service::getElementType($this), $this->getId())
-        );
+        ));
 
         $this->getDao()->deleteAllTasks();
 
