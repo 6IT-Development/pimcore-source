@@ -113,9 +113,10 @@ services:
         public: true
         class: Pimcore\Model\DataObject\QuantityValue\DefaultConverter
 
+    # priority 101: before RequestAttributeValueResolver (100), which would pass the raw ID of the route parameter
     Pimcore\Bundle\CoreBundle\Request\ParamResolver\DataObjectParamResolver:
         tags:
-            - { name: controller.argument_value_resolver, priority: 101}
+            - { name: controller.argument_value_resolver, priority: 101 }
 
     # the lock store is configured via framework.lock (default: DBAL, see config/pimcore/default.yaml)
     # public because it's fetched via Pimcore::getContainer()->get(LockFactory::class)

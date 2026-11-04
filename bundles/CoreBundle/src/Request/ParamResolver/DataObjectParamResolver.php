@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Request\ParamResolver;
 
+use Closure;
 use LogicException;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
@@ -28,17 +29,37 @@ use Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
+ * Resolves controller arguments typed as a data object (or with #[DataObjectParam], see there for the options) from
+ * the route parameter of the same name. It runs for every argument; to resolve only arguments that ask for it, use
+ * `#[ValueResolver(DataObjectParamResolver::class)]`.
+ *
+ * The resolved object (or null) is also written back to the request attributes, as the former `@ParamConverter` did,
+ * so templates and listeners that read `app.request.attributes.get('<param>')` keep getting the object.
+ *
  * @internal
  */
 class DataObjectParamResolver implements ValueResolverInterface
 {
     /**
+     * @var Closure(Request, Concrete): bool
+     */
+    private readonly Closure $isElementRequestByAdmin;
+
+    /**
+     * @param (Closure(Request, Concrete): bool)|null $isElementRequestByAdmin whether an admin previews the object
+     *        (they get unpublished objects), defaults to Tool::isElementRequestByAdmin()
+     */
+    public function __construct(?Closure $isElementRequestByAdmin = null)
+    {
+        $this->isElementRequestByAdmin = $isElementRequestByAdmin ?? Tool::isElementRequestByAdmin(...);
+    }
+
+    /**
      * @throws NotFoundHttpException When invalid data object ID given
      */
     public function resolve(Request $request, ArgumentMetadata $argument): iterable
     {
-        /** @var DataObjectParam|null $attribute */
-        $attribute = $argument->getAttributes(DataObjectParam::class, ArgumentMetadata::IS_INSTANCEOF)[0] ?? null;
+        $attribute = $argument->getAttributesOfType(DataObjectParam::class, ArgumentMetadata::IS_INSTANCEOF)[0] ?? null;
 
         $class = $attribute?->class ?? $argument->getType();
         if ($attribute?->class !== null) {
@@ -76,7 +97,7 @@ class DataObjectParamResolver implements ValueResolverInterface
             $object instanceof Concrete
             && !$object->isPublished()
             && !$attribute?->unpublished
-            && !Tool::isElementRequestByAdmin($request, $object)
+            && !($this->isElementRequestByAdmin)($request, $object)
         ) {
             throw new NotFoundHttpException(sprintf('Data object for parameter "%s" is not published.', $param));
         }

@@ -1411,7 +1411,7 @@ including `/.crl`), plain `apple-touch-icon.*`. The thumbnail requirements are
 `extractThumbnailInfoFromUri()`. FOSJsRouting already imports `routing.php` (I-41). The routes stay in YAML with a
 comment on the required order.
 
-### [ ] I-66 – `DataObjectParamResolver` wiring and Symfony 7.4 resolver features
+### [x] I-66 – `DataObjectParamResolver` wiring and Symfony 7.4 resolver features
 
 **Files:** `config/services.yaml:116-118`, `src/Request/ParamResolver/DataObjectParamResolver.php`
 
@@ -1426,6 +1426,14 @@ comment on the required order.
 - Inject the admin check (`Tool::isElementRequestByAdmin()` is static) through a small service so the resolver can be
   unit-tested without a kernel.
 - Class is `@internal` but the `DataObjectParam` attribute is public API – move user docs to the attribute.
+
+**Done:** `getAttributesOfType()` instead of `getAttributes()` + `@var`; the admin check is a constructor `Closure`
+(default `Tool::isElementRequestByAdmin()`), so tests can pass a stub (I-72); the priority is explained in the YAML.
+The resolver stays untargeted (automatic resolution by type); as an untargeted resolver it can already be targeted
+by its class name, `#[ValueResolver(DataObjectParamResolver::class)]`, which the class docblock now says. The write-back
+to the request attributes is kept for BC with the former `@ParamConverter` (templates read
+`app.request.attributes.get('news')`) and documented on the class. The user docs were moved to the attribute with
+B-63.
 
 ### [ ] I-67 – Move WebDAV server setup into a service; dependency hygiene
 
