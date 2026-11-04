@@ -82,6 +82,18 @@
 - `general.valid_languages` / `general.required_languages` given as a string are now trimmed (`"en, de"` gives `de`
   instead of ` de`). To set them from an env var, use `'%env(csv:LANGUAGES)%'`. A plain `'%env(LANGUAGES)%'` is used
   as one single language.
+- `@PimcoreCoreBundle/config/routing_dev.yaml` imports the PHP route files of the WebProfilerBundle instead of the XML
+  ones, which are deprecated in Symfony 7.4. The file itself is deprecated: replace its import in your
+  `config/routes/dev/*.yaml` with the `config/routes/web_profiler.yaml` of the Symfony recipe:
+  ```yaml
+  when@dev:
+      web_profiler_wdt:
+          resource: '@WebProfilerBundle/Resources/config/routing/wdt.php'
+          prefix: /_wdt
+      web_profiler_profiler:
+          resource: '@WebProfilerBundle/Resources/config/routing/profiler.php'
+          prefix: /_profiler
+  ```
 #### [Custom Reports]
 - User names in the sharing settings of a report are compared exactly with the name of the user. A hand-written
   `sharedUserNames` entry that differs in upper or lower case no longer grants access, depending on the database

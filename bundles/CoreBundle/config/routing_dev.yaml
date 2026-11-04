@@ -1,7 +1,11 @@
+# Deprecated, import the routes of the Symfony recipe (config/routes/web_profiler.yaml) instead.
+# The PHP route files replace the XML ones, which are deprecated in Symfony 7.4 and removed in 8.0.
 _wdt:
-    resource: "@WebProfilerBundle/Resources/config/routing/wdt.xml"
+    resource: "@WebProfilerBundle/Resources/config/routing/wdt.php"
+    type: php
     prefix:   /_wdt
 
 _profiler:
-    resource: "@WebProfilerBundle/Resources/config/routing/profiler.xml"
+    resource: "@WebProfilerBundle/Resources/config/routing/profiler.php"
+    type: php
     prefix:   /_profiler

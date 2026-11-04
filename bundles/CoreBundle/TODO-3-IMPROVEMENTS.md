@@ -500,7 +500,7 @@ IDs continue from I-30. Line numbers are from commit `7cb7841b76`. Grouped: **F*
 
 ## F – Symfony 7.4 / configuration
 
-### [ ] I-31 – `routing_dev.yaml`: import the PHP profiler routes (XML routing is deprecated in 7.4)
+### [x] I-31 – `routing_dev.yaml`: import the PHP profiler routes (XML routing is deprecated in 7.4)
 
 **File:** `config/routing_dev.yaml:1-7`
 
@@ -510,6 +510,9 @@ IDs continue from I-30. Line numbers are from commit `7cb7841b76`. Grouped: **F*
 - Switch to `wdt.php` / `profiler.php` (`type: php`).
 - The file is not referenced anywhere in this repo (the project skeleton imports it). Document it in the upgrade notes
   or drop it in favour of the Symfony recipe `config/routes/web_profiler.yaml`.
+
+**Done:** the file imports `wdt.php` / `profiler.php` (`type: php`) and is marked deprecated. The upgrade notes show
+the recipe routes that replace it; it stays for now because existing projects import it.
 
 ### [ ] I-32 – Register Pimcore workflows like FrameworkBundle 7.4 does
 
