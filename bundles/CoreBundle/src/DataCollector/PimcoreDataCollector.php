@@ -22,27 +22,22 @@ use Pimcore\Version;
 use Symfony\Bundle\FrameworkBundle\DataCollector\AbstractDataCollector;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
 
 /**
  * @internal
  */
-class PimcoreDataCollector extends AbstractDataCollector implements ResetInterface
+final class PimcoreDataCollector extends AbstractDataCollector
 {
-    public function __construct(
-        protected PimcoreContextResolver $contextResolver
-    )
-    {
-    }
-
     public function collect(Request $request, Response $response, ?Throwable $exception = null): void
     {
         $this->data = [
             'version' => Version::getVersion(),
             'revision' => Version::getRevision(),
             'platform_version' => Version::getPlatformVersion(),
-            'context' => $this->contextResolver->getPimcoreContext($request),
+            // read the attribute instead of PimcoreContextResolver::getPimcoreContext(), which guesses a missing
+            // context and writes it to the request
+            'context' => $request->attributes->get(PimcoreContextResolver::ATTRIBUTE_PIMCORE_CONTEXT),
         ];
     }
 

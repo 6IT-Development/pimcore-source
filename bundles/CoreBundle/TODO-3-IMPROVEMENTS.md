@@ -612,7 +612,7 @@ it depends on (autoconfiguration at 100, `CachePoolPass` 32, Monolog's `LoggerCh
 at -1). The order relative to FrameworkBundle/MonologBundle is unchanged. `getContainerExtension()` caches the
 extension in `$this->extension`.
 
-### [ ] I-36 – `PimcoreDataCollector` modernisation
+### [x] I-36 – `PimcoreDataCollector` modernisation
 
 **File:** `src/DataCollector/PimcoreDataCollector.php`
 
@@ -625,6 +625,10 @@ extension in `$this->extension`.
   request if it is missing. Read `$request->attributes->get(PimcoreContextResolver::ATTRIBUTE_PIMCORE_CONTEXT)` first
   so the profiler does not mutate request state.
 - Optional, more useful data: site, document ID/path, editmode, output-cache hit/miss, maintenance mode.
+
+**Done:** the collector is `final`, has no constructor and no explicit `ResetInterface`, and reads the context from the
+request attribute (`null`, shown as `~`, if the context listener did not set it). The getters already use `?? null`.
+The optional extra data is not added.
 
 ### [ ] I-37 – Profiler template clean-up
 
