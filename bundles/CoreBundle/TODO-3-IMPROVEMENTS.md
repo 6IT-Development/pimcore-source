@@ -1063,6 +1063,14 @@ There are no tests for `src/EventListener`. Minimum set:
 - `ContentTemplateListener` with `vars`, `block`, `null` result and a duplicate argument/result key (B-40).
 - `ResponseExceptionListener` with a non-`Page` root and a failing fragment in the error page layout (B-37).
 
+**Partly done:** `tests/Unit/EventListener/` covers the parts that need no kernel and no database:
+`ResponseCacheabilityTest` (full page cache with `Set-Cookie` / `Vary`, B-36; static pages not stored for error,
+cookie, query or session responses, C-09), `ContentTemplateListenerTest` (`vars`, `block`, `null` result, result
+overriding an argument, B-40), `ResponseHeadersTest` (I-53 headers, mixed-case and port main domain, B-41).
+**Open:** the functional tests need a booted kernel with documents and sites: two requests on one kernel (C-08),
+the static page rename (B-38), `RoutingListener` with `/app.php/%5Cexample.com` (C-10), `ElementListener` `?v=` (B-35),
+`ResponseExceptionListener` (B-37).
+
 ---
 
 # Scope 4 – `DependencyInjection` (+ `config/pimcore/*.yaml`, extension-loaded `config/*.yaml`)
