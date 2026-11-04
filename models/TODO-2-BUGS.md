@@ -2150,7 +2150,7 @@ correlated subqueries per row) and deletes them in chunks of 500 with a bound `I
 the `POST` events the runtime cache entries, the queued auto-creates and the `translator` / `translate` tags are
 cleared through the new internal `Translation::clearDeletedState()`, which `delete()` uses too.
 
-## [ ] B-123 – Translator auto-create: wrong language list for non-default domains; the 190 check counts bytes and throws during rendering
+## [x] B-123 – Translator auto-create: wrong language list for non-default domains; the 190 check counts bytes and throws during rendering
 
 **File:** `lib/Translation/Translator.php:240-267`
 
@@ -2164,6 +2164,11 @@ cleared through the new internal `Translation::clearDeletedState()`, which `dele
 - `Translation::IsAValidLanguage()` uses loose `in_array()`.
 
 **Fix direction:** `getValidLanguages($domain)`; `mb_strlen()`; log and return the id instead of throwing.
+
+**Done:** a new key gets the empty texts of `getValidLanguages($domain)`, so admin keys are created for the admin
+languages. The length check counts characters against the now public `Translation::KEY_MAX_LENGTH` (the same limit as
+`save()`), and a longer key is logged as a warning and not queued instead of throwing from `trans()`; it is still put
+into the catalogue, so it is logged once per process and the page gets the id. `IsAValidLanguage()` compares strictly.
 
 ## [ ] B-124 – Translator DB catalogues never refresh in long-running processes (Messenger workers, worker runtimes)
 

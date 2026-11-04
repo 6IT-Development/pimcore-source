@@ -63,7 +63,7 @@ final class Translation extends AbstractModel
     /**
      * Length of the `key` column, in characters
      */
-    private const int KEY_MAX_LENGTH = 190;
+    public const int KEY_MAX_LENGTH = 190;
 
     protected ?string $key = null;
 
@@ -109,7 +109,7 @@ final class Translation extends AbstractModel
 
     public static function IsAValidLanguage(string $domain, string $locale): bool
     {
-        return in_array($locale, Translation::getValidLanguages($domain));
+        return in_array($locale, Translation::getValidLanguages($domain), true);
     }
 
     public function getKey(): ?string

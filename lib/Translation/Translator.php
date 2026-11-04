@@ -17,9 +17,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Translation;
 
-use Exception;
 use Pimcore\Cache;
 use Pimcore\Config;
+use Pimcore\Logger;
 use Pimcore\Model\Translation;
 use Pimcore\Tool;
 use Symfony\Component\HttpKernel\CacheWarmer\WarmableInterface;
@@ -212,9 +212,6 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
         $this->initializedCatalogues = [];
     }
 
-    /**
-     * @throws Exception
-     */
     private function checkForEmptyTranslation(string $id, string $translated, array $parameters, string $domain, string $locale): string
     {
         if (empty($id)) {
@@ -239,12 +236,16 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
                     return $translated;
                 }
             } elseif (Translation::isAValidDomain($domain)) {
-                if (strlen($id) > 190) {
-                    throw new Exception("Message ID's longer than 190 characters are invalid!");
-                }
-
-                // no translation found create key
-                if (Translation::IsAValidLanguage($domain, $locale)) {
+                // no translation found create key; a key longer than the column is not stored, but must not break
+                // the rendering of the page that uses it
+                if (mb_strlen($id) > Translation::KEY_MAX_LENGTH) {
+                    Logger::warning(sprintf(
+                        'Translation key "%s…" in domain "%s" is longer than %d characters and is not stored',
+                        mb_substr($id, 0, 50),
+                        $domain,
+                        Translation::KEY_MAX_LENGTH
+                    ));
+                } elseif (Translation::IsAValidLanguage($domain, $locale)) {
                     $t = Translation::getByKey($id, $domain);
                     if ($t) {
                         if (!$t->hasTranslation($locale)) {
@@ -259,7 +260,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
                         $t->setKey($id);
 
                         // add all available languages
-                        foreach (Translation::getValidLanguages() as $language) {
+                        foreach (Translation::getValidLanguages($domain) as $language) {
                             $t->addTranslation($language, '');
                         }
                     }
