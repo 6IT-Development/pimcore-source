@@ -37,11 +37,21 @@ class Dao extends Model\Dao\AbstractDao
         Helper::upsert($this->db, self::TABLE_NAME, $data, $this->getPrimaryKey(self::TABLE_NAME));
     }
 
+    /**
+     * Inserts the row unless it exists already, in one statement, so concurrent creates of the same UUID do not
+     * collide. The no-op ON DUPLICATE KEY UPDATE keeps strict-mode errors, which INSERT IGNORE would turn into warnings.
+     */
     public function create(): void
     {
         $data = $this->getValidObjectVars();
+        $columns = array_map($this->db->quoteIdentifier(...), array_keys($data));
 
-        $this->db->insert(self::TABLE_NAME, $data);
+        $this->db->executeStatement(
+            'INSERT INTO ' . $this->db->quoteIdentifier(self::TABLE_NAME)
+            . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($data), '?')) . ')'
+            . ' ON DUPLICATE KEY UPDATE `uuid` = `uuid`',
+            array_values($data)
+        );
     }
 
     private function getValidObjectVars(): array
@@ -98,21 +108,5 @@ class Dao extends Model\Dao\AbstractDao
         $this->model->setValues($data);
 
         return true;
-    }
-
-    public function exists(string $uuid): bool
-    {
-        $queryBuilder = $this->db->createQueryBuilder();
-        $queryBuilder
-            ->select('uuid')
-            ->from(self::TABLE_NAME)
-            ->where('uuid = :uuid')
-            ->setParameter('uuid', $uuid, Types::STRING);
-
-        $result = $queryBuilder
-            ->executeQuery()
-            ->fetchOne();
-
-        return (bool)$result;
     }
 }

@@ -49,7 +49,7 @@ element. Not addressed: the rest of the doc rewrite (I-17).
 
 ---
 
-## [ ] B-03 – Race between `exists()` and `create()` → duplicate-key exception
+## [x] B-03 – Race between `exists()` and `create()` → duplicate-key exception
 
 **Files:** `src/Model/Tool/UUID.php:142-144`, `src/Model/Tool/UUID/Dao.php:40-45`
 
@@ -59,6 +59,11 @@ them throws `UniqueConstraintViolationException`. Inside the listener this escal
 
 **Fix direction:** use one idempotent statement (`INSERT IGNORE`, or `Helper::upsert()` / the existing `Dao::save()`)
 and drop the `exists()` round trip.
+
+**Done:** `Dao::create()` writes the row with one `INSERT ... ON DUPLICATE KEY UPDATE uuid = uuid`, so a second,
+concurrent create of the same UUID is a no-op instead of a `UniqueConstraintViolationException`. `INSERT IGNORE` was
+not used because it would also downgrade strict-mode errors (for example a too-long identifier) to warnings.
+`createUuid()` no longer calls `exists()`, and the now unused internal `Dao::exists()` is removed.
 
 ---
 
