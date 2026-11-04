@@ -25,7 +25,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Contracts\Service\Attribute\Required;
 use Throwable;
 
 /**
@@ -39,7 +38,10 @@ use Throwable;
 )]
 class ClassesRebuildCommand extends AbstractCommand
 {
-    protected ClassDefinitionManager $classDefinitionManager;
+    public function __construct(private readonly ClassDefinitionManager $classDefinitionManager)
+    {
+        parent::__construct();
+    }
 
     protected function configure(): void
     {
@@ -62,12 +64,6 @@ class ClassesRebuildCommand extends AbstractCommand
                 InputOption::VALUE_NONE,
                 'Force rebuild of all classes (ignoring the last modification date of the class definition files)'
             );
-    }
-
-    #[Required]
-    public function setClassDefinitionManager(ClassDefinitionManager $classDefinitionManager): void
-    {
-        $this->classDefinitionManager = $classDefinitionManager;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

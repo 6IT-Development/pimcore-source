@@ -43,7 +43,7 @@ Grouped: **A** Symfony 7.4 / configuration, **B** PHP 8.4 / code style, **C** sh
 command (with `aliases: ['definition:import:class']` etc.). Drop `buildName()`, `configureDescriptionAndHelp()` and the
 dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redundant `command:` tags (I-02).
 
-### [ ] I-02 – Clean up `config/commands.yaml`
+### [x] I-02 – Clean up `config/commands.yaml`
 
 **Files:** `config/commands.yaml`, `config/extensions.yaml:33`
 

@@ -27,6 +27,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 
 /**
  * @internal
@@ -37,7 +38,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class StorageCommand extends AbstractCommand
 {
-    public function __construct(private readonly ContainerInterface $locator)
+    public function __construct(
+        #[AutowireLocator('flysystem.storage')]
+        private readonly ContainerInterface $locator
+    )
     {
         parent::__construct();
     }

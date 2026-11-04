@@ -20,10 +20,12 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 use League\Flysystem\StorageAttributes;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Image\ImageOptimizerInterface;
+use Pimcore\Image\Optimizer;
 use Pimcore\Tool\Storage;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * @internal
@@ -35,7 +37,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class OptimizeImageThumbnailsCommand extends AbstractCommand
 {
-    public function __construct(private readonly ImageOptimizerInterface $optimizer)
+    public function __construct(
+        #[Autowire(service: Optimizer::class)]
+        private readonly ImageOptimizerInterface $optimizer
+    )
     {
         parent::__construct();
     }
