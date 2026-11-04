@@ -109,7 +109,7 @@ up orphans of items deleted before this fix (I-13).
 
 ---
 
-## [ ] B-06 – Re-installing silently wipes all UUIDs
+## [x] B-06 – Re-installing silently wipes all UUIDs
 
 **Files:** `src/Resources/install/install.sql:1`
 
@@ -123,6 +123,12 @@ example:
 UUIDs that other instances imported, or that were stored under an older identifier, cannot be regenerated.
 
 **Fix direction:** `CREATE TABLE IF NOT EXISTS`. Only `uninstall.sql` should drop the table.
+
+**Done:** `install.sql` is a single `CREATE TABLE IF NOT EXISTS uuids`, so a re-install keeps the existing UUIDs; only
+`uninstall.sql` drops the table. The file now holds one statement, so the multi-statement part of B-11 no longer
+applies to install. Note: a table kept from an installation before `Version20230203160742` still has
+`itemId INT`; the install marks that migration as executed (C-02), so such a table has to be migrated by hand. Not
+addressed: moving the schema into PHP (B-11 / I-14).
 
 ---
 

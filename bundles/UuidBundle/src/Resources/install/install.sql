@@ -1,5 +1,4 @@
-DROP TABLE IF EXISTS `uuids`;
-CREATE TABLE `uuids` (
+CREATE TABLE IF NOT EXISTS `uuids` (
     `uuid` CHAR(36) NOT NULL,
     `itemId` VARCHAR(50) NOT NULL,
     `type` VARCHAR(25) NOT NULL,
