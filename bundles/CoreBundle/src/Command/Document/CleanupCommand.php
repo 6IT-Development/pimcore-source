@@ -22,6 +22,7 @@ use Pimcore\Console\AbstractCommand;
 use Pimcore\Db;
 use Pimcore\Model\Document;
 use Pimcore\Model\Exception\NotFoundException;
+use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -40,24 +41,20 @@ class CleanupCommand extends AbstractCommand
 {
     use DestructiveCommandTrait;
 
-    protected const array STANDARD_DOCUMENT_ENUM_TYPES = [
-        'page',
-        'link',
-        'snippet',
-        'folder',
-        'hardlink',
-        'email',
-    ];
-
+    /**
+     * The document types of the core, they cannot be removed
+     */
     private const array PROTECTED_DOCUMENT_TYPES = ['page', 'link', 'snippet', 'folder', 'hardlink', 'email'];
 
     #[\Override]
     protected function configure(): void
     {
         $this
-            ->addArgument('documentTypes',
-                InputArgument::IS_ARRAY,
-                'Which types do you want to clean up');
+            ->addArgument(
+                'documentTypes',
+                InputArgument::REQUIRED | InputArgument::IS_ARRAY,
+                'Which types do you want to clean up'
+            );
 
         $this->configureDestructiveOptions();
     }
@@ -121,6 +118,7 @@ class CleanupCommand extends AbstractCommand
                 $this->loadDocument((int)$documentId)?->delete();
             } catch (Throwable $e) {
                 $output->writeln(sprintf('<error>Could not delete document %d: %s</error>', $documentId, $e->getMessage()));
+                $this->writeTrace($e);
                 $failed = true;
             }
         }
@@ -151,6 +149,7 @@ class CleanupCommand extends AbstractCommand
                 $db->executeQuery('DROP TABLE IF EXISTS ' . $db->quoteIdentifier($tableName));
             } catch (Exception $ex) {
                 $output->writeln(sprintf('<error>Could not drop table %s: %s</error>', $tableName, $ex->getMessage()));
+                $this->writeTrace($ex);
                 $failed = true;
             }
         }
@@ -185,29 +184,53 @@ class CleanupCommand extends AbstractCommand
         }
     }
 
-    private function getCurrentEnumTypes(): array
+    /**
+     * Prints the stack trace of $e with -vvv
+     */
+    private function writeTrace(Throwable $e): void
     {
-        $db = Db::get();
-
-        try {
-            $result = $db->executeQuery("SHOW COLUMNS FROM `documents` LIKE 'type'");
-            $typeColumn = $result->fetchAllAssociative();
-
-            return explode("','", preg_replace("/(enum)\('(.+?)'\)/", '\\2', $typeColumn[0]['Type']));
-        } catch (Exception) {
-            // nothing to do here if it does not work we return the standard types
+        if ($this->output->isDebug()) {
+            $this->output->writeln($e->getTraceAsString());
         }
-
-        return self::STANDARD_DOCUMENT_ENUM_TYPES;
     }
 
+    /**
+     * Reads the values of the ENUM column `documents`.`type`
+     *
+     * @return string[]
+     *
+     * @throws RuntimeException if the column definition cannot be read or is no ENUM
+     */
+    private function getCurrentEnumTypes(): array
+    {
+        $columnType = Db::get()->fetchOne(
+            'SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            ['documents', 'type']
+        );
+
+        // COLUMN_TYPE is e.g. enum('page','link'); quotes inside a value are doubled
+        if (!is_string($columnType) || !preg_match('/^enum\((.*)\)$/is', $columnType, $match)
+            || !preg_match_all("/'((?:[^']|'')*)'/", $match[1], $values)) {
+            throw new RuntimeException('Could not read the ENUM values of the column documents.type.');
+        }
+
+        return array_map(static fn (string $value): string => str_replace("''", "'", $value), $values[1]);
+    }
+
+    /**
+     * Redefines the column `documents`.`type` as ENUM of $enums
+     *
+     * @param string[] $enums
+     */
     private function modifyEnumTypes(array $enums): void
     {
         $db = Db::get();
-        $db->executeQuery(
-            'ALTER TABLE documents MODIFY COLUMN `type` ENUM(:enums);',
-            ['enums' => $enums],
-            ['enums' => ArrayParameterType::STRING]
-        );
+
+        // quote explicitly: DDL cannot use bound parameters without the emulated prepares of pdo_mysql
+        $db->executeStatement(sprintf(
+            'ALTER TABLE documents MODIFY COLUMN `type` ENUM(%s)',
+            implode(',', array_map($db->quote(...), $enums))
+        ));
     }
 }

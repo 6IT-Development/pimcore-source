@@ -384,7 +384,7 @@ non-empty `checksum` string (`customSettings` is PHP-serialized, not JSON); the 
 so a false match only costs a load. The command shows a progress bar, prints each asset only with `-v`, reports errors
 with their message and ends with a summary; it exits with `FAILURE` if a checksum failed.
 
-### [ ] I-24 – `Document/CleanupCommand` internals
+### [x] I-24 – `Document/CleanupCommand` internals
 
 **File:** `src/Command/Document/CleanupCommand.php`
 
@@ -395,6 +395,11 @@ with their message and ends with a summary; it exits with `FAILURE` if a checksu
 - `$output->writeln(sprintf('...%s', $ex))` dumps the full trace. Print the message and show the trace only with
   `-vvv`.
 - With no arguments the command silently does nothing. Make `documentTypes` `REQUIRED | IS_ARRAY`.
+
+**Done:** only `PROTECTED_DOCUMENT_TYPES` is left. The ENUM values come from `information_schema.COLUMNS.COLUMN_TYPE`;
+if they cannot be read the command fails instead of falling back to the core types. `ALTER TABLE` quotes the values
+with `$db->quote()` and runs through `executeStatement()`. Errors print their message, the trace follows with `-vvv`.
+`documentTypes` is required. (The table layout is unchanged; the command only alters the ENUM as before.)
 
 ### [ ] I-25 – `AbstractBundleCommand` tidy-up
 
