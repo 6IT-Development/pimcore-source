@@ -911,7 +911,7 @@ without a DB lookup (the status cache can be disabled).
 
 **Done:** `addCacheBuster()` leaves paths matching `^(https?:|//|data:)` (case-insensitive) unchanged.
 
-## [ ] B-57 – Numeric media keys break the default `<source>` in `<picture>`
+## [x] B-57 – Numeric media keys break the default `<source>` in `<picture>`
 
 **File:** `models/Asset/Image/Thumbnail.php:267-272`
 
@@ -919,6 +919,9 @@ without a DB lookup (the status cache can be disabled).
   `strict_types` (int passed to `string $mediaQuery`). (Admin UI allowing numeric keys unverified.)
 
 **Fix direction:** keep the default config out of the media loop.
+
+**Done:** `getMediaConfigHtml()` builds a list of `[media query, items]` pairs with the media keys cast to string and
+the default config appended with an empty media query, so it no longer gets the next integer key as its media query.
 
 ## [ ] B-58 – Throwaway orphan thumbnail generated per media query during HTML rendering
 

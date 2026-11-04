@@ -267,9 +267,14 @@ final class Thumbnail implements ThumbnailInterface
 
         // currently only max-width is supported, the key of the media is WIDTHw (eg. 400w) according to the srcset specification
         ksort($mediaConfigs, SORT_NUMERIC);
-        $mediaConfigs[] = $thumbConfig->getItems(); //add the default config at the end - picturePolyfill v4
-
+        $sources = [];
         foreach ($mediaConfigs as $mediaQuery => $config) {
+            // PHP turns numeric keys like "1024" into integers
+            $sources[] = [(string)$mediaQuery, $config];
+        }
+        $sources[] = ['', $thumbConfig->getItems()]; //add the default config at the end - picturePolyfill v4
+
+        foreach ($sources as [$mediaQuery, $config]) {
             $thumbConfig->setItems($config);
             $sourceHtml = $this->getSourceTagHtml($thumbConfig, $mediaQuery, $image, $options);
             if (!empty($sourceHtml)) {
