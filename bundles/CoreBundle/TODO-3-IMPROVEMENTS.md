@@ -842,7 +842,7 @@ there. Every subscriber and the `#[AsEventListener]` attributes use the constant
 (`puroposes` was already gone; the static page generator now runs at 7, after the firewall, see C-09). The old
 `ElementListener` TODOs are removed. `WebDebugToolbarListener::onKernelResponse()` is renamed to `onKernelRequest()`.
 
-### [ ] I-46 – Decouple CoreBundle listeners from AdminBundle, StaticRoutesBundle and FOSJsRouting
+### [x] I-46 – Decouple CoreBundle listeners from AdminBundle, StaticRoutesBundle and FOSJsRouting
 
 - `EditmodeListener` hard-codes ~40 `/bundles/pimcoreadmin/...` asset paths and generates
   `pimcore_admin_misc_scriptproxy`, `pimcore_admin_misc_jsontranslationssystem` and `fos_js_routing_js`. Without
@@ -852,6 +852,14 @@ there. Every subscriber and the `#[AsEventListener]` attributes use the constant
 - `ElementListener.php:73`: special case for the `fos_js_routing_js` route.
 - `HardlinkCanonicalListener.php:66`: `class_exists(Staticroute::class)` + static `Staticroute::getCurrentRoute()`.
   Check a request attribute (`_route` / `pimcore_request_source`) instead.
+
+**Done:** new `Pimcore\Document\Editmode\EditmodeAssetProviderInterface` (`getHeadHtml()`, `getBodyHtml()`). The asset
+lists and the AdminBundle / FOSJsRouting route generation moved to `AdminUiClassicEditmodeAssetProvider`, which
+`PimcoreCoreExtension` removes (with the alias) when `PimcoreAdminBundle` is not loaded. Without a provider the listener
+leaves editmode responses alone. Moving the provider into the admin-ui-classic-bundle repo is left for that repo.
+`ElementListener` takes the skipped routes as the `$ignoredRoutes` argument (default `fos_js_routing_js`).
+`HardlinkCanonicalListener` checks the `pimcore_request_source` attribute that the static route router sets.
+Upgrade note added.
 
 ---
 

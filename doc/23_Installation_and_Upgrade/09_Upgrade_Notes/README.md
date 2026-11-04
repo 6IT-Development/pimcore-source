@@ -42,6 +42,11 @@
   fallback document and the `Content-Language` locale are stored as request attributes, and the current site is reset
   at the start of each main request (`Site::resetCurrentSite()`). The web debug toolbar is no longer disabled by
   removing its subscriber but via `WebDebugToolbarListener::setMode()` for the current request only.
+#### [Editmode]
+- The editmode scripts and stylesheets come from an `Pimcore\Document\Editmode\EditmodeAssetProviderInterface`
+  service. The default one (the classic admin UI's assets and routes) is only registered when the `PimcoreAdminBundle`
+  is loaded; without a provider, editmode responses are sent unchanged instead of failing with a
+  `RouteNotFoundException`. The constructor of the internal `EditmodeListener` changed accordingly.
 #### [Full page cache]
 - Whether the current page is cached, its lifetime and the expire header are kept in the new public service
   `Pimcore\Cache\FullPage\FullPageCacheState`. `FullPageCacheListener` is no longer public, so

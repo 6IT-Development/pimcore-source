@@ -17,27 +17,24 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
-use Pimcore;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Document\Editable\EditmodeEditableDefinitionCollector;
-use Pimcore\Extension\Bundle\PimcoreBundleManager;
+use Pimcore\Document\Editmode\EditmodeAssetProviderInterface;
 use Pimcore\Http\Request\Resolver\DocumentResolver;
 use Pimcore\Http\Request\Resolver\EditmodeResolver;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Model\Document;
 use Pimcore\Security\User\UserLoader;
-use Pimcore\Tool\Admin;
-use Pimcore\Version;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\Routing\RouterInterface;
 
 /**
- * Modifies responses for editmode
+ * Injects the editmode assets into editmode responses. The assets come from the EditmodeAssetProviderInterface
+ * implementation of the admin UI; without one, responses are not changed.
  *
  * @internal
  */
@@ -53,10 +50,9 @@ class EditmodeListener implements EventSubscriberInterface
         protected EditmodeResolver                           $editmodeResolver,
         protected DocumentResolver                           $documentResolver,
         protected UserLoader                                 $userLoader,
-        protected PimcoreBundleManager                       $bundleManager,
-        protected RouterInterface                            $router,
         private readonly EditmodeEditableDefinitionCollector $editableConfigCollector,
-        private readonly LoggerInterface                     $logger
+        private readonly LoggerInterface                     $logger,
+        private readonly ?EditmodeAssetProviderInterface     $assetProvider = null
     )
     {
     }
@@ -99,7 +95,7 @@ class EditmodeListener implements EventSubscriberInterface
             return;
         }
 
-        if (!$this->editmodeResolver->isEditmode($request)) {
+        if (!$this->assetProvider || !$this->editmodeResolver->isEditmode($request)) {
             return;
         }
 
@@ -138,7 +134,7 @@ class EditmodeListener implements EventSubscriberInterface
      */
     protected function addEditmodeAssets(Document $document, Response $response): void
     {
-        if (Document\Service::isValidType($document->getType())) {
+        if ($this->assetProvider && Document\Service::isValidType($document->getType())) {
             $html = $response->getContent();
 
             if (!$html) {
@@ -161,12 +157,10 @@ class EditmodeListener implements EventSubscriberInterface
             }
 
             if ($skipCheck || ($headElement && $bodyElement && $htmlElement)) {
-                $startupJavascript = '/bundles/pimcoreadmin/js/pimcore/document/edit/startup.js';
-
                 // there is no session user when editmode is forced (EditmodeResolver::setForceEditmode())
-                $headHtml = $this->buildHeadHtml($document, $user?->getLanguage() ?: 'en');
+                $headHtml = $this->assetProvider->getHeadHtml($document, $user?->getLanguage() ?: 'en');
                 $bodyHtml = "\n\n" . $this->editableConfigCollector->getHtml() . "\n\n";
-                $bodyHtml .= "\n\n" . '<script src="' . $startupJavascript . '?_dc=' . Version::getRevision() . '"></script>' . "\n\n";
+                $bodyHtml .= $this->assetProvider->getBodyHtml($document);
 
                 $html = $this->insertBefore('</head>', $html, $headHtml);
                 $html = $this->insertBefore('</body>', $html, $bodyHtml);
@@ -187,146 +181,5 @@ class EditmodeListener implements EventSubscriberInterface
         }
 
         return $code;
-    }
-
-    protected function buildHeadHtml(Document $document, string $language): string
-    {
-        $libraries = $this->getEditmodeLibraries();
-        $scripts = $this->getEditmodeScripts();
-        $stylesheets = $this->getEditmodeStylesheets();
-
-        $headHtml = "\n\n\n<!-- pimcore editmode -->\n";
-        $headHtml .= '<meta name="google" content="notranslate">';
-        $headHtml .= "\n\n";
-
-        // include stylesheets
-        foreach ($stylesheets as $stylesheet) {
-            $headHtml .= '<link rel="stylesheet" type="text/css" href="' . $this->addCacheBuster($stylesheet) . '" />';
-            $headHtml .= "\n";
-        }
-
-        $headHtml .= "\n\n";
-
-        // include script libraries
-        foreach ($libraries as $script) {
-            $headHtml .= '<script src="' . $this->addCacheBuster($script) . '"></script>';
-            $headHtml .= "\n";
-        }
-
-        // combine the pimcore scripts in non-devmode
-        if (Pimcore::disableMinifyJs()) {
-            foreach ($scripts as $script) {
-                $headHtml .= '<script src="' . $this->addCacheBuster($script) . '"></script>';
-                $headHtml .= "\n";
-            }
-        } else {
-            $scriptContents = '';
-            $externalScripts = [];
-            foreach ($scripts as $scriptUrl) {
-                // bundle paths can be absolute URLs or generated routes, which can't be read from the web root
-                $file = PIMCORE_WEB_ROOT . $scriptUrl;
-                if (str_starts_with($scriptUrl, '/') && !str_starts_with($scriptUrl, '//') && is_file($file) && ($content = file_get_contents($file)) !== false) {
-                    $scriptContents .= $content . "\n\n\n";
-                } else {
-                    $externalScripts[] = $scriptUrl;
-                }
-            }
-
-            $headHtml .= '<script src="' . $this->router->generate('pimcore_admin_misc_scriptproxy', Admin::getMinimizedScriptPath($scriptContents)) . '"></script>' . "\n";
-
-            foreach ($externalScripts as $script) {
-                $headHtml .= '<script src="' . $this->addCacheBuster($script) . '"></script>' . "\n";
-            }
-        }
-        $path = $this->router->generate('pimcore_admin_misc_jsontranslationssystem', [
-            'language' => $language,
-            '_dc' => Version::getRevision(),
-        ]);
-
-        $headHtml .= '<script src="' . $path . '"></script>' . "\n";
-        $headHtml .= '<script src="' . $this->router->generate('fos_js_routing_js', ['callback' => 'fos.Router.setData']) . '"></script>' . "\n";
-        $headHtml .= "\n\n";
-
-        // set var for editable configurations which is filled by Document\Tag::admin()
-        $headHtml .= '<script>
-            var editableDefinitions = [];
-            var pimcore_document_id = ' . $document->getId() . ';
-        </script>';
-
-        $headHtml .= "\n\n<!-- /pimcore editmode -->\n\n\n";
-
-        return $headHtml;
-    }
-
-    private function addCacheBuster(string $url): string
-    {
-        return $url . (str_contains($url, '?') ? '&' : '?') . '_dc=' . Version::getRevision();
-    }
-
-    protected function getEditmodeLibraries(): array
-    {
-        $disableMinifyJs = Pimcore::disableMinifyJs();
-
-        return [
-            '/bundles/pimcoreadmin/js/pimcore/common.js',
-            '/bundles/pimcoreadmin/js/lib/class.js',
-            '/bundles/pimcoreadmin/extjs/js/ext-all' . ($disableMinifyJs ? '-debug' : '') . '.js',
-        ];
-    }
-
-    protected function getEditmodeScripts(): array
-    {
-        return array_merge(
-            [
-                '/bundles/fosjsrouting/js/router.js',
-                '/bundles/pimcoreadmin/js/pimcore/functions.js',
-                '/bundles/pimcoreadmin/js/pimcore/overrides.js',
-                '/bundles/pimcoreadmin/js/pimcore/tool/milestoneslider.js',
-                '/bundles/pimcoreadmin/js/pimcore/element/tag/imagehotspotmarkereditor.js',
-                '/bundles/pimcoreadmin/js/pimcore/element/tag/imagecropper.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/edit/helper.js',
-                '/bundles/pimcoreadmin/js/pimcore/elementservice.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/edit/dnd.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editable.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/block.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/scheduledblock.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/date.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/relation.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/relations.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/checkbox.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/image.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/input.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/link.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/select.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/snippet.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/textarea.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/numeric.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/wysiwyg.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/renderlet.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/table.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/video.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/multiselect.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/area_abstract.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/areablock.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/area.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/pdf.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/embed.js',
-                '/bundles/pimcoreadmin/js/pimcore/document/editables/manager.js',
-            ],
-            $this->bundleManager->getEditmodeJsPaths()
-        );
-    }
-
-    protected function getEditmodeStylesheets(): array
-    {
-        return array_merge(
-            [
-                '/bundles/pimcoreadmin/css/icons.css',
-                '/bundles/pimcoreadmin/extjs/css/PimcoreApp-all_1.css',
-                '/bundles/pimcoreadmin/extjs/css/PimcoreApp-all_2.css',
-                '/bundles/pimcoreadmin/css/editmode.css',
-            ],
-            $this->bundleManager->getEditmodeCssPaths()
-        );
     }
 }

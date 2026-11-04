@@ -18,8 +18,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection;
 
 use InvalidArgumentException;
+use Pimcore\Bundle\CoreBundle\Editmode\AdminUiClassicEditmodeAssetProvider;
 use Pimcore\Bundle\CoreBundle\EventListener\TranslationDebugListener;
 use Pimcore\Extension\Document\Areabrick\Attribute\AsAreabrick;
+use Pimcore\Document\Editmode\EditmodeAssetProviderInterface;
 use Pimcore\Http\Context\PimcoreContextGuesser;
 use Pimcore\Loader\ImplementationLoader\ClassMapLoader;
 use Pimcore\Loader\ImplementationLoader\PrefixLoader;
@@ -137,6 +139,7 @@ final class PimcoreCoreExtension extends ConfigurableExtension
         $this->configureRouting($container, $config['routing']);
         $this->configureTranslations($container, $config['translations']);
         $this->configurePasswordHashers($container, $config);
+        $this->configureEditmodeAssets($container);
 
         $container->setParameter('pimcore.workflow', $config['workflows']);
 
@@ -249,6 +252,17 @@ final class PimcoreCoreExtension extends ConfigurableExtension
         } else {
             $definition = $container->getDefinition(TranslationDebugListener::class);
             $definition->setArgument('$parameterName', $parameter);
+        }
+    }
+
+    /**
+     * The default editmode assets and the routes they use belong to the classic admin UI
+     */
+    private function configureEditmodeAssets(ContainerBuilder $container): void
+    {
+        if (!isset($container->getParameter('kernel.bundles')['PimcoreAdminBundle'])) {
+            $container->removeAlias(EditmodeAssetProviderInterface::class);
+            $container->removeDefinition(AdminUiClassicEditmodeAssetProvider::class);
         }
     }
 

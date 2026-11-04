@@ -47,12 +47,17 @@ class ElementListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
+    /**
+     * @param string[] $ignoredRoutes routes that serve no page (e.g. scripts of the admin UI): the fallback document
+     *                                of their path must not be checked, an unpublished home page would deny them
+     */
     public function __construct(
         protected DocumentResolver $documentResolver,
         protected EditmodeResolver $editmodeResolver,
         protected RequestHelper    $requestHelper,
         protected UserLoader       $userLoader,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly array $ignoredRoutes = ['fos_js_routing_js']
     )
     {
     }
@@ -73,7 +78,7 @@ class ElementListener implements EventSubscriberInterface
                 return;
             }
 
-            if ($request->attributes->get('_route') === 'fos_js_routing_js') {
+            if (in_array($request->attributes->get('_route'), $this->ignoredRoutes, true)) {
                 return;
             }
 

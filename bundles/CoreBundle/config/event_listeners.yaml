@@ -78,6 +78,10 @@ services:
 
     Pimcore\Bundle\CoreBundle\EventListener\Frontend\EditmodeListener: ~
 
+    # both removed by PimcoreCoreExtension if the PimcoreAdminBundle is not loaded, an admin UI can set its own alias
+    Pimcore\Bundle\CoreBundle\Editmode\AdminUiClassicEditmodeAssetProvider: ~
+    Pimcore\Document\Editmode\EditmodeAssetProviderInterface: '@Pimcore\Bundle\CoreBundle\Editmode\AdminUiClassicEditmodeAssetProvider'
+
     Pimcore\Bundle\CoreBundle\EventListener\ResponseStackListener: ~
 
     #
