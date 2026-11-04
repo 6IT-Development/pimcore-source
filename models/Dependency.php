@@ -102,18 +102,26 @@ class Dependency extends AbstractModel
         return $this->requires;
     }
 
-    public function getFilterRequiresByPath(?int $offset = null, ?int $limit = null, ?string $value = null): array
+    public function getFilterRequiresByPath(
+        ?int    $offset = null,
+        ?int    $limit = null,
+        ?string $value = null,
+        ?string $orderBy = null,
+        ?string $orderDirection = null
+    ): array
     {
-
-        return $this->getDao()->getFilterRequiresByPath($offset, $limit, $value);
-
+        return $this->getDao()->getFilterRequiresByPath($offset, $limit, $value, $orderBy, $orderDirection);
     }
 
-    public function getFilterRequiredByPath(?int $offset = null, ?int $limit = null, ?string $value = null): array
+    public function getFilterRequiredByPath(
+        ?int    $offset = null,
+        ?int    $limit = null,
+        ?string $value = null,
+        ?string $orderBy = null,
+        ?string $orderDirection = null
+    ): array
     {
-
-        return $this->getDao()->getFilterRequiredByPath($offset, $limit, $value);
-
+        return $this->getDao()->getFilterRequiredByPath($offset, $limit, $value, $orderBy, $orderDirection);
     }
 
     public function getRequiredBy(?int $offset = null, ?int $limit = null): array

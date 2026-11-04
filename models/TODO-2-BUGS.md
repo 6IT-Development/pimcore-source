@@ -1543,7 +1543,7 @@ passing the whole query through `sprintf()`, in both filter queries and in `getR
 search value it no longer reached `sprintf()`, but any `%` added to the query text later would have been read as a
 format specifier. Moving the paging to the DBAL query builder stays with I-43.
 
-## [ ] B-96 – `getFilterRequires*ByPath()` whitelist `orderBy = 'path'`, but the queries select no `path` column
+## [x] B-96 – `getFilterRequires*ByPath()` whitelist `orderBy = 'path'`, but the queries select no `path` column
 
 **File:** `models/Dependency/Dao.php:79`, `:88-106`, `:138`, `:147-165`
 
@@ -1554,6 +1554,11 @@ format specifier. Moving the paging to the DBAL query builder stays with I-43.
 
 **Fix direction:** select `CONCAT(…) AS path` in each `UNION` branch (as in `getRequiredByWithPath()`) and forward
 `$orderBy` / `$orderDirection` from the model (I-43).
+
+**Done:** Each `UNION` branch of both filter queries selects its `CONCAT(…) as path`, as
+`getRequiredByWithPath()` does, and the outer query returns `id, type, path`, so `orderBy: 'path'` sorts instead of
+failing with "Unknown column". `Dependency::getFilterRequiresByPath()` / `getFilterRequiredByPath()` forward `$orderBy`
+and `$orderDirection` to the DAO. The rows keep their `id` / `type` keys, `path` is an extra key.
 
 ## [ ] B-97 – Rows pointing to deleted elements are never removed for several element types; counts and `isRequired()` include them
 
