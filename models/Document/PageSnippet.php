@@ -607,10 +607,15 @@ abstract class PageSnippet extends Model\Document
     /**
      * Validates if there is a missing value for required editable
      *
+     * Recomputed on every save: a stored true must not block publishing once the editables are filled. The result is
+     * null (unknown) when the document cannot be rendered.
+     *
      * @internal
      */
     protected function checkMissingRequiredEditable(): void
     {
+        $this->setMissingRequiredEditable(null);
+
         // load data which must be requested
         $this->getProperties();
         $this->getEditables();
@@ -618,30 +623,30 @@ abstract class PageSnippet extends Model\Document
         //Allowed tags for required check
         $allowedTypes = ['input', 'wysiwyg', 'textarea', 'numeric'];
 
-        if ($this->getMissingRequiredEditable() === null) {
-            /** @var EditableUsageResolver $editableUsageResolver */
-            $editableUsageResolver = Pimcore::getContainer()->get(EditableUsageResolver::class);
+        /** @var EditableUsageResolver $editableUsageResolver */
+        $editableUsageResolver = Pimcore::getContainer()->get(EditableUsageResolver::class);
 
-            try {
-                $documentCopy = Service::cloneMe($this);
-                if ($documentCopy instanceof self) {
-                    // rendering could fail if the controller/action doesn't exist, in this case we can skip the required check
-                    $editableNames = $editableUsageResolver->getUsedEditableNames($documentCopy);
-                    foreach ($editableNames as $editableName) {
-                        $editable = $documentCopy->getEditable($editableName);
-                        if ($editable instanceof Editable && in_array($editable->getType(), $allowedTypes)) {
-                            $editableConfig = $editable->getConfig();
-                            if ($editable->isEmpty() && isset($editableConfig['required']) && $editableConfig['required']) {
-                                $this->setMissingRequiredEditable(true);
+        try {
+            $documentCopy = Service::cloneMe($this);
+            if ($documentCopy instanceof self) {
+                // rendering could fail if the controller/action doesn't exist, in this case we can skip the required check
+                $editableNames = $editableUsageResolver->getUsedEditableNames($documentCopy);
+                $missingRequiredEditable = false;
+                foreach ($editableNames as $editableName) {
+                    $editable = $documentCopy->getEditable($editableName);
+                    if ($editable instanceof Editable && in_array($editable->getType(), $allowedTypes)) {
+                        $editableConfig = $editable->getConfig();
+                        if ($editable->isEmpty() && isset($editableConfig['required']) && $editableConfig['required']) {
+                            $missingRequiredEditable = true;
 
-                                break;
-                            }
+                            break;
                         }
                     }
                 }
-            } catch (Exception) {
-                // noting to do, as rendering the document failed for whatever reason
+                $this->setMissingRequiredEditable($missingRequiredEditable);
             }
+        } catch (Throwable) {
+            // noting to do, as rendering the document failed for whatever reason (also a \Error in a template)
         }
     }
 

@@ -2555,7 +2555,7 @@ does not skip the others; a rollback discards it, so no listener sees children d
 The `hideUnpublished` flag was already reset in a `finally`. Loading the subtree through recursive `getChildren(true)`
 stays as is; assets defer only their versions (B-17).
 
-## [ ] B-140 – `missingRequiredEditable` is never re-evaluated once it is `true`
+## [x] B-140 – `missingRequiredEditable` is never re-evaluated once it is `true`
 
 **Files:** `models/Document/PageSnippet.php:126-136`, `:581-594`, `:610-644`; column
 `documents_page.missingRequiredEditable`
@@ -2568,6 +2568,13 @@ stays as is; assets defer only their versions (B-17).
   and catches only `Exception` – a Twig `\Error` makes the save fail.
 
 **Fix direction:** reset to `null` (recompute) before every publish check, or compute on demand; catch `\Throwable`.
+
+**Done:** `checkMissingRequiredEditable()` resets the flag and recomputes it on every save: `false` when the rendered
+document has no empty required editable, `true` when it has one, `null` when rendering fails. A stored `true` no longer
+blocks publishing once the editables are filled. It catches `\Throwable`, so a Twig `\Error` no longer fails the save.
+The `setMissingRequiredEditable(false)` in `Document\Service::copyAsChild()` was removed: the check now overwrites the
+flag, and an inheriting copy is rendered with the main document's editables. The rendering cost on every save
+(CLI / Messenger) is unchanged.
 
 ## [ ] B-141 – `getEditables()` with inherited values stores the content-main editables as the document's own
 

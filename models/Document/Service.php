@@ -195,7 +195,6 @@ class Service extends Model\Element\Service implements ResetInterface
 
         if ($enableInheritance && ($new instanceof Document\PageSnippet) && $new->supportsContentMain()) {
             $new->setEditables([]);
-            $new->setMissingRequiredEditable(false);
             $new->setContentMainDocumentId($source->getId(), true);
         }
 
