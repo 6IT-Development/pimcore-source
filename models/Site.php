@@ -26,7 +26,6 @@ use Pimcore\Event\SiteEvents;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Logger;
 use Pimcore\Model\Exception\NotFoundException;
-use Pimcore\Tool\Serialize;
 
 /**
  * @method Site\Dao getDao()
@@ -160,6 +159,22 @@ final class Site extends AbstractModel
     }
 
     /**
+     * Decodes a list stored as serialized array, without objects; null if the value is no such array
+     *
+     * @internal
+     */
+    public static function unserializeList(string $value): ?array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        $list = @unserialize($value, ['allowed_classes' => false]);
+
+        return is_array($list) ? $list : null;
+    }
+
+    /**
      * Resolves a site by its ID (also as a string of digits, e.g. a route parameter), its domain or the site itself
      *
      * @throws Exception
@@ -268,32 +283,21 @@ final class Site extends AbstractModel
     }
 
     /**
+     * The domains are normalised (normalizeDomain()) and validated by save(), so loading a site never fails on a
+     * stored value. A string is decoded as serialized array, any other string is taken as a single domain.
+     *
      * @return $this
      */
     public function setDomains(array|string $domains): Site
     {
         if (is_string($domains)) {
-            $domains = Serialize::unserialize($domains);
+            $domains = self::unserializeList($domains) ?? [$domains];
         }
-        if (is_array($domains)) {
-            $domains = array_values(array_unique(array_filter(array_map(
-                static fn (mixed $domain): string => self::normalizeDomain((string) $domain),
-                $domains
-            ))));
-            array_map(static function ($domain) {
-                //replace all wildcards with a placeholder dummy string
-                $wildCardLessDomain = str_replace('*', 'anystring', $domain);
-                if (
-                    $wildCardLessDomain &&
-                    !filter_var(idn_to_ascii($wildCardLessDomain), FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)
-                ) {
-                    throw new InvalidArgumentException(sprintf('Invalid domain name "%s"', $domain));
-                }
-            }, $domains);
-            $this->domains = $domains;
-        } else {
-            $this->domains = [];
-        }
+
+        $this->domains = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $domain): string => is_scalar($domain) ? self::normalizeDomain((string) $domain) : '',
+            $domains
+        ))));
 
         return $this;
     }
@@ -357,7 +361,8 @@ final class Site extends AbstractModel
     public function setLocalizedErrorDocuments(array|string $localizedErrorDocuments): Site
     {
         if (is_string($localizedErrorDocuments)) {
-            $localizedErrorDocuments = Serialize::unserialize($localizedErrorDocuments);
+            $localizedErrorDocuments = self::unserializeList($localizedErrorDocuments)
+                ?? throw new InvalidArgumentException('The localized error documents are not a serialized array');
         }
         $this->localizedErrorDocuments = $localizedErrorDocuments;
 
@@ -369,13 +374,12 @@ final class Site extends AbstractModel
         return $this->localizedErrorDocuments;
     }
 
+    /**
+     * The domain is normalised (normalizeDomain()) and validated by save()
+     */
     public function setMainDomain(string $mainDomain): void
     {
-        $mainDomain = self::normalizeDomain($mainDomain);
-        if ($mainDomain && !filter_var(idn_to_ascii($mainDomain), FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
-            throw new InvalidArgumentException(sprintf('Invalid main domain name "%s"', $mainDomain));
-        }
-        $this->mainDomain = $mainDomain;
+        $this->mainDomain = self::normalizeDomain($mainDomain);
     }
 
     public function getMainDomain(): string
@@ -442,15 +446,41 @@ final class Site extends AbstractModel
         return $this->creationDate;
     }
 
+    /**
+     * @throws InvalidArgumentException if a domain or the main domain is not a valid host name
+     */
     public function save(): void
     {
         $preSaveEvent = new SiteEvent($this);
         $this->dispatchEvent($preSaveEvent, SiteEvents::PRE_SAVE);
 
+        $this->validate();
+
         $this->getDao()->save();
 
         $postSaveEvent = new SiteEvent($this);
         $this->dispatchEvent($postSaveEvent, SiteEvents::POST_SAVE);
+    }
+
+    /**
+     * Runs on save() and not in the setters, which also load the stored values: a domain saved before the validation
+     * existed must not make the site unloadable (and its host answer 500).
+     *
+     * @throws InvalidArgumentException
+     */
+    private function validate(): void
+    {
+        foreach ($this->domains as $domain) {
+            // a wildcard stands for any label characters, also inside a label that normalizeDomain() kept in Unicode
+            $wildcardLessDomain = idn_to_ascii(str_replace('*', 'anystring', $domain), IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
+            if (!$wildcardLessDomain || !filter_var($wildcardLessDomain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+                throw new InvalidArgumentException(sprintf('Invalid domain name "%s"', $domain));
+            }
+        }
+
+        if ($this->mainDomain !== '' && !filter_var($this->mainDomain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+            throw new InvalidArgumentException(sprintf('Invalid main domain name "%s"', $this->mainDomain));
+        }
     }
 
     public function delete(): void

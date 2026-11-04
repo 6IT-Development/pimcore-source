@@ -2285,7 +2285,7 @@ cache entry. The wildcard match is case-insensitive as well. Migration `Version2
 rows from the raw values (a row whose domains do not unserialize is reported and left alone, B-129) and clears the
 `site` cache tag. Showing the Unicode form in the admin UI is up to the admin bundle.
 
-## [ ] B-129 – Loading a site validates and unserializes stored data: one legacy or corrupt row throws on every load
+## [x] B-129 – Loading a site validates and unserializes stored data: one legacy or corrupt row throws on every load
 
 **Files:** `models/Site.php:228-251`, `:307-315`; `lib/Model/AbstractModel.php:163-190`; `lib/Tool/Serialize.php:33-40`;
 `lib/Tool/Frontend.php:70-95`
@@ -2306,6 +2306,15 @@ rows from the raw values (a row whose domains do not unserialize is reported and
 without validation; validate in `save()`, I-69). Decode defensively: `unserialize($v, ['allowed_classes' => false])`,
 check `is_array()`, log and fall back to `[]`. Remove the string branch from the public setters (or accept only
 arrays and a list of domains).
+
+**Done:** the setters no longer validate: `setDomains()` / `setMainDomain()` only normalise (B-128), and the new
+private `Site::validate()` checks the domains and the main domain in `save()` (after `PRE_SAVE`), so a legacy domain
+makes only the save of that site fail, not every load. The DAO decodes `domains` and `localizedErrorDocuments` of a
+row with the new internal `Site::unserializeList()` (`allowed_classes => false`, no warning, `null` for anything but an
+array); an unreadable value is logged as error and loads as empty list. The wildcard scan in `Dao::getByDomain()` uses
+the same decoder. Of the public setters, `setDomains()` takes a string that is not a serialized array as a single
+domain, and `setLocalizedErrorDocuments()` throws `InvalidArgumentException` for such a string instead of assigning
+`false`. Separate hydration (`fromDbRow()`) stays with I-69.
 
 ## [ ] B-130 – `getByDomain()` matching: unescaped `LIKE` wildcards, empty host matches, arbitrary winner for duplicates and overlapping wildcards
 

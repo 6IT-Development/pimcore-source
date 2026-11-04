@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\Site;
 
+use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Site;
@@ -37,7 +38,7 @@ class Dao extends Model\Dao\AbstractDao
         if (!$data) {
             throw new NotFoundException(sprintf('Unable to load site with ID `%s`', $id));
         }
-        $this->assignVariablesToModel($data);
+        $this->assignRowToModel($data);
     }
 
     /**
@@ -50,7 +51,7 @@ class Dao extends Model\Dao\AbstractDao
         if (!$data) {
             throw new NotFoundException(sprintf('Unable to load site with ID `%s`', $id));
         }
-        $this->assignVariablesToModel($data);
+        $this->assignRowToModel($data);
     }
 
     /**
@@ -68,7 +69,7 @@ class Dao extends Model\Dao\AbstractDao
             $wildcardDomains = [];
             foreach ($sitesRaw as $site) {
                 if (!empty($site['domains']) && strpos($site['domains'], '*')) {
-                    $siteDomains = unserialize($site['domains']);
+                    $siteDomains = Site::unserializeList($site['domains']);
                     if (is_array($siteDomains) && count($siteDomains) > 0) {
                         foreach ($siteDomains as $siteDomain) {
                             if (str_contains($siteDomain, '*')) {
@@ -92,6 +93,27 @@ class Dao extends Model\Dao\AbstractDao
                 throw new NotFoundException('there is no site for the requested domain: `' . $domain . '´');
             }
         }
+        $this->assignRowToModel($data);
+    }
+
+    /**
+     * The serialized lists are decoded here: an unreadable stored value is logged and loads as empty list instead of
+     * making the site unloadable
+     */
+    private function assignRowToModel(array $data): void
+    {
+        foreach (['domains', 'localizedErrorDocuments'] as $column) {
+            if (!is_string($data[$column] ?? null)) {
+                continue;
+            }
+
+            $list = Site::unserializeList($data[$column]);
+            if ($list === null) {
+                Logger::error(sprintf('Site %s: the stored %s are not a serialized array and are ignored', $data['id'], $column));
+            }
+            $data[$column] = $list ?? [];
+        }
+
         $this->assignVariablesToModel($data);
     }
 
