@@ -39,8 +39,10 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function getBySourceId(?int $id = null, ?string $type = null): void
     {
-        if ($id && $type) {
+        if ($id !== null) {
             $this->model->setSourceId($id);
+        }
+        if ($type !== null) {
             $this->model->setSourceType($type);
         }
 

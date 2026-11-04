@@ -615,6 +615,11 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
 
     public function getDependencies(): Model\Dependency
     {
+        if ($this->getId() === null) {
+            // an unsaved element has no rows yet, and nothing to cache the result for
+            return (new Model\Dependency())->setSourceType(Service::getElementType($this));
+        }
+
         if (!$this->dependencies) {
             $this->dependencies = Model\Dependency::getBySourceId($this->getId(), Service::getElementType($this));
         }

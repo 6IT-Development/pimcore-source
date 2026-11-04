@@ -62,6 +62,11 @@ class ElementDependenciesHandler
 
         try {
             foreach ($element->resolveDependencies() as $requirement) {
+                if (!$requirement['id']) {
+                    // a relation to an unsaved element, there is nothing to depend on yet
+                    continue;
+                }
+
                 if ($requirement['id'] == $id && $requirement['type'] == $type) {
                     // dont't add a reference to yourself
                     continue;

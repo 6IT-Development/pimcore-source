@@ -1615,7 +1615,7 @@ recursively deleted children are dispatched once, after the whole tree is commit
 not fail the committed delete. When the element delete itself runs inside a transaction of the caller, "after the
 commit" is still inside that outer transaction, as before.
 
-## [ ] B-99 – Uninitialized typed properties and `null` ids crash `Dependency` (`Error` / `TypeError`)
+## [x] B-99 – Uninitialized typed properties and `null` ids crash `Dependency` (`Error` / `TypeError`)
 
 **Files:** `models/Dependency.php:32`, `:38`, `:51-57`, `:91-94`, `:148-151`; `models/Dependency/Dao.php:41-46`;
 `models/Element/AbstractElement.php:613-620`
@@ -1633,6 +1633,13 @@ commit" is still inside that outer transaction, as before.
 **Fix direction:** constructor with required `int $sourceId, string|ElementType $sourceType` (I-41/I-42), or nullable
 properties with explicit checks. Return an empty `Dependency` for unsaved elements in `getDependencies()`. Skip
 requirements with a `null`/`0` id in the handler.
+
+**Done:** `$sourceId` / `$sourceType` default to `0` / `''`, so a new `Dependency` can be read (it finds no rows) instead
+of throwing "must not be accessed before initialization". `Dao::getBySourceId()` sets every argument that is not `null`,
+so `getBySourceId(0, …)` works. `AbstractElement::getDependencies()` returns an empty, uncached `Dependency` for an
+unsaved element instead of passing `null` to `getBySourceId(int …)`. `ElementDependenciesHandler` skips requirements
+without an id (relations to unsaved elements) instead of failing with a `TypeError` in `addRequirement()`. The required
+constructor arguments stay with I-41/I-42.
 
 ## [ ] B-100 – `AbstractElement::getDependencies()` is cached on the element and never reset after save or delete
 

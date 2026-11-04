@@ -31,16 +31,16 @@ use Throwable;
 class Dependency extends AbstractModel
 {
     /**
-     * The ID of the object to get dependencies for
+     * The ID of the object to get dependencies for, 0 until it is set
      *
      */
-    protected int $sourceId;
+    protected int $sourceId = 0;
 
     /**
-     * The type of the object to get dependencies for
+     * The type of the object to get dependencies for, empty until it is set
      *
      */
-    protected string $sourceType;
+    protected string $sourceType = '';
 
     /**
      * Contains the ID/type of objects which are required for the given source object (sourceId/sourceType)
