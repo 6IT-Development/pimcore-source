@@ -51,6 +51,20 @@ class TestController
 }
 ```
 
+### Site and Language Specific Settings
+
+A setting can exist several times with the same name, for a site and/or a language. `pimcore_website_config()` and
+`WebsiteSetting::getByName()` pick the same one, in this order:
+
+1. site and language
+2. site and fallback language (only `getByName()` has a fallback language)
+3. site, no language
+4. no site, language
+5. no site, fallback language
+6. no site, no language
+
+A site specific setting therefore wins over a language specific one without site.
+
 ### Manipulate the values in a Controller
 
 If you want to change the value of a website setting from your PHP script, for example from a controller, you can use this code.
@@ -65,8 +79,8 @@ class TestController
     public function testAction(): Response
     {
         // get the "somenumber" setting for "de"
-        // if the property does not exist you will get the setting with not language provided
-        $somesetting = \Pimcore\Model\WebsiteSetting::getByName('somenumber', null, 'de');
+        // if there is none for "de", you get the one for the fallback language "en", then the one without language
+        $somesetting = \Pimcore\Model\WebsiteSetting::getByName('somenumber', null, 'de', 'en');
         $currentnumber = $somesetting->getData();
         //Now do something with the data or set new data
         //Count up in this case

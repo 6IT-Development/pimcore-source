@@ -1329,7 +1329,7 @@ so the legacy neutral row no longer beats a global language row. `setSiteId()` s
 loaded), and migration `Version20261104000100` converts the existing `siteId = 0` rows to `NULL`. The query keeps
 accepting `siteId = 0` for installations that have not run the migration yet.
 
-## [ ] B-85 – `$fallbackLanguage` is never used when a language-neutral row exists
+## [x] B-85 – `$fallbackLanguage` is never used when a language-neutral row exists
 
 **File:** `models/WebsiteSetting.php:95-115`; `models/WebsiteSetting/Dao.php:64-68`
 
@@ -1341,6 +1341,13 @@ accepting `siteId = 0` for installations that have not run the migration yet.
 
 **Fix direction:** decide and document the order. If it is `language → fallback → neutral`, query with
 `language IN (:lang, :fallback, '')` and rank in that order.
+
+**Done:** the order is `language → fallback → neutral` within the site precedence of B-83: site + language > site +
+fallback > site > language > fallback > neutral. `Dao::getByName()` queries the language, the fallback and the neutral
+rows at once and ranks them with `WebsiteSetting::getOverrideRank()`, which takes the fallback language now. The
+recursive retry on `NotFoundException` is gone, and the fallback language is part of the name/id mapping key, so a
+lookup with and without fallback no longer share an entry. The order is documented in the `getByName()` docblock and in
+`doc/18_Tools_and_Features/27_Website_Settings.md`.
 
 ## [ ] B-86 – No uniqueness for `(name, siteId, language)`; empty names accepted
 

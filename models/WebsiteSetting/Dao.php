@@ -47,7 +47,7 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * @throws NotFoundException
      */
-    public function getByName(?string $name = null, ?int $siteId = null, ?string $language = null): void
+    public function getByName(?string $name = null, ?int $siteId = null, ?string $language = null, ?string $fallbackLanguage = null): void
     {
         if ($name != null) {
             $this->model->setName($name);
@@ -65,9 +65,10 @@ class Dao extends Model\Dao\AbstractDao
                     language IS NULL
                     OR language = ''
                     OR language = ?
+                    OR language = ?
                 )
             ORDER BY id",
-            [$this->model->getName(), $siteId, $language]
+            [$this->model->getName(), $siteId, $language, $fallbackLanguage]
         );
 
         // rank in PHP with the same rule as Config::getWebsiteConfig(), the first row wins a tie
@@ -78,7 +79,8 @@ class Dao extends Model\Dao\AbstractDao
                 $row['siteId'] === null ? null : (int)$row['siteId'],
                 (string)$row['language'],
                 $siteId,
-                $language
+                $language,
+                $fallbackLanguage
             );
             if ($rank !== null && ($bestRank === null || $rank > $bestRank)) {
                 $data = $row;

@@ -58,36 +58,45 @@ final class WebsiteSetting extends AbstractModel
      */
     private const string NAME_ID_MAPPING_CACHE_KEY = 'website_setting_name_id_mapping';
 
-    protected static function getCacheKey(string $name, ?int $siteId = null, ?string $language = null): string
+    protected static function getCacheKey(string $name, ?int $siteId = null, ?string $language = null, ?string $fallbackLanguage = null): string
     {
-        return $name . '~~~' . $siteId . '~~~' . $language;
+        return $name . '~~~' . $siteId . '~~~' . $language . '~~~' . $fallbackLanguage;
     }
 
     /**
      * Ranks a setting for a lookup on a site and language; the highest rank wins, the lowest id breaks ties.
-     * A site specific setting beats a language specific one: site + language > site > language > neutral.
+     * A site specific setting beats a language specific one: site + language > site + fallback language > site >
+     * language > fallback language > neutral.
      * Settings without site (`null` or the legacy `0`) apply to all sites, settings without language to all languages.
      *
      * @return int|null null when the setting does not apply to the site or language
      *
      * @internal
      */
-    public static function getOverrideRank(?int $settingSiteId, string $settingLanguage, ?int $siteId, ?string $language): ?int
-    {
+    public static function getOverrideRank(
+        ?int $settingSiteId,
+        string $settingLanguage,
+        ?int $siteId,
+        ?string $language,
+        ?string $fallbackLanguage = null
+    ): ?int {
         if ($settingSiteId) {
             if ($settingSiteId !== $siteId) {
                 return null;
             }
-            $rank = 2;
+            $rank = 3;
         } else {
             $rank = 0;
         }
 
         if ($settingLanguage !== '') {
-            if ($settingLanguage !== $language) {
+            if ($settingLanguage === $language) {
+                $rank += 2;
+            } elseif ($settingLanguage === $fallbackLanguage) {
+                $rank++;
+            } else {
                 return null;
             }
-            $rank++;
         }
 
         return $rank;
@@ -117,14 +126,16 @@ final class WebsiteSetting extends AbstractModel
     /**
      * @param string $name name of the config
      * @param int|null $siteId site ID
-     * @param string|null $language language, if property cannot be found the value of property without language is returned
+     * @param string|null $language language, if there is no setting for it, the one for $fallbackLanguage and then the
+     *                              one without language is returned (a site specific setting comes first, see
+     *                              self::getOverrideRank())
      * @param string|null $fallbackLanguage fallback language
      *
      * @throws Exception
      */
     public static function getByName(string $name, ?int $siteId = null, ?string $language = null, ?string $fallbackLanguage = null): ?WebsiteSetting
     {
-        $nameCacheKey = WebsiteSetting::getCacheKey($name, $siteId, $language);
+        $nameCacheKey = WebsiteSetting::getCacheKey($name, $siteId, $language, $fallbackLanguage);
 
         $nameIdMapping = RuntimeCache::isRegistered(self::NAME_ID_MAPPING_CACHE_KEY)
             ? RuntimeCache::get(self::NAME_ID_MAPPING_CACHE_KEY)
@@ -145,12 +156,8 @@ final class WebsiteSetting extends AbstractModel
         $setting = new self();
 
         try {
-            $setting->getDao()->getByName($name, $siteId, $language);
+            $setting->getDao()->getByName($name, $siteId, $language, $fallbackLanguage);
         } catch (NotFoundException) {
-            if ($language != $fallbackLanguage) {
-                return self::getByName($name, $siteId, $fallbackLanguage, $fallbackLanguage);
-            }
-
             return null;
         }
 
