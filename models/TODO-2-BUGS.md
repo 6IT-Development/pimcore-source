@@ -2090,7 +2090,7 @@ because the admin grid joins their texts under that alias. The grouped key query
 builds its own `ORDER BY`: a column other than `key` (quoted, unquoted or prefixed with the table) is ordered by
 `MIN()`, `modificationDate` by `MAX()`, so `ONLY_FULL_GROUP_BY` accepts it. Other order keys are used as they are.
 
-## [ ] B-120 – Domain checks: `isAValidDomain()` swallows DB errors; the `admin` table is missing on a fresh install; swapped message arguments
+## [x] B-120 – Domain checks: `isAValidDomain()` swallows DB errors; the `admin` table is missing on a fresh install; swapped message arguments
 
 **Files:** `models/Translation/Dao.php:175-189`; `models/Translation/Listing.php:66-79`; `install.sql:432-444`
 
@@ -2106,6 +2106,13 @@ builds its own `ORDER BY`: a column other than `key` (quoted, unquoted or prefix
 **Fix direction:** check the table with `createSchemaManager()->tablesExist()` (or `SHOW TABLES LIKE ?`) and let
 connection errors propagate. Create tables for all configured domains at install/migration time (I-62). Fix the
 message.
+
+**Done:** `isAValidDomain()` checks the table by its exact name in `information_schema.TABLES` and no longer catches
+exceptions, so a DB outage fails loudly instead of looking like an unknown domain. `install.sql` creates
+`translations_admin`, and migration `Version20261104000200` creates the missing tables of all registered domains. Its
+DDL comes from the new `Translation\Dao::getCreateTableSql()`, which `createOrUpdateTable()` uses too (one definition
+for the lazy creation and the migration; `install.sql` stays a separate copy, I-62). The `Listing::setDomain()` message
+names the domain and the table in the right order. The console command stays with I-62.
 
 ## [ ] B-121 – `Dao::getAvailableLanguages()` fails under `ONLY_FULL_GROUP_BY`; `getAvailableDomains()` uses `_` as a LIKE wildcard
 

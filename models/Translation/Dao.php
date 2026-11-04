@@ -17,7 +17,6 @@ namespace Pimcore\Model\Translation;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Exception\TableNotFoundException;
-use Exception;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Translation;
@@ -278,22 +277,21 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * Returns boolean, if the domain table exists & domain registered in config
      *
-     *
+     * @throws \Doctrine\DBAL\Exception if the check fails: during a DB outage "no such domain" would make the
+     * Translator drop the DB translations silently
      */
     public function isAValidDomain(string $domain): bool
     {
-        try {
-            if (!preg_match(Translation::DOMAIN_PATTERN, $domain)
-                || !in_array($domain, Translation::getRegisteredDomains(), true)) {
-                return false;
-            }
-
-            $this->db->fetchOne('SELECT 1 FROM ' . $this->db->quoteIdentifier(self::TABLE_PREFIX . $domain) . ' LIMIT 1;');
-
-            return true;
-        } catch (Exception) {
+        if (!preg_match(Translation::DOMAIN_PATTERN, $domain)
+            || !in_array($domain, Translation::getRegisteredDomains(), true)) {
             return false;
         }
+
+        // an exact comparison: in SHOW TABLES LIKE, the `_` that the domain pattern allows would be a wildcard
+        return $this->db->fetchOne(
+            'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            [self::TABLE_PREFIX . $domain]
+        ) !== false;
     }
 
     /**
@@ -303,12 +301,21 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function createOrUpdateTable(): void
     {
-        $table = $this->getDatabaseTableName();
-
         // only registered domains with a plain identifier name get a table
         Translation::validateDomain($this->model->getDomain());
 
-        $this->db->executeQuery('CREATE TABLE IF NOT EXISTS ' . $this->db->quoteIdentifier($table) . " (
+        $this->db->executeStatement(self::getCreateTableSql($this->model->getDomain()));
+    }
+
+    /**
+     * The schema of a domain table, also used by the migration that creates the tables of all registered domains.
+     * The domain must match Translation::DOMAIN_PATTERN, it is not quoted.
+     *
+     * @internal
+     */
+    public static function getCreateTableSql(string $domain): string
+    {
+        return 'CREATE TABLE IF NOT EXISTS `' . self::TABLE_PREFIX . $domain . "` (
                           `key` varchar(190) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
                           `type` varchar(10) DEFAULT NULL,
                           `language` varchar(10) NOT NULL DEFAULT '',
@@ -319,7 +326,7 @@ class Dao extends Model\Dao\AbstractDao
                           `userModification` int(11) unsigned DEFAULT NULL,
                           PRIMARY KEY (`key`,`language`),
                           KEY `language` (`language`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
     }
 
     protected function updateModificationInfos(): void

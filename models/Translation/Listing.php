@@ -73,9 +73,9 @@ class Listing extends Model\Listing\AbstractListing
         if (!Translation::isAValidDomain($domain)) {
             throw new NotFoundException(
                 sprintf(
-                    'Either translation domain %s is not registered in config `pimcore.translations.domains` or table "%s" does not exist',
-                    'translations_' . $domain,
-                    $domain
+                    'Either translation domain "%s" is not registered in config `pimcore.translations.domains` or table "%s" does not exist',
+                    $domain,
+                    Translation\Dao::TABLE_PREFIX . $domain
                 )
             );
         }
