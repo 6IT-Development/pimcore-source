@@ -437,11 +437,12 @@ final class Translation extends AbstractModel
 
         $this->validate();
         $this->getDao()->save($onlyMissing);
+
+        // POST_* listeners that translate or render must already see the new texts
         $this->clearRuntimeCache();
+        self::clearDependentCache();
 
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::POST_SAVE);
-
-        self::clearDependentCache();
     }
 
     public function delete(): void
@@ -449,6 +450,9 @@ final class Translation extends AbstractModel
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::PRE_DELETE);
 
         $this->getDao()->delete();
+
+        // an auto-create queued earlier in the request would re-create the key at kernel.terminate
+        TranslationEntriesDumper::removeFromSaveQueue($this);
         $this->clearRuntimeCache();
         self::clearDependentCache();
 

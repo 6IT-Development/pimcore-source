@@ -31,6 +31,17 @@ class TranslationEntriesDumper
         self::$translations[$translation->getKey()] = $translation;
     }
 
+    /**
+     * Drops a queued auto-create of the key, e.g. because the key was deleted after it was queued
+     */
+    public static function removeFromSaveQueue(Translation $translation): void
+    {
+        $key = (string)$translation->getKey();
+        if ((self::$translations[$key] ?? null)?->getDomain() === $translation->getDomain()) {
+            unset(self::$translations[$key]);
+        }
+    }
+
     public function dumpToDb(): void
     {
         foreach (self::$translations as $translation) {

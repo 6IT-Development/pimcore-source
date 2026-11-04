@@ -221,7 +221,11 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function delete(): void
     {
-        $this->db->delete($this->db->quoteIdentifier($this->getDatabaseTableName()), [$this->db->quoteIdentifier('key') => $this->model->getKey()]);
+        try {
+            $this->db->delete($this->db->quoteIdentifier($this->getDatabaseTableName()), [$this->db->quoteIdentifier('key') => $this->model->getKey()]);
+        } catch (TableNotFoundException) {
+            // the domain table is created with its first translation, without it there is nothing to delete
+        }
     }
 
     /**

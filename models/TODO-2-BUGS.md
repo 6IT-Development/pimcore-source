@@ -1926,7 +1926,7 @@ caller's transaction the exception is rethrown, so nothing is committed implicit
 metadata lock any more. `createOrUpdateTable()` stays (BC) and documents that it never changes an existing table. One
 schema definition and creating the tables of all configured domains up front stay with I-62 / B-120.
 
-## [ ] B-113 – `delete()`: stale runtime cache, a queued auto-create re-creates the key, inconsistent cache/event order
+## [x] B-113 – `delete()`: stale runtime cache, a queued auto-create re-creates the key, inconsistent cache/event order
 
 **File:** `models/Translation.php:354-373`; `models/Translation/Dao.php:130-133`; `TranslationEntriesDumper.php:29-40`
 
@@ -1940,6 +1940,11 @@ schema definition and creating the tables of all configured domains up front sta
 
 **Fix direction:** remove the key from `RuntimeCache` and from the dumper queue in `delete()`. Clear caches before the
 `POST_*` event in both methods.
+
+**Done:** `delete()` already drops the `RuntimeCache` entry (B-107). It now also removes a queued auto-create of the
+same domain and key from the dumper (`TranslationEntriesDumper::removeFromSaveQueue()`), so `kernel.terminate` does not
+re-create the deleted key. `save()` and `delete()` both clear the runtime and translator caches before the `POST_*`
+event. `Dao::delete()` treats a missing domain table as nothing to delete.
 
 ## [ ] B-114 – `getByKeyLocalized()`: explicit `$language` is ignored for the admin domain; session lookup in the model; unknown language returns `null`
 
