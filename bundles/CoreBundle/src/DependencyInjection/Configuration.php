@@ -2210,11 +2210,6 @@ final class Configuration implements ConfigurationInterface
     }
 
     /**
-     * Converts boolean strings ("true"/"false", "1"/"0", "yes"/"no", "on"/"off", "") to bool. Any other string is
-     * returned unchanged: env placeholders (`%env(bool:X)%`) are only resolved by Symfony after the normalization
-     * closures, and invalid values are rejected by the boolean node.
-     */
-    /**
      * These sections used ignoreExtraKeys(), which silently dropped unknown keys, so a typo like
      * `documents.allow_trailing_slahs` went unnoticed. Unknown keys are still dropped for BC (e.g. keys of Pimcore 10
      * like `documents.web_to_print`), but trigger a deprecation: Pimcore 12 rejects them like every other section.
@@ -2240,6 +2235,11 @@ final class Configuration implements ConfigurationInterface
         return array_diff_key($value, $unknown);
     }
 
+    /**
+     * Converts boolean strings ("true"/"false", "1"/"0", "yes"/"no", "on"/"off", "") to bool. Any other string is
+     * returned unchanged: env placeholders (`%env(bool:X)%`) are only resolved by Symfony after the normalization
+     * closures, and invalid values are rejected by the boolean node.
+     */
     private static function normalizeBoolString(string $value): bool|string
     {
         return filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $value;
