@@ -2576,7 +2576,7 @@ The `setMissingRequiredEditable(false)` in `Document\Service::copyAsChild()` was
 flag, and an inheriting copy is rendered with the main document's editables. The rendering cost on every save
 (CLI / Messenger) is unchanged.
 
-## [ ] B-141 – `getEditables()` with inherited values stores the content-main editables as the document's own
+## [x] B-141 – `getEditables()` with inherited values stores the content-main editables as the document's own
 
 **Files:** `models/Document/PageSnippet.php:462-477`, `:138-157`
 
@@ -2588,6 +2588,12 @@ flag, and an inheriting copy is rendered with the main document's editables. The
 
 **Fix direction:** keep inherited editables out of `$this->editables`; use clones flagged `inherited` (as
 `getEditable()` does).
+
+**Done:** `getEditables()` keeps only the document's own editables in `$this->editables`. With
+`$getInheritedValues = true` it returns them merged with clones of the content-main editables flagged `inherited`
+(shared with `getEditable()` through `$inheritedEditables`), in the content-main order. The result follows the flag on
+every call instead of being fixed by the first call, and `update()` skips the inherited clones, so a save neither
+flattens the inheritance nor re-points the main document's editables. Content-main cycles: B-142.
 
 ## [ ] B-142 – Content-main cycles are accepted: the chain is only checked with `$validate = true`
 

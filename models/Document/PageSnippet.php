@@ -464,15 +464,19 @@ abstract class PageSnippet extends Model\Document
     public function getEditables(): array
     {
         if ($this->editables === null) {
-            $documentEditables = $this->getDao()->getEditables();
+            $this->setEditables($this->getDao()->getEditables());
+        }
 
-            if (self::getGetInheritedValues() && $this->supportsContentMain() && $this->getContentMainDocument()) {
-                $contentMainEditables = $this->getContentMainDocument()->getEditables();
-                $documentEditables = array_merge($contentMainEditables, $documentEditables);
-                $this->inheritedEditables = $documentEditables;
+        if (self::getGetInheritedValues() && $this->supportsContentMain() && $contentMainDocument = $this->getContentMainDocument()) {
+            // the inherited editables are clones flagged as inherited, as in getEditable(), and are not kept as the
+            // document's own: save() would store them for this document and point the main document's instances to it
+            $editables = [];
+            foreach ($contentMainDocument->getEditables() as $name => $contentMainEditable) {
+                $editables[$name] = $this->editables[$name]
+                    ?? ($this->inheritedEditables[$name] ??= (clone $contentMainEditable)->setInherited(true));
             }
 
-            $this->setEditables($documentEditables);
+            return $editables + $this->editables;
         }
 
         return $this->editables;
