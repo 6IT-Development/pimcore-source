@@ -1197,7 +1197,7 @@ database as strings no longer trigger the string-id deprecation.
 **Done:** `getDataFromEditMode()` of the asset, document and object metadata types returns `null` (now typed `?int`)
 for a value that does not resolve to an element, the same as `normalize()` and `getDataFromListfolderGrid()`.
 
-## [ ] B-77 – Document/DataObject metadata grid round-trip uses `getFullPath()`
+## [x] B-77 – Document/DataObject metadata grid round-trip uses `getFullPath()`
 
 **File:** `MetaData/ClassDefinition/Data/Document.php:107`, `DataObject.php:107`
 
@@ -1205,6 +1205,10 @@ for a value that does not resolve to an element, the same as `normalize()` and `
   context).
 
 **Fix direction:** `getRealFullPath()`.
+
+**Done:** `getDataForListfolderGrid()` of the document and object metadata types returns `getRealFullPath()`, like
+the asset type and `getDataForEditMode()`. A document path can be rewritten to be site-relative by `getFullPath()`
+when a site is active, and `getByPath()` would not find it when the grid sends it back. For objects both are the same.
 
 ## [ ] B-78 – Invalid date metadata stored as `false`
 

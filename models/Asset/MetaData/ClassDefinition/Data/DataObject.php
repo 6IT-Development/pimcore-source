@@ -104,7 +104,7 @@ class DataObject extends Data
         }
 
         if ($data instanceof AbstractObject) {
-            return $data->getFullPath();
+            return $data->getRealFullPath();
         }
 
         return $data;

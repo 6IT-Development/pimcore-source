@@ -104,7 +104,7 @@ class Document extends Data
         }
 
         if ($data instanceof \Pimcore\Model\Document) {
-            return $data->getFullPath();
+            return $data->getRealFullPath();
         }
 
         return $data;
