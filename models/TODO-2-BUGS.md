@@ -1522,7 +1522,7 @@ lower-cases the value, escapes `\`, `%` and `_` and wraps it in `%…%`, so the 
 substring: `Logo` matches `/Logo.png`, `image.jpg` no longer matches `imageXjpg`, and `[`, `(` or a trailing `\` cannot
 cause a regex error. An empty or `null` value matches every path, as an empty filter field should.
 
-## [ ] B-95 – Search value goes through `sprintf()`: `%` in the filter text throws or rewrites the query
+## [x] B-95 – Search value goes through `sprintf()`: `%` in the filter text throws or rewrites the query
 
 **File:** `models/Dependency/Dao.php:108-110`, `:167-169`
 
@@ -1537,6 +1537,11 @@ $query = sprintf($query . ' LIMIT %d,%d', $offset, $limit);
 
 **Fix direction:** append `' LIMIT ' . (int)$offset . ', ' . (int)$limit` (as `getRequiredByWithPath()` does,
 `:357-359`), or use DBAL `setFirstResult()` / `setMaxResults()` (I-43).
+
+**Done:** The `LIMIT` clause is appended to the query (the typed `?int` parameters are the only input) instead of
+passing the whole query through `sprintf()`, in both filter queries and in `getRequiredBy()`. Since C-16 binds the
+search value it no longer reached `sprintf()`, but any `%` added to the query text later would have been read as a
+format specifier. Moving the paging to the DBAL query builder stays with I-43.
 
 ## [ ] B-96 – `getFilterRequires*ByPath()` whitelist `orderBy = 'path'`, but the queries select no `path` column
 

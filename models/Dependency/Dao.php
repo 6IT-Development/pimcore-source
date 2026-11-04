@@ -107,7 +107,7 @@ class Dao extends Model\Dao\AbstractDao
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
         if ($offset !== null && $limit !== null) {
-            $query = sprintf($query . ' LIMIT %d,%d', $offset, $limit);
+            $query .= ' LIMIT ' . $offset . ', ' . $limit;
         }
 
         // the search value comes from user input, it must only ever be bound as a parameter
@@ -171,7 +171,7 @@ class Dao extends Model\Dao\AbstractDao
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
         if ($offset !== null && $limit !== null) {
-            $query = sprintf($query . ' LIMIT %d,%d', $offset, $limit);
+            $query .= ' LIMIT ' . $offset . ', ' . $limit;
         }
 
         // the search value comes from user input, it must only ever be bound as a parameter
@@ -347,7 +347,7 @@ class Dao extends Model\Dao\AbstractDao
         ';
 
         if ($offset !== null && $limit !== null) {
-            $query = sprintf($query . ' LIMIT %d,%d', $offset, $limit);
+            $query .= ' LIMIT ' . $offset . ', ' . $limit;
         }
 
         $data = $this->db->fetchAllAssociative($query, [$this->model->getSourceType(), $this->model->getSourceId()]);
