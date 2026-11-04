@@ -2344,7 +2344,7 @@ only rows whose domains contain `*` (`str_contains()` semantics in SQL instead o
 oldest site for a pattern claimed twice, tries the patterns with the most literal characters first and stops at the
 first match. Rejecting duplicate domains across sites in `save()` stays with I-69.
 
-## [ ] B-131 – Every unknown `Host` header writes a permanent cache entry and scans the whole `sites` table
+## [x] B-131 – Every unknown `Host` header writes a permanent cache entry and scans the whole `sites` table
 
 **Files:** `models/Site.php:109-134`; `models/Site/Dao.php:60-95`;
 `bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:111` (see CoreBundle **B-67**)
@@ -2359,6 +2359,14 @@ first match. Rejecting duplicate domains across sites in `save()` stays with I-6
 **Fix direction:** resolve against one cached domain → site map (all sites, one entry, I-66/I-67) and do not cache
 misses per host; or cache misses only in `RuntimeCache` / with a short lifetime. Document `trusted_hosts` as required
 for multi-site setups.
+
+**Done:** `Site::getByDomain()` resolves the normalised host against one map of all site domains
+(`Dao::getDomainMap()`: exact domains with main domains first, wildcard patterns by specificity), cached under
+`site_domain_map` with the `site` tag, and loads the hit with the cached `getById()`. The per-host result is kept only
+in the `RuntimeCache`, so an unknown host costs neither a query nor a persistent cache entry. `Dao::getByDomain()` uses
+the same map and `Dao::matchDomain()`, which replaces the `LIKE` query and the wildcard scan of B-130 with the same
+precedence rules (empty domain matches nothing, main domain before domain lists, oldest site, most specific wildcard).
+Documenting `framework.trusted_hosts` for multi-site setups is still open.
 
 ## [ ] B-132 – Runtime caches are never updated on `save()` / `delete()`: deleted sites are returned, new sites are `null`, listings contain `null`
 

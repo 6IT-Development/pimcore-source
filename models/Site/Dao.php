@@ -55,53 +55,75 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
-     * An exact domain wins over a wildcard, the main domain over the domain list and, if several sites claim the
-     * same domain, the oldest site. Among the wildcards the most specific one (most literal characters) wins.
-     *
      * @throws NotFoundException
      */
     public function getByDomain(string $domain): void
     {
-        $domain = Site::normalizeDomain($domain);
-        if ($domain === '') {
-            // sites without a main domain store '', an empty host must not resolve to any of them
-            throw new NotFoundException('there is no site for an empty domain');
+        $siteId = self::matchDomain($this->getDomainMap(), Site::normalizeDomain($domain));
+        if ($siteId === null) {
+            throw new NotFoundException('there is no site for the requested domain: `' . $domain . '´');
         }
 
-        $data = $this->db->fetchAssociative(
-            'SELECT * FROM sites WHERE mainDomain = ? OR domains LIKE ? ORDER BY mainDomain = ? DESC, id LIMIT 1',
-            [$domain, '%"' . addcslashes($domain, '%_\\') . '"%', $domain]
-        );
-        if (!$data) {
-            $siteId = $this->findSiteIdByWildcard($domain);
-            if ($siteId !== null) {
-                $data = $this->db->fetchAssociative('SELECT * FROM sites WHERE id = ?', [$siteId]);
-            }
-
-            if (!$data) {
-                throw new NotFoundException('there is no site for the requested domain: `' . $domain . '´');
-            }
-        }
-        $this->assignRowToModel($data);
+        $this->getById($siteId);
     }
 
-    private function findSiteIdByWildcard(string $domain): ?int
+    /**
+     * The normalised domains of all sites. A main domain wins over the domain lists and, if several sites claim the
+     * same domain, the oldest site. The wildcard patterns come with the most literal characters first, so
+     * `shop.*.example.com` is tried before `*.example.com`.
+     *
+     * @return array{exact: array<string, int>, wildcards: array<string, int>}
+     */
+    public function getDomainMap(): array
     {
-        $wildcardDomains = [];
-        foreach ($this->db->fetchAllAssociative("SELECT id, domains FROM sites WHERE domains LIKE '%*%' ORDER BY id") as $site) {
-            foreach (Site::unserializeList($site['domains']) ?? [] as $siteDomain) {
-                if (is_string($siteDomain) && str_contains($siteDomain, '*')) {
+        $mainDomains = [];
+        $exact = [];
+        $wildcards = [];
+        foreach ($this->db->fetchAllAssociative('SELECT id, mainDomain, domains FROM sites ORDER BY id') as $site) {
+            $siteId = (int) $site['id'];
+
+            $mainDomain = Site::normalizeDomain((string) $site['mainDomain']);
+            if ($mainDomain !== '') {
+                $mainDomains[$mainDomain] ??= $siteId;
+            }
+
+            foreach (Site::unserializeList((string) $site['domains']) ?? [] as $siteDomain) {
+                $siteDomain = is_scalar($siteDomain) ? Site::normalizeDomain((string) $siteDomain) : '';
+                if ($siteDomain === '') {
+                    continue;
+                }
+
+                if (str_contains($siteDomain, '*')) {
                     $siteDomain = str_replace('.*', '*', $siteDomain); // backward compatibility
-                    // the first (oldest) site keeps a pattern claimed twice
-                    $wildcardDomains[$siteDomain] ??= (int) $site['id'];
+                    $wildcards[$siteDomain] ??= $siteId;
+                } else {
+                    $exact[$siteDomain] ??= $siteId;
                 }
             }
         }
 
-        // most literal characters first, so `shop.*.example.com` is tried before `*.example.com`
-        uksort($wildcardDomains, static fn (string $a, string $b): int => strlen(str_replace('*', '', $b)) <=> strlen(str_replace('*', '', $a)));
+        uksort($wildcards, static fn (string $a, string $b): int => strlen(str_replace('*', '', $b)) <=> strlen(str_replace('*', '', $a)));
 
-        foreach ($wildcardDomains as $wildcardDomain => $siteId) {
+        return ['exact' => $mainDomains + $exact, 'wildcards' => $wildcards];
+    }
+
+    /**
+     * An exact domain wins over a wildcard; an empty domain matches nothing, although sites without a main domain
+     * store ''
+     *
+     * @param array{exact: array<string, int>, wildcards: array<string, int>} $domainMap from getDomainMap()
+     */
+    public static function matchDomain(array $domainMap, string $domain): ?int
+    {
+        if ($domain === '') {
+            return null;
+        }
+
+        if (isset($domainMap['exact'][$domain])) {
+            return $domainMap['exact'][$domain];
+        }
+
+        foreach ($domainMap['wildcards'] as $wildcardDomain => $siteId) {
             $pattern = str_replace('\\*', '.*', preg_quote((string) $wildcardDomain, '#'));
             if (preg_match('#^' . $pattern . '$#i', $domain)) {
                 return $siteId;

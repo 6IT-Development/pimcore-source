@@ -103,35 +103,48 @@ final class Site extends AbstractModel
     }
 
     /**
+     * Called for the host of every frontend request: the host is resolved against one cached map of all site domains,
+     * so an unknown host (any client can send one) costs neither a query nor a cache entry of its own
+     *
      * @throws Exception
      */
     public static function getByDomain(string $domain): ?Site
     {
         $domain = self::normalizeDomain($domain);
-
-        // cached because this is called in the route
         $cacheKey = 'site_domain_' . md5($domain);
 
         if (RuntimeCache::isRegistered($cacheKey)) {
-            $site = RuntimeCache::get($cacheKey);
-        } elseif (!$site = Cache::load($cacheKey)) {
-            try {
-                $site = new self();
-                $site->getDao()->getByDomain($domain);
-            } catch (NotFoundException) {
-                $site = 'failed';
-            }
-
-            Cache::save($site, $cacheKey, ['system', 'site'], null, 999);
+            return RuntimeCache::get($cacheKey);
         }
 
-        if ($site === 'failed' || !$site) {
-            $site = null;
-        }
+        $siteId = Site\Dao::matchDomain(self::getDomainMap(), $domain);
+        $site = $siteId !== null ? self::getById($siteId) : null;
 
         RuntimeCache::set($cacheKey, $site);
 
         return $site;
+    }
+
+    /**
+     * @return array{exact: array<string, int>, wildcards: array<string, int>}
+     */
+    private static function getDomainMap(): array
+    {
+        $cacheKey = 'site_domain_map';
+
+        if (RuntimeCache::isRegistered($cacheKey)) {
+            return RuntimeCache::get($cacheKey);
+        }
+
+        $map = Cache::load($cacheKey);
+        if (!is_array($map)) {
+            $map = (new self())->getDao()->getDomainMap();
+            Cache::save($map, $cacheKey, ['system', 'site'], null, 999);
+        }
+
+        RuntimeCache::set($cacheKey, $map);
+
+        return $map;
     }
 
     /**
