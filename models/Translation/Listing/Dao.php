@@ -36,28 +36,27 @@ class Dao extends Model\Listing\Dao\AbstractDao
         return Model\Translation\Dao::TABLE_PREFIX . $this->model->getDomain();
     }
 
+    /**
+     * Counts the keys (not the rows of their languages) that load() pages through
+     */
     public function getTotalCount(): int
     {
-        $queryBuilder = $this->getQueryBuilder($this->getDatabaseTableName() . '.key');
+        $queryBuilder = $this->getKeyQueryBuilder();
         $queryBuilder->resetOrderBy();
         $queryBuilder->setMaxResults(null);
         $queryBuilder->setFirstResult(0);
 
-        $query = sprintf('SELECT COUNT(*) as amount FROM (%s) AS a', $queryBuilder);
-        return (int)$this->db->fetchOne($query, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
+        $query = sprintf('SELECT COUNT(*) as amount FROM (%s) AS a', $queryBuilder->getSql());
+
+        return (int)$this->db->fetchOne($query, $queryBuilder->getParameters(), $queryBuilder->getParameterTypes());
     }
 
+    /**
+     * The number of translations on the current page
+     */
     public function getCount(): int
     {
-        if (count($this->model->load()) > 0) {
-            return count($this->model->load());
-        }
-
-        $queryBuilder = $this->getQueryBuilder($this->getDatabaseTableName() . '.key');
-
-        $query = sprintf('SELECT COUNT(*) as amount FROM (%s) AS a', $queryBuilder);
-
-        return (int)$this->db->fetchOne($query, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
+        return count($this->model->getData());
     }
 
     public function getAllTranslations(): array
@@ -96,13 +95,8 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
     public function load(): array
     {
-        $this->model->setGroupBy($this->getDatabaseTableName() . '.key', false);
-
-        $queryBuilder = $this->getQueryBuilder($this->getDatabaseTableName() . '.key');
-
-        // the same languages as Translation::getByKey(): the requested ones that are valid for the domain
-        $validLanguages = Model\Translation::getValidLanguages($this->model->getDomain());
-        $languages = $this->model->getLanguages() ? array_values(array_intersect($validLanguages, $this->model->getLanguages())) : $validLanguages;
+        $queryBuilder = $this->getKeyQueryBuilder();
+        $languages = $this->getLanguagesToLoad();
 
         $cacheKey = $this->getCacheKey($queryBuilder, $languages);
         $rows = $this->loadRowsFromCache($cacheKey);
@@ -129,7 +123,6 @@ class Dao extends Model\Listing\Dao\AbstractDao
             $rowsByKey[$row['key']][] = $row;
         }
 
-        // keys without a row in the languages are left out, like Translation::getByKey() does not find them
         $translations = [];
         foreach ($rowsByKey as $keyRows) {
             $translations[] = $this->createTranslation($keyRows);
@@ -138,6 +131,38 @@ class Dao extends Model\Listing\Dao\AbstractDao
         $this->model->setTranslations($translations);
 
         return $translations;
+    }
+
+    /**
+     * The same languages as Translation::getByKey(): the requested ones that are valid for the domain
+     *
+     * @return string[]
+     */
+    private function getLanguagesToLoad(): array
+    {
+        $validLanguages = Model\Translation::getValidLanguages($this->model->getDomain());
+
+        return $this->model->getLanguages() ? array_values(array_intersect($validLanguages, $this->model->getLanguages())) : $validLanguages;
+    }
+
+    /**
+     * One row per key that has a row in the languages to load, so the page and the count agree. The grouping is not
+     * set on the listing: its count must not depend on whether it was loaded before.
+     */
+    private function getKeyQueryBuilder(): DoctrineQueryBuilder
+    {
+        $table = $this->getDatabaseTableName();
+
+        $queryBuilder = $this->getQueryBuilder($table . '.key');
+        $queryBuilder->addGroupBy($table . '.key');
+
+        // literal values: the listing conditions may use positional or named placeholders, they cannot be mixed
+        $languages = $this->getLanguagesToLoad();
+        $queryBuilder->andWhere($languages
+            ? $table . '.language IN (' . implode(', ', array_map(fn (string $language) => $this->db->quote($language), $languages)) . ')'
+            : '0 = 1');
+
+        return $queryBuilder;
     }
 
     /**

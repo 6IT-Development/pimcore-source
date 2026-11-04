@@ -2050,7 +2050,7 @@ hydrate them through the new `Translation\Dao::assignRows()` (the B-109 logic of
 one `getByKey()` per key (the N+1 part of I-56). A result with more rows than `Listing::getCacheLimit()` is not cached;
 `isCacheable()`, which counts the whole table, stays unused (I-58).
 
-## [ ] B-118 – Listing counts: `getTotalCount()` changes after `load()`, counts rows instead of keys, and does not match the loaded page
+## [x] B-118 – Listing counts: `getTotalCount()` changes after `load()`, counts rows instead of keys, and does not match the loaded page
 
 **File:** `models/Translation/Listing/Dao.php:38-60`, `:107-133`; `lib/Model/Listing/AbstractListing.php:467-470`
 
@@ -2062,6 +2062,13 @@ one `getByKey()` per key (the N+1 part of I-56). A result with more rows than `L
 
 **Fix direction:** always count `DISTINCT key` (and apply the `languages` filter in SQL, I-58). Do not mutate the
 model in `load()`; build the grouped query locally.
+
+**Done:** `load()` and `getTotalCount()` share one key query, built locally: grouped by `key` (the listing's `groupBy`
+is no longer set by `load()`) and limited to keys with a row in the languages `load()` returns (`language IN (…)` with
+quoted literals, since the listing conditions may use positional or named placeholders). The count is the number of
+those keys before and after `load()`, and every key of a page has texts, so pages are full and match the count. The
+count uses the parameters of the query builder, so values bound by an `onCreateQueryBuilder()` callback are included.
+`getCount()` returns the size of the loaded page with a single load.
 
 ## [ ] B-119 – `Listing::isValidOrderKey()`: `TypeError` without languages, real columns rejected, `type` breaks under `ONLY_FULL_GROUP_BY`
 
