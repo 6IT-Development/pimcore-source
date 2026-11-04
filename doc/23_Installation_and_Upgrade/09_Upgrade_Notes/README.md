@@ -250,6 +250,8 @@
 - `sabre/dav` 4.7 or newer is required (PHP 8.4 support); the conflict with 4.2.2 was dropped.
 - The WebDAV server is built by the internal `WebDavServerFactory` service. Without a PDO database connection (e.g. the
   `mysqli` driver) the locks are stored in `PIMCORE_SYSTEM_TEMP_DIRECTORY/webdav-locks.dat` instead of failing.
+- New options `pimcore.assets.webdav.enabled` and `pimcore.assets.thumbnails.on_demand_generation` (both default
+  `true`) turn off the WebDAV endpoint and the generation of missing thumbnails by the public thumbnail route.
 #### [Select Options]
 - `SelectOptionsOptionsProvider::getOptions()` throws `Pimcore\Model\Exception\NotFoundException` (was a
   `LogicException` with code `1677137682677`) when the select options configuration is not set or does not exist.

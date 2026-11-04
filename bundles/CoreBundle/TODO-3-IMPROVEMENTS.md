@@ -1524,7 +1524,7 @@ B-60.
 
 ## T – Logic / structure
 
-### [ ] I-71 – Clarify the WebDAV / thumbnail security model in code, not only in `security.yaml` and docs
+### [x] I-71 – Clarify the WebDAV / thumbnail security model in code, not only in `security.yaml` and docs
 
 **Files:** `src/Controller/WebDavController.php`, `src/Controller/PublicServicesController.php`,
 `doc/04_Assets/05_Accessing_Assets_via_WebDAV.md`
@@ -1534,6 +1534,14 @@ B-60.
   code (C-14 `IsGranted`, C-15 variant validation) and keep the docs as the second line.
 - Add a `pimcore.assets.webdav.enabled` / `pimcore.assets.thumbnails.on_demand_generation` style switch so
   installations that do not need on-demand generation or WebDAV can turn the routes off.
+
+**Done:** the guarantees in code came with C-13 (permission checks in `Asset\WebDAV\*`), C-14 (`401` without a user,
+read-only browser plugin) and C-15 (validated thumbnail variants). New switches: `pimcore.assets.webdav.enabled`
+(`404` when off) and `pimcore.assets.thumbnails.on_demand_generation` (the route serves stored thumbnails only and
+answers `404` for missing ones; `getStreamedResponseForThumbnail()` got a `$generate` argument). The controllers get
+them as `#[Autowire(param: …)]` action arguments. The routes stay registered, so the switches work without changing
+the project routing. Documented in the WebDAV and image thumbnail docs; the thumbnail doc warns that deferred paths
+are never generated with the switch off.
 
 ---
 

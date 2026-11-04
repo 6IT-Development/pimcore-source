@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\CoreBundle\Controller;
 use DateTimeImmutable;
 use Pimcore\Controller\Controller;
 use Pimcore\Model\Asset;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,8 +41,10 @@ final class PublicServicesController extends Controller
      */
     private const string DEFAULT_ROBOTS_TXT = "User-agent: *\nDisallow:";
 
-    public function thumbnailAction(Request $request): StreamedResponse
-    {
+    public function thumbnailAction(
+        Request $request,
+        #[Autowire(param: 'pimcore.assets.thumbnails.on_demand_generation')] bool $onDemandGeneration,
+    ): StreamedResponse {
         $filename = $request->attributes->getString('filename');
         $requestedFileExtension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
@@ -56,9 +59,10 @@ final class PublicServicesController extends Controller
         ];
 
         // generation errors are left to Symfony (logged with context, 500 without caching headers)
-        $response = Asset\Service::getStreamedResponseForThumbnail($config, $request->getPathInfo());
+        $response = Asset\Service::getStreamedResponseForThumbnail($config, $request->getPathInfo(), $onDemandGeneration);
         if (!$response) {
-            // unknown asset or thumbnail config, prefix not matching the asset path, unsupported variant
+            // unknown asset or thumbnail config, prefix not matching the asset path, unsupported variant, or not
+            // generated yet while on-demand generation is disabled
             throw $this->createNotFoundException(sprintf('Unable to find the %s thumbnail "%s".', $config['type'], $request->getPathInfo()));
         }
 

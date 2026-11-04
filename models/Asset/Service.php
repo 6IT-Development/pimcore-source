@@ -687,12 +687,13 @@ class Service extends Model\Element\Service
     /**
      * @param ThumbnailRequestConfig $config
      * @param string $uri the URL-encoded path (path info, without base URL and query string) of the thumbnail
+     * @param bool $generate whether a missing thumbnail is generated, otherwise null is returned
      *
      * @throws FilesystemException
      * @internal
      *
      */
-    public static function getStreamedResponseForThumbnail(array $config, string $uri): ?StreamedResponse
+    public static function getStreamedResponseForThumbnail(array $config, string $uri, bool $generate = true): ?StreamedResponse
     {
         $storage = Storage::get('thumbnail');
         // thumbnail paths are encoded with rawurlencode() (urlencode_ignore_slash()), urldecode() would turn "+" into a space
@@ -710,11 +711,15 @@ class Service extends Model\Element\Service
                 $storage->mimeType($storagePath),
                 $storage->fileSize($storagePath)
             );
-        } else {
-            $thumbnail = Asset\Service::getImageThumbnailByArrayConfig($config);
-            if ($thumbnail) {
-                return Asset\Service::getStreamedResponseFromImageThumbnail($thumbnail, $config);
-            }
+        }
+
+        if (!$generate) {
+            return null;
+        }
+
+        $thumbnail = Asset\Service::getImageThumbnailByArrayConfig($config);
+        if ($thumbnail) {
+            return Asset\Service::getStreamedResponseFromImageThumbnail($thumbnail, $config);
         }
 
         return null;

@@ -21,6 +21,14 @@ The HTML view in the browser is read-only. To create folders or upload files use
 > **Note:** WebDAV authenticates with username and password only. Two-factor authentication configured for the admin
 > interface is not applied to WebDAV.
 
+If you don't need WebDAV, turn it off; `/asset/webdav` then answers with `404`:
+```yaml
+pimcore:
+    assets:
+        webdav:
+            enabled: false
+```
+
 ### Nginx configuration
 Please make sure to have the following changes in your project 
 [Nginx configuration](../23_Installation_and_Upgrade/03_System_Setup_and_Hosting/02_Nginx_Configuration.md):

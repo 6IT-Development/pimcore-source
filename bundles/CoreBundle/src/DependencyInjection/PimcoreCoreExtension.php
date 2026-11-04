@@ -97,6 +97,8 @@ final class PimcoreCoreExtension extends ConfigurableExtension
         $container->setParameter('pimcore.maintenance.housekeeping.cleanup_profiler_files_atime_older_than', $config['maintenance']['housekeeping']['cleanup_profiler_files_atime_older_than']);
         $container->setParameter('pimcore.maintenance_mode.excluded_ips', $config['maintenance_mode']['excluded_ips']);
         $container->setParameter('pimcore.general.powered_by_header', $config['general']['powered_by_header']);
+        $container->setParameter('pimcore.assets.thumbnails.on_demand_generation', $config['assets']['thumbnails']['on_demand_generation']);
+        $container->setParameter('pimcore.assets.webdav.enabled', $config['assets']['webdav']['enabled']);
 
         $container->setParameter('pimcore.documents.default_controller', $config['documents']['default_controller']);
 

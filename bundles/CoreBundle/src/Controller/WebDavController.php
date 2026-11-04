@@ -21,6 +21,7 @@ use Pimcore\Bundle\CoreBundle\WebDav\WebDavServerFactory;
 use Pimcore\Controller\Controller;
 use Pimcore\Tool\Admin;
 use Sabre\HTTP;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -31,8 +32,15 @@ use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
  */
 class WebDavController extends Controller
 {
-    public function webdavAction(Request $request, WebDavServerFactory $serverFactory): Response
-    {
+    public function webdavAction(
+        Request $request,
+        WebDavServerFactory $serverFactory,
+        #[Autowire(param: 'pimcore.assets.webdav.enabled')] bool $enabled,
+    ): Response {
+        if (!$enabled) {
+            throw $this->createNotFoundException('WebDAV is disabled (pimcore.assets.webdav.enabled).');
+        }
+
         // fail closed when the project has no (working) `pimcore_webdav` firewall
         if (!Admin::getCurrentUser()) {
             throw new UnauthorizedHttpException('Basic realm="Pimcore WebDAV"', 'Authentication required');
