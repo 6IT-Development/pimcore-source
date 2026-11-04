@@ -96,6 +96,20 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
+     * The parent id of the tag as stored, null for a tag that is not stored
+     */
+    public function getStoredParentId(): ?int
+    {
+        if (!$this->model->getId()) {
+            return null;
+        }
+
+        $parentId = $this->db->fetchOne('SELECT parentId FROM tags WHERE id = ?', [$this->model->getId()]);
+
+        return $parentId === false ? null : (int)$parentId;
+    }
+
+    /**
      * Deletes object from database
      *
      * @throws Exception
@@ -190,21 +204,36 @@ class Dao extends Model\Dao\AbstractDao
         }
     }
 
+    /**
+     * Replaces or adds the assignments in one transaction, inserting the rows in batches
+     *
+     * @throws Exception
+     */
     public function batchAssignTagsToElement(string $cType, array $cIds, array $tagIds, bool $replace): void
     {
-        if ($replace) {
-            $quotedCIds = [];
-            foreach ($cIds as $cId) {
-                $quotedCIds[] = $this->db->quote($cId);
+        $this->db->transactional(function () use ($cType, $cIds, $tagIds, $replace): void {
+            if ($replace && $cIds) {
+                $quotedCIds = [];
+                foreach ($cIds as $cId) {
+                    $quotedCIds[] = $this->db->quote($cId);
+                }
+                $this->db->executeStatement('DELETE FROM tags_assignment WHERE ' . 'ctype = ' . $this->db->quote($cType) . ' AND cid IN (' . implode(',', $quotedCIds) . ')');
             }
-            $this->db->executeStatement('DELETE FROM tags_assignment WHERE ' . 'ctype = ' . $this->db->quote($cType) . ' AND cid IN (' . implode(',', $quotedCIds) . ')');
-        }
 
-        foreach ($tagIds as $tagId) {
-            foreach ($cIds as $cId) {
-                $this->doAddTagToElement($tagId, $cType, $cId);
+            $rows = [];
+            foreach ($tagIds as $tagId) {
+                foreach ($cIds as $cId) {
+                    $rows[] = '(' . (int)$tagId . ', ' . $this->db->quote($cType) . ', ' . (int)$cId . ')';
+                }
             }
-        }
+
+            foreach (array_chunk($rows, 1000) as $chunk) {
+                // existing assignments are kept as they are
+                $this->db->executeStatement(
+                    'INSERT INTO tags_assignment (tagid, ctype, cid) VALUES ' . implode(',', $chunk) . ' ON DUPLICATE KEY UPDATE tagid = tagid'
+                );
+            }
+        });
     }
 
     /**

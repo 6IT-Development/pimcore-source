@@ -3159,7 +3159,7 @@ for new notes. `Dao::getById()` casts the `notes_data` values of the `document` 
 `int`. `Dao::save()` and `delete()` write `notes` and `notes_data` in one transaction; a failed save resets the id of a
 new note (`setId()` accepts `null`, like `getId()` returns it).
 
-## [ ] B-171 – Tags: moving a tag below itself hangs; batch assignment is not atomic
+## [x] B-171 – Tags: moving a tag below itself hangs; batch assignment is not atomic
 
 **Files:** `models/Element/Tag.php:238-245`, `:325-339`; `models/Element/Tag/Dao.php:184-199`
 
@@ -3169,6 +3169,12 @@ new note (`setId()` accepts `null`, like `getId()` returns it).
 - Cached `children` of a tag are never invalidated after adding / deleting children.
 
 **Fix direction:** reject a new parent inside the own subtree; transaction + multi-row insert.
+
+**Done:** `setParentId()` throws an `InvalidArgumentException` when the new parent is the tag itself or a tag whose id
+path contains it. `correctPath()` and `getNamePath()` stop at a tag they have already visited, so a cycle in stored data
+no longer loops forever. `batchAssignTagsToElement()` runs in one transaction and inserts the assignments with multi-row
+`INSERT … ON DUPLICATE KEY UPDATE` statements of up to 1000 rows. `save()` and `delete()` reset the cached `children` of
+the runtime-cached parent tags (old and new parent on a move; the new `Dao::getStoredParentId()` gives the old one).
 
 ## [ ] B-172 – `WorkflowState\Dao::delete()` deletes the states of every workflow on the element
 

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Model\Element;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Event\Model\TagEvent;
 use Pimcore\Event\TagEvents;
@@ -187,8 +188,16 @@ final class Tag extends Model\AbstractModel
             $this->dispatchEvent(new TagEvent($this), TagEvents::PRE_ADD);
         }
 
+        $oldParentId = $isUpdate ? $this->getDao()->getStoredParentId() : null;
+
         $this->correctPath();
         $this->getDao()->save();
+
+        // the cached children of the old and the new parent do not match anymore
+        self::resetCachedChildren($this->getParentId());
+        if ($oldParentId !== null && $oldParentId !== $this->getParentId()) {
+            self::resetCachedChildren($oldParentId);
+        }
 
         if ($isUpdate) {
             $this->dispatchEvent(new TagEvent($this), TagEvents::POST_UPDATE);
@@ -237,6 +246,14 @@ final class Tag extends Model\AbstractModel
      */
     public function setParentId(int $parentId): Tag
     {
+        // a tag below itself would make the parent chain a cycle
+        if ($parentId && $this->getId()) {
+            $parent = $parentId === $this->getId() ? $this : self::getById($parentId);
+            if ($parent && str_contains($parent->getFullIdPath(), '/' . $this->getId() . '/')) {
+                throw new InvalidArgumentException(sprintf('Tag %d cannot be moved below itself or one of its children', $this->getId()));
+            }
+        }
+
         $this->parentId = $parentId;
         $this->parent = null;
         $this->correctPath();
@@ -271,7 +288,9 @@ final class Tag extends Model\AbstractModel
             $parentNames[] = $this->getName();
         }
         $parent = $this->getParent();
-        while ($parent) {
+        $parentIds = [];
+        while ($parent && $parent->getId() !== $this->getId() && !in_array($parent->getId(), $parentIds, true)) {
+            $parentIds[] = $parent->getId();
             $parentNames[] = $parent->getName();
             $parent = $parent->getParent();
         }
@@ -327,7 +346,8 @@ final class Tag extends Model\AbstractModel
         //set id path to correct value
         $parentIds = [];
         $parent = $this->getParent();
-        while ($parent) {
+        // the parent ids end at a cycle in stored data instead of looping forever
+        while ($parent && $parent->getId() !== $this->getId() && !in_array($parent->getId(), $parentIds, true)) {
             $parentIds[] = $parent->getId();
             $parent = $parent->getParent();
         }
@@ -350,6 +370,7 @@ final class Tag extends Model\AbstractModel
         $this->dispatchEvent(new TagEvent($this), TagEvents::PRE_DELETE);
 
         $deletedTagIds = $this->getDao()->delete();
+        self::resetCachedChildren($this->getParentId());
 
         foreach ($deletedTagIds as $removeId) {
             $cacheKey = 'tags_' . $removeId;
@@ -364,5 +385,16 @@ final class Tag extends Model\AbstractModel
     public function exists(): bool
     {
         return $this->getDao()->exists();
+    }
+
+    private static function resetCachedChildren(int $tagId): void
+    {
+        $cacheKey = 'tags_' . $tagId;
+        if ($tagId && RuntimeCache::isRegistered($cacheKey)) {
+            $tag = RuntimeCache::get($cacheKey);
+            if ($tag instanceof self) {
+                $tag->children = null;
+            }
+        }
     }
 }
