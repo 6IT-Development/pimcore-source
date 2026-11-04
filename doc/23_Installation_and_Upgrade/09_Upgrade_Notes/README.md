@@ -110,6 +110,11 @@
   same place, or an unknown place, now fail at `cache:clear` instead of when the workflow is used.
 - The audit trail and guard listeners have hidden service IDs: `.workflow.<name>.listener.audit_trail`,
   `.state_machine.<name>.listener.guard` etc. (without the leading dot before).
+- New option `pimcore.workflows.<name>.events_to_dispatch` (as in FrameworkBundle): a list of `WorkflowEvents` names
+  to dispatch, `null` (default) dispatches all. It was read by `WorkflowPass` but could not be configured.
+- Places referenced by `transitions.*.from/to`, `globalActions.*.to` and `initial_markings` must be defined in
+  `places`. The configuration error names the option path. Global actions were not checked at all before, they are
+  not part of the Symfony workflow definition.
 #### [Lock]
 - Pimcore no longer defines its own `Symfony\Component\Lock\LockFactory` service (DBAL store), which replaced the
   FrameworkBundle autowiring alias and ignored `framework.lock`, while some services used `lock.factory` (FrameworkBundle

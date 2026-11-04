@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Config\Processor\PlaceholderProcessor;
 use Pimcore\Config\LocationAwareConfigRepository;
 use Pimcore\Workflow\EventSubscriber\ChangePublishedStateSubscriber;
@@ -28,6 +29,7 @@ use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Workflow\WorkflowEvents;
 use const PASSWORD_ARGON2I;
 use const PASSWORD_ARGON2ID;
 
@@ -1569,16 +1571,37 @@ final class Configuration implements ConfigurationInterface
                                     ->cannotBeEmpty()
                                 ->end()
                             ->end()
+                            ->arrayNode('events_to_dispatch')
+                                ->info('Select which transition events should be dispatched for this workflow, null dispatches all of them.')
+                                ->example(['workflow.enter', 'workflow.transition'])
+                                ->defaultNull()
+                                ->beforeNormalization()
+                                    ->ifString()
+                                    ->then(static fn ($v) => [$v])
+                                ->end()
+                                ->scalarPrototype()->end()
+                                ->validate()
+                                    ->ifTrue(static fn (?array $v): bool => $v !== null && array_diff($v, WorkflowEvents::ALIASES) !== [])
+                                    ->thenInvalid('The value must be null or a list of workflow events (like ["workflow.enter"]), got %s.')
+                                ->end()
+                            ->end()
                             ->append($this->createWorkflowPlacesNode())
                             ->append($this->createWorkflowTransitionsNode())
                             ->append($this->createWorkflowGlobalActionsNode())
                         ->end()
                         ->validate()
-                            ->ifTrue(static fn ($v) => $v['supports'] && isset($v['support_strategy']))
+                            ->always(static function (array $workflow): array {
+                                self::validateWorkflowPlaceReferences($workflow);
+
+                                return $workflow;
+                            })
+                        ->end()
+                        ->validate()
+                            ->ifTrue(static fn ($v) => !empty($v['supports']) && isset($v['support_strategy']))
                             ->thenInvalid('"supports" and "support_strategy" cannot be used together.')
                         ->end()
                         ->validate()
-                            ->ifTrue(static fn ($v) => !$v['supports'] && !isset($v['support_strategy']))
+                            ->ifTrue(static fn ($v) => empty($v['supports']) && !isset($v['support_strategy']))
                             ->thenInvalid('"supports" or "support_strategy" should be configured.')
                         ->end()
                         ->validate()
@@ -1600,6 +1623,37 @@ final class Configuration implements ConfigurationInterface
                     ->end()
                 ->end()
             ->end();
+    }
+
+    /**
+     * Transitions, global actions and initial markings may only name places of the workflow. Checked here so the error
+     * names the config path, and because global actions are no Symfony transitions, so the definition validators of
+     * WorkflowPass do not see them.
+     */
+    private static function validateWorkflowPlaceReferences(array $workflow): void
+    {
+        $places = array_keys($workflow['places'] ?? []);
+        $references = ['initial_markings' => $workflow['initial_markings'] ?? []];
+        foreach ($workflow['transitions'] ?? [] as $name => $transition) {
+            $references["transitions.$name.from"] = $transition['from'] ?? [];
+            $references["transitions.$name.to"] = $transition['to'] ?? [];
+        }
+        foreach ($workflow['globalActions'] ?? [] as $name => $action) {
+            $references["globalActions.$name.to"] = $action['to'] ?? [];
+        }
+
+        foreach ($references as $path => $names) {
+            $unknown = array_diff($names, $places);
+            if ($unknown) {
+                // Symfony prefixes the message with the path of the workflow
+                throw new InvalidArgumentException(sprintf(
+                    '"%s" references the unknown place(s) "%s". Defined places: "%s".',
+                    $path,
+                    implode('", "', $unknown),
+                    implode('", "', $places)
+                ));
+            }
+        }
     }
 
     /**

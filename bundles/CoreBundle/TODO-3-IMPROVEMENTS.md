@@ -1304,7 +1304,7 @@ documented at both places, and comments explain that a `pimcore.encryption.secre
 
 ## P – Logic / structure
 
-### [ ] I-62 – Workflow config: missing Symfony options and validation
+### [x] I-62 – Workflow config: missing Symfony options and validation
 
 **Files:** `src/DependencyInjection/Configuration.php:1312-1831`, `src/DependencyInjection/Compiler/WorkflowPass.php:187`
 
@@ -1319,6 +1319,14 @@ documented at both places, and comments explain that a `pimcore.encryption.secre
   Make it explicit (`!empty()`).
 - `places` permissions: `modify` is documented as a shorthand for five flags but is expanded at runtime (`lib/Workflow/Place/PlaceConfig.php:125`). Consider
   normalising it in the tree.
+
+**Done:** `events_to_dispatch` exists (string or list, validated against `WorkflowEvents::ALIASES`, default
+`null`). `validateWorkflowPlaceReferences()` checks transitions, global actions and initial markings against the
+places after the placeholders are merged; the error names the path. The `supports` checks use `empty()`.
+`WorkflowPass` keeps `?? null`, the parameter can also be built without the tree (tests). Not changed:
+`single_state`/`multiple_state` with `arguments` is valid (the argument is the marking property of
+`MethodMarkingStore`), and `modify` stays a runtime shorthand: expanding it in the tree would have to decide its
+precedence over explicit flags, which `PlaceConfig` resolves by key order today.
 
 ### [ ] I-63 – One loader for `config_location` YAML imports
 
