@@ -207,6 +207,7 @@ class Service extends Model\AbstractModel
     public static function getFilterRequiresForFrontend(array $elements): array
     {
         $dependencies['hasHidden'] = false;
+        $dependencies['requires'] = [];
 
         foreach ($elements as $r) {
             if ($e = self::getDependedElement($r)) {
@@ -227,6 +228,7 @@ class Service extends Model\AbstractModel
     public static function getFilterRequiredByPathForFrontend(array $elements): array
     {
         $dependencies['hasHidden'] = false;
+        $dependencies['requiredBy'] = [];
 
         foreach ($elements as $r) {
             if ($e = self::getDependedElement($r)) {

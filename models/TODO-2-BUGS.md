@@ -1734,7 +1734,7 @@ type that was never set, instead of the HTTP `SuspiciousOperationException`. `El
 requirement with an invalid type with a warning, so one broken relation does not drop the other rows. The
 `ElementType` enum stays with I-42.
 
-## [ ] B-105 – Filter helpers in `Element\Service` omit the `requires` / `requiredBy` key when nothing matches
+## [x] B-105 – Filter helpers in `Element\Service` omit the `requires` / `requiredBy` key when nothing matches
 
 **File:** `models/Element/Service.php:207-242`
 
@@ -1744,6 +1744,10 @@ requirement with an invalid type with a warning, so one broken relation does not
   `$dependencies[...]` in PHP consumers raises "Undefined array key".
 
 **Fix direction:** initialise the key in both, or merge the four helpers into one (I-47).
+
+**Done:** `getFilterRequiresForFrontend()` and `getFilterRequiredByPathForFrontend()` initialise `requires` /
+`requiredBy` to `[]` like the unfiltered helpers, so a search without matches returns an empty list. Merging the four
+helpers stays with I-47.
 
 ## [ ] B-106 – Sync dependency handler errors make a committed element save look failed and skip `POST_*` events
 
