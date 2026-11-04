@@ -99,12 +99,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                 if (!in_arrayi($language, $skipLocales) && !in_arrayi($language, $validLanguages)) {
                     $sqlDeleteData = 'Delete FROM object_localized_data_' . $classId . ' WHERE `language` = ' . $db->quote($language);
                     $printLine = true;
-                    if (!$this->isDryRun()) {
-                        $output->writeln($sqlDeleteData);
-                        $db->executeQuery($sqlDeleteData);
-                    } else {
-                        $output->writeln($this->dryRunMessage($sqlDeleteData));
-                    }
+                    $this->runOrPrint($sqlDeleteData);
                 }
             }
 
@@ -118,12 +113,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                     $sqlDropView = 'DROP VIEW IF EXISTS object_localized_' . $classId . '_' . $existingLanguage;
                     $printLine = true;
 
-                    if (!$this->isDryRun()) {
-                        $output->writeln($sqlDropView);
-                        $db->executeQuery($sqlDropView);
-                    } else {
-                        $output->writeln($this->dryRunMessage($sqlDropView));
-                    }
+                    $this->runOrPrint($sqlDropView);
                 }
             }
 
@@ -137,12 +127,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                     $sqlDropTable = 'DROP TABLE IF EXISTS object_localized_query_' . $classId . '_' . $existingLanguage;
                     $printLine = true;
 
-                    if (!$this->isDryRun()) {
-                        $output->writeln($sqlDropTable);
-                        $db->executeQuery($sqlDropTable);
-                    } else {
-                        $output->writeln($this->dryRunMessage($sqlDropTable));
-                    }
+                    $this->runOrPrint($sqlDropTable);
                 }
             }
 
@@ -152,5 +137,17 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Prints the statement and executes it, or in dry-run mode only prints it with the DRY-RUN prefix
+     */
+    private function runOrPrint(string $sql): void
+    {
+        $this->output->writeln($this->dryRunMessage($sql));
+
+        if (!$this->isDryRun()) {
+            Db::get()->executeQuery($sql);
+        }
     }
 }

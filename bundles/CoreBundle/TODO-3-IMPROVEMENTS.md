@@ -232,7 +232,7 @@ each value and rejects an empty list.
 `InvalidArgumentException`, and invalid JSON always throws a `JsonException` that names the file. `json_validate()`
 (I-09) already accepts a JSON `null`.
 
-### [ ] I-15 – Remove repeated dry-run/execute blocks
+### [x] I-15 – Remove repeated dry-run/execute blocks
 
 **File:** `DeleteUnusedLocaleDataCommand.php:82-127`
 
@@ -240,6 +240,9 @@ each value and rejects an empty list.
   `runOrPrint(string $sql)`.
 - `dryRunMessage()` is called inside a branch where dry run is already known to be true. Use `prefixDryRun()` there,
   or let `dryRunMessage()` handle both branches.
+
+**Done:** the three blocks call `runOrPrint(string $sql)`. It prints the statement through `dryRunMessage()`, which adds
+the DRY-RUN prefix only in dry-run mode, and executes it only outside dry-run mode.
 
 ---
 
