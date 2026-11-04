@@ -17,7 +17,10 @@ namespace Pimcore\Model\Translation\Listing;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder as DoctrineQueryBuilder;
+use Pimcore;
 use Pimcore\Cache;
+use Pimcore\Event\Model\TranslationEvent;
+use Pimcore\Event\TranslationEvents;
 use Pimcore\Model;
 use Pimcore\Model\Listing\Dao\QueryBuilderHelperTrait;
 use Pimcore\Model\Translation\Listing;
@@ -30,6 +33,11 @@ use Pimcore\Model\Translation\Listing;
 class Dao extends Model\Listing\Dao\AbstractDao
 {
     use QueryBuilderHelperTrait;
+
+    /**
+     * Keys per DELETE of cleanup(), keeps the statement far below max_allowed_packet
+     */
+    private const int CLEANUP_CHUNK_SIZE = 500;
 
     /**
      * The columns besides `key` and the aggregate that orders a key by them
@@ -279,19 +287,42 @@ class Dao extends Model\Listing\Dao\AbstractDao
         return true;
     }
 
+    /**
+     * Deletes the keys without a text in any language. Every key gets the PRE_DELETE / POST_DELETE events of a single
+     * delete, the keys are deleted in chunks with bound values and the caches are cleared before the POST events.
+     */
     public function cleanup(): void
     {
-        $keysToDelete = $this->db->fetchFirstColumn('SELECT `key` FROM ' . $this->getDatabaseTableName() . ' as tbl1 WHERE
-               (SELECT count(*) FROM ' . $this->getDatabaseTableName() . " WHERE `key` = tbl1.`key` AND (`text` IS NULL OR `text` = ''))
-               = (SELECT count(*) FROM " . $this->getDatabaseTableName() . ' WHERE `key` = tbl1.`key`) GROUP BY `key`;');
+        $table = $this->db->quoteIdentifier($this->getDatabaseTableName());
+        $keysToDelete = $this->db->fetchFirstColumn(
+            'SELECT `key` FROM ' . $table . " GROUP BY `key` HAVING SUM(`text` IS NOT NULL AND `text` <> '') = 0"
+        );
 
-        if ($keysToDelete) {
-            $preparedKeys = [];
-            foreach ($keysToDelete as $value) {
-                $preparedKeys[] = $this->db->quote($value);
+        $dispatcher = Pimcore::getEventDispatcher();
+        foreach (array_chunk($keysToDelete, self::CLEANUP_CHUNK_SIZE) as $keys) {
+            $translations = [];
+            foreach ($keys as $key) {
+                $translation = new Model\Translation();
+                $translation->setDomain($this->model->getDomain());
+                $translation->setKey((string) $key);
+                $dispatcher->dispatch(new TranslationEvent($translation), TranslationEvents::PRE_DELETE);
+                $translations[] = $translation;
             }
 
-            $this->db->executeStatement('DELETE FROM ' . $this->getDatabaseTableName() . ' WHERE ' . '`key` IN (' . implode(',', $preparedKeys) . ')');
+            $this->db->executeStatement(
+                'DELETE FROM ' . $table . ' WHERE `key` IN (?)',
+                [$keys],
+                [ArrayParameterType::STRING]
+            );
+
+            foreach ($translations as $translation) {
+                $translation->clearDeletedState();
+            }
+            Model\Translation::clearDependentCache();
+
+            foreach ($translations as $translation) {
+                $dispatcher->dispatch(new TranslationEvent($translation), TranslationEvents::POST_DELETE);
+            }
         }
     }
 

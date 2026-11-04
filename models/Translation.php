@@ -463,9 +463,7 @@ final class Translation extends AbstractModel
 
         $this->getDao()->delete();
 
-        // an auto-create queued earlier in the request would re-create the key at kernel.terminate
-        TranslationEntriesDumper::removeFromSaveQueue($this);
-        $this->clearRuntimeCache();
+        $this->clearDeletedState();
         self::clearDependentCache();
 
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::POST_DELETE);
@@ -490,6 +488,18 @@ final class Translation extends AbstractModel
         if (!in_array($this->getType(), self::TYPES, true)) {
             throw new InvalidArgumentException(sprintf('Invalid translation type "%s", expected one of: %s', $this->getType(), implode(', ', self::TYPES)));
         }
+    }
+
+    /**
+     * Forgets the key after its rows were deleted, also by a bulk delete such as Listing::cleanup()
+     *
+     * @internal
+     */
+    public function clearDeletedState(): void
+    {
+        // an auto-create queued earlier in the request would re-create the key at kernel.terminate
+        TranslationEntriesDumper::removeFromSaveQueue($this);
+        $this->clearRuntimeCache();
     }
 
     private function clearRuntimeCache(): void

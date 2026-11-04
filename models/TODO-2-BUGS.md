@@ -2132,7 +2132,7 @@ with `GROUP BY`, so it was valid; it is now one `fetchFirstColumn()`). `getAvail
 `LIKE 'translations\_%'`, cuts only the prefix with `substr()`, and keeps the names that are registered domains and
 match the domain pattern, without one more table check per domain (the table was just listed).
 
-## [ ] B-122 – `Listing::cleanup()` does not invalidate caches and fires no events
+## [x] B-122 – `Listing::cleanup()` does not invalidate caches and fires no events
 
 **File:** `models/Translation/Listing/Dao.php:146-160`
 
@@ -2143,6 +2143,12 @@ match the domain pattern, without one more table check per domain (the table was
 
 **Fix direction:** call `Translation::clearDependentCache()` after the delete; dispatch one bulk event (or document
 that cleanup is silent); delete in chunks with bound parameters (I-56).
+
+**Done:** `cleanup()` finds the empty keys with one grouped query (`HAVING SUM(text <> '') = 0` instead of two
+correlated subqueries per row) and deletes them in chunks of 500 with a bound `IN (?)` list. Every key gets the
+`PRE_DELETE` / `POST_DELETE` events of a single delete (a `Translation` with the key and domain, no texts), and before
+the `POST` events the runtime cache entries, the queued auto-creates and the `translator` / `translate` tags are
+cleared through the new internal `Translation::clearDeletedState()`, which `delete()` uses too.
 
 ## [ ] B-123 – Translator auto-create: wrong language list for non-default domains; the 190 check counts bytes and throws during rendering
 
