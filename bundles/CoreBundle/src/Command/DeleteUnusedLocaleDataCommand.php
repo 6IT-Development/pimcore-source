@@ -18,8 +18,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Pimcore\Bundle\CoreBundle\Command\Traits\CsvOptionTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DestructiveCommandTrait;
 use Pimcore\Console\AbstractCommand;
-use Pimcore\Console\Traits\DryRun;
 use Pimcore\Db;
 use Pimcore\Tool;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -37,7 +37,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 class DeleteUnusedLocaleDataCommand extends AbstractCommand
 {
     use CsvOptionTrait;
-    use DryRun;
+    use DestructiveCommandTrait;
+
+    private int $statementCount = 0;
 
     #[\Override]
     protected function configure(): void
@@ -48,10 +50,9 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
                 's',
                 InputOption::VALUE_REQUIRED,
                 'Do not delete specified locale tables (comma separated eg.: en, en_AT)'
-            )
-            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Delete without asking for confirmation');
+            );
 
-        $this->configureDryRunOption('Just output the delete localized queries to be executed.');
+        $this->configureDestructiveOptions('Just output the delete localized queries to be executed.');
     }
 
     #[\Override]
@@ -67,15 +68,11 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
             return self::FAILURE;
         }
 
-        if (!$this->isDryRun() && !$input->getOption('force') && $input->isInteractive()) {
-            $confirmed = $this->io->confirm(sprintf(
-                'This deletes the localized data, views and query tables of all languages except %s. This cannot be undone. Continue?',
-                implode(', ', array_merge($validLanguages, $skipLocales))
-            ), false);
-
-            if (!$confirmed) {
-                return self::SUCCESS;
-            }
+        if (!$this->confirmDestructiveAction(sprintf(
+            'This deletes the localized data, views and query tables of all languages except %s.',
+            implode(', ', array_merge($validLanguages, $skipLocales))
+        ))) {
+            return self::SUCCESS;
         }
 
         $languageList = [];
@@ -136,6 +133,11 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
             }
         }
 
+        $this->io->success(sprintf(
+            $this->isDryRun() ? '%d statement(s) would be executed.' : 'Executed %d statement(s).',
+            $this->statementCount
+        ));
+
         return self::SUCCESS;
     }
 
@@ -145,6 +147,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
     private function runOrPrint(string $sql): void
     {
         $this->output->writeln($this->dryRunMessage($sql));
+        $this->statementCount++;
 
         if (!$this->isDryRun()) {
             Db::get()->executeQuery($sql);

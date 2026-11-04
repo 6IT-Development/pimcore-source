@@ -76,6 +76,9 @@ You can clean up multiple types at once.
 bin/console pimcore:documents:cleanup <type1> <type2> <type3>
 ```
 
+The command deletes the documents of these types and asks for confirmation first. Use `--dry-run` to see what would be
+deleted, and `--force` (or `--no-interaction`) to skip the question.
+
 
 ## Document Topics
 - [Creating editable templates](./01_Editables/README.md) 

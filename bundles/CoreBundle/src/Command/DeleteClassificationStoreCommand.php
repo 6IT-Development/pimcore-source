@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Doctrine\DBAL\Connection;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DestructiveCommandTrait;
 use Pimcore\Cache;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db;
@@ -26,7 +27,6 @@ use Pimcore\Model\DataObject\Classificationstore\StoreConfig;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -39,12 +39,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class DeleteClassificationStoreCommand extends AbstractCommand
 {
+    use DestructiveCommandTrait;
+
     #[\Override]
     protected function configure(): void
     {
         $this
-            ->addArgument('storeId', InputArgument::REQUIRED, 'The store ID to delete')
-            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Delete without asking for confirmation');
+            ->addArgument('storeId', InputArgument::REQUIRED, 'The store ID to delete');
+
+        $this->configureDestructiveOptions();
     }
 
     #[\Override]
@@ -72,19 +75,31 @@ class DeleteClassificationStoreCommand extends AbstractCommand
             ));
         }
 
-        if (!$input->getOption('force') && $input->isInteractive()) {
-            $confirmed = $this->io->confirm(sprintf(
-                'This deletes all keys, groups, collections and object data of classification store "%s" (ID %d). This cannot be undone. Continue?',
-                $store->getName(),
-                $storeId
-            ), false);
-
-            if (!$confirmed) {
-                return self::SUCCESS;
-            }
+        $db = Db::get();
+        $counts = [];
+        foreach (['keys', 'groups', 'collections'] as $type) {
+            $counts[] = $db->fetchOne('select count(*) from classificationstore_' . $type . ' where storeId = ?', [$storeId]) . ' ' . $type;
         }
 
-        $db = Db::get();
+        if ($this->isDryRun()) {
+            $this->output->writeln($this->prefixDryRun(sprintf(
+                'Would delete classification store "%s" (ID %d) with %s and their object data.',
+                $store->getName(),
+                $storeId,
+                implode(', ', $counts)
+            )));
+
+            return self::SUCCESS;
+        }
+
+        if (!$this->confirmDestructiveAction(sprintf(
+            'This deletes all keys, groups, collections and object data of classification store "%s" (ID %d).',
+            $store->getName(),
+            $storeId
+        ))) {
+            return self::SUCCESS;
+        }
+
         $db->transactional(function (Connection $db) use ($storeId, $output): void {
             foreach ($db->fetchFirstColumn("show tables like 'object_classificationstore_data_%'") as $table) {
                 $this->executeDelete($db, $output, 'delete from ' . $db->quoteIdentifier($table) . ' where keyId In (select id from classificationstore_keys where storeId = ?)', $storeId);
@@ -102,7 +117,7 @@ class DeleteClassificationStoreCommand extends AbstractCommand
 
         Cache::clearAll();
 
-        $output->writeln(sprintf('Classification store "%s" (ID %d) deleted.', $store->getName(), $storeId));
+        $this->io->success(sprintf('Classification store "%s" (ID %d) deleted with %s.', $store->getName(), $storeId, implode(', ', $counts)));
 
         return self::SUCCESS;
     }

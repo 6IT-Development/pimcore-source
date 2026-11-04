@@ -248,7 +248,7 @@ the DRY-RUN prefix only in dry-run mode, and executes it only outside dry-run mo
 
 ## D – Per-command logic
 
-### [ ] I-16 – Same safety rules for all destructive commands
+### [x] I-16 – Same safety rules for all destructive commands
 
 - Destructive commands handle confirmation, `--force` and `--dry-run` differently:
   - `ClassesRebuildCommand --delete-classes` asks for confirmation (good).
@@ -257,6 +257,13 @@ the DRY-RUN prefix only in dry-run mode, and executes it only outside dry-run mo
   - `Document/CleanupCommand`, `DeleteClassificationStoreCommand` and `ThumbnailsFolderStructureCommand` have neither.
 - Standardise: interactive confirmation (skipped by `--force` or `-n`), a `--dry-run` that lists the planned actions,
   and a final summary with counts.
+
+**Done:** `Traits/DestructiveCommandTrait` adds `--force` (`-f`) and `--dry-run` (`-N`) and `confirmDestructiveAction()`,
+which asks unless in dry-run mode, with `--force` or with `-n`. `DeleteUnusedLocaleData`, `Document/CleanupCommand`,
+`DeleteClassificationStoreCommand`, `ThumbnailsFolderStructureCommand` and `MigrateElementsCommand` use it. In dry-run
+mode each one lists the planned deletes, moves or re-saves, and every command ends with a count. `MigrateElementsCommand`
+asks in `execute()` instead of `interact()`. `ClassesRebuildCommand --delete-classes` keeps its own question, because
+its `--force` already means "rebuild all classes".
 
 ### [ ] I-17 – `DeleteClassificationStoreCommand`: rely on FK cascades or the model API
 

@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command\Migrate;
 
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\StorageAttributes;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DestructiveCommandTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Tool\Storage;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -43,20 +44,44 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class ThumbnailsFolderStructureCommand extends AbstractCommand
 {
+    use DestructiveCommandTrait;
+
+    private int $movedCount = 0;
+
+    private int $deletedCount = 0;
+
+    #[\Override]
+    protected function configure(): void
+    {
+        $this->configureDestructiveOptions('List the files to move or delete without changing anything');
+    }
+
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->confirmDestructiveAction(
+            'This moves all thumbnail and asset cache files to the new folder structure and deletes files whose target already exists.'
+        )) {
+            return self::SUCCESS;
+        }
+
         $thumbnailStorage = Storage::get('thumbnail');
 
         $output->writeln('Migrating thumbnails ...');
         $this->doMigrateStorage($output, $thumbnailStorage);
-        $output->writeln("\nSuccessfully moved thumbnail files to new folder structure\n");
+        $output->writeln('');
 
         $assetCacheStorage = Storage::get('asset_cache');
 
         $output->writeln('Migrating asset cache (document previews, etc.) ...');
         $this->doMigrateStorage($output, $assetCacheStorage);
-        $output->writeln("\nSuccessfully moved asset cache files to new folder structure");
+        $output->writeln('');
+
+        $this->io->success(sprintf(
+            $this->isDryRun() ? '%d file(s) would be moved, %d file(s) deleted.' : 'Moved %d file(s), deleted %d file(s) whose target already existed.',
+            $this->movedCount,
+            $this->deletedCount
+        ));
 
         return self::SUCCESS;
     }
@@ -75,26 +100,34 @@ class ThumbnailsFolderStructureCommand extends AbstractCommand
         });
 
         $iterator = $thumbnailFiles->toArray();
-        $progressBar = $this->io->createProgressBar(count($iterator));
+        $progressBar = $this->isDryRun() ? null : $this->io->createProgressBar(count($iterator));
 
-        $progressBar->start();
+        $progressBar?->start();
 
         /** @var StorageAttributes $thumbnailFile */
         foreach ($iterator as $thumbnailFile) {
             $targetPath = preg_replace('/(image-thumb|video-thumb|pdf-thumb)__(\d+)__(.+)$/', '$2/$1__$2__$3', $thumbnailFile->path());
 
             if (!$storage->fileExists($targetPath)) {
-                $storage->move($thumbnailFile->path(), $targetPath);
+                $this->movedCount++;
+                if ($this->isDryRun()) {
+                    $output->writeln($this->prefixDryRun(sprintf('move %s to %s', $thumbnailFile->path(), $targetPath)));
+                } else {
+                    $storage->move($thumbnailFile->path(), $targetPath);
+                }
             } else {
-                if ($thumbnailFile->isDir()) {
+                $this->deletedCount++;
+                if ($this->isDryRun()) {
+                    $output->writeln($this->prefixDryRun(sprintf('delete %s (%s exists)', $thumbnailFile->path(), $targetPath)));
+                } elseif ($thumbnailFile->isDir()) {
                     $storage->deleteDirectory($thumbnailFile->path());
                 } else {
                     $storage->delete($thumbnailFile->path());
                 }
             }
 
-            $progressBar->advance();
+            $progressBar?->advance();
         }
-        $progressBar->finish();
+        $progressBar?->finish();
     }
 }

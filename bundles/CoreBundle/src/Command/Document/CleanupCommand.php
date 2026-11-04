@@ -17,6 +17,7 @@ namespace Pimcore\Bundle\CoreBundle\Command\Document;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Exception;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DestructiveCommandTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db;
 use Pimcore\Model\Document;
@@ -25,7 +26,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 
@@ -38,6 +38,8 @@ use Throwable;
 )]
 class CleanupCommand extends AbstractCommand
 {
+    use DestructiveCommandTrait;
+
     protected const array STANDARD_DOCUMENT_ENUM_TYPES = [
         'page',
         'link',
@@ -55,8 +57,9 @@ class CleanupCommand extends AbstractCommand
         $this
             ->addArgument('documentTypes',
                 InputArgument::IS_ARRAY,
-                'Which types do you want to clean up')
-            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Clean up without asking for confirmation');
+                'Which types do you want to clean up');
+
+        $this->configureDestructiveOptions();
     }
 
     #[\Override]
@@ -91,16 +94,23 @@ class CleanupCommand extends AbstractCommand
             ['types' => ArrayParameterType::STRING]
         );
 
-        if (!$input->getOption('force') && $input->isInteractive()) {
-            $confirmed = $this->io->confirm(sprintf(
-                'This deletes %d document(s) of type(s) %s including their children, removes the type(s) from the documents table and drops their tables. This cannot be undone. Continue?',
+        if ($this->isDryRun()) {
+            $this->output->writeln($this->prefixDryRun(sprintf(
+                'Would delete %d document(s) of type(s) %s including their children, remove the type(s) from the documents table and drop the tables %s.',
                 count($documentIds),
-                implode(', ', $filteredDocumentTypes)
-            ), false);
+                implode(', ', $filteredDocumentTypes),
+                implode(', ', array_map(static fn (string $type): string => 'documents_' . $type, $filteredDocumentTypes))
+            )));
 
-            if (!$confirmed) {
-                return Command::SUCCESS;
-            }
+            return Command::SUCCESS;
+        }
+
+        if (!$this->confirmDestructiveAction(sprintf(
+            'This deletes %d document(s) of type(s) %s including their children, removes the type(s) from the documents table and drops their tables.',
+            count($documentIds),
+            implode(', ', $filteredDocumentTypes)
+        ))) {
+            return Command::SUCCESS;
         }
 
         // delete through the model, so children, properties, dependencies, versions, translations, caches etc. are

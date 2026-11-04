@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\Command\Document;
 
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\Command\Traits\DestructiveCommandTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Db;
 use Pimcore\Model\Version;
@@ -37,12 +38,23 @@ use Throwable;
 )]
 class MigrateElementsCommand extends AbstractCommand
 {
-    private bool $runCommand = true;
+    use DestructiveCommandTrait;
+
+    #[\Override]
+    protected function configure(): void
+    {
+        $this->configureDestructiveOptions('List the versions to re-save without changing anything');
+    }
 
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!$this->runCommand) {
+        if (!$this->isDryRun()) {
+            $this->io->warning('This command is potentially dangerous. Please use with caution and make sure you have a proper backup! '
+                . 'See issue https://github.com/pimcore/pimcore/issues/7384 first');
+        }
+
+        if (!$this->confirmDestructiveAction('This re-saves all versions of pages and snippets.')) {
             return self::SUCCESS;
         }
 
@@ -53,6 +65,13 @@ class MigrateElementsCommand extends AbstractCommand
         $failed = 0;
 
         foreach ($versionsRaw as $versionRaw) {
+            if ($this->isDryRun()) {
+                $output->writeln($this->prefixDryRun(sprintf('re-save version %d, document id: %d, document key: %s', $versionRaw['vId'], $versionRaw['dId'], $versionRaw['dKey'])));
+                $migrated++;
+
+                continue;
+            }
+
             try {
                 $this->processVersionRow($versionRaw);
                 $migrated++;
@@ -74,7 +93,7 @@ class MigrateElementsCommand extends AbstractCommand
             return self::FAILURE;
         }
 
-        $this->io->success(sprintf('Migrated %d versions.', $migrated));
+        $this->io->success(sprintf($this->isDryRun() ? '%d version(s) would be migrated.' : 'Migrated %d versions.', $migrated));
 
         return self::SUCCESS;
     }
@@ -96,14 +115,5 @@ class MigrateElementsCommand extends AbstractCommand
         }
         $version->save();
         $this->output->writeln(sprintf('saved version %d, document id: %d, document key: %s', $vId, $documentId, $dKey));
-    }
-
-    #[\Override]
-    protected function interact(InputInterface $input, OutputInterface $output): void
-    {
-        $this->io->warning('This command is potentially dangerous. Please use with caution and make sure you have a proper backup! '
-            . 'See issue https://github.com/pimcore/pimcore/issues/7384 first');
-
-        $this->runCommand = $this->io->confirm('Do you want to continue?', false);
     }
 }
