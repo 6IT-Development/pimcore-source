@@ -272,7 +272,7 @@ abstract class AbstractObject extends Model\Element\AbstractElement
             return null;
         }
 
-        $path = Model\Element\Service::correctPath($path);
+        $path = Model\Element\Service::correctPath($path, false);
 
         try {
             $object = new static();

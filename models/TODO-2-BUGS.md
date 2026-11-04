@@ -2780,7 +2780,7 @@ longer the structural fields.
 **Done:** `updateChildren()` resolves the copy with `getElementType($new)` and falls back to `$new` itself, so the
 target's cached children listing never gets a `null` entry, for documents, assets and objects of every subtype.
 
-## [ ] B-152 – `Element\Service::correctPath()` URL-decodes stored keys: object paths with `%xx` resolve to another element
+## [x] B-152 – `Element\Service::correctPath()` URL-decodes stored keys: object paths with `%xx` resolve to another element
 
 **File:** `models/Element/Service.php:772-787`
 
@@ -2789,6 +2789,13 @@ target's cached children listing never gets a `null` entry, for documents, asset
   creates duplicates. `rtrim($path, '/ ')` also strips trailing spaces of keys.
 
 **Fix direction:** decode only in request routing, not in model lookups.
+
+**Done:** `correctPath()` takes a `$urlDecode` flag (default `true`). `AbstractObject::getByPath()` and
+`DataObject\Service::pathExists()` pass `false`, so object keys containing `%xx` (`/shop/50%25`, `/a%20b`) are looked up
+as stored, and `createFolderByPath()` (through `getByPath()`) no longer creates duplicates. Document and asset paths are
+still decoded: their keys cannot contain `%` (`getValidKey()`), so callers that pass an encoded path keep working.
+Request routing already decodes the path info itself. The trailing-space trim is harmless: `getValidKey()` trims keys,
+so no stored key ends with a space.
 
 ## [ ] B-153 – Pretty URLs are not validated: duplicates and collisions resolve arbitrarily
 

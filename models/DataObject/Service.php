@@ -840,7 +840,7 @@ class Service extends Model\Element\Service
             return false;
         }
 
-        $path = Element\Service::correctPath($path);
+        $path = Element\Service::correctPath($path, false);
 
         try {
             $object = new DataObject();

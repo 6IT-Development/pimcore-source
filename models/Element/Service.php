@@ -771,9 +771,12 @@ class Service extends Model\AbstractModel
     }
 
     /**
+     * Document and asset keys cannot contain "%", so their paths are URL-decoded for callers that pass an encoded path.
+     * Object keys can contain "%": pass $urlDecode = false for object paths, decoding them would resolve another element.
+     *
      * @internal
      */
-    public static function correctPath(string $path): string
+    public static function correctPath(string $path, bool $urlDecode = true): string
     {
         // remove trailing slash
         if ($path !== '/') {
@@ -783,7 +786,7 @@ class Service extends Model\AbstractModel
         // correct wrong path (root-node problem)
         $path = str_replace('//', '/', $path);
 
-        if (str_contains($path, '%') && mb_check_encoding(rawurldecode($path), 'UTF-8')) {
+        if ($urlDecode && str_contains($path, '%') && mb_check_encoding(rawurldecode($path), 'UTF-8')) {
             $path = rawurldecode($path);
         }
 
