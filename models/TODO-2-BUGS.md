@@ -1238,7 +1238,7 @@ tasks of the asset. exiftool runs with an explicit 120 s timeout, like the Ghost
 counts as a failure only when there is no JSON output, because exiftool also exits with an error for files it cannot parse
 and still reports them in JSON. Retrying those every time would re-run exiftool on every save without ever getting a result.
 
-## [ ] B-80 – `Video::getThumbnail()` enriches a never-written `medias` key; by-reference loop leaks reference
+## [x] B-80 – `Video::getThumbnail()` enriches a never-written `medias` key; by-reference loop leaks reference
 
 **File:** `models/Asset/Video.php:101-111`
 
@@ -1246,6 +1246,10 @@ and still reports them in JSON. Retrying those every time would re-run exiftool 
   dangling reference; missing `formats` key → warning.
 
 **Fix direction:** drop `medias`, `array_map` without references, `?? []`.
+
+**Done:** `getThumbnail()` copies the stored thumbnail entry and maps its `formats` (`?? []`) through
+`enrichThumbnailPath()` with `array_map()`. The dead `medias` branch and the by-reference loops are gone, and an
+entry without `formats` returns an empty list instead of a warning.
 
 ## [ ] B-81 – Spherical metadata reader closes the asset's shared stream; extension check is case-sensitive
 

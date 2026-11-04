@@ -100,19 +100,13 @@ class Video extends Model\Asset
                 // check for existing videos
                 $customSetting = $this->getCustomSetting('thumbnails');
                 if (is_array($customSetting) && array_key_exists($thumbnail->getName(), $customSetting)) {
-                    foreach ($customSetting[$thumbnail->getName()]['formats'] as $pathKey => &$path) {
-                        if ($pathKey == 'medias') {
-                            foreach ($path as &$format) {
-                                foreach ($format as &$f) {
-                                    $f = $this->enrichThumbnailPath($f);
-                                }
-                            }
-                        } else {
-                            $path = $this->enrichThumbnailPath($path);
-                        }
-                    }
+                    $thumbnailData = $customSetting[$thumbnail->getName()];
+                    $thumbnailData['formats'] = array_map(
+                        $this->enrichThumbnailPath(...),
+                        $thumbnailData['formats'] ?? []
+                    );
 
-                    return $customSetting[$thumbnail->getName()];
+                    return $thumbnailData;
                 }
             } catch (Throwable $e) {
                 Logger::error("Couldn't create thumbnail of video " . $this->getRealFullPath() . ': ' . $e);
