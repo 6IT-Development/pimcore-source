@@ -855,13 +855,15 @@ temp key is needed. Not covered any more: a PNG that the asynchronous image opti
 `Config::clearRuntimeCache()`. This covers the saving process. Other long-running workers keep their cached copy until
 their runtime cache is reset, as before.
 
-## [ ] B-52 – `Image\Thumbnail\Config\Dao::exists(string $name)` ignores its argument
+## [x] B-52 – `Image\Thumbnail\Config\Dao::exists(string $name)` ignores its argument
 
 **File:** `models/Asset/Image/Thumbnail/Config/Dao.php:74-77`
 
 - Uses `$this->model->getName()`.
 
 **Fix direction:** use `$name` (or remove – no callers found).
+
+**Done:** `exists()` looks up the `$name` it is given.
 
 ## [ ] B-53 – `clearTempFiles()` deletes the other config type's directories with the same name; full recursive listing
 

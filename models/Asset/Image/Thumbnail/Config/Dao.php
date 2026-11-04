@@ -73,7 +73,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 
     public function exists(string $name): bool
     {
-        return (bool)$this->getDataByName($this->model->getName());
+        return (bool)$this->getDataByName($name);
     }
 
     /**
