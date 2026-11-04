@@ -53,6 +53,7 @@ class Dao extends Model\Dao\AbstractDao
             LEFT JOIN assets ON dependencies.targettype="asset" AND dependencies.targetid=assets.id
             LEFT JOIN documents ON dependencies.targettype="document" AND dependencies.targetid=documents.id
             WHERE dependencies.sourceid = ? AND dependencies.sourcetype = ?
+                AND (objects.id IS NOT NULL OR assets.id IS NOT NULL OR documents.id IS NOT NULL)
             ORDER BY objects.path, objects.key, documents.path, documents.key, assets.path, assets.filename',
             [$this->model->getSourceId(), $this->model->getSourceType()]);
 
@@ -219,6 +220,8 @@ class Dao extends Model\Dao\AbstractDao
             }
 
             Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'sourceid = ?', $id) . ' AND  ' . Helper::quoteInto($this->db, 'sourcetype = ?', $type));
+            // the sanity check does not re-save every source type (e.g. folders), the rows must not depend on it
+            Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'targetid = ?', $id) . ' AND  ' . Helper::quoteInto($this->db, 'targettype = ?', $type));
         } catch (Exception $e) {
             Logger::error((string)$e);
         }
@@ -343,6 +346,7 @@ class Dao extends Model\Dao\AbstractDao
             LEFT JOIN assets ON dependencies.sourceid=assets.id AND dependencies.sourcetype="asset"
             LEFT JOIN documents ON dependencies.sourceid=documents.id AND dependencies.sourcetype="document"
             WHERE dependencies.targettype = ? AND dependencies.targetid = ?
+                AND (objects.id IS NOT NULL OR assets.id IS NOT NULL OR documents.id IS NOT NULL)
             ORDER BY objects.path, objects.key, documents.path, documents.key, assets.path, assets.filename
         ';
 
@@ -412,9 +416,18 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * get total count of required by records
      *
+     * Counts with the same joins as getRequiredBy(), so rows of deleted sources are not counted.
      */
     public function getRequiredByTotalCount(): int
     {
-        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM dependencies WHERE targettype = ? AND targetid = ?', [$this->model->getSourceType(), $this->model->getSourceId()]);
+        return (int)$this->db->fetchOne('
+            SELECT COUNT(*) FROM dependencies
+            LEFT JOIN objects ON dependencies.sourceid=objects.id AND dependencies.sourcetype="object"
+            LEFT JOIN assets ON dependencies.sourceid=assets.id AND dependencies.sourcetype="asset"
+            LEFT JOIN documents ON dependencies.sourceid=documents.id AND dependencies.sourcetype="document"
+            WHERE dependencies.targettype = ? AND dependencies.targetid = ?
+                AND (objects.id IS NOT NULL OR assets.id IS NOT NULL OR documents.id IS NOT NULL)',
+            [$this->model->getSourceType(), $this->model->getSourceId()]
+        );
     }
 }

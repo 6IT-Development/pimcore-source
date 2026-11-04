@@ -1560,7 +1560,7 @@ format specifier. Moving the paging to the DBAL query builder stays with I-43.
 failing with "Unknown column". `Dependency::getFilterRequiresByPath()` / `getFilterRequiredByPath()` forward `$orderBy`
 and `$orderDirection` to the DAO. The rows keep their `id` / `type` keys, `path` is an extra key.
 
-## [ ] B-97 – Rows pointing to deleted elements are never removed for several element types; counts and `isRequired()` include them
+## [x] B-97 – Rows pointing to deleted elements are never removed for several element types; counts and `isRequired()` include them
 
 **Files:** `models/Dependency/Dao.php:185-203`, `:368-371`; `models/Dependency.php:160-177`;
 `lib/Messenger/Handler/SanityCheckHandler.php` (`performSanityCheck()`)
@@ -1580,6 +1580,13 @@ and `$orderDirection` to the DAO. The rows keep their `id` / `type` keys, `path`
 
 **Fix direction:** in `cleanAllForElement()` also delete rows where the element is the **target**. The sanity check is
 still needed to clean the sources' data, but the graph must not depend on it. Count with the same join the list uses.
+
+**Done:** `cleanAllForElement()` deletes the rows where the element is the source **and** the rows where it is
+the target, so the graph no longer depends on the sanity check re-saving every source (folders, links, hardlinks, or
+`pimcore.dependency.enabled: false`). The sanity check is still dispatched to clean the sources' data. Rows left behind
+by earlier deletes are hidden: `getBySourceId()` and `getRequiredBy()` skip rows whose element no longer exists, and
+`getRequiredByTotalCount()` / `isRequired()` count with the same joins, so `getRequiresTotalCount()`,
+`getRequiredByTotalCount()` and the lists match the `INNER JOIN` path queries.
 
 ## [ ] B-98 – `cleanAllForElement()` dispatches sanity checks before deleting and swallows DB errors inside the element's delete transaction
 
