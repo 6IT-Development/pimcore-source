@@ -64,7 +64,7 @@ and the irreversible `down()` (B-07).
 
 ---
 
-## [ ] C-03 – Listener exceptions make already-committed element saves and deletes fail
+## [x] C-03 – Listener exceptions make already-committed element saves and deletes fail
 
 **Files:** `src/EventListener/UUIDListener.php:54-75`, `src/Model/Tool/UUID.php:131-147`, `src/Model/Tool/UUID/Dao.php:40-45`
 
@@ -86,3 +86,8 @@ exception from the listener:
 **Fix direction:** wrap the listener body in `try/catch (\Throwable)` and log the error through an injected
 `LoggerInterface`. UUID bookkeeping must never fail a committed element operation, because missing rows are created
 lazily by `getByItem()` anyway. In addition, make the writes idempotent (B-03) and validate the config (B-09).
+
+**Done:** `UUIDListener::onPostAdd()` and `onPostDelete()` catch every `\Throwable` and log it on the `pimcore`
+channel through an injected `LoggerInterface` (action, element class and id, exception), so UUID bookkeeping no longer
+fails a committed save or delete. Missing rows are still created lazily by `getByItem()`. Not addressed: the
+idempotent writes (B-03) and the config validation (B-09).

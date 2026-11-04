@@ -16,4 +16,6 @@ services:
     # EVENT LISTENER
     #
 
-    Pimcore\Bundle\UuidBundle\EventListener\UUIDListener: ~
+    Pimcore\Bundle\UuidBundle\EventListener\UUIDListener:
+        tags:
+            - { name: monolog.logger, channel: pimcore }

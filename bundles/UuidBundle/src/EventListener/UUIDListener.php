@@ -28,14 +28,21 @@ use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Model\ElementEventInterface;
 use Pimcore\Model\DataObject\ClassDefinitionInterface;
 use Pimcore\Model\Element\ElementInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Contracts\EventDispatcher\Event;
+use Throwable;
 
 /**
  * @internal
  */
 class UUIDListener implements EventSubscriberInterface
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {
+    }
+
     public static function getSubscribedEvents(): array
     {
         return [
@@ -51,27 +58,55 @@ class UUIDListener implements EventSubscriberInterface
         ];
     }
 
+    /**
+     * Runs after the element is committed, so an error must not fail the save; missing rows are created lazily by
+     * UUID::getByItem() later.
+     */
     public function onPostAdd(Event $e): void
     {
-        if ($this->isEnabled()) {
-            $element = $this->extractElement($e);
+        try {
+            if ($this->isEnabled()) {
+                $element = $this->extractElement($e);
 
-            if ($element) {
-                UUID::create($element);
+                if ($element) {
+                    UUID::create($element);
+                }
             }
+        } catch (Throwable $exception) {
+            $this->logFailure('create', $e, $exception);
         }
     }
 
+    /**
+     * Runs after the element is deleted, so an error must not fail the delete.
+     */
     public function onPostDelete(Event $e): void
     {
-        if ($this->isEnabled()) {
-            $element = $this->extractElement($e);
+        try {
+            if ($this->isEnabled()) {
+                $element = $this->extractElement($e);
 
-            if ($element) {
-                $uuidObject = UUID::getByItem($element);
-                $uuidObject->delete();
+                if ($element) {
+                    $uuidObject = UUID::getByItem($element);
+                    $uuidObject->delete();
+                }
             }
+        } catch (Throwable $exception) {
+            $this->logFailure('delete', $e, $exception);
         }
+    }
+
+    private function logFailure(string $action, Event $event, Throwable $exception): void
+    {
+        $element = $this->extractElement($event);
+
+        $this->logger->error('Could not {action} the UUID of {class} {id}: {message}', [
+            'action' => $action,
+            'class' => get_debug_type($element),
+            'id' => $element?->getId(),
+            'message' => $exception->getMessage(),
+            'exception' => $exception,
+        ]);
     }
 
     protected function isEnabled(): bool
