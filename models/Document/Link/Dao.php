@@ -37,7 +37,8 @@ class Dao extends Model\Document\Dao
             $this->model->setId($id);
         }
 
-        $data = $this->db->fetchAssociative("SELECT documents.*, documents_link.*, tree_locks.locked FROM documents
+        // documents.id comes last: without a type row the NULL documents_link.id would win and the save would insert again
+        $data = $this->db->fetchAssociative("SELECT documents.*, documents_link.*, tree_locks.locked, documents.id FROM documents
             LEFT JOIN documents_link ON documents.id = documents_link.id
                 LEFT JOIN tree_locks ON documents.id = tree_locks.id AND tree_locks.type = 'document'
                 WHERE documents.id = ?", [$this->model->getId()]);

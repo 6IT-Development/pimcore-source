@@ -2706,7 +2706,7 @@ most specific first) and throws a descriptive exception when there is none; the 
 `Hardlink::hasChildren()` asks the own children and then the source's `hasChildren()` instead of loading and wrapping
 every source child.
 
-## [ ] B-148 – Document type DAOs: a missing type row overwrites `id` with `NULL`
+## [x] B-148 – Document type DAOs: a missing type row overwrites `id` with `NULL`
 
 **Files:** `models/Document/Page/Dao.php:35-52`, `Snippet/Dao.php:34-51`, `Email/Dao.php:35-52`, `Link/Dao.php:34-52`,
 `Hardlink/Dao.php:34-51`
@@ -2716,6 +2716,10 @@ every source child.
   `DuplicateFullPathException`; documents imported or converted without the type row cannot be saved.
 
 **Fix direction:** list the type columns explicitly (without `id`) or assign `documents.id` last.
+
+**Done:** the `getById()` queries of the page, snippet, email, link and hardlink DAOs select `documents.id` again as
+the last column, so it wins over the `NULL` id of a missing type row. The model keeps its id, `save()` updates instead
+of inserting, and `Document\Dao::update()` upserts the missing type row.
 
 ## [ ] B-149 – Document / object keys: `null` key gives a `TypeError`, the auto-key path is unreachable
 
