@@ -23,7 +23,6 @@ use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Dependency;
 use Pimcore\Model\Element;
-use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
 
 /**
  * @internal
@@ -73,11 +72,9 @@ class Dao extends Model\Dao\AbstractDao
 
         $sourceId = $this->model->getSourceId();
 
-        if (in_array($this->model->getSourceType(), ['object', 'document', 'asset'])) {
-            $sourceType = $this->model->getSourceType();
-        } else {
-            throw new SuspiciousOperationException('Illegal source type ' . $this->model->getSourceType());
-        }
+        // the source type is empty until it is set
+        Dependency::validateType($this->model->getSourceType());
+        $sourceType = $this->model->getSourceType();
 
         if (!in_array($orderBy, ['id', 'type', 'path'])) {
             $orderBy = 'id';
@@ -137,11 +134,9 @@ class Dao extends Model\Dao\AbstractDao
 
         $targetId = $this->model->getSourceId();
 
-        if (in_array($this->model->getSourceType(), ['object', 'document', 'asset'])) {
-            $targetType = $this->model->getSourceType();
-        } else {
-            throw new SuspiciousOperationException('Illegal source type ' . $this->model->getSourceType());
-        }
+        // the source type is empty until it is set
+        Dependency::validateType($this->model->getSourceType());
+        $targetType = $this->model->getSourceType();
 
         if (!in_array($orderBy, ['id', 'type', 'path'])) {
             $orderBy = 'id';
@@ -257,6 +252,8 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function save(): void
     {
+        Dependency::validateType($this->model->getSourceType());
+
         // a retry is only possible if we own the transaction, a deadlock rolls back an outer one as well
         $maxRetries = $this->db->isTransactionActive() ? 1 : 5;
 
@@ -382,11 +379,9 @@ class Dao extends Model\Dao\AbstractDao
     {
         $targetId = $this->model->getSourceId();
 
-        if (in_array($this->model->getSourceType(), ['object', 'document', 'asset'])) {
-            $targetType = $this->model->getSourceType();
-        } else {
-            throw new SuspiciousOperationException('Illegal source type ' . $this->model->getSourceType());
-        }
+        // the source type is empty until it is set
+        Dependency::validateType($this->model->getSourceType());
+        $targetType = $this->model->getSourceType();
 
         if (!in_array($orderBy, ['id', 'type', 'path'])) {
             $orderBy = 'id';

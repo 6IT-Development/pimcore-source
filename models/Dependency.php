@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Model;
 
+use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Logger;
 use Pimcore\Messenger\SanityCheckMessage;
@@ -30,6 +31,11 @@ use Throwable;
  */
 class Dependency extends AbstractModel
 {
+    /**
+     * The values of the `sourcetype` / `targettype` columns, any other value would be stored as an empty string
+     */
+    private const ELEMENT_TYPES = ['document', 'asset', 'object'];
+
     /**
      * The ID of the object to get dependencies for, 0 until it is set
      *
@@ -75,6 +81,8 @@ class Dependency extends AbstractModel
      */
     public function addRequirement(int $id, string $type): void
     {
+        self::validateType($type);
+
         $this->requires[] = [
             'type' => $type,
             'id' => $id,
@@ -137,6 +145,26 @@ class Dependency extends AbstractModel
     public static function discardSanityChecks(): void
     {
         self::$pendingSanityChecks = null;
+    }
+
+    /**
+     * @internal
+     */
+    public static function isValidType(string $type): bool
+    {
+        return in_array($type, self::ELEMENT_TYPES, true);
+    }
+
+    /**
+     * @internal
+     *
+     * @throws InvalidArgumentException
+     */
+    public static function validateType(string $type): void
+    {
+        if (!self::isValidType($type)) {
+            throw new InvalidArgumentException(sprintf('Invalid element type "%s", expected one of: %s', $type, implode(', ', self::ELEMENT_TYPES)));
+        }
     }
 
     private static function dispatchSanityCheck(string $type, int $id): void
@@ -231,6 +259,8 @@ class Dependency extends AbstractModel
 
     public function setSourceType(string $sourceType): static
     {
+        self::validateType($sourceType);
+
         $this->sourceType = $sourceType;
 
         return $this;

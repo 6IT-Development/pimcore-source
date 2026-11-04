@@ -1714,7 +1714,7 @@ element waits for the first one's commit, and an element whose `modificationDate
 locked row (e.g. an older instance from the cache of a consumer) is reloaded with `force` before the rows are computed.
 `saveDelta()` inserts each target once. The `requires` list itself is still not deduplicated (I-45).
 
-## [ ] B-104 – Invalid source types: HTTP exception from the model layer, silently stored elsewhere
+## [x] B-104 – Invalid source types: HTTP exception from the model layer, silently stored elsewhere
 
 **Files:** `models/Dependency/Dao.php:73-77`, `:132-136`, `:323-327`; `models/Dependency.php:153-158`;
 `install.sql:66`, `:68` (`ENUM('document','asset','object')`)
@@ -1727,6 +1727,12 @@ locked row (e.g. an older instance from the cache of a consumer) is reloaded wit
 
 **Fix direction:** validate once in the setters / `addRequirement()` with an `ElementType` enum (I-42) and throw
 `\InvalidArgumentException` (or `\ValueError` from `ElementType::from()`).
+
+**Done:** `setSourceType()` and `addRequirement()` accept only `document`, `asset` and `object` and throw an
+`\InvalidArgumentException` otherwise. The three path getters and `Dao::save()` throw the same exception for a source
+type that was never set, instead of the HTTP `SuspiciousOperationException`. `ElementDependenciesHandler` skips a
+requirement with an invalid type with a warning, so one broken relation does not drop the other rows. The
+`ElementType` enum stays with I-42.
 
 ## [ ] B-105 – Filter helpers in `Element\Service` omit the `requires` / `requiredBy` key when nothing matches
 

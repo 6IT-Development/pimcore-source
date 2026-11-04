@@ -104,6 +104,13 @@ class ElementDependenciesHandler
                     continue;
                 }
 
+                if (!Dependency::isValidType((string)$requirement['type'])) {
+                    // one broken relation (e.g. of a custom data type) must not drop the other dependencies
+                    $this->logger->warning(sprintf('Skipping dependency of %s %d on %s %d: invalid element type', $type, $id, $requirement['type'], $requirement['id']));
+
+                    continue;
+                }
+
                 if ($requirement['id'] == $id && $requirement['type'] == $type) {
                     // dont't add a reference to yourself
                     continue;
