@@ -1328,7 +1328,7 @@ places after the placeholders are merged; the error names the path. The `support
 `MethodMarkingStore`), and `modify` stays a runtime shorthand: expanding it in the tree would have to decide its
 precedence over explicit flags, which `PlaceConfig` resolves by key order today.
 
-### [ ] I-63 – One loader for `config_location` YAML imports
+### [x] I-63 – One loader for `config_location` YAML imports
 
 **Files:** `lib/Kernel.php:87-131`, `lib/Config/LocationAwareConfigRepository.php:289-329`,
 `src/DependencyInjection/Configuration.php:137-160`
@@ -1341,6 +1341,12 @@ precedence over explicit flags, which `PlaceConfig` resolves by key order today.
   constant on `Configuration` (or `LocationAwareConfigRepository`) and loop over it in both places.
 - Move the decision into one static helper (`LocationAwareConfigRepository::resolveSymfonyConfigDirectory(array
   $containerConfig, string $key): ?string`) used by the Kernel and by the bundles.
+
+**Done:** `Configuration::CONFIG_LOCATION_KEYS` lists the ten keys (and which have a read target); the tree and the
+Kernel loop over it. `LocationAwareConfigRepository::resolveSymfonyConfigDirectory()` makes the read/write-target
+decision for the Kernel and for `loadSymfonyConfigFiles()` (bundles): the read directory is used only for a
+`symfony-config` read target with a directory, and the result is `rtrim`med. The loading itself stays per caller
+(Kernel: directory import, bundles: sorted YAML files, B-55).
 
 ---
 

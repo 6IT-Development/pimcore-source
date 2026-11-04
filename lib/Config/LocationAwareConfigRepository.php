@@ -292,26 +292,42 @@ class LocationAwareConfigRepository
         }
     }
 
-    public static function loadSymfonyConfigFiles(ContainerBuilder $container, string $containerKey, string $configKey): void
+    /**
+     * Returns the directory whose YAML files make up the Symfony config of a `config_location` key, or null when the
+     * key is read from the settings store only. Shared by the kernel (Pimcore core configs) and the bundles.
+     *
+     * @param array $containerConfig the processed config of the extension, including its `config_location` node
+     */
+    public static function resolveSymfonyConfigDirectory(array $containerConfig, string $configKey): ?string
     {
-        $containerConfig = ConfigurationHelper::getConfigNodeFromSymfonyTree($container, $containerKey);
-
         $readTargetConf = $containerConfig[self::CONFIG_LOCATION][$configKey][self::READ_TARGET] ?? null;
         $writeTargetConf = $containerConfig[self::CONFIG_LOCATION][$configKey][self::WRITE_TARGET];
 
         $configDir = null;
         if ($readTargetConf !== null) {
-            if ($readTargetConf[self::TYPE] === LocationAwareConfigRepository::LOCATION_SETTINGS_STORE ||
-                ($readTargetConf[self::TYPE] !== LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG && $writeTargetConf[self::TYPE] !== LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG)
+            if ($readTargetConf[self::TYPE] === self::LOCATION_SETTINGS_STORE ||
+                ($readTargetConf[self::TYPE] !== self::LOCATION_SYMFONY_CONFIG && $writeTargetConf[self::TYPE] !== self::LOCATION_SYMFONY_CONFIG)
             ) {
-                return;
+                return null;
             }
 
-            $configDir = $readTargetConf[self::OPTIONS][self::DIRECTORY];
+            if ($readTargetConf[self::TYPE] === self::LOCATION_SYMFONY_CONFIG) {
+                $configDir = $readTargetConf[self::OPTIONS][self::DIRECTORY] ?? null;
+            }
         }
 
+        $configDir ??= $writeTargetConf[self::OPTIONS][self::DIRECTORY];
+
+        return rtrim($configDir, '/\\');
+    }
+
+    public static function loadSymfonyConfigFiles(ContainerBuilder $container, string $containerKey, string $configKey): void
+    {
+        $containerConfig = ConfigurationHelper::getConfigNodeFromSymfonyTree($container, $containerKey);
+
+        $configDir = self::resolveSymfonyConfigDirectory($containerConfig, $configKey);
         if ($configDir === null) {
-            $configDir = $writeTargetConf[self::OPTIONS][self::DIRECTORY];
+            return;
         }
 
         $configLoader = new YamlFileLoader(
@@ -319,9 +335,7 @@ class LocationAwareConfigRepository
             new FileLocator($configDir)
         );
 
-        //load configs
-        $configs = ConfigurationHelper::getSymfonyConfigFiles($configDir);
-        foreach ($configs as $config) {
+        foreach (ConfigurationHelper::getSymfonyConfigFiles($configDir) as $config) {
             $configLoader->load($config);
         }
     }

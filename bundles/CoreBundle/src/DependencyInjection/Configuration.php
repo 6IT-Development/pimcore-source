@@ -38,6 +38,25 @@ use const PASSWORD_ARGON2ID;
  */
 final class Configuration implements ConfigurationInterface
 {
+    /**
+     * Keys of `pimcore.config_location`, mapped to whether they also have a read target. The kernel imports the
+     * YAML files of each of them (see Kernel::registerContainerConfiguration()).
+     *
+     * @var array<string, bool>
+     */
+    public const array CONFIG_LOCATION_KEYS = [
+        'image_thumbnails' => false,
+        'video_thumbnails' => false,
+        'document_types' => false,
+        'predefined_properties' => false,
+        'predefined_asset_metadata' => false,
+        'perspectives' => false,
+        'custom_views' => false,
+        'object_custom_layouts' => false,
+        'system_settings' => true,
+        'select_options' => true,
+    ];
+
     private ?TreeBuilder $treeBuilder = null;
 
     public function getConfigTreeBuilder(): TreeBuilder
@@ -137,30 +156,15 @@ final class Configuration implements ConfigurationInterface
         $this->addGotenbergNode($rootNode);
         $this->addDependencyNode($rootNode);
         $this->addChromiumNode($rootNode);
-        $storageNode = ConfigurationHelper::addConfigLocationWithWriteTargetNodes($rootNode, [
-            'image_thumbnails' => PIMCORE_CONFIGURATION_DIRECTORY . '/image_thumbnails',
-            'video_thumbnails' => PIMCORE_CONFIGURATION_DIRECTORY . '/video_thumbnails',
-            'document_types' => PIMCORE_CONFIGURATION_DIRECTORY . '/document_types',
-            'predefined_properties' => PIMCORE_CONFIGURATION_DIRECTORY . '/predefined_properties',
-            'predefined_asset_metadata' => PIMCORE_CONFIGURATION_DIRECTORY . '/predefined_asset_metadata',
-            'perspectives' => PIMCORE_CONFIGURATION_DIRECTORY . '/perspectives',
-            'custom_views' => PIMCORE_CONFIGURATION_DIRECTORY . '/custom_views',
-            'object_custom_layouts' => PIMCORE_CONFIGURATION_DIRECTORY . '/object_custom_layouts',
-        ]);
-
-        ConfigurationHelper::addConfigLocationTargetNode(
-            $storageNode,
-            'system_settings',
-            PIMCORE_CONFIGURATION_DIRECTORY . '/system_settings',
-            [LocationAwareConfigRepository::READ_TARGET]
-        );
-
-        ConfigurationHelper::addConfigLocationTargetNode(
-            $storageNode,
-            'select_options',
-            PIMCORE_CONFIGURATION_DIRECTORY . '/select_options',
-            [LocationAwareConfigRepository::READ_TARGET]
-        );
+        $storageNode = ConfigurationHelper::addConfigLocationWithWriteTargetNodes($rootNode, []);
+        foreach (self::CONFIG_LOCATION_KEYS as $configKey => $hasReadTarget) {
+            ConfigurationHelper::addConfigLocationTargetNode(
+                $storageNode,
+                $configKey,
+                PIMCORE_CONFIGURATION_DIRECTORY . '/' . $configKey,
+                $hasReadTarget ? [LocationAwareConfigRepository::READ_TARGET] : []
+            );
+        }
 
         return $treeBuilder;
     }

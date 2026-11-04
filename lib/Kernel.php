@@ -24,6 +24,7 @@ use Knp\Bundle\PaginatorBundle\KnpPaginatorBundle;
 use League\FlysystemBundle\FlysystemBundle;
 use LogicException;
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\DependencyInjection\Configuration;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\ConfigurationHelper;
 use Pimcore\Bundle\CoreBundle\PimcoreCoreBundle;
 use Pimcore\Cache\RuntimeCache;
@@ -85,44 +86,13 @@ abstract class Kernel extends SymfonyKernel
         $this->microKernelRegisterContainerConfiguration($loader);
 
         $loader->load(function (ContainerBuilder $container) use ($loader) {
-            $configKeysArray = [
-                'image_thumbnails',
-                'video_thumbnails',
-                'document_types',
-                'predefined_properties',
-                'predefined_asset_metadata',
-                'perspectives',
-                'custom_views',
-                'object_custom_layouts',
-                'system_settings',
-                'select_options',
-            ];
             $containerConfig = ConfigurationHelper::getConfigNodeFromSymfonyTree($container, 'pimcore');
 
-            foreach ($configKeysArray as $configKey) {
-                $writeTargetConf = $containerConfig[LocationAwareConfigRepository::CONFIG_LOCATION][$configKey][LocationAwareConfigRepository::WRITE_TARGET];
-                $readTargetConf = $containerConfig[LocationAwareConfigRepository::CONFIG_LOCATION][$configKey][LocationAwareConfigRepository::READ_TARGET] ?? null;
-
-                $configDir = null;
-                if ($readTargetConf !== null) {
-                    if ($readTargetConf[LocationAwareConfigRepository::TYPE] === LocationAwareConfigRepository::LOCATION_SETTINGS_STORE ||
-                        ($readTargetConf[LocationAwareConfigRepository::TYPE] !== LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG && $writeTargetConf[LocationAwareConfigRepository::TYPE] !== LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG)
-                    ) {
-                        continue;
-                    }
-
-                    if ($readTargetConf[LocationAwareConfigRepository::TYPE] === LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG && $readTargetConf[LocationAwareConfigRepository::OPTIONS][LocationAwareConfigRepository::DIRECTORY] !== null) {
-                        $configDir = rtrim($readTargetConf[LocationAwareConfigRepository::OPTIONS][LocationAwareConfigRepository::DIRECTORY], '/\\');
-                    }
-                }
-
-                if ($configDir === null) {
-                    $configDir = rtrim($writeTargetConf[LocationAwareConfigRepository::OPTIONS][LocationAwareConfigRepository::DIRECTORY], '/\\');
-                }
-                $configDir = "$configDir/";
-                if (is_dir($configDir)) {
+            foreach (array_keys(Configuration::CONFIG_LOCATION_KEYS) as $configKey) {
+                $configDir = LocationAwareConfigRepository::resolveSymfonyConfigDirectory($containerConfig, $configKey);
+                if ($configDir !== null && is_dir($configDir)) {
                     // @phpstan-ignore-next-line
-                    $loader->import($configDir);
+                    $loader->import($configDir . '/');
                 }
             }
         });
