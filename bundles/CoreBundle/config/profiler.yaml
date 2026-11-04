@@ -7,10 +7,8 @@ services:
     # DEVELOPMENT/PROFILER
     #
 
+    # autoconfiguration adds a second, empty data_collector tag; the profiler reads the first one,
+    # and the template comes from PimcoreDataCollector::getTemplate()
     Pimcore\Bundle\CoreBundle\DataCollector\PimcoreDataCollector:
         tags:
-            -
-                name:     data_collector
-                template: '@PimcoreCore/Profiler/data_collector.html.twig'
-                id:       'pimcore'
-                priority: 500
+            - { name: data_collector, id: pimcore, priority: 500 }

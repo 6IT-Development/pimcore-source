@@ -540,7 +540,7 @@ custom HTML services of its transitions) before autowiring; `WorkflowPass::valid
 validators on a definition built from the config. `pimcore:workflow:dump` keeps its `pimcore.workflow` locator (it
 lists only Pimcore workflows) and, like `NotificationSubscriber`, unwraps `TraceableWorkflow`.
 
-### [ ] I-33 – Collector service registration: let autoconfiguration do the work
+### [x] I-33 – Collector service registration: let autoconfiguration do the work
 
 **Files:** `config/profiler.yaml:1-16`, `src/DataCollector/PimcoreDataCollector.php`,
 `src/DependencyInjection/PimcoreCoreExtension.php:119`
@@ -553,6 +553,11 @@ lists only Pimcore workflows) and, like `NotificationSubscriber`, unwraps `Trace
   `priority` / `id` in the tag, or use `#[AutoconfigureTag('data_collector', ['id' => 'pimcore', 'priority' => 500])]`.
 - `profiler.yaml` is loaded in every environment. It is harmless today because the unused private service is removed,
   but it could be loaded only when `kernel.debug` is true or when `WebProfilerBundle` is registered.
+
+**Done:** the collector extends `AbstractDataCollector` and returns its template from `getTemplate()`; the tag keeps
+only `id` and `priority`. The empty autoconfigured tag stays (it is appended after the explicit one, which
+`ProfilerPass` reads). `profiler.yaml` is still loaded in every environment: the profiler can run without debug or
+`WebProfilerBundle`, and the service is removed when there is no `profiler`.
 
 ### [ ] I-34 – Replace hand-written "collect tagged services" passes with native DI features
 

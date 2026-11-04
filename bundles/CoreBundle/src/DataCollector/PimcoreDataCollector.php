@@ -19,16 +19,16 @@ namespace Pimcore\Bundle\CoreBundle\DataCollector;
 
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Version;
+use Symfony\Bundle\FrameworkBundle\DataCollector\AbstractDataCollector;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\DataCollector\DataCollector;
 use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
 
 /**
  * @internal
  */
-class PimcoreDataCollector extends DataCollector implements ResetInterface
+class PimcoreDataCollector extends AbstractDataCollector implements ResetInterface
 {
     public function __construct(
         protected PimcoreContextResolver $contextResolver
@@ -54,6 +54,11 @@ class PimcoreDataCollector extends DataCollector implements ResetInterface
     public function getName(): string
     {
         return 'pimcore';
+    }
+
+    public static function getTemplate(): string
+    {
+        return '@PimcoreCore/Profiler/data_collector.html.twig';
     }
 
     // the getters use ?? null: data is empty after reset() and older stored profiles may lack a key
