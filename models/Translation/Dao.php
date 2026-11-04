@@ -17,7 +17,6 @@ namespace Pimcore\Model\Translation;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Exception;
-use Pimcore\Db\Helper;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
@@ -62,19 +61,38 @@ class Dao extends Model\Dao\AbstractDao
             ['languages' => ArrayParameterType::STRING]
         );
 
-        if (!empty($data)) {
-            foreach ($data as $d) {
-                $this->model->addTranslation($d['language'], $d['text'] ?? '');
-                $this->model->setKey($d['key']);
-                $this->model->setCreationDate($d['creationDate']);
-                $this->model->setModificationDate($d['modificationDate']);
-                $this->model->setType($d['type']);
-                $this->model->setUserOwner($d['userOwner']);
-                $this->model->setUserModification($d['userModification']);
-            }
-        } else {
+        if (empty($data)) {
             throw new NotFoundException("Translation-Key -->'" . $key . "'<-- not found");
         }
+
+        // the key-level fields come from one row each, not from whichever language was loaded last: the language
+        // created first owns the key, the latest change names the type and the modifying user
+        $created = null;
+        $modified = null;
+        foreach ($data as $d) {
+            $this->model->addTranslation($d['language'], $d['text'] ?? '');
+
+            if ($d['creationDate'] !== null && ($created === null || $d['creationDate'] < $created['creationDate'])) {
+                $created = $d;
+            }
+            if ($d['modificationDate'] !== null && ($modified === null || $d['modificationDate'] > $modified['modificationDate'])) {
+                $modified = $d;
+            }
+        }
+        $created ??= $data[0];
+        $modified ??= $data[array_key_last($data)];
+
+        $this->model->setKey($data[0]['key']);
+        $this->model->setCreationDate(self::toNullableInt($created['creationDate']));
+        $this->model->setModificationDate(self::toNullableInt($modified['modificationDate']));
+        $this->model->setType($modified['type']);
+        $this->model->setUserOwner(self::toNullableInt($created['userOwner']));
+        $this->model->setUserModification(self::toNullableInt($modified['userModification']));
+    }
+
+    private static function toNullableInt(mixed $value): ?int
+    {
+        return $value === null ? null : (int)$value;
     }
 
     /**
@@ -126,25 +144,32 @@ class Dao extends Model\Dao\AbstractDao
                     'userOwner' => $this->model->getUserOwner(),
                     'userModification' => $this->model->getUserModification(),
                 ];
-                if ($onlyMissing) {
-                    $this->insertIfMissing($data);
-                } else {
-                    Helper::upsert($this->db, $this->getDatabaseTableName(), $data, $this->getPrimaryKey($this->getDatabaseTableName()));
-                }
+                // the creation date and owner of an existing language stay as they are
+                $this->insertOrUpdate($data, $onlyMissing ? [] : ['type', 'text', 'modificationDate', 'userModification']);
             }
         }
     }
 
-    private function insertIfMissing(array $data): void
+    /**
+     * @param string[] $updateColumns the columns written if the row exists, none leaves an existing row untouched
+     */
+    private function insertOrUpdate(array $data, array $updateColumns): void
     {
         $columns = array_map(fn (string $column) => $this->db->quoteIdentifier($column), array_keys($data));
+        $params = array_values($data);
 
-        // a no-op update on duplicate keys (unlike INSERT IGNORE, other errors are still reported)
+        $updates = [];
+        foreach ($updateColumns as $column) {
+            $updates[] = $this->db->quoteIdentifier($column) . ' = ?';
+            $params[] = $data[$column];
+        }
+
+        // without update columns a no-op update on duplicate keys (unlike INSERT IGNORE, other errors are still reported)
         $this->db->executeStatement(
             'INSERT INTO ' . $this->db->quoteIdentifier($this->getDatabaseTableName())
             . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')'
-            . ' ON DUPLICATE KEY UPDATE `key` = `key`',
-            array_values($data)
+            . ' ON DUPLICATE KEY UPDATE ' . ($updates ? implode(', ', $updates) : '`key` = `key`'),
+            $params
         );
     }
 

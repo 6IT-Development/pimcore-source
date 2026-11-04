@@ -1820,7 +1820,7 @@ timeouts and SQL errors propagate instead of returning `null` or a fake translat
 longer turned into an auto-create of empty texts. Hydration `TypeError`s on `NULL` dates are B-109, the short listing
 pages B-118.
 
-## [ ] B-109 – Hydration keeps the newest `creationDate` and the last row's owner/type; `save()` writes them to every language; `NULL` dates crash
+## [x] B-109 – Hydration keeps the newest `creationDate` and the last row's owner/type; `save()` writes them to every language; `NULL` dates crash
 
 **Files:** `models/Translation/Dao.php:53-73`, `:112-122`; `models/Translation/Listing/Dao.php:71-88`; `lib/Db/Helper.php:38-53`
 
@@ -1839,6 +1839,14 @@ pages B-118.
 **Fix direction:** hydrate key-level fields once with `MIN(creationDate)`, `MAX(modificationDate)`, and the owner of the
 first row. Do not update `creationDate` / `userOwner` on existing rows (`ON DUPLICATE KEY UPDATE` only `text`, `type`,
 `modificationDate`, `userModification`). Treat `NULL` dates as `null` (make the setters nullable).
+
+**Done:** `Dao::getByKey()` takes `creationDate` and `userOwner` from the language with the oldest creation date,
+and `modificationDate`, `type` and `userModification` from the language with the newest modification date (rows
+without dates fall back to the first / last row). `Dao::save()` writes with `INSERT … ON DUPLICATE KEY UPDATE` of
+`type`, `text`, `modificationDate` and `userModification` only, so existing languages keep their creation date and
+owner (new languages get the key's). `setCreationDate()` / `setModificationDate()` accept `null`.
+`Listing\Dao::getAllTranslations()` keeps the oldest creation and newest modification date per key and the dead
+"legacy support" branch is removed. Per-language `type` values are still flattened to the key's type.
 
 ## [ ] B-110 – `Dao::save()`: rewrites every language on every save, is not atomic, and does not validate key or type
 

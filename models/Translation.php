@@ -155,7 +155,7 @@ final class Translation extends AbstractModel
     /**
      * @return $this
      */
-    public function setCreationDate(int $date): Translation
+    public function setCreationDate(?int $date): Translation
     {
         $this->creationDate = $date;
 
@@ -170,7 +170,7 @@ final class Translation extends AbstractModel
     /**
      * @return $this
      */
-    public function setModificationDate(int $date): Translation
+    public function setModificationDate(?int $date): Translation
     {
         $this->modificationDate = $date;
 

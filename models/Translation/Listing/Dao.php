@@ -76,15 +76,16 @@ class Dao extends Model\Listing\Dao\AbstractDao
                     $translations[$t['key']]->setType($t['type']);
                 }
 
-                $translations[$t['key']]->addTranslation($t['language'], $t['text'] ?? '');
+                $translation = $translations[$t['key']];
+                $translation->addTranslation($t['language'], $t['text'] ?? '');
 
-                //for legacy support
-                if ($translations[$t['key']]->getModificationDate() < $t['creationDate']) {
-                    $translations[$t['key']]->setDate($t['creationDate']);
+                // the key was created with its first language and changed with its latest one
+                if ($t['creationDate'] !== null && ($translation->getCreationDate() === null || $t['creationDate'] < $translation->getCreationDate())) {
+                    $translation->setCreationDate((int)$t['creationDate']);
                 }
-
-                $translations[$t['key']]->setCreationDate($t['creationDate']);
-                $translations[$t['key']]->setModificationDate($t['modificationDate']);
+                if ($t['modificationDate'] !== null && $t['modificationDate'] > (int)$translation->getModificationDate()) {
+                    $translation->setModificationDate((int)$t['modificationDate']);
+                }
             }
 
             if (empty($this->model->getConditionParams())) {
