@@ -1210,13 +1210,18 @@ for a value that does not resolve to an element, the same as `normalize()` and `
 the asset type and `getDataForEditMode()`. A document path can be rewritten to be site-relative by `getFullPath()`
 when a site is active, and `getByPath()` would not find it when the grid sends it back. For objects both are the same.
 
-## [ ] B-78 – Invalid date metadata stored as `false`
+## [x] B-78 – Invalid date metadata stored as `false`
 
 **File:** `MetaData/ClassDefinition/Data/Date.php:32-34`
 
 - `strtotime()` → `false` is persisted.
 
 **Fix direction:** return `null` on `false` / validate in `checkValidity()`.
+
+**Done:** `normalize()` (also used by `getDataFromEditMode()`) returns `null` when `strtotime()` cannot parse the
+value, and for non-string values it cannot parse at all (which threw a `TypeError` before), so an invalid date is
+stored as empty instead of `false`. No validation error is raised: the admin date field sends timestamps, so only API
+callers can send such values, and an empty date is what they got displayed before as well.
 
 ## [ ] B-79 – Embedded metadata marked as extracted even when extraction failed
 

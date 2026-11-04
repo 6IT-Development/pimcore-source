@@ -30,7 +30,11 @@ class Date extends Data
     public function normalize(mixed $value, array $params = []): mixed
     {
         if ($value && !is_numeric($value)) {
-            $value = strtotime($value);
+            // a value that is not a parsable date is stored as empty, not as false
+            $value = is_string($value) ? strtotime($value) : false;
+            if ($value === false) {
+                return null;
+            }
         }
 
         return $value;
