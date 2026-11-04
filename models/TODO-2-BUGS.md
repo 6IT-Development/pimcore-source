@@ -1137,13 +1137,16 @@ instead of `myclip.mp4` with every dot removed). The case problem was only laten
 conversions keep their stored paths in the `thumbnails` custom setting and are still found; only new conversions of
 such names get the new file name.
 
-## [ ] B-72 – Video config listing ignores filter and order
+## [x] B-72 – Video config listing ignores filter and order
 
 **File:** `models/Asset/Video/Thumbnail/Config/Listing/Dao.php:28-36`
 
 - `FilterListingTrait` / `OrderListingTrait` are never applied; `getTotalCount()` counts unfiltered ids.
 
 **Fix direction:** mirror `Image/Thumbnail/Config/Listing/Dao.php`.
+
+**Done:** `loadList()` skips configs deleted since the id list was read and applies the listing's filter (re-indexed) and
+order callbacks, as the image config listing does. `getTotalCount()` counts the filtered list instead of all ids.
 
 ## [ ] B-73 – `Video\Thumbnail\Config::getByName()` returns the shared cached instance
 

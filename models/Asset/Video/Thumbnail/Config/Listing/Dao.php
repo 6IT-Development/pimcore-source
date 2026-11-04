@@ -30,7 +30,16 @@ class Dao extends Config\Dao
         $configs = [];
 
         foreach ($this->loadIdList() as $name) {
-            $configs[] = Config::getByName($name);
+            // a config deleted since the id list was read is skipped
+            if ($config = Config::getByName($name)) {
+                $configs[] = $config;
+            }
+        }
+        if ($this->model->getFilter()) {
+            $configs = array_values(array_filter($configs, $this->model->getFilter()));
+        }
+        if ($this->model->getOrder()) {
+            usort($configs, $this->model->getOrder());
         }
 
         $this->model->setThumbnails($configs);
@@ -40,6 +49,6 @@ class Dao extends Config\Dao
 
     public function getTotalCount(): int
     {
-        return count($this->loadIdList());
+        return count($this->loadList());
     }
 }
