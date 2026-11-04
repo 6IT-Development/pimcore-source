@@ -21,6 +21,7 @@ use Exception;
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetBatchTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
 use Pimcore\Console\AbstractCommand;
+use Pimcore\Db\Helper;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -55,28 +56,57 @@ class GenerateChecksumCommand extends AbstractCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $conditionVariables = [];
-        $missingOnly = $input->getOption('missing-only');
+        $missingOnly = (bool) $input->getOption('missing-only');
 
-        $conditions = [];
+        $conditions = ["`type` != 'folder'"];
+
+        if ($missingOnly) {
+            // customSettings is a PHP-serialized array; skip rows that already have a non-empty "checksum" string
+            $key = Helper::escapeLike(serialize('checksum'));
+            $conditions[] = 'customSettings IS NULL OR customSettings NOT LIKE ? OR customSettings LIKE ?';
+            $conditionVariables[] = '%' . $key . 's:%';
+            $conditionVariables[] = '%' . $key . 's:0:""%';
+        }
 
         $this->addAssetFilterConditions($input, $conditions, $conditionVariables);
 
+        $progressBar = $this->io->createProgressBar($this->countAssets($conditions, $conditionVariables));
+
+        $generated = 0;
+        $errors = 0;
+
         foreach ($this->iterateAssets($conditions, $conditionVariables) as $asset) {
-            try {
-                if ($missingOnly && $asset->getCustomSetting('checksum')) {
-                    continue;
+            // the SQL filter is only a pre-selection, the custom setting decides
+            if (!$missingOnly || !$asset->getCustomSetting('checksum')) {
+                try {
+                    if ($this->output->isVerbose()) {
+                        // clear the bar before writing, otherwise the line is printed over it
+                        $progressBar->clear();
+                        $this->output->writeln('generating checksum for asset: ' . $asset->getRealFullPath() . ' | ' . $asset->getId());
+                        $progressBar->display();
+                    }
+                    $asset->generateChecksum();
+                    $generated++;
+                } catch (Exception $e) {
+                    $errors++;
+                    $progressBar->clear();
+                    $this->io->error($asset->getRealFullPath() . ' | ' . $asset->getId() . ': ' . $e->getMessage());
+                    $progressBar->display();
                 }
-
-                if ($asset->getType() === 'folder') {
-                    continue;
-                }
-
-                $this->output->writeln(' generating checksum for asset: ' . $asset->getRealFullPath() . ' | ' . $asset->getId());
-                $asset->generateChecksum();
-            } catch (Exception) {
-                $this->output->writeln(' error generating checksum for asset: ' . $asset->getRealFullPath() . ' | ' . $asset->getId());
             }
+            $progressBar->advance();
         }
+
+        $progressBar->finish();
+        $this->io->newLine(2);
+
+        if ($errors) {
+            $this->io->error(sprintf('Generated %d checksums, %d failed.', $generated, $errors));
+
+            return self::FAILURE;
+        }
+
+        $this->io->success(sprintf('Generated %d checksums.', $generated));
 
         return self::SUCCESS;
     }

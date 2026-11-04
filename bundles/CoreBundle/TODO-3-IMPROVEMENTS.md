@@ -372,12 +372,17 @@ solved by I-11 (`Helper::escapeLike()` in `AssetFilterOptionsTrait`). `configure
 `--skip-formats` (CSV, completion via a closure) covers every auto format, `--skip-avif` / `--skip-webp` stay as fixed
 shortcuts. Items are JSON-encoded `[id, name]` tuples.
 
-### [ ] I-23 – `GenerateChecksumCommand`: filter in SQL
+### [x] I-23 – `GenerateChecksumCommand`: filter in SQL
 
 **File:** `src/Command/Asset/GenerateChecksumCommand.php:105-111`
 
 - `--missing-only` and the folder skip happen in PHP after the full asset is loaded. Move both into the condition
   (`type != 'folder'`, `customSettings NOT LIKE '%"checksum"%'` or a JSON function). Add a progress bar and a summary.
+
+**Done:** folders are excluded in SQL. `--missing-only` pre-selects rows whose serialized `customSettings` have no
+non-empty `checksum` string (`customSettings` is PHP-serialized, not JSON); the loaded asset still has the last word,
+so a false match only costs a load. The command shows a progress bar, prints each asset only with `-v`, reports errors
+with their message and ends with a summary; it exits with `FAILURE` if a checksum failed.
 
 ### [ ] I-24 – `Document/CleanupCommand` internals
 
