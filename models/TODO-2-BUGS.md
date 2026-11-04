@@ -1251,13 +1251,19 @@ and still reports them in JSON. Retrying those every time would re-run exiftool 
 `enrichThumbnailPath()` with `array_map()`. The dead `medias` branch and the by-reference loops are gone, and an
 entry without `formats` returns an empty list instead of a warning.
 
-## [ ] B-81 – Spherical metadata reader closes the asset's shared stream; extension check is case-sensitive
+## [x] B-81 – Spherical metadata reader closes the asset's shared stream; extension check is case-sensitive
 
 **File:** `models/Asset/Video.php:276`, `:278`, `:324`
 
 - `fclose($this->getStream())` invalidates the cached stream; `in_array(ext, ['mp4','webm'])` skips `.MP4`.
 
 **Fix direction:** open a dedicated stream via `Storage::readStream`; `strtolower()`.
+
+**Done:** `getSphericalMetaDataFromBackend()` reads from a stream of its own opened with
+`Storage::get('asset')->readStream()` inside the existing `try`, and closes only that one. The asset's cached
+`getStream()` stays usable, for example for the embedded metadata and preview generation that follow in the update
+tasks. The extension check is case-insensitive, so `.MP4` / `.WebM` files are read as well. A missing binary is now
+logged as the spherical metadata warning instead of being read as an empty substitute stream.
 
 ## [ ] B-82 – `Video\Thumbnail\Processor::applyTransformations()` crashes on an unknown method
 

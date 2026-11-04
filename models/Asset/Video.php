@@ -24,6 +24,7 @@ use Pimcore\Event\FrontendEvents;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Tool;
+use Pimcore\Tool\Storage;
 use RuntimeException;
 use SimpleXMLElement;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -273,11 +274,13 @@ class Video extends Model\Asset
     {
         $data = [];
 
-        if (in_array(pathinfo($this->getFilename(), PATHINFO_EXTENSION), ['mp4', 'webm'])) {
+        if (in_array(strtolower(pathinfo($this->getFilename(), PATHINFO_EXTENSION)), ['mp4', 'webm'])) {
             $chunkSize = 1024;
-            $file_pointer = $this->getStream();
+            $file_pointer = null;
 
             try {
+                // a stream of its own, closing the shared one of getStream() would break later reads of the asset
+                $file_pointer = Storage::get('asset')->readStream($this->getRealFullPath());
                 $tag = '<rdf:SphericalVideo';
                 $tagLength = strlen($tag);
                 $buffer = false;
