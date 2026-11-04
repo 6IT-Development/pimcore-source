@@ -53,31 +53,31 @@ class ThumbnailsImageCommand extends AbstractCommand
             ->addOption(
                 'parent',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only create thumbnails of images in this folder (comma separated IDs e.g. 543,1077)'
             )
             ->addOption(
                 'id',
                 null,
-                InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY,
+                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
                 'only create thumbnails of images with this (IDs)'
             )
             ->addOption(
                 'pathPattern',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'Filter images against the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
             )
             ->addOption(
                 'last-modified-since',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only create thumbnails of images that have been modified since the given date (format: ' . self::DATE_FORMAT . ' )'
             )
             ->addOption(
                 'thumbnails',
                 't',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only create specified thumbnails (comma separated eg.: thumb1,thumb2)'
             )->addOption(
                 'system',

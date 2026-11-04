@@ -43,7 +43,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
             ->addOption(
                 'skip-locales',
                 's',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'Do not delete specified locale tables (comma separated eg.: en, en_AT)'
             )
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Delete without asking for confirmation');

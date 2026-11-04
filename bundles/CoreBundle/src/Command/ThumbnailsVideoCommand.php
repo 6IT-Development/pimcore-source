@@ -54,13 +54,13 @@ class ThumbnailsVideoCommand extends AbstractCommand
             ->addOption(
                 'parent',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only create thumbnails of images in this folder (ID)'
             )
             ->addOption(
                 'thumbnails',
                 't',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only create specified thumbnails (comma separated eg.: thumb1,thumb2)'
             )->addOption(
                 'system',

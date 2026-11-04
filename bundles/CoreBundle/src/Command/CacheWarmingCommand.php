@@ -71,25 +71,33 @@ class CacheWarmingCommand extends AbstractCommand
                 'types',
                 't',
                 InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                sprintf('Perform warming only for this types of elements. Valid options: %s', $this->humanList($this->validTypes))
+                sprintf('Perform warming only for this types of elements. Valid options: %s', $this->humanList($this->validTypes)),
+                null,
+                $this->validTypes
             )
             ->addOption(
                 'documentTypes',
                 'd',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of documents. Valid options: %s', $this->humanList($this->validDocumentTypes))
+                sprintf('Restrict warming to these types of documents. Valid options: %s', $this->humanList($this->validDocumentTypes)),
+                null,
+                $this->validDocumentTypes
             )
             ->addOption(
                 'assetTypes',
                 'a',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of assets. Valid options: %s', $this->humanList($this->validAssetTypes))
+                sprintf('Restrict warming to these types of assets. Valid options: %s', $this->humanList($this->validAssetTypes)),
+                null,
+                $this->validAssetTypes
             )
             ->addOption(
                 'objectTypes',
                 'o',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                sprintf('Restrict warming to these types of objects. Valid options: %s', $this->humanList($this->validObjectTypes))
+                sprintf('Restrict warming to these types of objects. Valid options: %s', $this->humanList($this->validObjectTypes)),
+                null,
+                $this->validObjectTypes
             )
             ->addOption(
                 'classes',

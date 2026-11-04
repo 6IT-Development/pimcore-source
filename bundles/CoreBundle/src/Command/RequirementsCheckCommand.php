@@ -46,7 +46,7 @@ class RequirementsCheckCommand extends AbstractCommand
             ->addOption(
                 'min-level',
                 'l',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 "Minimum status level to report: 'warning' or 'error'",
                 null,
                 self::MIN_LEVELS

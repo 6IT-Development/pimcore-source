@@ -53,13 +53,13 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
             ->addOption(
                 'parent',
                 'p',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only add assets in this folder (ID) to the update task queue'
             )
             ->addOption(
                 'path-pattern',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only add assets matching the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
             )
             ->addOption(

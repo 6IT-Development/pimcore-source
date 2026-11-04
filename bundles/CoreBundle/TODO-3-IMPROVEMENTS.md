@@ -69,7 +69,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
 - Use `Command::SUCCESS`, `Command::FAILURE` and `Command::INVALID` (exit 2, for wrong options or arguments). A few
   commands already do this (`InstallCommand`, `Document/CleanupCommand`).
 
-### [ ] I-04 – Correct option modes and add `suggestedValues` (shell completion)
+### [x] I-04 – Correct option modes and add `suggestedValues` (shell completion)
 
 - `InputOption::VALUE_OPTIONAL` is used for options that make no sense without a value. `--parent` without a value
   becomes `null` and is silently ignored. Use `VALUE_REQUIRED` for:

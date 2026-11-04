@@ -52,7 +52,7 @@ class GenerateChecksumCommand extends AbstractCommand
             ->addOption(
                 'parent',
                 'p',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only generate checksum for assets in this folder (ID)'
             )
             ->addOption(
@@ -64,7 +64,7 @@ class GenerateChecksumCommand extends AbstractCommand
             ->addOption(
                 'path-pattern',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only generate checksum for the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
             );
     }

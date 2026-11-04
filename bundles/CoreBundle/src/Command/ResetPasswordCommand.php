@@ -19,9 +19,11 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 
 use InvalidArgumentException;
 use Pimcore\Console\AbstractCommand;
+use Pimcore\Db\Helper;
 use Pimcore\Model\User;
 use Pimcore\Tool\Authentication;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Completion\CompletionInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -47,14 +49,29 @@ class ResetPasswordCommand extends AbstractCommand
             ->addArgument(
                 'user',
                 InputArgument::REQUIRED,
-                'Username or ID of user'
+                'Username or ID of user',
+                null,
+                $this->suggestUserNames(...)
             )
             ->addOption(
                 'password',
                 'p',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'Plaintext password - if not set, script will prompt for the new password (recommended, as passwords passed as option end up in the shell history and the process list)'
             );
+    }
+
+    /**
+     * @return string[]
+     */
+    private function suggestUserNames(CompletionInput $input): array
+    {
+        $listing = new User\Listing();
+        $listing->setCondition("`type` = 'user' AND `name` LIKE ?", [Helper::escapeLike($input->getCompletionValue()) . '%']);
+        $listing->setOrderKey('name');
+        $listing->setLimit(100);
+
+        return array_map(static fn (User\AbstractUser $user) => (string) $user->getName(), $listing->getUsers());
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

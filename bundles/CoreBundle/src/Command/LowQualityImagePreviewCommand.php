@@ -53,13 +53,13 @@ class LowQualityImagePreviewCommand extends AbstractCommand
             ->addOption(
                 'parent',
                 'p',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only create thumbnails of images in this folder (ID)'
             )
             ->addOption(
                 'pathPattern',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'Filter images against the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
             )
             ->addOption(
@@ -68,7 +68,7 @@ class LowQualityImagePreviewCommand extends AbstractCommand
                 InputOption::VALUE_NONE,
                 'generate preview regardless if it already exists or not'
             )
-            ->addOption('generator', 'g', InputOption::VALUE_OPTIONAL, 'Force a generator, either `svg` or `imagick`');
+            ->addOption('generator', 'g', InputOption::VALUE_REQUIRED, 'Force a generator, either `svg` or `imagick`');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

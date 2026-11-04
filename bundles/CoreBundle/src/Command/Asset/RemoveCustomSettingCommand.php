@@ -47,19 +47,19 @@ class RemoveCustomSettingCommand extends AbstractCommand
             ->addOption(
                 'id',
                 null,
-                InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY,
+                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
                 'only remove custom-setting for assets with this (IDs)'
             )
             ->addOption(
                 'parent',
                 'p',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only remove custom-setting for assets in this folder (ID)'
             )
             ->addOption(
                 'path-pattern',
                 null,
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'only remove custom-setting for the given regex pattern (path + filename), example:  ^/Sample.*urban.jpg$'
             );
     }

@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Workflow\Dumper\GraphvizDumper;
 use Pimcore\Workflow\Dumper\StateMachineGraphvizDumper;
+use Pimcore\Workflow\Manager;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Input\InputArgument;
@@ -37,11 +38,16 @@ use Symfony\Component\Workflow\Marking;
 )]
 class WorkflowDumpCommand extends AbstractCommand
 {
+    public function __construct(private readonly Manager $workflowManager)
+    {
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this
             ->setDefinition([
-                new InputArgument('name', InputArgument::REQUIRED, 'A workflow name'),
+                new InputArgument('name', InputArgument::REQUIRED, 'A workflow name', null, fn () => $this->workflowManager->getAllWorkflows()),
                 new InputArgument('marking', InputArgument::IS_ARRAY, 'A marking (a list of places)'),
             ])
             ->setHelp(<<<'EOF'

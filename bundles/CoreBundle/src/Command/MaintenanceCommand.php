@@ -63,13 +63,17 @@ class MaintenanceCommand extends AbstractCommand
                 'job',
                 'j',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                'Call just a specific job(s) (see <comment>--help</comment> for a list of valid jobs)'
+                'Call just a specific job(s) (see <comment>--help</comment> for a list of valid jobs)',
+                null,
+                fn () => $this->maintenanceExecutor->getTaskNames()
             )
             ->addOption(
                 'excludedJobs',
                 'J',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                'Exclude specific job(s) (see <comment>--help</comment> for a list of valid jobs)'
+                'Exclude specific job(s) (see <comment>--help</comment> for a list of valid jobs)',
+                null,
+                fn () => $this->maintenanceExecutor->getTaskNames()
             );
     }
 

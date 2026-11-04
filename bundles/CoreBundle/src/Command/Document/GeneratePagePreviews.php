@@ -44,19 +44,19 @@ class GeneratePagePreviews extends AbstractCommand
             ->addOption(
                 'urlPrefix',
                 'u',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'Prefix for the document path, eg. https://example.com, if not specified, Pimcore will try use the main domain from system settings.'
             )
             ->addOption(
                 'parent',
                 'p',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'Only create preview of documents in parent hierarchy (ID|path).'
             )
             ->addOption(
                 'exclude-patterns',
                 'x',
-                InputOption::VALUE_OPTIONAL,
+                InputOption::VALUE_REQUIRED,
                 'Excludes all documents whose path property matches the regex pattern.'
             );
     }

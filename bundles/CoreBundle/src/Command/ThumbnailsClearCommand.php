@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Completion\CompletionInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -40,14 +41,32 @@ class ThumbnailsClearCommand extends AbstractCommand
                 'type',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'video or image'
+                'video or image',
+                null,
+                ['image', 'video']
             )
             ->addOption(
                 'name',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'name of the thumbnail config of which the temp. files should be cleared'
+                'name of the thumbnail config of which the temp. files should be cleared',
+                null,
+                $this->suggestConfigNames(...)
             );
+    }
+
+    /**
+     * @return string[]
+     */
+    private function suggestConfigNames(CompletionInput $input): array
+    {
+        $configs = match ($input->getOption('type')) {
+            'image' => (new Asset\Image\Thumbnail\Config\Listing())->getThumbnails(),
+            'video' => (new Asset\Video\Thumbnail\Config\Listing())->getThumbnails(),
+            default => [],
+        };
+
+        return array_map(static fn ($config) => $config->getName(), $configs);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
