@@ -244,14 +244,19 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         $type = Service::getElementType($this);
 
         if ($this->properties === null) {
-            // try to get from cache
-            $cacheKey = $type . '_properties_' . $this->getId();
-            $properties = Cache::load($cacheKey);
-            if (!is_array($properties)) {
+            if ($this->getId() === null) {
+                // an unsaved element inherits the properties of its own parent, there is no key to cache them under
                 $properties = $this->getDao()->getProperties();
-                $elementCacheTag = $this->getCacheTag();
-                $cacheTags = [$type . '_properties' => $type . '_properties', $elementCacheTag => $elementCacheTag];
-                Cache::save($properties, $cacheKey, $cacheTags);
+            } else {
+                // try to get from cache
+                $cacheKey = $type . '_properties_' . $this->getId();
+                $properties = Cache::load($cacheKey);
+                if (!is_array($properties)) {
+                    $properties = $this->getDao()->getProperties();
+                    $elementCacheTag = $this->getCacheTag();
+                    $cacheTags = [$type . '_properties' => $type . '_properties', $elementCacheTag => $elementCacheTag];
+                    Cache::save($properties, $cacheKey, $cacheTags);
+                }
             }
 
             $this->properties = $properties;

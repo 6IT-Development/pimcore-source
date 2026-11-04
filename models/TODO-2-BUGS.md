@@ -3041,7 +3041,7 @@ Documented in the editable pages and the security upgrade notes.
 
 ## Element (Scope 6)
 
-## [ ] B-165 – Properties of unsaved elements are cached under a shared key
+## [x] B-165 – Properties of unsaved elements are cached under a shared key
 
 **Files:** `models/Element/AbstractElement.php:229-248`; `models/Element/Service.php:1416-1423`
 
@@ -3051,6 +3051,10 @@ Documented in the editable pages and the security upgrade notes.
   elements before saving; `setProperty()` triggers the read).
 
 **Fix direction:** do not use the persistent cache when the id is `null`.
+
+**Done:** `AbstractElement::getProperties()` reads the properties of an element without id straight from the DAO and
+neither loads nor writes the persistent cache, so each unsaved element gets the inherited properties of its own parent.
+Saved elements keep the `<type>_properties_<id>` cache entry.
 
 ## [ ] B-166 – `getUserPermissions()` and `isAllowed()` disagree for admins and workflow denials
 
