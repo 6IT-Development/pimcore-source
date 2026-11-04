@@ -1097,6 +1097,7 @@ class Asset extends Element\AbstractElement
             // remove dependencies
             $d = $this->getDependencies();
             $d->cleanAllForElement($this);
+            $this->dependencies = null;
 
             // remove from resource
             $this->getDao()->delete();

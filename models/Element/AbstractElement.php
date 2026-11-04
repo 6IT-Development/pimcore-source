@@ -415,6 +415,9 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
 
     protected function addToDependenciesQueue(): void
     {
+        // the rows are rewritten for the saved state, getDependencies() must load them again
+        $this->dependencies = null;
+
         if (Config::getSystemConfiguration()['dependency']['enabled']) {
             Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
                 new ElementDependenciesMessage(Service::getElementType($this), $this->getId())

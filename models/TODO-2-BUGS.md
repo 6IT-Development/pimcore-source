@@ -1641,7 +1641,7 @@ unsaved element instead of passing `null` to `getBySourceId(int …)`. `ElementD
 without an id (relations to unsaved elements) instead of failing with a `TypeError` in `addRequirement()`. The required
 constructor arguments stay with I-41/I-42.
 
-## [ ] B-100 – `AbstractElement::getDependencies()` is cached on the element and never reset after save or delete
+## [x] B-100 – `AbstractElement::getDependencies()` is cached on the element and never reset after save or delete
 
 **File:** `models/Element/AbstractElement.php:47`, `:613-620` (reset only in `__clone()`, `:675`)
 
@@ -1653,6 +1653,12 @@ constructor arguments stay with I-41/I-42.
 
 **Fix direction:** set `$this->dependencies = null` in `save()` / `delete()` (or in `addToDependenciesQueue()`), or do not
 cache at all (the getter is cheap once I-44 lands).
+
+**Done:** `AbstractElement::addToDependenciesQueue()`, which every asset, document and object save calls, resets
+the cached `Dependency` before the rows are rewritten, and `Asset::delete()`, `Document::doDelete()` and
+`AbstractObject::doDelete()` reset it after `cleanAllForElement()`. `getDependencies()` loads the current rows on the
+next call instead of returning the list from before the save. Removing the cache entirely stays with I-44.
+`DependenciesTest` still reloads with `force`; a test without it stays with I-50.
 
 ## [ ] B-101 – Pagination: `$limit` without `$offset` is ignored in `getRequires()` and the SQL getters
 

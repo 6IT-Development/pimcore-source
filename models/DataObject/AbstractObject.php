@@ -438,6 +438,7 @@ abstract class AbstractObject extends Model\Element\AbstractElement
         // remove dependencies
         $d = new Model\Dependency();
         $d->cleanAllForElement($this);
+        $this->dependencies = null;
 
         // remove all properties
         $this->getDao()->deleteAllProperties();

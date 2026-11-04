@@ -648,6 +648,7 @@ class Document extends Element\AbstractElement
         // remove dependencies
         $d = $this->getDependencies();
         $d->cleanAllForElement($this);
+        $this->dependencies = null;
 
         // remove translations
         $service = new Document\Service();
