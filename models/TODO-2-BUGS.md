@@ -2871,7 +2871,7 @@ the filtered list is the whole (re-indexed) list. `loop()` clears `cachedCurrent
 entry. `setDataFromEditmode()` accepts only a list of entries with numeric `key` and `date`, casts both to `int`, drops
 anything else (a non-array becomes an empty list) and sorts by date.
 
-## [ ] B-157 – Areablock: brick limits are counted across renders; positional and pointer-based iteration are mixed
+## [x] B-157 – Areablock: brick limits are counted across renders; positional and pointer-based iteration are mixed
 
 **File:** `models/Document/Editable/Areablock.php:130-182`, `:211-234`, `:254-271`, `:583-586`, `:611-626`
 
@@ -2885,6 +2885,16 @@ anything else (a non-array becomes an empty list) and sorts by date.
   `getElement()` passes a possibly `null` document to `Areablock\Item` (`TypeError`).
 
 **Fix direction:** reset the counter in `start()`; `array_values()` the indices; validate editmode data.
+
+**Done:** `start()` resets `brickTypeUsageCounter`, so `config.limits` count the bricks of one render; a second render
+of the same instance, one kept in the runtime cache or a clone starts from zero. `blockConstruct()`, `blockStart()` and
+`getCurrentIndex()` read the entry picked by `loop()` / `renderIndex()` (`currentIndex`) instead of
+`$this->indices[$this->current]`, so the pointer-based loop and the index-based calls cannot drift apart (and in manual
+mode `getCurrentIndex()` returns the current brick instead of the previous one). `setDataFromResource()` and
+`setDataFromEditmode()` store a list (`array_values()` semantics) of the entries with a numeric key (cast to `int`) and
+a non-empty brick type, keeping the first entry of a duplicate key; anything else is dropped. The brick type is still
+checked against `allowed` when rendering, since the configuration is not known when the data is set. `getElement()`
+returns `[]` when the document cannot be loaded.
 
 ## [ ] B-158 – Block-type editables leave `BlockStateStack` unbalanced when a child throws
 

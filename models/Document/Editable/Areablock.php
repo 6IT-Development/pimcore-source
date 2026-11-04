@@ -246,23 +246,48 @@ class Areablock extends Model\Document\Editable implements BlockInterface
     public function setDataFromResource(mixed $data): static
     {
         $unserializedData = $this->getUnserializedData($data) ?? [];
-        $this->indices = $unserializedData;
+        $this->indices = $this->normalizeIndices($unserializedData);
 
         return $this;
     }
 
     public function setDataFromEditmode(mixed $data): static
     {
-        $this->indices = $data;
+        $this->indices = $this->normalizeIndices($data);
 
         return $this;
+    }
+
+    /**
+     * Keeps the entries with a numeric key and a brick type as a list, the first entry wins for a duplicate key. The
+     * brick type is checked against the allowed bricks while rendering, the configuration is not known here.
+     */
+    private function normalizeIndices(mixed $indices): array
+    {
+        $normalized = [];
+        $usedKeys = [];
+        foreach (is_array($indices) ? $indices : [] as $index) {
+            if (!is_array($index) || !is_numeric($index['key'] ?? null) || !is_string($index['type'] ?? null) || $index['type'] === '') {
+                continue;
+            }
+
+            $index['key'] = (int) $index['key'];
+            if (isset($usedKeys[$index['key']])) {
+                continue;
+            }
+
+            $usedKeys[$index['key']] = true;
+            $normalized[] = $index;
+        }
+
+        return $normalized;
     }
 
     public function blockConstruct(): void
     {
         // set the current block suffix for the child elements (0, 1, 3, ...)
         // this will be removed in blockDestruct
-        $this->getBlockState()->pushIndex($this->indices[$this->current]['key']);
+        $this->getBlockState()->pushIndex($this->currentIndex['key']);
     }
 
     public function blockDestruct(): void
@@ -312,6 +337,8 @@ class Areablock extends Model\Document\Editable implements BlockInterface
         }
 
         reset($this->indices);
+        // the brick limits apply per render
+        $this->brickTypeUsageCounter = [];
 
         // set name suffix for the whole block element, this will be added to all child elements of the block
         $this->getBlockState()->pushBlock(BlockName::createFromEditable($this));
@@ -355,24 +382,24 @@ class Areablock extends Model\Document\Editable implements BlockInterface
         ];
 
         $hidden = 'false';
-        if (isset($this->indices[$this->current]['hidden']) && $this->indices[$this->current]['hidden']) {
+        if (!empty($this->currentIndex['hidden'])) {
             $hidden = 'true';
         }
 
         $outerAttributes = [
-            'key' => $this->indices[$this->current]['key'],
-            'type' => $this->indices[$this->current]['type'],
+            'key' => $this->currentIndex['key'],
+            'type' => $this->currentIndex['type'],
             'data-hidden' => $hidden,
         ];
 
         $areabrickManager = Pimcore::getContainer()->get(AreabrickManagerInterface::class);
 
         $dialogConfig = null;
-        $brick = $areabrickManager->getBrick($this->indices[$this->current]['type']);
+        $brick = $areabrickManager->getBrick($this->currentIndex['type']);
         if ($this->getEditmode() && $brick instanceof EditableDialogBoxInterface) {
             $dialogConfig = $brick->getEditableDialogBoxConfiguration($this, $info);
             if ($dialogConfig->getItems()) {
-                $dialogConfig->setId('dialogBox-' . $this->getName() . '-' . $this->indices[$this->current]['key']);
+                $dialogConfig->setId('dialogBox-' . $this->getName() . '-' . $this->currentIndex['key']);
             } else {
                 $dialogConfig = null;
             }
@@ -582,7 +609,7 @@ class Areablock extends Model\Document\Editable implements BlockInterface
 
     public function getCurrentIndex(): int
     {
-        return $this->indices[$this->getCurrent()]['key'] ?? 0;
+        return $this->currentIndex['key'] ?? 0;
     }
 
     public function getIndices(): array
@@ -611,6 +638,9 @@ class Areablock extends Model\Document\Editable implements BlockInterface
     public function getElement(string $name): array
     {
         $document = $this->getDocument();
+        if (!$document) {
+            return [];
+        }
 
         $parentBlockNames = $this->getParentBlockNames();
         $parentBlockNames[] = $this->getName();
