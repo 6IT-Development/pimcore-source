@@ -85,7 +85,7 @@ class Link extends Model\Document
         if ($this->getLinktype() === 'internal') {
             $element = $this->getElement();
 
-            if ($element instanceof Document || $element instanceof Asset) {
+            if ($element instanceof Document || $element instanceof Asset || $element instanceof Model\DataObject\AbstractObject) {
                 $key = $this->getInternalType() . '_' . $element->getId();
 
                 $dependencies[$key] = [
@@ -104,8 +104,9 @@ class Link extends Model\Document
 
         if ($this->getLinktype() === 'internal') {
             $element = $this->getElement();
-            if ($element instanceof Document || $element instanceof Asset) {
-                if ($element->getId() != $this->getId() && !array_key_exists($element->getCacheTag(), $tags)) {
+            // an object target is included as well: it changes the href produced by the class link generator
+            if ($element instanceof Document || $element instanceof Asset || $element instanceof Model\DataObject\AbstractObject) {
+                if ($element->getCacheTag() !== $this->getCacheTag() && !array_key_exists($element->getCacheTag(), $tags)) {
                     $tags = $element->getCacheTags($tags);
                 }
             }
@@ -278,6 +279,10 @@ class Link extends Model\Document
         return $this;
     }
 
+    /**
+     * A failing lookup only clears the loaded target: internal and internalType are persisted, and clearing them
+     * would make the next save store an empty link
+     */
     private function setObjectFromId(): ?Model\Element\ElementInterface
     {
         try {
@@ -295,8 +300,6 @@ class Link extends Model\Document
             }
         } catch (Exception $e) {
             Logger::warn((string)$e);
-            $this->internalType = '';
-            $this->internal = null;
             $this->object = null;
         }
 

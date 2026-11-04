@@ -2659,7 +2659,7 @@ skipped as well. `getTranslationSourceId()` returns `int`, as the `@method` tag 
 `string`, so a missing `navigation_name` gives an empty text instead of a `TypeError`. Empty attributes are still left
 out; the output differs from before only in the attribute spacing (no space before `>` when there are no attributes).
 
-## [ ] B-146 – `Document\Link`: object targets are neither dependencies nor cache tags; a lookup error wipes the target
+## [x] B-146 – `Document\Link`: object targets are neither dependencies nor cache tags; a lookup error wipes the target
 
 **Files:** `models/Document/Link.php:81-115`, `:259-304`; `models/Document/Link/Dao.php:34-52`
 
@@ -2671,6 +2671,13 @@ out; the output differs from before only in the attribute spacing (no space befo
 - `Dao::getById()` calls `getHref()` on every load (target load and link generator for a plain document load).
 
 **Fix direction:** add objects; never change persistent fields on read errors; compute the href lazily.
+
+**Done:** `resolveDependencies()` and `getCacheTags()` include data object targets, so an object linked from a
+document is no longer reported as unused and the link's cache entry is invalidated when the object changes (the
+self-check compares cache tags, since ids are only unique per element type). `setObjectFromId()` only clears the loaded
+target on a lookup error and leaves `internal` / `internalType` alone, so a save no longer persists an empty link.
+`Link\Dao::getById()` no longer calls `getHref()`: the target and the link generator are resolved when the href is
+used.
 
 ## [ ] B-147 – Hardlinks: no source validation, `null` dereferences after the source is deleted, custom types crash
 

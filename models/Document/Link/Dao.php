@@ -45,7 +45,6 @@ class Dao extends Model\Document\Dao
         if ($data) {
             $data['published'] = (bool)$data['published'];
             $this->assignVariablesToModel($data);
-            $this->model->getHref();
         } else {
             throw new Model\Exception\NotFoundException('Link with the ID ' . $this->model->getId() . " doesn't exists");
         }
