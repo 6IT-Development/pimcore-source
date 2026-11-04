@@ -1,6 +1,8 @@
 services:
     Pimcore\Image\Optimizer:
         public: true
+        arguments:
+            $optimizers: !tagged_iterator pimcore.image.optimizer
 
     Pimcore\Image\Optimizer\SpatieImageOptimizer:
         tags:

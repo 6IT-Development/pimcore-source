@@ -13,11 +13,28 @@ App\Maintenance\MyMaintenanceTask:
         - { name: pimcore.maintenance.task, type: my_maintenance_task }
 ```
 
+With autoconfiguration, the `#[AsMaintenanceTask]` attribute does the same:
+
+```php
+use Pimcore\Maintenance\Attribute\AsMaintenanceTask;
+use Pimcore\Maintenance\TaskInterface;
+
+#[AsMaintenanceTask(type: 'my_maintenance_task')]
+class MyMaintenanceTask implements TaskInterface
+{
+    public function execute(): void
+    {
+        // ...
+    }
+}
+```
+
 Pimcore will then call your maintenance task on the maintenance cron job you have to configure. You will have to take care about timing operations inside the Task yourself.
 
 ## Register a new Maintenance Task using a separate messenger transport
 
-First follow the steps mentioned above, then add the `messengerMessageClass` property to your tag, as shown in the example below.
+First follow the steps mentioned above, then add the `messengerMessageClass` property to your tag (or the
+`messengerMessageClass` argument to the attribute), as shown in the example below.
 Pimcore then will make sure to add this specific message to the messenger bus.
 
 ```yaml

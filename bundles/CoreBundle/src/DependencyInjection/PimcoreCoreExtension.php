@@ -21,6 +21,7 @@ use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Bundle\CoreBundle\EventListener\TranslationDebugListener;
 use Pimcore\Extension\Document\Areabrick\Attribute\AsAreabrick;
+use Pimcore\Maintenance\Attribute\AsMaintenanceTask;
 use Pimcore\Http\Context\PimcoreContextGuesser;
 use Pimcore\Loader\ImplementationLoader\ClassMapLoader;
 use Pimcore\Loader\ImplementationLoader\PrefixLoader;
@@ -145,6 +146,16 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
             AsAreabrick::class,
             static function (ChildDefinition $definition, AsAreabrick $attribute): void {
                 $definition->addTag('pimcore.area.brick', ['id' => $attribute->id]);
+            },
+        );
+
+        $container->registerAttributeForAutoconfiguration(
+            AsMaintenanceTask::class,
+            static function (ChildDefinition $definition, AsMaintenanceTask $attribute): void {
+                $definition->addTag('pimcore.maintenance.task', array_filter([
+                    'type' => $attribute->type,
+                    'messengerMessageClass' => $attribute->messengerMessageClass,
+                ]));
             },
         );
     }

@@ -52,6 +52,14 @@
   etc. were not applied to them. They are now registered by `AreabrickAutoloadPass` before autoconfiguration and tagged
   with `pimcore.area.brick` (service and brick IDs are unchanged). Tagged brick services whose class is a parameter or
   inherited from a parent definition are now supported; a tagged service without a class gives a clear error.
+#### [Service tags]
+- Maintenance tasks can be registered with the `#[AsMaintenanceTask(type: 'my_task')]` attribute
+  (`Pimcore\Maintenance\Attribute\AsMaintenanceTask`) instead of the `pimcore.maintenance.task` tag. All tags of a
+  service are registered now; before, only the first `pimcore.maintenance.task` tag of a service was used.
+- `NavigationRendererPass` and `RegisterImageOptimizersPass` were removed. The navigation renderer locator uses a
+  `!tagged_iterator` indexed by the `alias` tag attribute; a renderer tagged without `alias` is now registered under
+  its service ID instead of failing the container build. Image optimizers are passed to the new constructor argument
+  `$optimizers` of `Pimcore\Image\Optimizer` and are ordered by the tag's `priority`.
 #### [Workflows]
 - Fixed: Pimcore's `WorkflowPass` ran after MonologBundle's and FrameworkBundle's compiler passes. The workflow
   audit trail (`audit_trail.enabled`) logged to the `app` channel instead of `workflow`, and the check that the security

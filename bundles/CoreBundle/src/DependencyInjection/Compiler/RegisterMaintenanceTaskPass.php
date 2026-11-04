@@ -24,6 +24,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
+ * Registers the services tagged "pimcore.maintenance.task" (or with the #[AsMaintenanceTask] attribute) at the
+ * maintenance executor. A service can carry several tags to run under several types.
+ *
  * @internal
  */
 final class RegisterMaintenanceTaskPass implements CompilerPassInterface
@@ -37,11 +40,13 @@ final class RegisterMaintenanceTaskPass implements CompilerPassInterface
         $definition = $container->getDefinition(Executor::class);
 
         foreach ($container->findTaggedServiceIds('pimcore.maintenance.task') as $id => $tags) {
-            if (!isset($tags[0]['type'])) {
-                throw new InvalidArgumentException('Tagged Maintenance Task `' . $id . '` needs to a `type` attribute.');
-            }
+            foreach ($tags as $tag) {
+                if (!isset($tag['type'])) {
+                    throw new InvalidArgumentException(sprintf('Tagged maintenance task "%s" needs a "type" attribute.', $id));
+                }
 
-            $definition->addMethodCall('registerTask', [$tags[0]['type'], new Reference($id), $tags[0]['messengerMessageClass'] ?? null]);
+                $definition->addMethodCall('registerTask', [$tag['type'], new Reference($id), $tag['messengerMessageClass'] ?? null]);
+            }
         }
     }
 }

@@ -30,6 +30,16 @@ class Optimizer implements ImageOptimizerInterface
      */
     private array $optimizers = [];
 
+    /**
+     * @param iterable<OptimizerInterface> $optimizers
+     */
+    public function __construct(iterable $optimizers = [])
+    {
+        foreach ($optimizers as $optimizer) {
+            $this->registerOptimizer($optimizer);
+        }
+    }
+
     public function optimizeImage(string $path): void
     {
         $extension = pathinfo($path, PATHINFO_EXTENSION);

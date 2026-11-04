@@ -559,7 +559,7 @@ only `id` and `priority`. The empty autoconfigured tag stays (it is appended aft
 `ProfilerPass` reads). `profiler.yaml` is still loaded in every environment: the profiler can run without debug or
 `WebProfilerBundle`, and the service is removed when there is no `profiler`.
 
-### [ ] I-34 – Replace hand-written "collect tagged services" passes with native DI features
+### [x] I-34 – Replace hand-written "collect tagged services" passes with native DI features
 
 - `NavigationRendererPass` (whole file): replace with
   `!tagged_locator { tag: pimcore.navigation.renderer, index_by: alias }` on
@@ -578,6 +578,12 @@ only `id` and `priority`. The empty autoconfigured tag stays (it is appended aft
     `#[AsAreabrick]`.
 - `ProfilerAliasPass`: no internal consumer. Keep it as an autowiring convenience for apps, or replace it with
   `#[Autowire(service: 'profiler')]` at call sites.
+
+**Done:** `NavigationRendererPass` and `RegisterImageOptimizersPass` are replaced by `!tagged_iterator` arguments
+(the locator indexed by `alias`, the optimizers by `priority` through a new `Optimizer` constructor argument).
+`RegisterMaintenanceTaskPass` registers every tag of a service, has a fixed error message, and the new
+`#[AsMaintenanceTask]` attribute adds the tag. `SerializerPass` stays (Symfony's `Serializer` needs arrays and the
+"at least one" check is kept) and uses `Serializer::class`. `ProfilerAliasPass` stays as an autowiring convenience.
 
 ---
 

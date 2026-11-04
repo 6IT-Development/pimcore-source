@@ -26,9 +26,7 @@ use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\LongRunningHelperPass
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MessageBusPublicPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MonologPsrLogMessageProcessorPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MonologPublicLoggerPass;
-use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\NavigationRendererPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\ProfilerAliasPass;
-use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\RegisterImageOptimizersPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\RegisterMaintenanceTaskPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\RoutingLoaderPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\SerializerPass;
@@ -56,7 +54,6 @@ class PimcoreCoreBundle extends Bundle
         // before the autoconfiguration passes (100), so the autoloaded bricks are autoconfigured
         $container->addCompilerPass(new AreabrickAutoloadPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 101);
         $container->addCompilerPass(new AreabrickPass());
-        $container->addCompilerPass(new NavigationRendererPass());
         $container->addCompilerPass(new ServiceControllersPass());
         $container->addCompilerPass(new MonologPublicLoggerPass());
         $container->addCompilerPass(new MonologPsrLogMessageProcessorPass());
@@ -64,7 +61,6 @@ class PimcoreCoreBundle extends Bundle
         // before Monolog's LoggerChannelPass and FrameworkBundle's WorkflowGuardListenerPass (both 0): they process the
         // monolog.logger tag of the audit trail listener and the workflow.has_guard_listeners parameter set by this pass
         $container->addCompilerPass(new WorkflowPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 1);
-        $container->addCompilerPass(new RegisterImageOptimizersPass());
         $container->addCompilerPass(new RegisterMaintenanceTaskPass());
         $container->addCompilerPass(new RoutingLoaderPass());
         $container->addCompilerPass(new ProfilerAliasPass());

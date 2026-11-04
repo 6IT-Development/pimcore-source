@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
 
+use Pimcore\Serializer\Serializer;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\PriorityTaggedServiceTrait;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -39,20 +40,21 @@ final class SerializerPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        if (!$container->hasDefinition('Pimcore\\Serializer\\Serializer')) {
+        if (!$container->hasDefinition(Serializer::class)) {
             return;
         }
 
-        $definition = $container->getDefinition('Pimcore\\Serializer\\Serializer');
+        $definition = $container->getDefinition(Serializer::class);
 
-        // Looks for all the services tagged "serializer.normalizer" and adds them to the Serializer service
+        // Symfony's Serializer needs arrays, so this pass stays instead of a !tagged_iterator argument
+        // Looks for all the services tagged "pimcore.serializer.normalizer" and adds them to the Serializer service
         $normalizers = $this->findAndSortTaggedServices('pimcore.serializer.normalizer', $container);
 
         if (empty($normalizers)) {
             throw new RuntimeException('You must tag at least one service as "pimcore.serializer.normalizer" to use the Pimcore Serializer service');
         }
 
-        // Looks for all the services tagged "serializer.encoders" and adds them to the Serializer service
+        // Looks for all the services tagged "pimcore.serializer.encoder" and adds them to the Serializer service
         $encoders = $this->findAndSortTaggedServices('pimcore.serializer.encoder', $container);
         if (empty($encoders)) {
             throw new RuntimeException('You must tag at least one service as "pimcore.serializer.encoder" to use the Pimcore Serializer service');
