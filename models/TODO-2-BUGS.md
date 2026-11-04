@@ -1406,7 +1406,7 @@ insert it is. `Dao::update()` throws a `NotFoundException` when no row was affec
 extra lookup tells a missing row apart from unchanged values), before the cache is cleared; `POST_UPDATE` is then not
 dispatched. Marking `setId()` `@internal` is left to I-32.
 
-## [ ] B-89 – `Dao::create()` is a non-atomic INSERT + UPDATE
+## [x] B-89 – `Dao::create()` is a non-atomic INSERT + UPDATE
 
 **File:** `models/WebsiteSetting/Dao.php:104-115`
 
@@ -1416,6 +1416,10 @@ dispatched. Marking `setId()` `@internal` is left to I-32.
 - No transaction; `POST_ADD` is not dispatched and the caller gets an exception, so nobody cleans up.
 
 **Fix direction:** single `INSERT` with all valid columns (see I-36), or wrap both statements in a transaction.
+
+**Done:** `create()` writes all valid columns except `id` in one `INSERT` and then clears the dependent cache, as
+`update()` does. A failing write leaves no row behind. The column whitelist is computed once per write in
+`getTableData()` (`array_intersect_key()`), shared by `create()` and `update()`, which covers that part of I-36.
 
 ## [ ] B-90 – Website setting listing can contain `null` entries (concurrent delete)
 

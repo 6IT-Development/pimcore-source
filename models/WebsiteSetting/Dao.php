@@ -128,7 +128,7 @@ class Dao extends Model\Dao\AbstractDao
     {
         $this->model->setModificationDate(time());
 
-        $affectedRows = $this->db->update('website_settings', array_filter($this->model->getObjectVars(), fn($key) => in_array($key, $this->getValidTableColumns('website_settings'), true), ARRAY_FILTER_USE_KEY), ['id' => $this->model->getId()]);
+        $affectedRows = $this->db->update('website_settings', $this->getTableData(), ['id' => $this->model->getId()]);
 
         // 0 affected rows can also mean unchanged values, unless the client flag for found rows is set
         if ($affectedRows === 0
@@ -146,10 +146,21 @@ class Dao extends Model\Dao\AbstractDao
         $this->model->setModificationDate($ts);
         $this->model->setCreationDate($ts);
 
-        $this->db->insert('website_settings', ['name' => $this->model->getName(), 'siteId' => $this->model->getSiteId()]);
+        // one statement, a failing write leaves no half row behind
+        $data = $this->getTableData();
+        unset($data['id']);
+        $this->db->insert('website_settings', $data);
 
         $this->model->setId((int)$this->db->lastInsertId());
 
-        $this->update();
+        $this->model->clearDependentCache();
+    }
+
+    /**
+     * @return array<string, mixed> the model values of the website_settings columns
+     */
+    private function getTableData(): array
+    {
+        return array_intersect_key($this->model->getObjectVars(), array_flip($this->getValidTableColumns('website_settings')));
     }
 }
