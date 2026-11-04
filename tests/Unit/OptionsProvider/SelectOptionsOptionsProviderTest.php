@@ -17,11 +17,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Tests\Unit\OptionsProvider;
 
-use LogicException;
 use Pimcore\Bundle\CoreBundle\OptionsProvider\SelectOptionsOptionsProvider;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Multiselect;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Select;
+use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Tests\Support\Test\TestCase;
 
 class SelectOptionsOptionsProviderTest extends TestCase
@@ -53,7 +53,7 @@ class SelectOptionsOptionsProviderTest extends TestCase
         $select->setName('color');
         $select->setOptionsProviderData(' ');
 
-        $this->expectException(LogicException::class);
+        $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('field "color"');
 
         (new SelectOptionsOptionsProvider())->getOptions([], $select);

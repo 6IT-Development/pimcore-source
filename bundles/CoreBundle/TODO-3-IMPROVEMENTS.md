@@ -1499,7 +1499,7 @@ max-age=3600` and an `ETag` (304 for conditional requests). The caches cannot be
 to the max age to show. CoreBundle keeps `_pimcore_service_robots_txt` as the "allow all" fallback, imported after
 `_pimcore_bundle_auto` so the SEO route wins; it no longer imports SeoBundle classes.
 
-### [ ] I-70 – `SelectOptionsOptionsProvider` polish
+### [x] I-70 – `SelectOptionsOptionsProvider` polish
 
 **File:** `src/OptionsProvider/SelectOptionsOptionsProvider.php`
 
@@ -1513,6 +1513,12 @@ to the max age to show. CoreBundle keeps `_pimcore_service_robots_txt` as the "a
 - `hasStaticOptions(): true` – add a comment why (options come from a versioned config, not from object data), since
   it disables the "dynamic options" handling in `SelectionProviderTrait`.
 - Widen the return type of `getDefaultValue()` to `string|array|null` (B-60).
+
+**Done:** the class is `@api` with a note that its name is stored in class definitions; `static fn`; a missing
+configuration throws `Model\Exception\NotFoundException` without the timestamp code (upgrade note); a field without
+options provider data logs a warning (static `Pimcore\Logger`: the provider is created with `new` by
+`OptionsProviderResolver`, not as a service); `hasStaticOptions()` explains why. `getDefaultValue()` was widened with
+B-60.
 
 ---
 
