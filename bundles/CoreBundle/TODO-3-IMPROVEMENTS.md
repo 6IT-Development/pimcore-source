@@ -218,7 +218,7 @@ drop empty and duplicate values). `CacheClearCommand`, `MaintenanceCommand`, `De
 `ThumbnailsVideoCommand --thumbnails` now trims its values too. `IdOptionTrait` keeps its own loop because it validates
 each value and rejects an empty list.
 
-### [ ] I-14 – Remove duplicated JSON/path helpers in `QuantityValueCommand`
+### [x] I-14 – Remove duplicated JSON/path helpers in `QuantityValueCommand`
 
 **File:** `Definition/Import/QuantityValueCommand.php:65-89`
 
@@ -226,6 +226,11 @@ each value and rejects an empty list.
   throws `JsonException`, the other `InvalidArgumentException` and treats a valid JSON `null` as invalid.
 - Neither checks `file_get_contents() === false`. Use `is_file()` + `is_readable()` instead of `file_exists()`, because
   a directory passes `file_exists()`.
+
+**Done:** `Traits/JsonFileArgumentTrait` holds `getPath()` and `getJson()` for `AbstractStructureImportCommand` and
+`QuantityValueCommand`. The path must pass `is_file()` and `is_readable()`, a failed `file_get_contents()` throws an
+`InvalidArgumentException`, and invalid JSON always throws a `JsonException` that names the file. `json_validate()`
+(I-09) already accepts a JSON `null`.
 
 ### [ ] I-15 – Remove repeated dry-run/execute blocks
 

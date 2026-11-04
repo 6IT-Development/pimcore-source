@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command\Definition\Import;
 
-use InvalidArgumentException;
+use Pimcore\Bundle\CoreBundle\Command\Traits\JsonFileArgumentTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\DryRun;
 use Pimcore\Model\DataObject\QuantityValue\Service;
@@ -38,6 +38,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class QuantityValueCommand extends AbstractCommand
 {
     use DryRun;
+    use JsonFileArgumentTrait;
 
     public function __construct(private readonly Service $service)
     {
@@ -60,34 +61,6 @@ class QuantityValueCommand extends AbstractCommand
             );
 
         $this->configureDryRunOption();
-    }
-
-    /**
-     * Returns the path argument after checking that the file can be read
-     */
-    private function getPath(): string
-    {
-        $path = $this->input->getArgument('path');
-        if (!file_exists($path) || !is_readable($path)) {
-            throw new InvalidArgumentException('File does not exist');
-        }
-
-        return $path;
-    }
-
-    /**
-     * Load JSON data from file
-     */
-    private function getJson(string $path): string
-    {
-        $content = file_get_contents($path);
-
-        // validate the JSON here as we want to fail early if the file is no valid JSON
-        if (!json_validate($content)) {
-            throw new InvalidArgumentException('JSON could not be decoded');
-        }
-
-        return $content;
     }
 
     #[\Override]
