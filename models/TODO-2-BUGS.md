@@ -1013,7 +1013,7 @@ for a file only the worker writes. `execute()` removes the destination file and 
 per format, on success and on failure. Uploads go through the new private `writeToStorage()`, which checks `fopen()`
 and closes the stream in a `finally`; a failed upload of the file or of a DASH segment sets the status `error`.
 
-## [ ] B-64 – DASH (`mpd`) conversion drops main-config transformations/bitrates and mangles media options
+## [x] B-64 – DASH (`mpd`) conversion drops main-config transformations/bitrates and mangles media options
 
 **File:** `lib/Video/Adapter/Ffmpeg.php:89-93`, `:123`, `:136-143`
 
@@ -1022,6 +1022,14 @@ and closes the stream in a `finally`; a failed upload of the file or of a DASH s
 
 **Fix direction:** build mpd arguments explicitly per sub-converter (`-filter:v:N`), keep global args, add flags without
 pairing.
+
+**Done:** the `mpd` command starts from the converter's own arguments (bitrates, `-t`, `-s`, …) like the other formats.
+The video filters are no longer added as a global `-vf` for `mpd`; each representation gets `-filter:v:N` with the main
+config's filters followed by its media config's filters. `save()` no longer appends `-vf` to `$arguments`, so a second
+call does not repeat it. The adapter now also keeps its arguments as `[option, value]` pairs (`$argumentList`, `null`
+for a flag), and a media config contributes only options that take a stream specifier (`-s`, `-r`, `-b` →
+`-s:v:N`, …); options that act on the whole output (`-t` from `cut`, the `-an` flag from `mute`) are ignored with a
+warning instead of breaking the pairing. The duplicate `-c:v:N` is gone. Not run against a real ffmpeg.
 
 ## [ ] B-65 – `cut` start time is silently reset
 

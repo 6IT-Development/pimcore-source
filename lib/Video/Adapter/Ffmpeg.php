@@ -28,11 +28,23 @@ use Symfony\Component\Process\Process;
  */
 class Ffmpeg extends Adapter
 {
+    /**
+     * Options of a DASH representation that take a stream specifier, e.g. `-s:v:0`
+     */
+    private const STREAM_OPTIONS = ['-s', '-r', '-b'];
+
     public string $file;
 
     protected string $processId;
 
     protected array $arguments = [];
+
+    /**
+     * The arguments as [option, value] pairs, the value of a flag is null
+     *
+     * @var array<array{0: string, 1: ?string}>
+     */
+    protected array $argumentList = [];
 
     protected array $videoFilter = [];
 
@@ -86,11 +98,12 @@ class Ffmpeg extends Adapter
                 @unlink($this->getDestinationFile());
             }
 
-            if (count($this->videoFilter) > 0) {
-                $this->addArgument('-vf', implode(',', $this->videoFilter));
-            }
-
             $command = $this->arguments;
+
+            // a DASH manifest gets the filters per representation
+            if (count($this->videoFilter) > 0 && $this->getFormat() !== 'mpd') {
+                array_push($command, '-vf', implode(',', $this->videoFilter));
+            }
 
             // add format specific arguments
             if ($this->getFormat() == 'mp4') {
@@ -118,9 +131,8 @@ class Ffmpeg extends Adapter
                 array_push($command, '-ar', '44000');
                 array_push($command, '-g', '100');
             } elseif ($this->getFormat() == 'mpd') {
-                $medias = $this->getMedias();
+                $medias = $this->getMedias() ?? [];
                 $mediaKeys = array_keys($medias);
-                $command = [];
 
                 for ($i = 0; $i < count($mediaKeys); $i++) {
                     array_push($command, '-map', 'v:0');
@@ -129,18 +141,19 @@ class Ffmpeg extends Adapter
                 array_push($command, '-c:a', 'libfdk_aac');
                 array_push($command, '-vcodec', 'libx264');
 
-                for ($i = 0; $i < count($mediaKeys); $i++) {
-                    $bitrate = $mediaKeys[$i];
-
-                    array_push($command, '-b:v:' . $i, $bitrate);
-                    array_push($command, '-c:v:' . $i, 'libx264');
+                foreach ($mediaKeys as $i => $bitrate) {
+                    array_push($command, '-b:v:' . $i, (string)$bitrate);
                     array_push($command, '-c:v:' . $i, 'libx264');
 
-                    if ($medias[$bitrate]['converter'] instanceof self) {
-                        foreach ($medias[$bitrate]['converter']->arguments as $aKey => $argument) {
-                            $argument = ($aKey % 2 == 0 ? $argument . ':' . $i : $argument);
-                            $command[] = $argument;
-                        }
+                    $videoFilter = $this->videoFilter;
+                    $subConverter = $medias[$bitrate]['converter'] ?? null;
+                    if ($subConverter instanceof self) {
+                        array_push($command, ...$subConverter->getStreamArguments($i));
+                        $videoFilter = array_merge($videoFilter, $subConverter->videoFilter);
+                    }
+
+                    if (count($videoFilter) > 0) {
+                        array_push($command, '-filter:v:' . $i, implode(',', $videoFilter));
                     }
                 }
 
@@ -335,11 +348,34 @@ class Ffmpeg extends Adapter
     public function addArgument(string $key, string $value): void
     {
         array_push($this->arguments, $key, $value);
+        $this->argumentList[] = [$key, $value];
     }
 
     public function addFlag(string $flag): void
     {
         $this->arguments[] = $flag;
+        $this->argumentList[] = [$flag, null];
+    }
+
+    /**
+     * The arguments of this converter for the representation $index of a DASH manifest
+     */
+    private function getStreamArguments(int $index): array
+    {
+        $arguments = [];
+
+        foreach ($this->argumentList as [$key, $value]) {
+            if ($value === null || !in_array($key, self::STREAM_OPTIONS, true)) {
+                // e.g. -t or -an would change the whole output, not this representation
+                Logger::warning('Video media option ' . $key . ' cannot be applied to a single DASH representation, it is ignored');
+
+                continue;
+            }
+
+            array_push($arguments, $key . ':v:' . $index, $value);
+        }
+
+        return $arguments;
     }
 
     public function getArguments(): array
