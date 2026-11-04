@@ -31,16 +31,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * @internal
+ *
+ * @phpstan-import-type ThumbnailRequestConfig from Asset\Service
  */
-class PublicServicesController extends Controller
+final class PublicServicesController extends Controller
 {
     private const array CUSTOM_ADMIN_ENTRY_POINT_PARAMS = ['token', 'reset', 'deeplink', 'perspective'];
+
+    /**
+     * Served when no robots.txt is configured for the site: allow robots to index everything
+     */
+    private const string DEFAULT_ROBOTS_TXT = "User-agent: *\nDisallow:";
 
     public function thumbnailAction(Request $request): StreamedResponse
     {
         $filename = $request->attributes->getString('filename');
         $requestedFileExtension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
+        /** @var ThumbnailRequestConfig $config */
         $config = [
             'prefix' => $request->attributes->getString('prefix'),
             'type' => $request->attributes->getString('type'),
@@ -71,22 +79,20 @@ class PublicServicesController extends Controller
             $config = Config::getRobotsConfig();
         }
 
-        // check for configured robots.txt in pimcore, an empty one is served as is
-        $content = $config[$siteId] ?? null;
-
-        if ($content === null) {
-            // default behavior, allow robots to index everything
-            $content = "User-agent: *\nDisallow:";
-        }
-
-        return new Response($content, Response::HTTP_OK, [
+        // an empty robots.txt configured for the site is served as is
+        return new Response($config[$siteId] ?? self::DEFAULT_ROBOTS_TXT, Response::HTTP_OK, [
             'Content-Type' => 'text/plain; charset=UTF-8',
         ]);
     }
 
-    public function commonFilesAction(Request $request): Response
+    /**
+     * Requested by browsers and clients on their own: a plain 404, without the error page of the document routing
+     */
+    public function commonFilesAction(): Response
     {
-        return new Response("HTTP/1.1 404 Not Found\nFiltered by common files filter", 404);
+        return new Response('Not found (filtered by the common files filter)', Response::HTTP_NOT_FOUND, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
     }
 
     public function customAdminEntryPointAction(Request $request): RedirectResponse
@@ -109,7 +115,7 @@ class PublicServicesController extends Controller
         $url = match (true) {
             isset($params['token']) => $this->generateUrl('pimcore_admin_login_check', $params),
             isset($params['deeplink']) => $this->generateUrl('pimcore_admin_login_deeplink', $params),
-            default => $this->generateUrl('pimcore_admin_login', $params)
+            default => $this->generateUrl('pimcore_admin_login', $params),
         };
 
         $redirect = new RedirectResponse($url);

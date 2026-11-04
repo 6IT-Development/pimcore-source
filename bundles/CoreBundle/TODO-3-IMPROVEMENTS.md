@@ -1458,7 +1458,7 @@ environments (C-14), so `%kernel.debug%` is not needed.
 
 ## S – PHP 8.4 / code style
 
-### [ ] I-68 – `PublicServicesController` readability
+### [x] I-68 – `PublicServicesController` readability
 
 **File:** `src/Controller/PublicServicesController.php`
 
@@ -1474,6 +1474,14 @@ environments (C-14), so `%kernel.debug%` is not needed.
   logging policy applies); add `Content-Type: text/plain`.
 - Unused `Request $request` parameters (`robotsTxtAction`, `commonFilesAction`) can go.
 - `match (true)` in `customAdminEntryPointAction()`: trailing comma; `Cookie::create()` / `withExpires()`.
+
+**Done:** the controller is `final`; it no longer uses `Pimcore\Logger` (the WebDAV logging moved to the factory with
+I-67, the thumbnail errors are left to Symfony since B-65), so no logger is injected. The thumbnail config array is the
+`ThumbnailRequestConfig` `@phpstan-type` of `Asset\Service`, used by the controller and the service methods. The
+exception control flow went with B-65. `robotsTxtAction()` uses `DEFAULT_ROBOTS_TXT` and `??` (the `Request` stays,
+the site is resolved from it). `commonFilesAction()` returns a plain-text 404 without a status line in the body and
+without parameters; it keeps a plain response instead of the error page, which would render a document for every
+favicon request. `match` has a trailing comma.
 
 ### [ ] I-69 – Move `robots.txt` delivery into SeoBundle
 

@@ -40,6 +40,17 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @method Dao getDao()
+ *
+ * ThumbnailRequestConfig: the parts of a public thumbnail URI, see THUMBNAIL_URI_REQUIREMENTS
+ *
+ * @phpstan-type ThumbnailRequestConfig array{
+ *     prefix: string,
+ *     type: string,
+ *     asset_id: int|string,
+ *     thumbnail_name: string,
+ *     filename: string,
+ *     file_extension?: string,
+ * }
  */
 class Service extends Model\Element\Service
 {
@@ -384,6 +395,8 @@ class Service extends Model\Element\Service
     }
 
     /**
+     * @param ThumbnailRequestConfig $config
+     *
      * @throws Exception
      */
     public static function getImageThumbnailByArrayConfig(array $config): null|ThumbnailInterface|Asset\Video\ImageThumbnailInterface|Asset\Document\ImageThumbnailInterface|array
@@ -672,6 +685,7 @@ class Service extends Model\Element\Service
     }
 
     /**
+     * @param ThumbnailRequestConfig $config
      * @param string $uri the URL-encoded path (path info, without base URL and query string) of the thumbnail
      *
      * @throws FilesystemException
@@ -707,6 +721,8 @@ class Service extends Model\Element\Service
     }
 
     /**
+     * @return ThumbnailRequestConfig
+     *
      * @throws Exception
      */
     public static function extractThumbnailInfoFromUri(string $uri): array
