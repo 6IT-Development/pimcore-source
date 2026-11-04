@@ -54,15 +54,7 @@ class MaintenanceCommand extends AbstractCommand
     #[\Override]
     protected function configure(): void
     {
-        $help = $this->getDescription() . '. Valid jobs are: ' . "\n\n";
-        $help .= '  <comment>*</comment> any bundle class name handling maintenance (e.g. <comment>PimcoreEcommerceFrameworkBundle</comment>)' . "\n";
-
-        foreach ($this->maintenanceExecutor->getTaskNames() as $taskName) {
-            $help .= '  <comment>*</comment> ' . $taskName . "\n";
-        }
-
         $this
-            ->setHelp($help)
             ->addOption(
                 'job',
                 'j',
@@ -81,6 +73,22 @@ class MaintenanceCommand extends AbstractCommand
             );
 
         $this->addDeprecatedOptionName('excludedJobs', 'excluded-jobs');
+    }
+
+    /**
+     * Lists the valid jobs; built only when the help is shown, not when the command is configured
+     */
+    #[\Override]
+    public function getHelp(): string
+    {
+        $help = $this->getDescription() . '. Valid jobs are: ' . "\n\n";
+        $help .= '  <comment>*</comment> any bundle class name handling maintenance (e.g. <comment>PimcoreEcommerceFrameworkBundle</comment>)' . "\n";
+
+        foreach ($this->maintenanceExecutor->getTaskNames() as $taskName) {
+            $help .= '  <comment>*</comment> ' . $taskName . "\n";
+        }
+
+        return $help;
     }
 
     #[\Override]

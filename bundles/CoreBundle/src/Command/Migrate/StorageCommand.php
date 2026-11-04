@@ -128,7 +128,7 @@ class StorageCommand extends AbstractCommand
         return self::SUCCESS;
     }
 
-    public function getStorageName(string $name, string $type): string
+    private function getStorageName(string $name, string $type): string
     {
         return sprintf('pimcore.%s.storage.%s', $name, $type);
     }

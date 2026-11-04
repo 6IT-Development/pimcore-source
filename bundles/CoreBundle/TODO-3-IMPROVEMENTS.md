@@ -415,7 +415,7 @@ with `$db->quote()` and runs through `executeStatement()`. Errors print their me
 since B-05 (installer errors fail the command); its docblock now says so. `getShortClassName()` returns `string` via
 `ReflectionClass::getShortName()`.
 
-### [ ] I-26 – `MaintenanceCommand` / `StorageCommand` / `OptimizeImageThumbnailsCommand` small items
+### [x] I-26 – `MaintenanceCommand` / `StorageCommand` / `OptimizeImageThumbnailsCommand` small items
 
 - `MaintenanceCommand::configure()` calls `$this->maintenanceExecutor->getTaskNames()` to build the help. That is fine
   with lazy commands, but it should move to `getHelp()` or an `#[AsCommand(help:)]` placeholder plus a `getHelp()`
@@ -424,6 +424,10 @@ since B-05 (installer errors fail the command); its docblock now says so. `getSh
 - `OptimizeImageThumbnailsCommand`: `clearstatcache()` has no effect on Flysystem `fileSize()`. Remove it. One failing
   optimisation aborts the whole run; add per-file try/catch, a summary and `--dry-run`. Use `listContents()->filter()`
   for files.
+
+**Done:** `MaintenanceCommand` builds the job list in a `getHelp()` override. `StorageCommand::getStorageName()` is
+private. `OptimizeImageThumbnailsCommand` filters files with `listContents()->filter()`, drops `clearstatcache()`,
+catches errors per file, has `--dry-run` and ends with a summary (exit code `FAILURE` if a file failed).
 
 ### [ ] I-27 – Internal generator commands
 
