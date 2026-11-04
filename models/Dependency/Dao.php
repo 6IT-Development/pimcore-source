@@ -305,8 +305,8 @@ class Dao extends Model\Dao\AbstractDao
             $targetId = $r['id'];
             if ($targetType && $targetId) {
                 if (!isset($existingDepencies[$targetType][$targetId])) {
-                    // mark for insertion
-                    $newData[] = $r;
+                    // mark for insertion, once per target even if several relations point to it
+                    $newData[$targetType . '-' . $targetId] = $r;
                 } else {
                     // unmark for deletion
                     unset($existingDepencies[$targetType][$targetId]);

@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Messenger\Handler;
 
+use Pimcore\Db;
 use Pimcore\Messenger\ElementDependenciesMessage;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Dependency;
@@ -38,10 +39,46 @@ class ElementDependenciesHandler
 
     public function __invoke(ElementDependenciesMessage $message): void
     {
-        $element = Service::getElementById($message->getType(), $message->getId());
-        if ($element instanceof AbstractElement) {
+        // Saves of the same element (several consumers, several requests) are serialised by the row lock that the
+        // element save takes as well. The rows are computed from the latest committed state under that lock, so a
+        // handler that loaded an older state cannot overwrite them because it finished last.
+        Db::get()->transactional(function () use ($message): void {
+            $element = Service::getElementById($message->getType(), $message->getId());
+            if (!$element instanceof AbstractElement) {
+                return;
+            }
+
+            if (!$this->isLatestCommittedState($element)) {
+                $element = Service::getElementById($message->getType(), $message->getId(), ['force' => true]);
+                if (!$element instanceof AbstractElement) {
+                    return;
+                }
+            }
+
             $this->saveDependencies($element);
-        }
+        });
+    }
+
+    /**
+     * Locks the element row until the rows are saved. An instance from the cache of a consumer can be older than
+     * the committed element, in-memory changes of the current process are committed already when the message is handled.
+     */
+    private function isLatestCommittedState(AbstractElement $element): bool
+    {
+        $table = match (Service::getElementType($element)) {
+            'asset' => 'assets',
+            'document' => 'documents',
+            'object' => 'objects',
+        };
+
+        $row = Db::get()->fetchAssociative(
+            'SELECT modificationDate, versionCount FROM ' . $table . ' WHERE id = ? FOR UPDATE',
+            [$element->getId()]
+        );
+
+        return $row
+            && (int)$row['modificationDate'] === $element->getModificationDate()
+            && (int)$row['versionCount'] === $element->getVersionCount();
     }
 
     private function saveDependencies(AbstractElement $element): void

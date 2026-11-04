@@ -1694,7 +1694,7 @@ expression if a global path order is wanted.
 key), so equal rows keep one order across queries and `LIMIT` pages no longer overlap. The path order of the mixed
 `getBySourceId()` / `getRequiredBy()` lists (assets, documents, objects) is unchanged.
 
-## [ ] B-103 – Concurrent / out-of-order dependency saves for the same source: the older state can win
+## [x] B-103 – Concurrent / out-of-order dependency saves for the same source: the older state can win
 
 **Files:** `models/Dependency/Dao.php:222-283`; `lib/Messenger/Handler/ElementDependenciesHandler.php:39-45`
 
@@ -1707,6 +1707,12 @@ key), so equal rows keep one order across queries and `LIMIT` pages no longer ov
 
 **Fix direction:** serialise per source (row lock on the element with `SELECT … FOR UPDATE` inside the C-17
 transaction, or a `LockFactory` lock keyed by `type-id`). Deduplicate `requires` before the delta (I-45).
+
+**Done:** `ElementDependenciesHandler` loads the element, computes and saves the rows in one transaction that first
+locks the element row (`SELECT … FOR UPDATE`, the lock the element save takes as well). A second handler for the same
+element waits for the first one's commit, and an element whose `modificationDate` / `versionCount` differ from the
+locked row (e.g. an older instance from the cache of a consumer) is reloaded with `force` before the rows are computed.
+`saveDelta()` inserts each target once. The `requires` list itself is still not deduplicated (I-45).
 
 ## [ ] B-104 – Invalid source types: HTTP exception from the model layer, silently stored elsewhere
 
