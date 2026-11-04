@@ -2511,7 +2511,7 @@ a `trigger_deprecation()`; removing `$rootPath` stays with I-70.
 
 ## Document (Scope 6)
 
-## [ ] B-138 – `Document::save()` after a move/rename clears the wrong runtime-cache path keys
+## [x] B-138 – `Document::save()` after a move/rename clears the wrong runtime-cache path keys
 
 **Files:** `models/Document.php:328-341`, `:368-378`; `models/Document/Dao.php:196-199`
 
@@ -2524,6 +2524,12 @@ a `trigger_deprecation()`; removing `$rootPath` stays with I-70.
 
 **Fix direction:** select `LIKE '<old>/%'`, use the selected value as the old path and compute the new one; clear the
 document's own old path key.
+
+**Done:** `Document\Dao::updateChildPaths()` selects only the descendants (`LIKE '<old>/%'`, no siblings such as `/ab`)
+and returns their full path before the update as `oldPath`, which `save()` now uses as is instead of computing it with
+`substr_replace()` from the wrong length. `save()` also clears the `document_path_*` runtime entry of the moved
+document's own old path, so `Document::getByPath()` of an old path no longer returns the moved document in the same
+process.
 
 ## [ ] B-139 – Recursive delete fires the children's `POST_DELETE` and side effects before the parent's transaction commits
 

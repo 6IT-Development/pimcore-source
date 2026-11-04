@@ -192,11 +192,13 @@ class Dao extends Model\Element\Dao
      * Updates children path in order to the old document path specified in the $oldPath parameter.
      *
      * @internal
+     *
+     * @return list<array{id: int|string, oldPath: string}> the descendants with their full path before the update
      */
     public function updateChildPaths(string $oldPath): array
     {
-        //get documents to empty their cache
-        $documents = $this->db->fetchAllAssociative('SELECT id, CONCAT(`path`,`key`) as `path` FROM documents WHERE `path` like ?', [Helper::escapeLike($oldPath) . '%']);
+        //get documents to empty their cache, only below $oldPath and not siblings sharing its prefix (/a -> /ab)
+        $documents = $this->db->fetchAllAssociative('SELECT id, CONCAT(`path`,`key`) as `oldPath` FROM documents WHERE `path` like ?', [Helper::escapeLike($oldPath) . '/%']);
 
         $userId = '0';
         if ($user = Admin::getCurrentUser()) {

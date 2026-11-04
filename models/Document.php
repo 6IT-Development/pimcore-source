@@ -328,17 +328,10 @@ class Document extends Element\AbstractElement
 
                     // if the old path is different from the new path, update all children
                     $updatedChildren = [];
-                    if ($oldPath && $oldPath !== $newPath = $this->getRealFullPath()) {
+                    if ($oldPath && $oldPath !== $this->getRealFullPath()) {
                         $differentOldPath = $oldPath;
                         $this->getDao()->updateWorkspaces();
-                        $updatedChildren = array_map(
-                            static function (array $doc) use ($oldPath, $newPath): array {
-                                $doc['oldPath'] = substr_replace($doc['path'], $oldPath, 0, strlen($newPath));
-
-                                return $doc;
-                            },
-                            $this->getDao()->updateChildPaths($oldPath),
-                        );
+                        $updatedChildren = $this->getDao()->updateChildPaths($oldPath);
                     }
 
                     $this->commit();
@@ -376,6 +369,10 @@ class Document extends Element\AbstractElement
                     RuntimeCache::set($tag, null);
                     RuntimeCache::set(self::getPathCacheKey($updatedDocument['oldPath']), null);
                 }
+            }
+            if ($differentOldPath) {
+                // getByPath() of the old path must not return the moved document
+                RuntimeCache::set(self::getPathCacheKey($differentOldPath), null);
             }
             $this->clearDependentCache($additionalTags);
 
