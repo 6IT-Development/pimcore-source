@@ -189,13 +189,19 @@ gains `--id` and `--path-pattern`. `AssetBatchTrait::iterateAssets()` (keyset pa
 batches of 100, and the new `countAssets()` gives `LowQualityImagePreviewCommand` its progress bar length with the same
 conditions.
 
-### [ ] I-12 – Extract the "older-than-days" cleanup pattern and delete in batches
+### [x] I-12 – Extract the "older-than-days" cleanup pattern and delete in batches
 
 **Files:** `EmailLogsCleanupCommand`, `RecyclebinCleanupCommand`
 
 - Identical option, validation and loop. Share a small trait with int validation (B-18).
 - Delete in batches (`LIMIT 500` loop with `iterateAssociative()`) instead of `load()`ing everything. For email logs,
   check whether the model's `delete()` does more than one SQL row and file cleanup, otherwise use a set-based delete.
+
+**Done:** `Traits/OlderThanDaysOptionTrait` adds the required `--older-than-days` / `-d` option and turns it into a
+timestamp. A missing or non-positive value throws an `InvalidArgumentException` with exit code 2. Both commands already
+deleted in keyset batches of 500 (B-18). `Email\Log::delete()` also removes the html/text log files from the
+`email_log` storage, so email logs stay deleted one by one through the model. Both commands end with a count. The
+recycle bin cleanup returns `FAILURE` when an entry could not be deleted.
 
 ### [ ] I-13 – Share CSV/array option parsing
 

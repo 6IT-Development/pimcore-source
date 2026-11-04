@@ -17,12 +17,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
-use DateTime;
+use Pimcore\Bundle\CoreBundle\Command\Traits\OlderThanDaysOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\Tool\Email;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -35,40 +34,25 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class EmailLogsCleanupCommand extends AbstractCommand
 {
-    private const BATCH_SIZE = 500;
+    use OlderThanDaysOptionTrait;
+
+    private const int BATCH_SIZE = 500;
 
     #[\Override]
     protected function configure(): void
     {
-        $this
-            ->addOption(
-                'older-than-days',
-                'd',
-                InputOption::VALUE_REQUIRED,
-                'Older than X Days to delete email logs'
-            );
+        $this->addOlderThanDaysOption('email logs');
     }
 
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $daysAgo = filter_var(
-            $input->getOption('older-than-days'),
-            FILTER_VALIDATE_INT,
-            ['options' => ['min_range' => 1]]
-        );
+        $dateTimestamp = $this->getOlderThanDaysTimestamp($input);
 
-        if ($daysAgo === false) {
-            $this->io->error('The "--older-than-days" option is required and must be a positive integer');
-
-            return self::INVALID;
-        }
-
-        $date = new DateTime("-$daysAgo days");
-        $dateTimestamp = $date->getTimestamp();
-
-        // delete in batches, keyed by ID, so big tables do not have to be loaded into memory at once
+        // delete in batches, keyed by ID, so big tables do not have to be loaded into memory at once. Each log is deleted
+        // through the model, not with one DELETE statement, because Log::delete() also removes its html/text files
         $lastId = 0;
+        $deleted = 0;
         do {
             $emailLogs = new Email\Log\Listing();
             $emailLogs->setCondition('sentDate < ? AND id > ?', [$dateTimestamp, $lastId]);
@@ -85,10 +69,11 @@ class EmailLogsCleanupCommand extends AbstractCommand
 
                 $lastId = $emailLog->getId();
                 $emailLog->delete();
+                $deleted++;
             }
         } while (count($batch) === self::BATCH_SIZE);
 
-        $this->output->writeln('Email logs cleanup done!');
+        $this->io->success(sprintf('Deleted %d email log(s).', $deleted));
 
         return self::SUCCESS;
     }

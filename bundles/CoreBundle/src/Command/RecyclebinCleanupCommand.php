@@ -17,14 +17,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
-use DateTime;
 use Exception;
+use Pimcore\Bundle\CoreBundle\Command\Traits\OlderThanDaysOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Logger;
 use Pimcore\Model\Element\Recyclebin;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -36,41 +35,26 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class RecyclebinCleanupCommand extends AbstractCommand
 {
-    private const BATCH_SIZE = 500;
+    use OlderThanDaysOptionTrait;
+
+    private const int BATCH_SIZE = 500;
 
     #[\Override]
     protected function configure(): void
     {
-        $this
-            ->addOption(
-                'older-than-days',
-                'd',
-                InputOption::VALUE_REQUIRED,
-                'Older than X Days to delete recyclebin entries'
-            );
+        $this->addOlderThanDaysOption('recycle bin entries');
     }
 
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $daysAgo = filter_var(
-            $input->getOption('older-than-days'),
-            FILTER_VALIDATE_INT,
-            ['options' => ['min_range' => 1]]
-        );
-
-        if ($daysAgo === false) {
-            $this->io->error('The "--older-than-days" option is required and must be a positive integer');
-
-            return self::INVALID;
-        }
-
-        $date = new DateTime("-$daysAgo days");
-        $dateTimestamp = $date->getTimestamp();
+        $dateTimestamp = $this->getOlderThanDaysTimestamp($input);
 
         // delete in batches, keyed by ID, so big tables do not have to be loaded into memory at once
         // and items that failed to delete are not fetched again
         $lastId = 0;
+        $deleted = 0;
+        $failed = 0;
         do {
             $recyclebinItems = new Recyclebin\Item\Listing();
             $recyclebinItems->setCondition('date < ? AND id > ?', [$dateTimestamp, $lastId]);
@@ -89,15 +73,23 @@ class RecyclebinCleanupCommand extends AbstractCommand
 
                 try {
                     $recyclebinItem->delete();
+                    $deleted++;
                 } catch (Exception $e) {
+                    $failed++;
                     $msg = "Could not delete {$recyclebinItem->getPath()} ({$recyclebinItem->getId()}) because of: {$e->getMessage()}";
                     Logger::error($msg);
-                    $this->output->writeln($msg);
+                    $this->io->error($msg);
                 }
             }
         } while (count($batch) === self::BATCH_SIZE);
 
-        $this->output->writeln('Recyclebin cleanup done!');
+        if ($failed) {
+            $this->io->error(sprintf('Deleted %d recycle bin entries, %d failed.', $deleted, $failed));
+
+            return self::FAILURE;
+        }
+
+        $this->io->success(sprintf('Deleted %d recycle bin entries.', $deleted));
 
         return self::SUCCESS;
     }
