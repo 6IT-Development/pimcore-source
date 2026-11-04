@@ -22,6 +22,7 @@ use Pimcore\Console\AbstractCommand;
 use Pimcore\Db;
 use Pimcore\Logger;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -36,17 +37,25 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class MysqlToolsCommand extends AbstractCommand
 {
-    private const MODES = ['optimize', 'warmup'];
+    private const array MODES = ['optimize', 'warmup'];
 
     #[\Override]
     protected function configure(): void
     {
         $this
+            ->addArgument(
+                'mode',
+                // optional only while the deprecated --mode option is supported, execute() requires one of them
+                InputArgument::OPTIONAL,
+                'optimize or warmup',
+                null,
+                self::MODES
+            )
             ->addOption(
                 'mode',
                 'm',
                 InputOption::VALUE_REQUIRED,
-                'optimize or warmup',
+                'Deprecated, use the mode argument instead',
                 null,
                 self::MODES
             );
@@ -55,11 +64,22 @@ class MysqlToolsCommand extends AbstractCommand
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $mode = $input->getOption('mode');
+        $mode = $input->getArgument('mode');
 
-        // display error message
+        if (null !== $modeOption = $input->getOption('mode')) {
+            trigger_deprecation('pimcore/pimcore', '11.5', 'The "--mode" option of "pimcore:mysql-tools" is deprecated and will be removed in Pimcore 12, pass the mode as argument instead.');
+            $this->io->warning(sprintf('The --mode option is deprecated, use "pimcore:mysql-tools %s" instead.', $modeOption));
+
+            if (null !== $mode && $mode !== $modeOption) {
+                $this->io->error('The mode argument and the --mode option differ.');
+
+                return self::INVALID;
+            }
+            $mode ??= $modeOption;
+        }
+
         if (!$mode) {
-            $this->io->error('Please specify the mode!');
+            $this->io->error(sprintf('Please specify the mode: %s', implode(', ', self::MODES)));
 
             return self::INVALID;
         }

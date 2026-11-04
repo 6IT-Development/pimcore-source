@@ -35,7 +35,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class RequirementsCheckCommand extends AbstractCommand
 {
-    private const MIN_LEVELS = ['warning', 'error'];
+    private const array MIN_LEVELS = ['warning', 'error'];
+
+    private const array FORMATS = ['txt', 'json'];
 
     #[\Override]
     protected function configure(): void
@@ -49,13 +51,28 @@ class RequirementsCheckCommand extends AbstractCommand
                 null,
                 self::MIN_LEVELS
             )
-            ->addOption('strict', null, InputOption::VALUE_NONE, 'Also return a failure exit code if any check reports a warning');
+            ->addOption('strict', null, InputOption::VALUE_NONE, 'Also return a failure exit code if any check reports a warning')
+            ->addOption(
+                'format',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Output format: txt or json (e.g. for CI)',
+                'txt',
+                self::FORMATS
+            );
     }
 
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $minLevel = $input->getOption('min-level');
+        $format = $input->getOption('format');
+
+        if (!in_array($format, self::FORMATS, true)) {
+            $this->io->error(sprintf('Invalid format "%s", allowed values are: %s', $format, implode(', ', self::FORMATS)));
+
+            return self::INVALID;
+        }
 
         $levelsToDisplay = match ($minLevel) {
             null => [Requirements\Check::STATE_OK, Requirements\Check::STATE_WARNING, Requirements\Check::STATE_ERROR],
@@ -71,34 +88,70 @@ class RequirementsCheckCommand extends AbstractCommand
         }
 
         $allChecks = Requirements::checkAll(Db::get());
-
-        $this->display($allChecks['checksPHP'], $levelsToDisplay, 'PHP');
-        $this->display($allChecks['checksMySQL'], $levelsToDisplay, 'MySQL');
-        $this->display($allChecks['checksFS'], $levelsToDisplay, 'Filesystem');
-        $this->display($allChecks['checksApps'], $levelsToDisplay, 'CLI Tools & Applications');
+        $groups = [
+            'PHP' => $allChecks['checksPHP'],
+            'MySQL' => $allChecks['checksMySQL'],
+            'Filesystem' => $allChecks['checksFS'],
+            'CLI Tools & Applications' => $allChecks['checksApps'],
+        ];
 
         $states = array_map(static fn (Requirements\Check $check) => $check->getState(), array_merge(...array_values($allChecks)));
+        $failure = match (true) {
+            in_array(Requirements\Check::STATE_ERROR, $states, true) => 'Some system requirements are not met.',
+            $input->getOption('strict') && in_array(Requirements\Check::STATE_WARNING, $states, true) => 'Some system requirements reported warnings (--strict).',
+            default => null,
+        };
 
-        if (in_array(Requirements\Check::STATE_ERROR, $states, true)) {
-            $this->io->error('Some system requirements are not met.');
+        if ($format === 'json') {
+            $this->displayJson($groups, $levelsToDisplay, $failure);
+        } else {
+            foreach ($groups as $title => $checks) {
+                $this->display($checks, $levelsToDisplay, $title);
+            }
 
-            return self::FAILURE;
+            if (null !== $failure) {
+                $this->io->error($failure);
+            }
         }
 
-        if ($input->getOption('strict') && in_array(Requirements\Check::STATE_WARNING, $states, true)) {
-            $this->io->error('Some system requirements reported warnings (--strict).');
+        return null === $failure ? self::SUCCESS : self::FAILURE;
+    }
 
-            return self::FAILURE;
+    /**
+     * Writes the checks as one JSON document to stdout, without any other output
+     *
+     * @param array<string, Requirements\Check[]> $groups
+     * @param int[] $levelsToDisplay
+     */
+    private function displayJson(array $groups, array $levelsToDisplay, ?string $failure): void
+    {
+        $data = ['success' => null === $failure, 'message' => $failure, 'checks' => []];
+
+        foreach ($groups as $title => $checks) {
+            $data['checks'][$title] = [];
+            foreach ($checks as $check) {
+                if (in_array($check->getState(), $levelsToDisplay, true)) {
+                    $data['checks'][$title][] = [
+                        'name' => $check->getName(),
+                        'state' => $this->getStateName($check->getState()),
+                        'message' => $check->getMessage(),
+                        'link' => $check->getLink(),
+                    ];
+                }
+            }
         }
 
-        return self::SUCCESS;
+        $this->output->writeln(
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            OutputInterface::OUTPUT_RAW
+        );
     }
 
     /**
      * @param Requirements\Check[] $checks
      * @param int[] $levelsToDisplay
      */
-    protected function display(array $checks, array $levelsToDisplay, string $title = ''): void
+    private function display(array $checks, array $levelsToDisplay, string $title = ''): void
     {
         $checksTab = [];
 
@@ -113,12 +166,21 @@ class RequirementsCheckCommand extends AbstractCommand
         }
     }
 
-    protected function displayState(int $state): string
+    private function displayState(int $state): string
     {
         return match ($state) {
             Requirements\Check::STATE_OK => '<fg=green>ok</>',
             Requirements\Check::STATE_WARNING => '<fg=yellow>warning</>',
             default => '<fg=red>error</>',
+        };
+    }
+
+    private function getStateName(int $state): string
+    {
+        return match ($state) {
+            Requirements\Check::STATE_OK => 'ok',
+            Requirements\Check::STATE_WARNING => 'warning',
+            default => 'error',
         };
     }
 }

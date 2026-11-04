@@ -115,6 +115,8 @@
 - `pimcore:thumbnails:image --system` now generates the system thumbnail in addition to the other thumbnails. Use the
   new `--system-only` for the old behaviour. `--skip-<format>` flags only exist for `avif` and `webp`; skip other auto
   formats with the new `--skip-formats=<format>,...`.
+- `pimcore:mysql-tools` takes the mode as argument: `bin/console pimcore:mysql-tools optimize`. The `--mode` option
+  still works but is deprecated and will be removed in Pimcore 12.
 #### [Classification Store]
 - `StoreConfig::delete()` now also deletes the collections, groups and keys of the store (through their models, so
   their delete events are dispatched), and with them the object data of the store. Before, it only deleted the store

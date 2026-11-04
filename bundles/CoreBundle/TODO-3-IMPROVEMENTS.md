@@ -442,11 +442,16 @@ catches errors per file, has `--dry-run` and ends with a summary (exit code `FAI
 
 **Done:** all four bullets as proposed.
 
-### [ ] I-28 – `MysqlToolsCommand` / `RequirementsCheckCommand` output
+### [x] I-28 – `MysqlToolsCommand` / `RequirementsCheckCommand` output
 
 - `MysqlToolsCommand`: replace the `--mode` option with a required argument (`optimize|warmup`) with suggested values,
   and show console progress (see B-21).
 - `RequirementsCheckCommand`: add `--format=json` for CI. `display()`/`displayState()` can be `private`.
+
+**Done:** `pimcore:mysql-tools optimize|warmup` takes the mode as argument (with suggested values); `--mode` is
+deprecated and still accepted, a differing argument and option are rejected. The progress bar was already added by
+B-21. `pimcore:system:requirements:check --format=json` prints one JSON document (`success`, `message`, `checks` per
+group with name, state, message, link) and keeps the exit codes. The display helpers are private.
 
 ---
 

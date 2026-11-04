@@ -139,3 +139,6 @@ Or via following CLI command:
 ```bash
 bin/console pimcore:system:requirements:check
 ```
+
+Use `--format=json` to get the result as JSON, e.g. in CI. The command fails if a requirement is not met; with
+`--strict` it also fails on warnings.
