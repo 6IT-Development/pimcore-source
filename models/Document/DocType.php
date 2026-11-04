@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Document;
 
-use Exception;
+use InvalidArgumentException;
 use Pimcore\Model;
 
 /**
@@ -25,7 +25,6 @@ use Pimcore\Model;
  * @method string getWriteTarget()
  * @method \Pimcore\Model\Document\DocType\Dao getDao()
  * @method void delete()
- * @method void save()
  */
 class DocType extends Model\AbstractModel
 {
@@ -41,7 +40,7 @@ class DocType extends Model\AbstractModel
      *
      * @internal
      */
-    protected string $name;
+    protected string $name = '';
 
     /**
      * Group of document-types
@@ -69,7 +68,7 @@ class DocType extends Model\AbstractModel
      *
      * @internal
      */
-    protected string $type;
+    protected string $type = '';
 
     /**
      * @internal
@@ -105,20 +104,32 @@ class DocType extends Model\AbstractModel
             $docType->getDao()->getById($id);
 
             return $docType;
-        } catch (Exception) {
+        } catch (Model\Exception\NotFoundException) {
             return null;
         }
     }
 
     /**
-     * Shortcut to quickly create a new instance
+     * Shortcut to quickly create a new instance; it is not saved, set at least the name and the type and call save()
      */
     public static function create(): DocType
     {
-        $type = new self();
-        $type->save();
+        return new self();
+    }
 
-        return $type;
+    /**
+     * @throws InvalidArgumentException if the name or the type is missing
+     */
+    public function save(): void
+    {
+        if (trim($this->name) === '') {
+            throw new InvalidArgumentException('Document type requires a name');
+        }
+        if ($this->type === '') {
+            throw new InvalidArgumentException('Document type requires a type (page, snippet, email, ...)');
+        }
+
+        $this->getDao()->save();
     }
 
     public function getController(): ?string

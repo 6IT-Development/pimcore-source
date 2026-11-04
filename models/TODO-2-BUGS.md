@@ -2834,7 +2834,7 @@ agree; in the admin, where unpublished documents are shown, nothing changes. `Li
 `documents.published = 1`, so custom-view joins to tables with their own `published` column no longer make the query
 ambiguous.
 
-## [ ] B-155 – `DocType::create()` persists an invalid definition; lookups hide errors
+## [x] B-155 – `DocType::create()` persists an invalid definition; lookups hide errors
 
 **Files:** `models/Document/DocType.php:95-122`; `models/Document/DocType/Dao.php:52-95`
 
@@ -2843,6 +2843,12 @@ ambiguous.
 - `getById()` swallows every `Exception`; the not-found message prints `$this->model->getId()` (still `null`).
 
 **Fix direction:** validate in `save()`, return an unsaved instance from `create()`, catch only `NotFoundException`.
+
+**Done:** `create()` returns an unsaved instance (no caller in core depends on the immediate save; the id is still
+assigned by the first `save()`). `DocType::save()` is a real method now and throws an `InvalidArgumentException` when
+the name or the type is empty, before anything is written. `name` and `type` default to `''`, so definitions stored
+without them by the old `create()` can be loaded and read without an `Error`. `getById()` returns `null` only for a
+`NotFoundException`; configuration read errors reach the caller. The not-found message names the requested id.
 
 ## Document editables (Scope 6)
 
