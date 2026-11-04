@@ -923,7 +923,7 @@ without a DB lookup (the status cache can be disabled).
 **Done:** `getMediaConfigHtml()` builds a list of `[media query, items]` pairs with the media keys cast to string and
 the default config appended with an empty media query, so it no longer gets the next integer key as its media query.
 
-## [ ] B-58 – Throwaway orphan thumbnail generated per media query during HTML rendering
+## [x] B-58 – Throwaway orphan thumbnail generated per media query during HTML rendering
 
 **File:** `models/Asset/Image/Thumbnail.php:177-197`; `ImageThumbnailTrait.php:231`
 
@@ -931,6 +931,9 @@ the default config appended with an empty media query, so it no longer gets the 
   `getWidth()` synchronously generates that orphan file. `$thumb->reset()` at `:181` does nothing.
 
 **Fix direction:** build `$thumb` via `selectMedia()` like `getSrcset()`.
+
+**Done:** `getSourceTagHtml()` builds `$thumb` from a clone with `selectMedia()`, like `getSrcset()`, so its path
+carries the media filename suffix and matches the srcset variant; the no-op `reset()` is gone.
 
 ## [ ] B-59 – Media overlays keep stale paths after clone
 

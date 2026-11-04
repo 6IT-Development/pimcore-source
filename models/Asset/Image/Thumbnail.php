@@ -176,12 +176,13 @@ final class Thumbnail implements ThumbnailInterface
     {
         $sourceTagAttributes = [];
         $sourceTagAttributes['srcset'] = $this->getSrcset($thumbConfig, $image, $options, $mediaQuery);
-        $thumb = $image->getThumbnail($thumbConfig);
-
+        // select the media like getSrcset(), so the dimensions come from a srcset variant instead of an extra orphan file
+        $thumbConfigRes = clone $thumbConfig;
         if ($mediaQuery) {
+            $thumbConfigRes->selectMedia($mediaQuery);
             $sourceTagAttributes['media'] = $mediaQuery;
-            $thumb->reset();
         }
+        $thumb = $image->getThumbnail($thumbConfigRes);
 
         if (isset($options['previewDataUri'])) {
             $sourceTagAttributes['data-srcset'] = $sourceTagAttributes['srcset'];
