@@ -23,6 +23,7 @@ use Pimcore\Workflow\EventSubscriber\ChangePublishedStateSubscriber;
 use Pimcore\Workflow\EventSubscriber\NotificationSubscriber;
 use Pimcore\Workflow\Notification\NotificationEmailService;
 use Pimcore\Workflow\Transition;
+use Symfony\Component\Config\Definition\ArrayNode;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -34,9 +35,11 @@ use const PASSWORD_ARGON2ID;
  */
 final class Configuration implements ConfigurationInterface
 {
+    private ?TreeBuilder $treeBuilder = null;
+
     public function getConfigTreeBuilder(): TreeBuilder
     {
-        $treeBuilder = new TreeBuilder('pimcore');
+        $treeBuilder = $this->treeBuilder = new TreeBuilder('pimcore');
 
         /** @var ArrayNodeDefinition $rootNode */
         $rootNode = $treeBuilder->getRootNode();
@@ -763,7 +766,10 @@ final class Configuration implements ConfigurationInterface
         $objectsNode = $rootNode
             ->children()
             ->arrayNode('objects')
-            ->ignoreExtraKeys()
+            ->beforeNormalization()
+            ->ifArray()
+            ->then(fn(array $v) => $this->removeUnknownKeys($v, 'objects'))
+            ->end()
             ->addDefaultsIfNotSet()
             ->children()
             ->booleanNode('ignore_localized_query_fallback')
@@ -899,7 +905,10 @@ final class Configuration implements ConfigurationInterface
         $documentsNode = $rootNode
             ->children()
             ->arrayNode('documents')
-            ->ignoreExtraKeys()
+            ->beforeNormalization()
+            ->ifArray()
+            ->then(fn(array $v) => $this->removeUnknownKeys($v, 'documents'))
+            ->end()
             ->addDefaultsIfNotSet();
 
         $documentsNode
@@ -1331,7 +1340,10 @@ final class Configuration implements ConfigurationInterface
     {
         $rootNode->children()
             ->arrayNode('full_page_cache')
-            ->ignoreExtraKeys()
+            ->beforeNormalization()
+            ->ifArray()
+            ->then(fn(array $v) => $this->removeUnknownKeys($v, 'full_page_cache'))
+            ->end()
             ->canBeDisabled()
             ->addDefaultsIfNotSet()
             ->children()
@@ -1903,7 +1915,10 @@ final class Configuration implements ConfigurationInterface
         $predefinedPropertiesNode = $rootNode
             ->children()
             ->arrayNode('properties')
-            ->ignoreExtraKeys()
+            ->beforeNormalization()
+            ->ifArray()
+            ->then(fn(array $v) => $this->removeUnknownKeys($v, 'properties'))
+            ->end()
             ->addDefaultsIfNotSet();
 
         $predefinedPropertiesNode
@@ -1946,7 +1961,10 @@ final class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
             ->arrayNode('perspectives')
-            ->ignoreExtraKeys()
+            ->beforeNormalization()
+            ->ifArray()
+            ->then(fn(array $v) => $this->removeUnknownKeys($v, 'perspectives'))
+            ->end()
             ->addDefaultsIfNotSet()
             ->children()
             ->arrayNode('definitions')
@@ -1995,7 +2013,10 @@ final class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
             ->arrayNode('custom_views')
-            ->ignoreExtraKeys()
+            ->beforeNormalization()
+            ->ifArray()
+            ->then(fn(array $v) => $this->removeUnknownKeys($v, 'custom_views'))
+            ->end()
             ->addDefaultsIfNotSet()
             ->children()
             ->arrayNode('definitions')
@@ -2136,6 +2157,32 @@ final class Configuration implements ConfigurationInterface
      * returned unchanged: env placeholders (`%env(bool:X)%`) are only resolved by Symfony after the normalization
      * closures, and invalid values are rejected by the boolean node.
      */
+    /**
+     * These sections used ignoreExtraKeys(), which silently dropped unknown keys, so a typo like
+     * `documents.allow_trailing_slahs` went unnoticed. Unknown keys are still dropped for BC (e.g. keys of Pimcore 10
+     * like `documents.web_to_print`), but trigger a deprecation: Pimcore 12 rejects them like every other section.
+     */
+    private function removeUnknownKeys(array $value, string $section): array
+    {
+        /** @var ArrayNode $root */
+        $root = ($this->treeBuilder ?? $this->getConfigTreeBuilder())->buildTree();
+        /** @var ArrayNode $node */
+        $node = $root->getChildren()[$section];
+
+        $unknown = array_diff_key($value, $node->getChildren());
+        if ($unknown) {
+            trigger_deprecation(
+                'pimcore/pimcore',
+                '11.5',
+                'Unrecognized option(s) "%s" under "%s" are ignored. They will cause a configuration error in Pimcore 12, remove them.',
+                implode('", "', array_keys($unknown)),
+                $node->getPath()
+            );
+        }
+
+        return array_diff_key($value, $unknown);
+    }
+
     private static function normalizeBoolString(string $value): bool|string
     {
         return filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $value;

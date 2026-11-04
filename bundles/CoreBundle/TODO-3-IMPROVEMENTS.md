@@ -1164,7 +1164,7 @@ the 6.x docs link, the `services.yaml` encoder comment and an orphaned `prepend`
 are fixed. `relativePath` triggers a deprecation. `general.language` and `chromium` stay deprecated (11.2) until the
 Chromium adapter is removed. Upgrade notes updated.
 
-### [ ] I-58 – `ignoreExtraKeys()` hides typos in six sections
+### [x] I-58 – `ignoreExtraKeys()` hides typos in six sections
 
 **File:** `src/DependencyInjection/Configuration.php:723, 840, 1246, 1841, 1886, 1935`
 
@@ -1173,6 +1173,12 @@ Chromium adapter is removed. Upgrade notes updated.
   **silently dropped** with no "Unrecognized option" error.
 - Find out which keys this protects. Probably keys written by the admin UI or legacy bundles. Declare them explicitly or
   move them under a dedicated `variableNode`, then remove `ignoreExtraKeys()`.
+
+**Done:** nothing in core, the admin UI (its `config/pimcore/default.yaml`, the system settings, perspective, custom
+view and predefined property writers) writes keys these sections do not declare. The extra keys can only come from
+project configs, e.g. Pimcore 10 leftovers like `documents.web_to_print`. `ignoreExtraKeys()` is replaced by
+`removeUnknownKeys()`, which still drops unknown keys but triggers a deprecation naming them, so a typo is visible
+without breaking existing installs. Pimcore 12 can drop the method so unknown keys fail like elsewhere.
 
 ### [ ] I-59 – Service YAML clean-up (extension-loaded `config/*.yaml`)
 

@@ -151,6 +151,9 @@
   removed from `pimcore.objects.class_definitions.*.prefixes`. Add them to your configuration if you still have such
   classes.
 - The unused `@PimcoreCoreBundle/config/paginator.yaml` was removed. It was never loaded.
+- Unknown keys under `pimcore.objects`, `documents`, `full_page_cache`, `properties`, `perspectives` and `custom_views`
+  were silently ignored, so typos (e.g. `full_page_cache.exclude_cookies`) went unnoticed. They are still ignored but
+  trigger a deprecation naming the keys; Pimcore 12 will reject them with a configuration error.
 - `@PimcoreCoreBundle/config/routing_dev.yaml` imports the PHP route files of the WebProfilerBundle instead of the XML
   ones, which are deprecated in Symfony 7.4. The file itself is deprecated: replace its import in your
   `config/routes/dev/*.yaml` with the `config/routes/web_profiler.yaml` of the Symfony recipe:
