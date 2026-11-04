@@ -28,6 +28,7 @@ use DeepCopy\Matcher\PropertyNameMatcher;
 use DeepCopy\Matcher\PropertyTypeMatcher;
 use DeepCopy\TypeFilter\ReplaceFilter;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Query\QueryBuilder as DoctrineQueryBuilder;
 use Exception;
 use League\Csv\EscapeFormula;
@@ -817,7 +818,11 @@ class Service extends Model\AbstractModel
     }
 
     /**
-     * @throws Exception
+     * Returns the folder at $path, creating it and its missing ancestors. $options are applied to the created folders
+     * before the parent, key and path, so they can override the owner, the modification user and the dates only.
+     * Existing elements on the way may be any element that can have children; the element at $path must be a folder.
+     *
+     * @throws Exception if the element at $path exists but is not a folder
      */
     public static function createFolderByPath(string $path, array $options = []): Asset\Folder|DataObject\Folder|Document\Folder|null
     {
@@ -844,7 +849,7 @@ class Service extends Model\AbstractModel
         }
 
         if (self::pathExists($sanitizedPath, $itemType)) {
-            return $type::getByPath($sanitizedPath);
+            return self::getExistingFolderByPath($type, $folderType, $sanitizedPath);
         }
 
         foreach ($parts as $part) {
@@ -860,6 +865,12 @@ class Service extends Model\AbstractModel
                 $parentFolder = $type::getByPath($parentFolderPath);
 
                 $folder = new $folderType();
+                $folder->setUserModification(0);
+                $folder->setUserOwner(1);
+                $folder->setCreationDate(time());
+                $folder->setModificationDate(time());
+                $folder->setValues($options);
+
                 $folder->setParent($parentFolder);
                 if ($parentFolder) {
                     $folder->setParentId($parentFolder->getId());
@@ -882,17 +893,42 @@ class Service extends Model\AbstractModel
                 }
 
                 $folder->setPath($currentPath);
-                $folder->setUserModification(0);
-                $folder->setUserOwner(1);
-                $folder->setCreationDate(time());
-                $folder->setModificationDate(time());
-                $folder->setValues($options);
-                $folder->save();
+
+                try {
+                    $folder->save();
+                } catch (DuplicateFullPathException|UniqueConstraintViolationException $e) {
+                    // another process created the element meanwhile
+                    if (!self::pathExists($currentPath, $itemType)) {
+                        throw $e;
+                    }
+                    if ($i === count($pathsArray) - 1) {
+                        return self::getExistingFolderByPath($type, $folderType, $currentPath, true);
+                    }
+
+                    continue;
+                }
                 $lastFolder = $folder;
             }
         }
 
         return $lastFolder;
+    }
+
+    /**
+     * @param class-string<ElementInterface> $type
+     * @param class-string<Asset\Folder|DataObject\Folder|Document\Folder> $folderType
+     * @param bool $force true to bypass the cache, e.g. for an element another process has just created
+     *
+     * @throws Exception
+     */
+    private static function getExistingFolderByPath(string $type, string $folderType, string $path, bool $force = false): Asset\Folder|DataObject\Folder|Document\Folder
+    {
+        $element = $type::getByPath($path, ['force' => $force]);
+        if (!$element instanceof $folderType) {
+            throw new Exception(sprintf('Cannot create folder "%s": the path is taken by %s', $path, get_debug_type($element)));
+        }
+
+        return $element;
     }
 
     /**

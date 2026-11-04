@@ -2743,7 +2743,7 @@ checks with the misleading "generated key automatically" message are gone. The d
 `Document\Dao::create()` and `AbstractObject\Dao::create()` were removed; the document one would also have replaced
 the valid key `'0'` with the id. The first-level key check (`install`, `admin`, `plugin`) compares case-insensitively.
 
-## [ ] B-150 – `Element\Service::createFolderByPath()` returns non-folders and does not survive concurrent creation
+## [x] B-150 – `Element\Service::createFolderByPath()` returns non-folders and does not survive concurrent creation
 
 **File:** `models/Element/Service.php:820-894`
 
@@ -2756,6 +2756,15 @@ the valid key `'0'` with the id. The first-level key check (`install`, `admin`, 
   override them.
 
 **Fix direction:** throw a clear exception for non-folders (or widen the return type); catch the duplicate and reload.
+
+**Done:** when the element at the requested path exists, `getExistingFolderByPath()` returns it only if it is a folder
+of the service's type and otherwise throws an exception naming the path and the element class (the document root `/`
+is a page, so `createFolderByPath('/')` on documents now throws instead of a `TypeError`). Existing non-folder elements
+in the middle of the path are still used as parents on purpose: pages and objects can have folder children. A
+`DuplicateFullPathException` or unique violation from `save()` reloads the element another process created meanwhile
+(bypassing the cache) and continues, or returns it at the end of the path. `$options` are applied before the parent,
+key, filename, type and path, so they can override the default owner (`1`), modification user (`0`) and dates, but no
+longer the structural fields.
 
 ## [ ] B-151 – `Element\Service::updateChildren()` resolves the copy by subtype: `null` ends up in the target's children
 
