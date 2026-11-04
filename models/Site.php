@@ -26,6 +26,7 @@ use Pimcore\Event\SiteEvents;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Logger;
 use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Tool;
 
 /**
  * @method Site\Dao getDao()
@@ -488,8 +489,8 @@ final class Site extends AbstractModel
     /**
      * New sites fire PRE_ADD / POST_ADD around PRE_SAVE / POST_SAVE
      *
-     * @throws InvalidArgumentException if the root is no page or the root of another site, or a domain or the main
-     *                                  domain is not a valid host name
+     * @throws InvalidArgumentException if the root is no page or the root of another site, a domain or the main
+     *                                  domain is not a valid host name, or an error document does not exist
      * @throws NotFoundException when the id is set but there is no site with it
      */
     public function save(): void
@@ -544,6 +545,40 @@ final class Site extends AbstractModel
 
         if ($this->mainDomain !== '' && !filter_var($this->mainDomain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
             throw new InvalidArgumentException(sprintf('Invalid main domain name "%s"', $this->mainDomain));
+        }
+
+        $this->validateErrorDocuments();
+    }
+
+    /**
+     * The error documents are stored as paths: a renamed, moved or deleted page is reported on the next save, an empty
+     * value falls back to the system error page
+     *
+     * @throws InvalidArgumentException
+     */
+    private function validateErrorDocuments(): void
+    {
+        if ($this->errorDocument !== '' && !Document::getByPath($this->errorDocument)) {
+            throw new InvalidArgumentException(sprintf('The error document "%s" does not exist', $this->errorDocument));
+        }
+
+        $validLanguages = Tool::getValidLanguages();
+        foreach ($this->localizedErrorDocuments as $language => $path) {
+            if (!is_string($path)) {
+                throw new InvalidArgumentException(sprintf('The error document for language "%s" is no path', $language));
+            }
+
+            if ($path === '') {
+                continue;
+            }
+
+            if (!in_array((string) $language, $validLanguages, true)) {
+                throw new InvalidArgumentException(sprintf('Invalid language "%s" for the error document "%s"', $language, $path));
+            }
+
+            if (!Document::getByPath($path)) {
+                throw new InvalidArgumentException(sprintf('The error document "%s" for language "%s" does not exist', $path, $language));
+            }
         }
     }
 

@@ -174,10 +174,14 @@ class ResponseExceptionListener implements EventSubscriberInterface
         $localizedErrorDocumentsPaths = $config['documents']['error_pages']['localized'] ?? null;
         $defaultErrorDocumentPath = $config['documents']['error_pages']['default'] ?? null;
 
+        // the system error pages remain the fallback for what the site leaves empty
         if (Site::isSiteRequest()) {
             $site = Site::getCurrentSite();
-            $localizedErrorDocumentsPaths = $site->getLocalizedErrorDocuments();
-            $defaultErrorDocumentPath = $site->getErrorDocument();
+            $siteLocalizedErrorDocumentsPaths = array_filter($site->getLocalizedErrorDocuments());
+            if ($siteLocalizedErrorDocumentsPaths || $site->getErrorDocument() !== '') {
+                $localizedErrorDocumentsPaths = $siteLocalizedErrorDocumentsPaths;
+            }
+            $defaultErrorDocumentPath = $site->getErrorDocument() ?: $defaultErrorDocumentPath;
         }
 
         $localizedErrorDocumentsPaths = $localizedErrorDocumentsPaths ?: [];

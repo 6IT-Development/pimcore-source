@@ -2467,7 +2467,7 @@ throws `InvalidArgumentException` for an unsaved site instead of firing events f
 since B-132. The SeoBundle redirects / robots.txt entries and static route `siteId` lists are left to `POST_DELETE`
 listeners in those bundles (SeoBundle B-27), as the `Dao::delete()` docblock now says.
 
-## [ ] B-136 – Error documents are stored as unvalidated paths: renaming or deleting the error page silently breaks error handling
+## [x] B-136 – Error documents are stored as unvalidated paths: renaming or deleting the error page silently breaks error handling
 
 **Files:** `models/Site.php:294-320`; `bundles/CoreBundle/src/EventListener/ResponseExceptionListener.php:163-185`
 
@@ -2482,6 +2482,13 @@ listeners in those bundles (SeoBundle B-27), as the `Dao::delete()` docblock now
 **Fix direction:** store document ids (or resolve paths to ids on save and track them as dependencies); validate keys
 against the valid languages and values as existing pages; fall back to the system error page when the site value is
 empty.
+
+**Done:** `Site::save()` validates the error documents: a non-empty `errorDocument` must resolve to a document, every
+non-empty localized entry must be a string path with a valid language as key and an existing document. A renamed,
+moved or deleted error page is reported on the next save of the site instead of passing silently.
+`ResponseExceptionListener` keeps the system error pages as fallback: the site's localized list replaces the system
+one only when the site sets an error document at all, and an empty site default falls back to the system default.
+Storing document ids and tracking them as dependencies is still open: sites are no elements in the dependency graph.
 
 ## [ ] B-137 – Small defects: `getByRootId()` error message, `getTotalCount()` swallows errors, `getRootPath()` override
 
