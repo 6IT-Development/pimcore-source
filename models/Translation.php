@@ -55,6 +55,16 @@ final class Translation extends AbstractModel
      */
     public const string DOMAIN_PATTERN = '/^[a-z0-9_]+$/i';
 
+    /**
+     * `simple` texts are used as they are, `custom` texts are ICU message formats
+     */
+    public const array TYPES = ['simple', 'custom'];
+
+    /**
+     * Length of the `key` column, in characters
+     */
+    private const int KEY_MAX_LENGTH = 190;
+
     protected ?string $key = null;
 
     /**
@@ -425,6 +435,7 @@ final class Translation extends AbstractModel
     {
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::PRE_SAVE);
 
+        $this->validate();
         $this->getDao()->save($onlyMissing);
         $this->clearRuntimeCache();
 
@@ -442,6 +453,27 @@ final class Translation extends AbstractModel
         self::clearDependentCache();
 
         $this->dispatchEvent(new TranslationEvent($this), TranslationEvents::POST_DELETE);
+    }
+
+    /**
+     * A longer key would be truncated by the column and could overwrite another key with the same prefix, an unknown
+     * type would make the Translator parse a plain text as ICU message format.
+     *
+     * @throws InvalidArgumentException
+     */
+    private function validate(): void
+    {
+        if ($this->key === null || $this->key === '') {
+            throw new InvalidArgumentException('A translation needs a key');
+        }
+
+        if (mb_strlen($this->key) > self::KEY_MAX_LENGTH) {
+            throw new InvalidArgumentException(sprintf('Translation key "%s" is longer than %d characters', $this->key, self::KEY_MAX_LENGTH));
+        }
+
+        if (!in_array($this->getType(), self::TYPES, true)) {
+            throw new InvalidArgumentException(sprintf('Invalid translation type "%s", expected one of: %s', $this->getType(), implode(', ', self::TYPES)));
+        }
     }
 
     private function clearRuntimeCache(): void

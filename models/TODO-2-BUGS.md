@@ -1848,7 +1848,7 @@ owner (new languages get the key's). `setCreationDate()` / `setModificationDate(
 `Listing\Dao::getAllTranslations()` keeps the oldest creation and newest modification date per key and the dead
 "legacy support" branch is removed. Per-language `type` values are still flattened to the key's type.
 
-## [ ] B-110 – `Dao::save()`: rewrites every language on every save, is not atomic, and does not validate key or type
+## [x] B-110 – `Dao::save()`: rewrites every language on every save, is not atomic, and does not validate key or type
 
 **File:** `models/Translation/Dao.php:82-125`; `models/Translation.php:84-112`
 
@@ -1869,6 +1869,14 @@ owner (new languages get the key's). `setCreationDate()` / `setModificationDate(
 
 **Fix direction:** validate key (non-empty, ≤ 190 **characters**, `mb_strlen`) and type (`TranslationType` enum,
 I-52) in the model. Save only changed languages, in one transaction and with one multi-row statement (I-55).
+
+**Done:** `Translation::save()` / `saveMissingLanguages()` validate after `PRE_SAVE`: a `null` or empty key, a key
+longer than 190 characters (`mb_strlen`) and a type other than `simple` / `custom` (`Translation::TYPES`) throw an
+`\InvalidArgumentException` instead of failing in the DB, being truncated or skipped silently. `Dao::save()` reads the
+stored texts and types of the key and writes only the languages that are new or whose text or type changed, so
+untouched languages keep their modification info and a concurrent edit of another language is not overwritten. The
+writes run in one transaction (the table DDL stays before it, B-112). One multi-row statement and the
+`TranslationType` enum stay with I-55 / I-52.
 
 ## [ ] B-111 – Disallowed languages are skipped silently: `save()` reports success, `POST_SAVE` fires, the in-memory object keeps the rejected text
 

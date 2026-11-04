@@ -118,36 +118,54 @@ class Dao extends Model\Dao\AbstractDao
             }
         }
 
-        if ($this->model->getKey() !== '') {
-            foreach ($this->model->getTranslations() as $language => $text) {
-                // setTranslations() does not type its values, never write a NULL (it breaks the catalogue)
-                $text = (string)$text;
+        $rows = [];
+        foreach ($this->model->getTranslations() as $language => $text) {
+            // setTranslations() does not type its values, never write a NULL (it breaks the catalogue)
+            $text = (string)$text;
 
-                if ($editableLanguages !== null && !in_array($language, $editableLanguages, true)) {
-                    Logger::warning(sprintf('User %s not allowed to edit %s translation', $user?->getUsername() ?? 'N/A', $language)); // @phpstan-ignore-line
+            if ($editableLanguages !== null && !in_array($language, $editableLanguages, true)) {
+                Logger::warning(sprintf('User %s not allowed to edit %s translation', $user?->getUsername() ?? 'N/A', $language)); // @phpstan-ignore-line
 
-                    continue;
+                continue;
+            }
+
+            if ($text != strip_tags($text)) {
+                $text = $sanitizer->sanitizeFor('body', $text);
+                $this->model->addTranslation($language, $text);
+            }
+
+            $rows[$language] = [
+                'key' => $this->model->getKey(),
+                'type' => $this->model->getType(),
+                'language' => $language,
+                'text' => $text,
+                'modificationDate' => $this->model->getModificationDate(),
+                'creationDate' => $this->model->getCreationDate(),
+                'userOwner' => $this->model->getUserOwner(),
+                'userModification' => $this->model->getUserModification(),
+            ];
+        }
+
+        // all languages or none: a failure in between must not leave the key partially saved
+        $this->db->transactional(function () use ($rows, $onlyMissing): void {
+            $existing = $this->db->fetchAllAssociativeIndexed(
+                'SELECT `language`, `text`, `type` FROM ' . $this->db->quoteIdentifier($this->getDatabaseTableName()) . ' WHERE `key` = ?',
+                [$this->model->getKey()]
+            );
+
+            foreach ($rows as $language => $data) {
+                if (isset($existing[$language])) {
+                    // an unchanged language keeps its modification info and is not overwritten from a stale object
+                    if ($onlyMissing || ((string)$existing[$language]['text'] === $data['text']
+                            && ($existing[$language]['type'] ?: 'simple') === $data['type'])) {
+                        continue;
+                    }
                 }
 
-                if ($text != strip_tags($text)) {
-                    $text = $sanitizer->sanitizeFor('body', $text);
-                    $this->model->addTranslation($language, $text);
-                }
-
-                $data = [
-                    'key' => $this->model->getKey(),
-                    'type' => $this->model->getType(),
-                    'language' => $language,
-                    'text' => $text,
-                    'modificationDate' => $this->model->getModificationDate(),
-                    'creationDate' => $this->model->getCreationDate(),
-                    'userOwner' => $this->model->getUserOwner(),
-                    'userModification' => $this->model->getUserModification(),
-                ];
                 // the creation date and owner of an existing language stay as they are
                 $this->insertOrUpdate($data, $onlyMissing ? [] : ['type', 'text', 'modificationDate', 'userModification']);
             }
-        }
+        });
     }
 
     /**
