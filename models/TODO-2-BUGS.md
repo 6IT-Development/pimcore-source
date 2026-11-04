@@ -901,13 +901,15 @@ without a DB lookup (the status cache can be disabled).
 
 **Done:** `srcset` / `data-srcset` is added before `$removeAttributes` and `imgCallback` run. Upgrade note added.
 
-## [ ] B-56 – Cache buster corrupts data URIs and protocol-relative URLs
+## [x] B-56 – Cache buster corrupts data URIs and protocol-relative URLs
 
 **File:** `models/Asset/Image/Thumbnail.php:162-171`, `:461`
 
 - `'/cache-buster-N' . $path` is prefixed to `data:image/gif…` (`1x1_pixel`) and `//cdn…`.
 
 **Fix direction:** skip for `^(data:|//|https?:)`.
+
+**Done:** `addCacheBuster()` leaves paths matching `^(https?:|//|data:)` (case-insensitive) unchanged.
 
 ## [ ] B-57 – Numeric media keys break the default `<source>` in `<picture>`
 
