@@ -35,7 +35,7 @@ final class Version20230203160742 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        // the migration path is registered even when the bundle is not installed; install.sql creates the final schema
+        // the migration path is registered even when the bundle is not installed; the installer creates the final schema
         if (!$schema->hasTable('uuids')) {
             return;
         }

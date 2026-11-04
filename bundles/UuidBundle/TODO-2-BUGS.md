@@ -223,7 +223,7 @@ model. `resolveItem()` checks `null` instead of `isset()`.
 
 ---
 
-## [ ] B-11 – SQL install/uninstall runner is fragile
+## [x] B-11 – SQL install/uninstall runner is fragile
 
 **Files:** `src/Installer.php:35-44`
 
@@ -234,6 +234,12 @@ model. `resolveItem()` checks `null` instead of `isset()`.
 
 **Fix direction:** run the schema through Doctrine `Schema`/`addSql` or explicit single statements in PHP (see I-14),
 and drop the `.sql` files.
+
+**Done:** `installDatabaseTable()` and `uninstallDatabaseTable()` each run one statement written in PHP (`CREATE TABLE
+IF NOT EXISTS`, same schema as before; `DROP TABLE IF EXISTS`) with `executeStatement()`, using `Dao::TABLE_NAME`.
+`runSqlQueries()`, which ignored a failed `file_get_contents()` and sent several statements in one `executeQuery()`,
+and the `install.sql` / `uninstall.sql` files are removed. The two methods stay `protected` for subclasses. Not
+addressed: a Doctrine `Schema` definition and the key changes of I-11 (I-14).
 
 ---
 

@@ -16,6 +16,7 @@
 namespace Pimcore\Bundle\UuidBundle;
 
 use Pimcore\Bundle\UuidBundle\Migrations\Version20230203160742;
+use Pimcore\Bundle\UuidBundle\Model\Tool\UUID\Dao;
 use Pimcore\Db;
 use Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller;
 
@@ -28,7 +29,8 @@ class Installer extends SettingsStoreAwareInstaller
     }
 
     /**
-     * install.sql creates the final schema, so installing marks all bundle migrations up to this one as executed.
+     * installDatabaseTable() creates the final schema, so installing marks all bundle migrations up to this one as
+     * executed.
      */
     public function getLastMigrationVersionClassName(): ?string
     {
@@ -41,24 +43,24 @@ class Installer extends SettingsStoreAwareInstaller
         parent::uninstall();
     }
 
-    private function runSqlQueries(array $sqlFileNames): void
-    {
-        $sqlPath = __DIR__ . '/Resources/';
-        $db = Db::get();
-
-        foreach ($sqlFileNames as $fileName) {
-            $statement = file_get_contents($sqlPath . $fileName);
-            $db->executeQuery($statement);
-        }
-    }
-
+    /**
+     * Keeps an existing table, so a re-install does not lose UUIDs imported from other instances.
+     */
     protected function installDatabaseTable(): void
     {
-        $this->runSqlQueries(['install/install.sql']);
+        Db::get()->executeStatement(
+            'CREATE TABLE IF NOT EXISTS `' . Dao::TABLE_NAME . '` (
+                `uuid` CHAR(36) NOT NULL,
+                `itemId` VARCHAR(50) NOT NULL,
+                `type` VARCHAR(25) NOT NULL,
+                `instanceIdentifier` VARCHAR(50) NOT NULL,
+                PRIMARY KEY (`uuid`, `itemId`, `type`)
+            ) DEFAULT CHARSET=utf8mb4'
+        );
     }
 
     protected function uninstallDatabaseTable(): void
     {
-        $this->runSqlQueries(['uninstall/uninstall.sql']);
+        Db::get()->executeStatement('DROP TABLE IF EXISTS `' . Dao::TABLE_NAME . '`');
     }
 }
