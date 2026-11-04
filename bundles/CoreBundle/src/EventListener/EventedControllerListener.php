@@ -30,7 +30,7 @@ use WeakMap;
 /**
  * @internal
  */
-class EventedControllerListener implements EventSubscriberInterface
+final class EventedControllerListener implements EventSubscriberInterface
 {
     /**
      * Controller of each request, kept out of the request attributes so the profiler doesn't clone and dump it
@@ -44,6 +44,7 @@ class EventedControllerListener implements EventSubscriberInterface
         $this->controllers = new WeakMap();
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

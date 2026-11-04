@@ -27,12 +27,13 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-readonly class ResponseHeaderListener implements EventSubscriberInterface
+final readonly class ResponseHeaderListener implements EventSubscriberInterface
 {
     public function __construct(private ResponseHeaderResolver $responseHeaderResolver)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -66,6 +67,6 @@ readonly class ResponseHeaderListener implements EventSubscriberInterface
 
         $responseHeaders = array_merge($this->responseHeaderResolver->getResponseHeaders($request), $attributes);
 
-        $request->attributes->set($this->responseHeaderResolver::ATTRIBUTE_RESPONSE_HEADER, $responseHeaders);
+        $request->attributes->set(ResponseHeaderResolver::ATTRIBUTE_RESPONSE_HEADER, $responseHeaders);
     }
 }

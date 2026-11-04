@@ -33,7 +33,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-class LocaleListener implements EventSubscriberInterface
+final class LocaleListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
@@ -44,8 +44,9 @@ class LocaleListener implements EventSubscriberInterface
     /**
      * Locale last passed to setlocale(), which is process-wide
      */
-    protected ?string $lastLocale = null;
+    private ?string $lastLocale = null;
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -67,7 +68,7 @@ class LocaleListener implements EventSubscriberInterface
             $request->attributes->set(self::ATTRIBUTE_CONTENT_LANGUAGE, $locale);
         }
 
-        if ($locale && $locale != $this->lastLocale) {
+        if ($locale && $locale !== $this->lastLocale) {
             if (!$event->isMainRequest() && $this->lastLocale) {
                 // setlocale() is process-wide, restore the parent's locale when the sub-request is finished
                 $request->attributes->set(self::ATTRIBUTE_PARENT_LOCALE, $this->lastLocale);
@@ -105,7 +106,7 @@ class LocaleListener implements EventSubscriberInterface
         } else {
             // try to get a list of territories for this language
             // usually OS have no "language only" locale, only the combination language-territory (eg. Debian)
-            $languageRegionMapping = include PIMCORE_PATH . '/bundles/CoreBundle/public/misc/cldr-language-territory-mapping.php';
+            $languageRegionMapping = include dirname(__DIR__, 3) . '/public/misc/cldr-language-territory-mapping.php';
             if (isset($languageRegionMapping[$primaryLanguage])) {
                 foreach ($languageRegionMapping[$primaryLanguage] as $territory) {
                     $localeList[] = $primaryLanguage . '_' . $territory . '.utf8';

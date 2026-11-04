@@ -865,7 +865,7 @@ Upgrade note added.
 
 ## K – PHP 8.4 / code style
 
-### [ ] I-47 – Modernise the listener classes
+### [x] I-47 – Modernise the listener classes
 
 - `Frontend/ElementListener.php` is the only file without `declare(strict_types=1);`.
 - All listeners are `@internal` but none is `final`. Make them `final` (except where tests or subclasses really need
@@ -896,6 +896,18 @@ Upgrade note added.
   without `strict` (`MaintenancePageListener:111`, `StaticPageGeneratorListener:182`).
 - `ResponseExceptionListener::determineErrorPath()` has `@throws Exception` and an undefined-then-maybe-set `$locale`
   variable. Initialise it to `null`.
+
+**Done:** every `@internal` listener is `final`. Promoted dependencies are `private readonly`, the other protected
+members are private, and `getSubscribedEvents()` has `#[\Override]`. `ElementListener` has `strict_types`. The four
+path decodes use `rawurldecode()`. `MaintenancePageListener` uses `$kernel->getProjectDir()` and `LocaleListener` a path
+relative to the bundle. The `FormInterface::class` and `ResponseHeaderResolver::` references, the `$reponse` typo, the
+shadowed `$e`, the loose comparisons and `$locale = null` are fixed.
+Not done: `FullPageCacheListener` stays non-final (not `@internal`, see I-44). Its flags became asymmetric-visibility
+properties of `FullPageCacheState`; the listener's `disable()` / `enable()` keep `bool` for BC.
+`MaintenancePageListener::$templateCode` keeps getter/setter, because the getter loads the default template lazily
+(I-43). `PIMCORE_WEB_ROOT` (now in `AdminUiClassicEditmodeAssetProvider`) stays, since it can be overridden from
+`$_SERVER` and no container parameter mirrors it. `PreviewRequestTrait` is removed in I-48. The other comparisons
+were already strict.
 
 ### [ ] I-48 – Remove dead code
 

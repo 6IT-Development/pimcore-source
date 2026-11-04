@@ -36,14 +36,15 @@ use Twig\Environment;
  *
  * @internal
  */
-class ContentTemplateListener implements EventSubscriberInterface
+final class ContentTemplateListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    public function __construct(protected TemplateResolver $templateResolver, protected Environment $twig)
+    public function __construct(private readonly TemplateResolver $templateResolver, private readonly Environment $twig)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -78,7 +79,7 @@ class ContentTemplateListener implements EventSubscriberInterface
         $parameters = $this->resolveParameters($event, $attribute?->vars);
         $status = 200;
 
-        if (interface_exists('Symfony\\Component\\Form\\FormInterface')) {
+        if (interface_exists(FormInterface::class)) {
             foreach ($parameters as $k => $v) {
                 if (!$v instanceof FormInterface) {
                     continue;

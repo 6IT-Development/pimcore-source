@@ -27,12 +27,13 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
  *
  * @internal
  */
-class DocumentRendererListener implements EventSubscriberInterface
+final class DocumentRendererListener implements EventSubscriberInterface
 {
-    public function __construct(protected ContainerService $containerService)
+    public function __construct(private readonly ContainerService $containerService)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

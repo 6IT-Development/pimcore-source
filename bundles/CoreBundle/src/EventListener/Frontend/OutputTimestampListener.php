@@ -27,14 +27,15 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-class OutputTimestampListener implements EventSubscriberInterface
+final class OutputTimestampListener implements EventSubscriberInterface
 {
     public const string TIMESTAMP_OVERRIDE_PARAM_NAME = 'pimcore_override_output_timestamp';
 
-    public function __construct(protected OutputTimestampResolver $outputTimestampResolver)
+    public function __construct(private readonly OutputTimestampResolver $outputTimestampResolver)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

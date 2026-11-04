@@ -31,18 +31,19 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-class PimcoreContextListener implements EventSubscriberInterface
+final class PimcoreContextListener implements EventSubscriberInterface
 {
     public const string ATTRIBUTE_PIMCORE_CONTEXT_FORCE_RESOLVING = '_pimcore_context_force_resolving';
 
     public function __construct(
-        protected PimcoreContextResolver $resolver,
-        protected RequestStack           $requestStack,
+        private readonly PimcoreContextResolver $resolver,
+        private readonly RequestStack           $requestStack,
         private readonly LoggerInterface $logger
     )
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -78,7 +79,7 @@ class PimcoreContextListener implements EventSubscriberInterface
      *
      * An unresolved (null) context is initialized like a non-admin context.
      */
-    protected function initializeContext(?string $context, Request $request): void
+    private function initializeContext(?string $context, Request $request): void
     {
         if ($context === PimcoreContextResolver::CONTEXT_ADMIN) {
             Pimcore::setAdminMode();

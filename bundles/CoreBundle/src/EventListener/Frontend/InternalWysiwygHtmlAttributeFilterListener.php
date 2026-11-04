@@ -29,12 +29,13 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-class InternalWysiwygHtmlAttributeFilterListener implements EventSubscriberInterface
+final class InternalWysiwygHtmlAttributeFilterListener implements EventSubscriberInterface
 {
     use ResponseInjectionTrait;
     use PimcoreContextAwareTrait;
     use StaticPageContextAwareTrait;
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

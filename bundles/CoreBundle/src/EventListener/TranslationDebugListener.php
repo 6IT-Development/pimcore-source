@@ -29,7 +29,7 @@ use Symfony\Contracts\Service\ResetInterface;
 /**
  * @internal
  */
-class TranslationDebugListener implements EventSubscriberInterface, ResetInterface
+final class TranslationDebugListener implements EventSubscriberInterface, ResetInterface
 {
     private bool $translationsDisabled = false;
 
@@ -40,6 +40,7 @@ class TranslationDebugListener implements EventSubscriberInterface, ResetInterfa
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

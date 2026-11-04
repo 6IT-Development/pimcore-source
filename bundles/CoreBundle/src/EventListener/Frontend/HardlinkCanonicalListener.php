@@ -35,14 +35,15 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * @internal
  */
-class HardlinkCanonicalListener implements EventSubscriberInterface
+final class HardlinkCanonicalListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    public function __construct(protected DocumentResolver $documentResolver)
+    public function __construct(private readonly DocumentResolver $documentResolver)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -77,7 +78,7 @@ class HardlinkCanonicalListener implements EventSubscriberInterface
         }
     }
 
-    protected function handleHardlink(Request $request, Response $response, Document $document): void
+    private function handleHardlink(Request $request, Response $response, Document $document): void
     {
         $canonical = null;
 

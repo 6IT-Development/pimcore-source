@@ -413,7 +413,7 @@ class FullPageCacheListener implements ResetInterface
 
         $lifetime = $this->state->lifetime;
 
-        if ($this->state->enabled && $response->getStatusCode() == 200 && $this->defaultCacheKey) {
+        if ($this->state->enabled && $response->getStatusCode() === Response::HTTP_OK && $this->defaultCacheKey) {
             try {
                 if ($lifetime && $this->state->expireHeaderEnabled) {
                     // add cache control for proxies and http-caches like varnish, ...

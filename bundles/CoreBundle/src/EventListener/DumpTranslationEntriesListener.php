@@ -27,12 +27,13 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-class DumpTranslationEntriesListener implements EventSubscriberInterface
+final class DumpTranslationEntriesListener implements EventSubscriberInterface
 {
     public function __construct(private readonly TranslationEntriesDumper $dumper)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

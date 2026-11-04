@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Pimcore
  *
@@ -43,7 +45,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * @internal
  */
 #[WithMonologChannel('init')]
-class ElementListener implements EventSubscriberInterface
+final class ElementListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
@@ -52,16 +54,17 @@ class ElementListener implements EventSubscriberInterface
      *                                of their path must not be checked, an unpublished home page would deny them
      */
     public function __construct(
-        protected DocumentResolver $documentResolver,
-        protected EditmodeResolver $editmodeResolver,
-        protected RequestHelper    $requestHelper,
-        protected UserLoader       $userLoader,
+        private readonly DocumentResolver $documentResolver,
+        private readonly EditmodeResolver $editmodeResolver,
+        private readonly RequestHelper    $requestHelper,
+        private readonly UserLoader       $userLoader,
         private readonly LoggerInterface $logger,
         private readonly array $ignoredRoutes = ['fos_js_routing_js']
     )
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -124,7 +127,7 @@ class ElementListener implements EventSubscriberInterface
         }
     }
 
-    protected function handleVersion(Request $request, Document $document): Document
+    private function handleVersion(Request $request, Document $document): Document
     {
         $v = $request->query->getInt('v');
         if ($v) {
@@ -213,7 +216,7 @@ class ElementListener implements EventSubscriberInterface
         return $data instanceof Document ? $data : null;
     }
 
-    protected function handleEditmode(Document $document, User $user, SessionInterface $session): Document
+    private function handleEditmode(Document $document, User $user, SessionInterface $session): Document
     {
         // check if there is the document in the session
         if ($documentFromSession = Document\Service::getElementFromSession('document', $document->getId(), $session->getId())) {
@@ -243,7 +246,7 @@ class ElementListener implements EventSubscriberInterface
         return $document;
     }
 
-    protected function handleObjectParams(Request $request, User $user): void
+    private function handleObjectParams(Request $request, User $user): void
     {
         // object preview
         if ($objectId = $request->query->getInt('pimcore_object_preview')) {

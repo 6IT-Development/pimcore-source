@@ -50,15 +50,15 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 /**
  * @internal
  */
-class StaticPageGeneratorListener implements EventSubscriberInterface
+final class StaticPageGeneratorListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
     use StaticPageContextAwareTrait;
 
     public function __construct(
-        protected StaticPageGenerator $staticPageGenerator,
-        protected DocumentResolver    $documentResolver,
-        protected RequestHelper       $requestHelper,
+        private readonly StaticPageGenerator $staticPageGenerator,
+        private readonly DocumentResolver    $documentResolver,
+        private readonly RequestHelper       $requestHelper,
         private readonly Config       $config,
         private readonly SessionStatus $sessionStatus,
         private readonly ?TokenStorageInterface $tokenStorage = null
@@ -66,6 +66,7 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -105,7 +106,7 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
 
         try {
             $path = '';
-            $filename = urldecode($request->getPathInfo());
+            $filename = rawurldecode($request->getPathInfo());
 
             if (Site::isSiteRequest()) {
                 if ($request->getPathInfo() === '/') {
@@ -120,14 +121,14 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
                 $content = $storage->read($filename);
                 $date = date(DateTimeInterface::ATOM, $storage->lastModified($filename));
 
-                $reponse = new Response(
+                $response = new Response(
                     $content, Response::HTTP_OK, [
                         'Content-Type' => 'text/html',
                         'X-Pimcore-Static-Page-Last-Modified' => $date,
                     ]
                 );
 
-                $event->setResponse($reponse);
+                $event->setResponse($response);
             }
         } catch (Exception $e) {
             Logger::error($e->getMessage());
@@ -232,8 +233,8 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
                     || $this->staticPageGenerator->pageExists($document)) {
                     $this->staticPageGenerator->remove($document);
                 }
-            } catch (Exception $e) {
-                Logger::error((string)$e);
+            } catch (Exception $exception) {
+                Logger::error((string)$exception);
 
                 return;
             }
@@ -257,7 +258,7 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
         if ($this->requestHelper->isFrontendRequestByAdmin($request)
             || $request->isXmlHttpRequest()
             || $request->getMethod() !== 'GET'
-            || !in_array('text/html', $request->getAcceptableContentTypes())) {
+            || !in_array('text/html', $request->getAcceptableContentTypes(), true)) {
             return false;
         }
 

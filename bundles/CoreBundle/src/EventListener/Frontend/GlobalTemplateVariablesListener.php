@@ -33,22 +33,23 @@ use Twig\Environment;
 /**
  * @internal
  */
-class GlobalTemplateVariablesListener implements EventSubscriberInterface, ResetInterface
+final class GlobalTemplateVariablesListener implements EventSubscriberInterface, ResetInterface
 {
     use PimcoreContextAwareTrait;
 
     private const ATTRIBUTE_PUSHED = '_pimcore_template_globals_pushed';
 
-    protected array $globalsStack = [];
+    private array $globalsStack = [];
 
     public function __construct(
-        protected DocumentResolver $documentResolver,
-        protected EditmodeResolver $editmodeResolver,
-        protected Environment      $twig
+        private readonly DocumentResolver $documentResolver,
+        private readonly EditmodeResolver $editmodeResolver,
+        private readonly Environment      $twig
     )
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

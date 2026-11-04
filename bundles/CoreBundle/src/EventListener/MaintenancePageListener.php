@@ -32,7 +32,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
 /**
  * @internal
  */
-class MaintenancePageListener implements EventSubscriberInterface
+final class MaintenancePageListener implements EventSubscriberInterface
 {
     use ResponseInjectionTrait;
 
@@ -42,7 +42,7 @@ class MaintenancePageListener implements EventSubscriberInterface
     private const string FALLBACK_TEMPLATE_CODE = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maintenance</title></head>'
         . '<body><h1>Temporarily down for maintenance</h1><p>Please try again later.</p></body></html>';
 
-    protected ?string $templateCode = null;
+    private ?string $templateCode = null;
 
     private bool $defaultTemplateLoaded = false;
 
@@ -51,8 +51,8 @@ class MaintenancePageListener implements EventSubscriberInterface
      * @param string $defaultTemplateResource loaded on first use, unless a template was set before
      */
     public function __construct(
-        protected KernelInterface                $kernel,
-        protected MaintenanceModeHelperInterface $maintenanceModeHelper,
+        private readonly KernelInterface                $kernel,
+        private readonly MaintenanceModeHelperInterface $maintenanceModeHelper,
         #[Autowire(param: 'pimcore.maintenance_mode.excluded_ips')]
         private readonly array                   $excludedIps = ['127.0.0.1', '::1'],
         private readonly string                  $defaultTemplateResource = '@PimcoreCoreBundle/public/misc/maintenance.html'
@@ -60,6 +60,7 @@ class MaintenancePageListener implements EventSubscriberInterface
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -86,7 +87,7 @@ class MaintenancePageListener implements EventSubscriberInterface
 
     public function loadTemplateFromPath(string $path): void
     {
-        $this->loadTemplateFromFile(PIMCORE_PROJECT_ROOT . $path);
+        $this->loadTemplateFromFile($this->kernel->getProjectDir() . $path);
     }
 
     public function loadTemplateFromResource(string $path): void

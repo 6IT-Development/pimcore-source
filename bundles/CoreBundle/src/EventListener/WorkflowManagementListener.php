@@ -36,9 +36,9 @@ use Symfony\Component\EventDispatcher\GenericEvent;
 /**
  * @internal
  */
-class WorkflowManagementListener implements EventSubscriberInterface
+final class WorkflowManagementListener implements EventSubscriberInterface
 {
-    protected bool $enabled = true;
+    private bool $enabled = true;
 
     public function __construct(
         private readonly Manager $workflowManager,
@@ -46,6 +46,7 @@ class WorkflowManagementListener implements EventSubscriberInterface
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

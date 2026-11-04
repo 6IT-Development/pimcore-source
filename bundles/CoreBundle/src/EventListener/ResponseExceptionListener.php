@@ -40,21 +40,22 @@ use Throwable;
 /**
  * @internal
  */
-class ResponseExceptionListener implements EventSubscriberInterface
+final class ResponseExceptionListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
     public function __construct(
-        protected DocumentRendererInterface $documentRenderer,
-        protected Connection                $db,
-        protected SystemSettingsConfig      $config,
-        protected Document\Service          $documentService,
-        protected SiteResolver              $siteResolver,
+        private readonly DocumentRendererInterface $documentRenderer,
+        private readonly Connection                $db,
+        private readonly SystemSettingsConfig      $config,
+        private readonly Document\Service          $documentService,
+        private readonly SiteResolver              $siteResolver,
         private readonly LoggerInterface    $logger
     )
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -81,7 +82,7 @@ class ResponseExceptionListener implements EventSubscriberInterface
         }
     }
 
-    protected function handleErrorPage(ExceptionEvent $event): void
+    private function handleErrorPage(ExceptionEvent $event): void
     {
         if (Pimcore::inDebugMode()) {
             return;
@@ -150,11 +151,12 @@ class ResponseExceptionListener implements EventSubscriberInterface
     private function determineErrorPath(Request $request): string
     {
         $errorPath = '';
+        $locale = null;
 
         if ($this->siteResolver->isSiteRequest($request)) {
             $path = $this->siteResolver->getSitePath($request);
         } else {
-            $path = urldecode($request->getPathInfo());
+            $path = rawurldecode($request->getPathInfo());
         }
 
         // Find nearest document by path

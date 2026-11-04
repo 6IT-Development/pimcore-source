@@ -38,18 +38,18 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * @internal
  */
-class EditmodeListener implements EventSubscriberInterface
+final class EditmodeListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    protected array $contentTypes = [
+    private array $contentTypes = [
         'text/html',
     ];
 
     public function __construct(
-        protected EditmodeResolver                           $editmodeResolver,
-        protected DocumentResolver                           $documentResolver,
-        protected UserLoader                                 $userLoader,
+        private readonly EditmodeResolver                           $editmodeResolver,
+        private readonly DocumentResolver                           $documentResolver,
+        private readonly UserLoader                                 $userLoader,
         private readonly EditmodeEditableDefinitionCollector $editableConfigCollector,
         private readonly LoggerInterface                     $logger,
         private readonly ?EditmodeAssetProviderInterface     $assetProvider = null
@@ -57,6 +57,7 @@ class EditmodeListener implements EventSubscriberInterface
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -118,7 +119,7 @@ class EditmodeListener implements EventSubscriberInterface
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
     }
 
-    protected function contentTypeMatches(Response $response): bool
+    private function contentTypeMatches(Response $response): bool
     {
         if (!$contentType = $response->headers->get('Content-Type')) {
             return true;
@@ -132,7 +133,7 @@ class EditmodeListener implements EventSubscriberInterface
      * Inject editmode assets into response HTML
      *
      */
-    protected function addEditmodeAssets(Document $document, Response $response): void
+    private function addEditmodeAssets(Document $document, Response $response): void
     {
         if ($this->assetProvider && Document\Service::isValidType($document->getType())) {
             $html = $response->getContent();

@@ -29,8 +29,9 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * @internal
  */
-class ElementTagsListener implements EventSubscriberInterface
+final class ElementTagsListener implements EventSubscriberInterface
 {
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

@@ -42,19 +42,20 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * @internal
  */
 #[WithMonologChannel('redirect')]
-class RoutingListener implements EventSubscriberInterface
+final class RoutingListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
     public function __construct(
-        protected RequestHelper $requestHelper,
-        protected SiteResolver  $siteResolver,
-        protected Config        $config,
+        private readonly RequestHelper $requestHelper,
+        private readonly SiteResolver  $siteResolver,
+        private readonly Config        $config,
         private readonly LoggerInterface $logger
     )
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -84,7 +85,7 @@ class RoutingListener implements EventSubscriberInterface
             return;
         }
 
-        $path = urldecode($request->getPathInfo());
+        $path = rawurldecode($request->getPathInfo());
 
         // resolve current site from request
         $this->resolveSite($request, $path);
@@ -98,7 +99,7 @@ class RoutingListener implements EventSubscriberInterface
      *
      *
      */
-    protected function resolveSite(Request $request, string $path): string
+    private function resolveSite(Request $request, string $path): string
     {
         $site = null;
 
@@ -130,7 +131,7 @@ class RoutingListener implements EventSubscriberInterface
      * Redirect to the main domain if specified
      *
      */
-    protected function handleMainDomainRedirect(RequestEvent $event, bool $adminContext = false): void
+    private function handleMainDomainRedirect(RequestEvent $event, bool $adminContext = false): void
     {
         $request = $event->getRequest();
 

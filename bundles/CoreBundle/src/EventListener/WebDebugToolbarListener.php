@@ -34,9 +34,9 @@ use Symfony\Contracts\Service\ResetInterface;
  *
  * @internal
  */
-class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterface
+final class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterface
 {
-    protected ?array $excludeMatchers = null;
+    private ?array $excludeMatchers = null;
 
     /**
      * Mode of the Symfony toolbar listener before it was disabled for the current request
@@ -44,17 +44,18 @@ class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterfac
     private ?int $previousMode = null;
 
     public function __construct(
-        protected RequestHelper                   $requestHelper,
-        protected RequestMatcherFactory           $requestMatcherFactory,
+        private readonly RequestHelper                   $requestHelper,
+        private readonly RequestMatcherFactory           $requestMatcherFactory,
         #[Autowire('@?web_profiler.debug_toolbar')]
-        protected ?SymfonyWebDebugToolbarListener $debugToolbarListener,
-        protected EventDispatcherInterface        $eventDispatcher,
+        private readonly ?SymfonyWebDebugToolbarListener $debugToolbarListener,
+        private readonly EventDispatcherInterface        $eventDispatcher,
         #[Autowire(param: 'pimcore.web_profiler.toolbar.excluded_routes')]
-        protected array                           $excludeRoutes
+        private readonly array                           $excludeRoutes
     )
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -108,7 +109,7 @@ class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterfac
     /**
      * @return ChainRequestMatcher[]
      */
-    protected function getExcludeMatchers(): array
+    private function getExcludeMatchers(): array
     {
         if (null === $this->excludeMatchers) {
             $this->excludeMatchers = [];
@@ -123,7 +124,7 @@ class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterfac
         return $this->excludeMatchers;
     }
 
-    protected function disableWebDebugToolbar(): void
+    private function disableWebDebugToolbar(): void
     {
         // only for the current request: removing the subscriber would disable the toolbar for all following requests
         // handled by this process (worker runtimes)

@@ -30,16 +30,17 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * @internal
  */
-class BlockStateListener implements EventSubscriberInterface
+final class BlockStateListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
     private const ATTRIBUTE_PUSHED = '_pimcore_block_state_pushed';
 
-    public function __construct(protected BlockStateStack $blockStateStack)
+    public function __construct(private readonly BlockStateStack $blockStateStack)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

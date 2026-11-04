@@ -24,8 +24,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-class PimcoreHeaderListener implements EventSubscriberInterface
+final class PimcoreHeaderListener implements EventSubscriberInterface
 {
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [

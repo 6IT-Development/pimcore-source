@@ -40,19 +40,19 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  *
  * @internal
  */
-class DocumentFallbackListener implements EventSubscriberInterface
+final class DocumentFallbackListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
     private const string ATTRIBUTE_FALLBACK_DOCUMENT = '_pimcore_fallback_document';
 
-    protected array $options;
+    private array $options;
 
     public function __construct(
-        protected RequestStack     $requestStack,
-        protected DocumentResolver $documentResolver,
-        protected SiteResolver     $siteResolver,
-        protected Document\Service $documentService,
+        private readonly RequestStack     $requestStack,
+        private readonly DocumentResolver $documentResolver,
+        private readonly SiteResolver     $siteResolver,
+        private readonly Document\Service $documentService,
         array                      $options = []
     )
     {
@@ -62,7 +62,7 @@ class DocumentFallbackListener implements EventSubscriberInterface
         $this->options = $optionsResolver->resolve($options);
     }
 
-    protected function configureOptions(OptionsResolver $optionsResolver): void
+    private function configureOptions(OptionsResolver $optionsResolver): void
     {
         $optionsResolver->setDefaults([
             'nearestDocumentTypes' => ['page', 'snippet', 'hardlink', 'link', 'folder'],
@@ -71,6 +71,7 @@ class DocumentFallbackListener implements EventSubscriberInterface
         $optionsResolver->setAllowedTypes('nearestDocumentTypes', 'array');
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
@@ -102,7 +103,7 @@ class DocumentFallbackListener implements EventSubscriberInterface
             if ($this->siteResolver->isSiteRequest($request)) {
                 $path = $this->siteResolver->getSitePath($request);
             } else {
-                $path = urldecode($request->getPathInfo());
+                $path = rawurldecode($request->getPathInfo());
             }
 
             $document = $this->documentService->getNearestDocumentByPath($path, false, $this->options['nearestDocumentTypes']);

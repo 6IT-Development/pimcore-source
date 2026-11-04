@@ -25,12 +25,13 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-readonly class ResponseStackListener implements EventSubscriberInterface
+final readonly class ResponseStackListener implements EventSubscriberInterface
 {
     public function __construct(private ResponseStack $responseStack)
     {
     }
 
+    #[\Override]
     public static function getSubscribedEvents(): array
     {
         return [
