@@ -2392,7 +2392,7 @@ is no longer returned and a cached miss does not hide a new site. `Listing\Dao::
 longer load, so `Frontend::getSiteMapping()` gets no `null`. The shared mutable instance stays: its only mutator
 without persistence is `setRootPath()` (B-137).
 
-## [ ] B-133 – `Dao::save()` is not atomic and does not validate: half-created rows, raw DBAL errors, "saved" sites that do not exist
+## [x] B-133 – `Dao::save()` is not atomic and does not validate: half-created rows, raw DBAL errors, "saved" sites that do not exist
 
 **Files:** `models/Site/Dao.php:97-147`; `models/Site.php:388-397`
 
@@ -2410,6 +2410,13 @@ without persistence is `setRootPath()` (B-137).
 **Fix direction:** one `INSERT` with all columns for new sites (or a transaction around both statements); validate in
 `Site::save()` before `PRE_SAVE` (I-69); throw `NotFoundException` when `update()` affects 0 rows and the row does not
 exist.
+
+**Done:** `Dao::create()` writes a new site with one `INSERT` of all columns (no half row with only `rootId`), the
+column mapping moved to `Dao::getTableData()`. `Dao::update()` throws `NotFoundException` when it affects no row and the
+id does not exist (0 rows can also mean unchanged values). `Site::save()` validates before any event and again after
+`PRE_SAVE` (listeners may change the site): the root must be an existing page that is not the root of another site, as
+`InvalidArgumentException` instead of a raw DBAL error. New sites fire the new `SiteEvents::PRE_ADD` / `POST_ADD` around
+`PRE_SAVE` / `POST_SAVE`. Rejecting domains claimed by another site stays with I-69.
 
 ## [ ] B-134 – A site whose root is missing or not a page: the domain serves the main tree, and site path code fatals
 

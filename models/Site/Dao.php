@@ -156,14 +156,16 @@ class Dao extends Model\Dao\AbstractDao
 
     /**
      * Save object to database
+     *
+     * @throws NotFoundException when the id is set but there is no site with it
      */
     public function save(): void
     {
-        if (!$this->model->getId()) {
+        if ($this->model->getId()) {
+            $this->update();
+        } else {
             $this->create();
         }
-
-        $this->update();
     }
 
     /**
@@ -174,36 +176,52 @@ class Dao extends Model\Dao\AbstractDao
         $ts = time();
         $this->model->setCreationDate($ts);
         $this->model->setModificationDate($ts);
-        $this->db->insert('sites', ['rootId' => $this->model->getRootId()]);
+
+        // one statement, a failing write leaves no half row behind (rootId is unique)
+        $data = $this->getTableData();
+        unset($data['id']);
+        $this->db->insert('sites', $data);
+
         $this->model->setId((int)$this->db->lastInsertId());
+
+        $this->model->clearDependentCache();
     }
 
     /**
      * Save changes to database, it's a good idea to use save() instead
+     *
+     * @throws NotFoundException
      */
     public function update(): void
     {
-        $ts = time();
-        $this->model->setModificationDate($ts);
+        $this->model->setModificationDate(time());
 
-        $data = [];
-        $site = $this->model->getObjectVars();
+        $affectedRows = $this->db->update('sites', $this->getTableData(), ['id' => $this->model->getId()]);
 
-        foreach ($site as $key => $value) {
-            if (in_array($key, $this->getValidTableColumns('sites'))) {
-                if (is_array($value) || is_object($value)) {
-                    $value = Serialize::serialize($value);
-                }
-                if (is_bool($value)) {
-                    $value = (int)$value;
-                }
-                $data[$key] = $value;
+        // 0 affected rows can also mean unchanged values, unless the client flag for found rows is set
+        if ($affectedRows === 0 && !$this->db->fetchOne('SELECT id FROM sites WHERE id = ?', [$this->model->getId()])) {
+            throw new NotFoundException(sprintf('Unable to save site with ID `%s`, it does not exist', $this->model->getId()));
+        }
+
+        $this->model->clearDependentCache();
+    }
+
+    /**
+     * @return array<string, mixed> the model values of the sites columns, lists serialized and booleans as int
+     */
+    private function getTableData(): array
+    {
+        $data = array_intersect_key($this->model->getObjectVars(), array_flip($this->getValidTableColumns('sites')));
+
+        foreach ($data as $key => $value) {
+            if (is_array($value) || is_object($value)) {
+                $data[$key] = Serialize::serialize($value);
+            } elseif (is_bool($value)) {
+                $data[$key] = (int)$value;
             }
         }
 
-        $this->db->update('sites', $data, ['id' => $this->model->getId()]);
-
-        $this->model->clearDependentCache();
+        return $data;
     }
 
     /**

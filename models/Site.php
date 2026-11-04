@@ -477,19 +477,35 @@ final class Site extends AbstractModel
     }
 
     /**
-     * @throws InvalidArgumentException if a domain or the main domain is not a valid host name
+     * New sites fire PRE_ADD / POST_ADD around PRE_SAVE / POST_SAVE
+     *
+     * @throws InvalidArgumentException if the root is no page or the root of another site, or a domain or the main
+     *                                  domain is not a valid host name
+     * @throws NotFoundException when the id is set but there is no site with it
      */
     public function save(): void
     {
+        // the same check as in Dao::save(), id 0 is never stored
+        $isAdd = !$this->id;
+
+        $this->validate();
+
+        if ($isAdd) {
+            $this->dispatchEvent(new SiteEvent($this), SiteEvents::PRE_ADD);
+        }
         $preSaveEvent = new SiteEvent($this);
         $this->dispatchEvent($preSaveEvent, SiteEvents::PRE_SAVE);
 
+        // the listeners may have changed the site
         $this->validate();
 
         $this->getDao()->save();
 
         $postSaveEvent = new SiteEvent($this);
         $this->dispatchEvent($postSaveEvent, SiteEvents::POST_SAVE);
+        if ($isAdd) {
+            $this->dispatchEvent(new SiteEvent($this), SiteEvents::POST_ADD);
+        }
     }
 
     /**
@@ -500,6 +516,15 @@ final class Site extends AbstractModel
      */
     private function validate(): void
     {
+        if (!$this->rootId || !Document\Page::getById($this->rootId)) {
+            throw new InvalidArgumentException(sprintf('The root document of a site must be a page, got ID "%s"', $this->rootId));
+        }
+
+        $siteOfRoot = self::getByRootId($this->rootId);
+        if ($siteOfRoot && $siteOfRoot->getId() !== $this->id) {
+            throw new InvalidArgumentException(sprintf('Document %s is already the root of site %s', $this->rootId, $siteOfRoot->getId()));
+        }
+
         foreach ($this->domains as $domain) {
             // a wildcard stands for any label characters, also inside a label that normalizeDomain() kept in Unicode
             $wildcardLessDomain = idn_to_ascii(str_replace('*', 'anystring', $domain), IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);

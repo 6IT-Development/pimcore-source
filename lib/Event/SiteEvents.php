@@ -20,6 +20,24 @@ namespace Pimcore\Event;
 final class SiteEvents
 {
     /**
+     * Fired before PRE_SAVE when a new site is saved
+     *
+     * @Event("Pimcore\Event\Model\SiteEvent")
+     *
+     * @var string
+     */
+    public const string PRE_ADD = 'pimcore.site.preAdd';
+
+    /**
+     * Fired after POST_SAVE when a new site was saved
+     *
+     * @Event("Pimcore\Event\Model\SiteEvent")
+     *
+     * @var string
+     */
+    public const string POST_ADD = 'pimcore.site.postAdd';
+
+    /**
      * @Event("Pimcore\Event\Model\SiteEvent")
      *
      * @var string
