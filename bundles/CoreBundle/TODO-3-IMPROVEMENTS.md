@@ -481,6 +481,14 @@ promoted properties.
 - Add at least smoke tests for argument/option parsing, which would have caught B-04, B-07, B-22 and B-25. Add
   functional tests for the data-changing commands: C-02, C-05, B-12, `ClassesRebuildCommand`.
 
+**Partly done:** `tests/Unit/Command/CommandDefinitionTest.php` builds definition, synopsis and help of every CoreBundle
+command, checks kebab-case option names (I-05) and required arguments (B-04), runs `pimcore:bundle:list --json` (B-07)
+and `pimcore:image:low-quality-preview` without `--generator` (B-22), and checks that invalid input of
+`pimcore:maintenance-mode`, `pimcore:mysql-tools` and `pimcore:system:requirements:check` returns `INVALID`.
+`tests/Model/Command/RemoveCustomSettingCommandTest.php` covers C-02 with more assets than one batch.
+**Open:** C-05, B-12 and `ClassesRebuildCommand` alter or drop tables (document type ENUM, locale tables, class
+tables); their tests are left for the schema work. B-25 (`pimcore:cache:clear`) clears the test cache and is not covered.
+
 ---
 
 # Scope 2 – `DataCollector` / `PimcoreCoreBundle` (+ compiler passes, extension, related config)
