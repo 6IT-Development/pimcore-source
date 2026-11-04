@@ -2627,7 +2627,7 @@ with the document id, name and type, skips the row and records its name on the d
 the document now has an own editable of the same name, so opening and re-saving the document does not lose the raw
 data. The names are serialized with the document, like `$editables`.
 
-## [ ] B-144 – `Document\Service\Dao::getTranslations()` loses links and can fatal
+## [x] B-144 – `Document\Service\Dao::getTranslations()` loses links and can fatal
 
 **Files:** `models/Document/Service/Dao.php:41-88`
 
@@ -2636,6 +2636,11 @@ data. The names are serialized with the document, like `$editables`.
   property produces an `''` key. `getTranslationSourceId()` returns `mixed` (a DB string).
 
 **Fix direction:** accumulate `$linkedData`, null checks, `int` casts.
+
+**Done:** the `'open'` task collects the linked sets of every row and merges all of them. The source rows and the
+source document go through `addSourceLanguage()`, which leaves out a document that no longer exists or has no
+`language` property instead of dereferencing `null` or adding an `''` key; translation rows with an empty language are
+skipped as well. `getTranslationSourceId()` returns `int`, as the `@method` tag on `Document\Service` already declared.
 
 ## [ ] B-145 – `Document\Link::getHtml()`: parameters and anchor twice, no escaping, `TypeError` without `navigation_name`
 

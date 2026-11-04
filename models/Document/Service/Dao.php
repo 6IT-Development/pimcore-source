@@ -38,14 +38,14 @@ class Dao extends Model\Dao\AbstractDao
         );
     }
 
-    public function getTranslationSourceId(Document $document): mixed
+    public function getTranslationSourceId(Document $document): int
     {
         $sourceId = $this->db->fetchOne('SELECT sourceId FROM documents_translations WHERE id = ?', [$document->getId()]);
         if (!$sourceId) {
             $sourceId = $document->getId();
         }
 
-        return $sourceId;
+        return (int) $sourceId;
     }
 
     /**
@@ -60,31 +60,45 @@ class Dao extends Model\Dao\AbstractDao
         if ($task == 'open') {
             $linkedData = [];
             foreach ($data as $value) {
-                $linkedData = $this->db->fetchAllAssociative('SELECT id,language FROM documents_translations WHERE sourceId = ? UNION SELECT sourceId as id,"source" FROM documents_translations WHERE id = ?', [$value['id'], $value['id']]);
+                $linkedData[] = $this->db->fetchAllAssociative('SELECT id,language FROM documents_translations WHERE sourceId = ? UNION SELECT sourceId as id,"source" FROM documents_translations WHERE id = ?', [$value['id'], $value['id']]);
             }
 
-            if (count($linkedData) > 0) {
-                $data = array_merge($data, $linkedData);
-            }
+            $data = array_merge($data, ...$linkedData);
         }
 
         $translations = [];
         foreach ($data as $translation) {
             if ($translation['language'] == 'source') {
-                $sourceDocument = Document::getById((int)$translation['id']);
-                $translations[$sourceDocument->getProperty('language')] = $sourceDocument->getId();
-            } else {
-                $translations[$translation['language']] = (int)$translation['id'];
+                $this->addSourceLanguage($translations, (int) $translation['id']);
+            } elseif ((string) $translation['language'] !== '') {
+                $translations[$translation['language']] = (int) $translation['id'];
             }
         }
 
         // add language from source document
         if (!empty($translations)) {
-            $sourceDocument = Document::getById($sourceId);
-            $translations[$sourceDocument->getProperty('language')] = $sourceDocument->getId();
+            $this->addSourceLanguage($translations, $sourceId);
         }
 
         return $translations;
+    }
+
+    /**
+     * Adds the document under its language property; a removed document or one without a language is left out
+     *
+     * @param array<string, int> $translations
+     */
+    private function addSourceLanguage(array &$translations, int $documentId): void
+    {
+        $document = Document::getById($documentId);
+        if (!$document) {
+            return;
+        }
+
+        $language = (string) $document->getProperty('language');
+        if ($language !== '') {
+            $translations[$language] = $documentId;
+        }
     }
 
     public function addTranslation(Document $document, Document $translation, ?string $language = null): void
