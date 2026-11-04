@@ -274,6 +274,8 @@ class Relation extends Model\Document\Editable implements IdRewriterInterface, E
     {
         if (array_key_exists($this->type, $idMapping) && array_key_exists($this->getId(), $idMapping[$this->type])) {
             $this->id = $idMapping[$this->type][$this->getId()];
+            // the loaded element is the old target, load the new one on the next access
+            $this->element = null;
         }
     }
 }

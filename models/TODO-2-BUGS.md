@@ -2940,7 +2940,7 @@ attribute passed in the template config still are. The href is escaped with `htm
 false)`, since `getHref()` already escapes the parameters and the anchor. `checkValidity()` logs the missing target id
 and the document id.
 
-## [ ] B-160 – Relation / Snippet editables keep the old target after `rewriteIds()`; Snippet skips lazy loading
+## [x] B-160 – Relation / Snippet editables keep the old target after `rewriteIds()`; Snippet skips lazy loading
 
 **Files:** `models/Document/Editable/Relation.php:273-278`; `models/Document/Editable/Snippet.php:69-79`, `:180-194`,
 `:217-223`
@@ -2951,6 +2951,11 @@ and the document id.
   cache (`snippet` is excluded in `__sleep()`) the dependency is missing.
 
 **Fix direction:** reset the cached element in `rewriteIds()`; call `load()` first.
+
+**Done:** `Relation::rewriteIds()` and `Snippet::rewriteIds()` clear the loaded `element` / `snippet` when they change
+the id, so a copy renders and depends on the new target (`Relation` reloads it lazily in every accessor already).
+`Snippet::frontend()`, `getDataEditmode()` and `resolveDependencies()` call `load()` first, so an instance from the
+persistent cache (where `snippet` is not serialized) renders, shows its path in editmode and records its dependency.
 
 ## [ ] B-161 – `Relations` iterator lets unpublished elements through
 

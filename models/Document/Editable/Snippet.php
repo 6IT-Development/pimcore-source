@@ -68,6 +68,8 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
 
     public function getDataEditmode(): ?array
     {
+        $this->load();
+
         if ($this->snippet instanceof Document\Snippet) {
             return [
                 'id' => $this->id,
@@ -85,6 +87,7 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
 
         $editableHandler = $container->get(EditableHandler::class);
 
+        $this->load();
         if (!$this->snippet instanceof Document\Snippet) {
             return '';
         }
@@ -181,6 +184,9 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
     {
         $dependencies = [];
 
+        // the snippet is not serialized, an instance from the cache has only the id
+        $this->load();
+
         if ($this->snippet instanceof Document\Snippet) {
             $key = 'document_' . $this->snippet->getId();
 
@@ -219,6 +225,8 @@ class Snippet extends Model\Document\Editable implements IdRewriterInterface, Ed
         $id = $this->getId();
         if (array_key_exists('document', $idMapping) && array_key_exists($id, $idMapping['document'])) {
             $this->id = $idMapping['document'][$id];
+            // the loaded snippet is the old target, load the new one on the next access
+            $this->snippet = null;
         }
     }
 
