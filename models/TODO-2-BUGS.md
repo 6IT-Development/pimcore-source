@@ -1123,13 +1123,19 @@ formats (WebP/AVIF) that a fixed `PNG` would switch off, so only `original` and 
 With an image used instead of the frame (`imageAsset` / `image_thumbnail_asset`), `original` now also gives a PNG
 instead of the image's own format.
 
-## [ ] B-71 – Video thumbnail filename regex is unanchored and case-sensitive
+## [x] B-71 – Video thumbnail filename regex is unanchored and case-sensitive
 
 **File:** `models/Asset/Video/Thumbnail/Processor.php:117`
 
 - Removes every `.mp4` occurrence (`a.mp4.final.mp4` → `a.final`); `foo.` strips all dots.
 
 **Fix direction:** `pathinfo($filename, PATHINFO_FILENAME)`.
+
+**Done:** the converted file is named `pathinfo($filename, PATHINFO_FILENAME) . '.' . $format`, so only the last
+extension is removed (`a.mp4.final.mp4` → `a.mp4.final.mp4` instead of `a.final.mp4`, `my.clip.` → `my.clip.mp4`
+instead of `myclip.mp4` with every dot removed). The case problem was only latent, the regex used the file's own extension. Existing
+conversions keep their stored paths in the `thumbnails` custom setting and are still found; only new conversions of
+such names get the new file name.
 
 ## [ ] B-72 – Video config listing ignores filter and order
 

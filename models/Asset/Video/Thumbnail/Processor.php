@@ -111,7 +111,7 @@ class Processor
 
             foreach ($formats as $format) {
                 $thumbDir = $asset->getRealPath() . '/' . $asset->getId() . '/video-thumb__' . $asset->getId() . '__' . $config->getName();
-                $filename = preg_replace('/\.' . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '/', '', $asset->getFilename()) . '.' . $format;
+                $filename = pathinfo($asset->getFilename(), PATHINFO_FILENAME) . '.' . $format;
                 $storagePath = $thumbDir . '/' . $filename;
                 // not removed at the end of this request: the worker writes the file later and removes it
                 $tmpPath = File::getLocalTempFilePath($format, true);
