@@ -21,8 +21,7 @@ use Pimcore\Console\AbstractCommand;
 use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -30,28 +29,44 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 #[AsCommand(
     name: 'pimcore:maintenance-mode',
-    description: 'Enable or disable maintenance mode'
+    description: 'Enable, disable or show the maintenance mode',
+    help: <<<'HELP'
+        Without an option, <info>%command.name%</info> enables the maintenance mode.
+        While it is active, other commands run only with <comment>--ignore-maintenance-mode</comment>.
+        HELP
 )]
 class MaintenanceModeCommand extends AbstractCommand
 {
+    /**
+     * Stands in for the session ID of the admin user who enabled the maintenance mode in the UI.
+     * The global --maintenance-mode option of Pimcore\Console\Application uses its own ID for the same purpose.
+     */
+    public const string SESSION_ID = 'command-line-dummy-session-id';
+
     public function __construct(private readonly MaintenanceModeHelperInterface $maintenanceModeHelper)
     {
         parent::__construct();
     }
 
-    #[\Override]
-    protected function configure(): void
-    {
-        $this
-            ->addOption('enable', null, InputOption::VALUE_NONE, 'Enable maintenance mode (default)')
-            ->addOption('disable', null, InputOption::VALUE_NONE, 'Disable maintenance mode');
-    }
+    public function __invoke(
+        #[Option('Enable maintenance mode (default)')]
+        bool $enable = false,
+        #[Option('Disable maintenance mode')]
+        bool $disable = false,
+        #[Option('Only show whether maintenance mode is active')]
+        bool $status = false,
+    ): int {
+        $selectedModes = array_keys(array_filter([
+            '--enable' => $enable,
+            '--disable' => $disable,
+            '--status' => $status,
+        ]));
 
-    #[\Override]
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        //Default behavior is 'enable'
-        $disable = ($input->getOption('disable') ?? false);
+        if (count($selectedModes) > 1) {
+            $this->io->error('The options ' . implode(', ', $selectedModes) . ' cannot be combined.');
+
+            return self::INVALID;
+        }
 
         if ($disable) {
             //BC Layer for Admin::activateMaintenanceMode, if the maintenance file already exists
@@ -59,15 +74,15 @@ class MaintenanceModeCommand extends AbstractCommand
                 Admin::deactivateMaintenanceMode();
             }
             $this->maintenanceModeHelper->deactivate();
-            if ($output->isVerbose()) {
-                $output->writeln('Maintenance mode has been disabled');
-            }
+        } elseif (!$status) {
+            $this->maintenanceModeHelper->activate(self::SESSION_ID);
+        }
+
+        if ($this->maintenanceModeHelper->isActive() || Admin::isInMaintenanceMode()) {
+            $this->io->writeln('Maintenance mode is <comment>enabled</comment>.');
+            $this->io->writeln('Other commands run only with the --ignore-maintenance-mode option.', OutputInterface::VERBOSITY_VERBOSE);
         } else {
-            $this->maintenanceModeHelper->activate('command-line-dummy-session-id');
-            if ($output->isVerbose()) {
-                $output->writeln('Maintenance mode is now enabled');
-                $output->writeln('You can run commands only with the --ignore-maintenance-mode option');
-            }
+            $this->io->writeln('Maintenance mode is <info>disabled</info>.');
         }
 
         return self::SUCCESS;

@@ -334,7 +334,7 @@ valid values in its error. `writeWarmingMessage()` tests `if ($types)`. `--class
 `ClassDefinition::getByName()`, and unknown names fail with exit code 2. Before, they went unescaped into the SQL
 condition of `Warming::objects()`. The `--maintenance-mode` check has a comment.
 
-### [ ] I-21 – `MaintenanceModeCommand` UX
+### [x] I-21 – `MaintenanceModeCommand` UX
 
 **File:** `src/Command/MaintenanceModeCommand.php:43-84`
 
@@ -343,6 +343,11 @@ condition of `Warming::objects()`. The `--maintenance-mode` check has a comment.
 - `'command-line-dummy-session-id'` is a magic string. Make it a class constant (and note that
   `Application.php:88` uses `'cache-warming-dummy-session-id'` for the same purpose).
 - `getOption('disable') ?? false` → `(bool) $input->getOption('disable')`.
+
+**Done:** the command is invokable with `bool` options. `--enable`, `--disable` and the new `--status` cannot be
+combined (exit code 2). Every run prints one status line; the `--ignore-maintenance-mode` hint stays behind `-v`. The
+session ID is `MaintenanceModeCommand::SESSION_ID`; `Application.php` keeps its own cache-warming ID and points to the
+constant.
 
 ### [ ] I-22 – `ThumbnailsImageCommand` logic
 

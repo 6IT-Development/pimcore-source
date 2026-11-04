@@ -12,7 +12,10 @@ In addition, you can enable or disable the maintenance mode via the following co
 ```shell script
 bin/console pimcore:maintenance-mode --enable
 bin/console pimcore:maintenance-mode --disable
-``` 
+bin/console pimcore:maintenance-mode --status
+```
+
+Each call prints whether the maintenance mode is active afterwards. `--status` only prints it.
 
 ## Customize Maintenance Page
 

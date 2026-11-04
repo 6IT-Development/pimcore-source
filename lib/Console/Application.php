@@ -88,7 +88,7 @@ final class Application extends \Symfony\Bundle\FrameworkBundle\Console\Applicat
 
             if ($this->getInputOption($input, 'maintenance-mode')) {
                 // enable maintenance mode if requested
-                $maintenanceModeId = 'cache-warming-dummy-session-id';
+                $maintenanceModeId = 'cache-warming-dummy-session-id'; // see MaintenanceModeCommand::SESSION_ID
 
                 $event->getOutput()->writeln("Activating maintenance mode with ID <comment>$maintenanceModeId</comment> ...");
 
