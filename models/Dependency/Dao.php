@@ -54,7 +54,8 @@ class Dao extends Model\Dao\AbstractDao
             LEFT JOIN documents ON dependencies.targettype="document" AND dependencies.targetid=documents.id
             WHERE dependencies.sourceid = ? AND dependencies.sourcetype = ?
                 AND (objects.id IS NOT NULL OR assets.id IS NOT NULL OR documents.id IS NOT NULL)
-            ORDER BY objects.path, objects.key, documents.path, documents.key, assets.path, assets.filename',
+            ORDER BY objects.path, objects.key, documents.path, documents.key, assets.path, assets.filename,
+                dependencies.targettype, dependencies.targetid',
             [$this->model->getSourceId(), $this->model->getSourceType()]);
 
         foreach ($data as $d) {
@@ -105,7 +106,7 @@ class Dao extends Model\Dao\AbstractDao
             INNER JOIN assets a ON a.id = d.targetid AND d.targettype= 'asset'
             WHERE d.sourcetype = :type AND d.sourceid = :id AND LOWER(CONCAT(a.path, a.filename)) LIKE :value
         ) dep
-        ORDER BY " . $orderBy . ' ' . $orderDirection;
+        ORDER BY " . $this->getOrderByClause($orderBy, $orderDirection);
 
         if ($limit !== null) {
             $query .= ' LIMIT ' . ($offset ?? 0) . ', ' . $limit;
@@ -169,7 +170,7 @@ class Dao extends Model\Dao\AbstractDao
             INNER JOIN assets a ON a.id = d.sourceid AND d.sourcetype = 'asset'
             WHERE d.targettype = :type AND d.targetid = :id AND LOWER(CONCAT(a.path, a.filename)) LIKE :value
         ) dep
-        ORDER BY " . $orderBy . ' ' . $orderDirection;
+        ORDER BY " . $this->getOrderByClause($orderBy, $orderDirection);
 
         if ($limit !== null) {
             $query .= ' LIMIT ' . ($offset ?? 0) . ', ' . $limit;
@@ -198,6 +199,16 @@ class Dao extends Model\Dao\AbstractDao
         $value = str_replace('\\', '\\\\', mb_strtolower((string)$value));
 
         return '%' . Helper::escapeLike($value) . '%';
+    }
+
+    /**
+     * Type and id are unique in a dependency list, but the order column alone is not (assets and objects share ids,
+     * many rows share a type or a path). Without the tie-breaker the order of equal rows can differ per query, so
+     * LIMIT pages overlap or skip rows.
+     */
+    private function getOrderByClause(string $orderBy, string $orderDirection): string
+    {
+        return $orderBy . ' ' . $orderDirection . ', type ' . $orderDirection . ', id ' . $orderDirection;
     }
 
     /**
@@ -345,7 +356,8 @@ class Dao extends Model\Dao\AbstractDao
             LEFT JOIN documents ON dependencies.sourceid=documents.id AND dependencies.sourcetype="document"
             WHERE dependencies.targettype = ? AND dependencies.targetid = ?
                 AND (objects.id IS NOT NULL OR assets.id IS NOT NULL OR documents.id IS NOT NULL)
-            ORDER BY objects.path, objects.key, documents.path, documents.key, assets.path, assets.filename
+            ORDER BY objects.path, objects.key, documents.path, documents.key, assets.path, assets.filename,
+                dependencies.sourcetype, dependencies.sourceid
         ';
 
         if ($limit !== null) {
@@ -402,7 +414,7 @@ class Dao extends Model\Dao\AbstractDao
                 JOIN assets a ON a.id = d.sourceid
                 WHERE d.targettype = '" . $targetType . "' AND d.targetid = " . $targetId . " AND d.sourceType = 'asset'
             ) dep
-            ORDER BY " . $orderBy . ' ' . $orderDirection;
+            ORDER BY " . $this->getOrderByClause($orderBy, $orderDirection);
 
         if ($limit !== null) {
             $query .= ' LIMIT ' . ($offset ?? 0) . ', ' . $limit;

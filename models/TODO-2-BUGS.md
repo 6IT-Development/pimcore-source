@@ -1674,7 +1674,7 @@ next call instead of returning the list from before the save. Removing the cache
 whenever a limit is given. A missing offset counts as `0`, so `getRequires(null, 25)` returns the first 25 rows. An
 offset without a limit is still ignored by the SQL getters.
 
-## [ ] B-102 – No unique tie-breaker in `ORDER BY`: pages overlap or skip rows
+## [x] B-102 – No unique tie-breaker in `ORDER BY`: pages overlap or skip rows
 
 **File:** `models/Dependency/Dao.php:55`, `:106`, `:165`, `:298`, `:355`
 
@@ -1687,6 +1687,12 @@ offset without a limit is still ignored by the SQL getters.
 
 **Fix direction:** always append `, type, id` (or `d.id`) to the `ORDER BY`. Sort the mixed list by one computed `path`
 expression if a global path order is wanted.
+
+**Done:** the three `id` / `type` / `path` queries (`getFilterRequiresByPath()`, `getFilterRequiredByPath()`,
+`getRequiredByWithPath()`) sort by the chosen column and then by `type` and `id` in the same direction, and
+`getBySourceId()` / `getRequiredBy()` end with the target or source type and id. The pair is unique per list (`combi`
+key), so equal rows keep one order across queries and `LIMIT` pages no longer overlap. The path order of the mixed
+`getBySourceId()` / `getRequiredBy()` lists (assets, documents, objects) is unchanged.
 
 ## [ ] B-103 – Concurrent / out-of-order dependency saves for the same source: the older state can win
 
