@@ -9,7 +9,7 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] B-01 – `UUID\Listing` cannot be iterated or counted
+## [x] B-01 – `UUID\Listing` cannot be iterated or counted
 
 **Files:** `src/Model/Tool/UUID/Listing/Dao.php:34-43`, `src/Model/Tool/UUID/Listing.php`
 
@@ -23,6 +23,10 @@ IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are f
 Only a direct `$listing->load()` works.
 
 **Fix direction:** `$this->model->setData($result); return $result;`, as the other Pimcore listing DAOs do.
+
+**Done:** `Listing\Dao::load()` stores its result with `$this->model->setData($result)`, as the other listing DAOs do,
+so `foreach`, `getData()` and the other `Iterator` methods work and the query runs once until the data is reset.
+`count()` already used `getTotalCount()` and was not affected; `AbstractListing` has no `getItems()`.
 
 ---
 
