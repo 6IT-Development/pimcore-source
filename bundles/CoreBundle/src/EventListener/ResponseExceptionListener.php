@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\EventListener;
 
 use Doctrine\DBAL\Connection;
 use Exception;
+use Locale;
 use Pimcore;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Document\Renderer\DocumentRendererInterface;
@@ -26,7 +27,6 @@ use Pimcore\Http\Exception\ResponseException;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Http\Request\Resolver\SiteResolver;
 use Pimcore\Model\Document;
-use Pimcore\Model\Site;
 use Pimcore\SystemSettingsConfig;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -84,7 +84,8 @@ final class ResponseExceptionListener implements EventSubscriberInterface
 
     private function handleErrorPage(ExceptionEvent $event): void
     {
-        if (Pimcore::inDebugMode()) {
+        // in debug mode the Symfony error page is more useful, ?pimcore_show_error_page=1 shows the configured one
+        if (Pimcore::inDebugMode() && !$event->getRequest()->query->getBoolean('pimcore_show_error_page')) {
             return;
         }
 
@@ -102,12 +103,10 @@ final class ResponseExceptionListener implements EventSubscriberInterface
         $statusCode = 500;
         $headers = [];
 
+        // the exception is logged by Symfony's ErrorListener
         if ($exception instanceof HttpExceptionInterface) {
             $statusCode = $exception->getStatusCode();
             $headers = $exception->getHeaders();
-        } else {
-            // only log exception if it's not intentional (like a NotFoundHttpException)
-            $this->logger->error((string)$exception);
         }
 
         $errorPath = $this->determineErrorPath($request);
@@ -138,8 +137,11 @@ final class ResponseExceptionListener implements EventSubscriberInterface
         } catch (Throwable $e) {
             // we are even not able to render the error page, so we send the client a unicorn
             $response = $statusCode . ' ' . (Response::$statusTexts[$statusCode] ?? 'Error') . '. 🦄';
-            $this->logger->emergency('Unable to render error page, exception thrown');
-            $this->logger->emergency((string)$e);
+            $this->logger->emergency('Unable to render error page {document}: {message}', [
+                'document' => $document->getRealFullPath(),
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
         }
 
         $event->setResponse(new Response($response, $statusCode, $headers));
@@ -150,7 +152,6 @@ final class ResponseExceptionListener implements EventSubscriberInterface
      */
     private function determineErrorPath(Request $request): string
     {
-        $errorPath = '';
         $locale = null;
 
         if ($this->siteResolver->isSiteRequest($request)) {
@@ -177,8 +178,8 @@ final class ResponseExceptionListener implements EventSubscriberInterface
         $defaultErrorDocumentPath = $config['documents']['error_pages']['default'] ?? null;
 
         // the system error pages remain the fallback for what the site leaves empty
-        if (Site::isSiteRequest()) {
-            $site = Site::getCurrentSite();
+        $site = $this->siteResolver->getSite($request);
+        if ($site) {
             $siteLocalizedErrorDocumentsPaths = array_filter($site->getLocalizedErrorDocuments());
             if ($siteLocalizedErrorDocumentsPaths || $site->getErrorDocument() !== '') {
                 $localizedErrorDocumentsPaths = $siteLocalizedErrorDocumentsPaths;
@@ -189,23 +190,29 @@ final class ResponseExceptionListener implements EventSubscriberInterface
         $localizedErrorDocumentsPaths = $localizedErrorDocumentsPaths ?: [];
         $defaultErrorDocumentPath = $defaultErrorDocumentPath ?: '';
 
-        if (!empty($locale) && array_key_exists($locale, $localizedErrorDocumentsPaths)) {
-            $errorPath = $localizedErrorDocumentsPaths[$locale];
-        } else {
-            // If locale can't be determined check if error page is defined for any of user-agent preferences
-            foreach ($request->getLanguages() as $requestLocale) {
-                if (!empty($localizedErrorDocumentsPaths[$requestLocale])) {
-                    $errorPath = $localizedErrorDocumentsPaths[$requestLocale];
+        // the language of the document, else the languages the user agent prefers
+        $locales = $locale ? [$locale] : $request->getLanguages();
 
-                    break;
+        return $this->findLocalizedErrorPath($localizedErrorDocumentsPaths, $locales) ?? $defaultErrorDocumentPath;
+    }
+
+    /**
+     * Error pages are usually configured per language, but locales can have a region (de_AT from Accept-Language or
+     * the document property): each locale falls back to its primary language
+     *
+     * @param array<string, string> $localizedPaths
+     * @param string[] $locales most preferred first
+     */
+    private function findLocalizedErrorPath(array $localizedPaths, array $locales): ?string
+    {
+        foreach ($locales as $locale) {
+            foreach (array_unique([$locale, Locale::getPrimaryLanguage($locale)]) as $candidate) {
+                if (!empty($localizedPaths[$candidate])) {
+                    return $localizedPaths[$candidate];
                 }
             }
         }
 
-        if (empty($errorPath)) {
-            $errorPath = $defaultErrorDocumentPath;
-        }
-
-        return $errorPath;
+        return null;
     }
 }

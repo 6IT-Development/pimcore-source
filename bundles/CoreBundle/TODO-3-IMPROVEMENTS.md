@@ -991,7 +991,7 @@ the server time zone). The static `Logger` calls are replaced by an injected `Lo
 argument, the class is not `@internal`).
 Not done: array config nodes for `exclude_patterns` / `exclude_cookie`. That is a configuration tree change, see I-55.
 
-### [ ] I-51 – `ResponseExceptionListener` logic
+### [x] I-51 – `ResponseExceptionListener` logic
 
 - It mixes `$this->siteResolver->isSiteRequest($request)` (line 140) with static `Site::isSiteRequest()` /
   `Site::getCurrentSite()` (163-167). Use the resolver throughout. This also removes a C-08 dependency.
@@ -1001,6 +1001,12 @@ Not done: array config nodes for `exclude_patterns` / `exclude_cookie`. That is 
   `$this->logger->error($e->getMessage(), ['exception' => $e])`. Symfony's `ErrorListener::logKernelException`
   (also priority 0) logs the same exception, so check for duplicates.
 - Consider rendering error pages in debug mode too when `?pimcore_show_error_page=1` is set, to make them testable.
+
+**Done:** the site comes from `SiteResolver::getSite($request)`, no static `Site` calls remain. `findLocalizedErrorPath()`
+tries each locale (document language, else `getLanguages()`), then its primary language. The listener's own error
+log is removed, because Symfony's `ErrorListener::logKernelException()` logs every exception (critical for 5xx). A
+failing error page is logged once, with the exception in the context. In debug mode, `?pimcore_show_error_page=1`
+renders the configured error page. Upgrade notes added.
 
 ### [ ] I-52 – Messenger / console workers: reset all static frontend state, flush translation entries
 

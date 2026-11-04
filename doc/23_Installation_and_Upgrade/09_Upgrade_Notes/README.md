@@ -47,6 +47,12 @@
   service. The default one (the classic admin UI's assets and routes) is only registered when the `PimcoreAdminBundle`
   is loaded; without a provider, editmode responses are sent unchanged instead of failing with a
   `RouteNotFoundException`. The constructor of the internal `EditmodeListener` changed accordingly.
+#### [Error pages]
+- Localized error pages fall back to the primary language: a request for `de_AT` (document `language` property or
+  `Accept-Language`) uses the error page configured for `de` if there is none for `de_AT`.
+- Exceptions are no longer logged a second time by the `ResponseExceptionListener`; Symfony's `ErrorListener` logs
+  them (channel `request`).
+- In debug mode, add `?pimcore_show_error_page=1` to a URL to see the configured error page instead of Symfony's.
 #### [Full page cache]
 - Whether the current page is cached, its lifetime and the expire header are kept in the new public service
   `Pimcore\Cache\FullPage\FullPageCacheState`. `FullPageCacheListener` is no longer public, so
