@@ -673,6 +673,11 @@ abstract class AbstractObject extends Model\Element\AbstractElement
     {
         // set path
         if ($this->getId() != 1) { // not for the root node
+            // there are no generated keys, the key is part of the path that is checked for duplicates before the
+            // object is inserted
+            if ((string) $this->getKey() === '') {
+                throw new Exception('DataObject requires a key');
+            }
             if (!Element\Service::isValidKey($this->getKey(), 'object')) {
                 throw new Exception('invalid key for object with id [ ' . $this->getId() . ' ] key is: [' . $this->getKey() . ']');
             }
@@ -693,10 +698,6 @@ abstract class AbstractObject extends Model\Element\AbstractElement
             // use the parent's path from the database here (getCurrentFullPath), to ensure the path really exists and does not rely on the path
             // that is currently in the parent object (in memory), because this might have changed but wasn't not saved
             $this->setPath(str_replace('//', '/', $parent->getCurrentFullPath() . '/'));
-
-            if (strlen($this->getKey()) < 1) {
-                throw new Exception('DataObject requires key');
-            }
         } elseif ($this->getId() == 1) {
             // some data in root node should always be the same
             $this->setParentId(0);

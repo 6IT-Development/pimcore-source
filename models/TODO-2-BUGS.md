@@ -2721,7 +2721,7 @@ every source child.
 the last column, so it wins over the `NULL` id of a missing type row. The model keeps its id, `save()` updates instead
 of inserting, and `Document\Dao::update()` upserts the missing type row.
 
-## [ ] B-149 – Document / object keys: `null` key gives a `TypeError`, the auto-key path is unreachable
+## [x] B-149 – Document / object keys: `null` key gives a `TypeError`, the auto-key path is unreachable
 
 **Files:** `models/Document.php:415-443`, `:475-478`; `models/DataObject/AbstractObject.php:644-671`;
 `models/Document/Dao.php:82-97`; `models/DataObject/AbstractObject/Dao.php:73-84`;
@@ -2735,6 +2735,13 @@ of inserting, and `Document\Dao::update()` upserts the missing type row.
 
 **Fix direction:** explicit `null` check and message; decide whether auto keys are supported; compare
 case-insensitively.
+
+**Done:** auto keys are not supported: the key is part of the path that `correctPath()` checks for duplicates before
+the row is inserted. `Document::correctPath()` and `AbstractObject::correctPath()` reject a `null` or `''` key first
+with "Document requires a key" / "DataObject requires a key", before `isValidKey()` sees it, and the later length
+checks with the misleading "generated key automatically" message are gone. The dead auto-key fallbacks in
+`Document\Dao::create()` and `AbstractObject\Dao::create()` were removed; the document one would also have replaced
+the valid key `'0'` with the id. The first-level key check (`install`, `admin`, `plugin`) compares case-insensitively.
 
 ## [ ] B-150 – `Element\Service::createFolderByPath()` returns non-folders and does not survive concurrent creation
 

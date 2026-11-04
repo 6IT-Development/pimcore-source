@@ -90,10 +90,6 @@ class Dao extends Model\Element\Dao
         ]));
 
         $this->model->setId((int)$this->db->lastInsertId());
-
-        if (!$this->model->getKey()) {
-            $this->model->setKey((string)$this->model->getId());
-        }
     }
 
     /**
