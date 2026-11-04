@@ -1349,7 +1349,7 @@ recursive retry on `NotFoundException` is gone, and the fallback language is par
 lookup with and without fallback no longer share an entry. The order is documented in the `getByName()` docblock and in
 `doc/18_Tools_and_Features/27_Website_Settings.md`.
 
-## [ ] B-86 – No uniqueness for `(name, siteId, language)`; empty names accepted
+## [x] B-86 – No uniqueness for `(name, siteId, language)`; empty names accepted
 
 **Files:** `bundles/InstallBundle/dump/install.sql:603-615` (only non-unique `INDEX name`, `INDEX siteId`);
 `models/WebsiteSetting.php:291-301`
@@ -1361,6 +1361,12 @@ lookup with and without fallback no longer share an entry. The order is document
 
 **Fix direction:** validate in `save()` (non-empty name, no duplicate for the same site/language) and add a unique key.
 `siteId NULL` defeats a plain unique index, so normalise to `0` first or use a generated column.
+
+**Done:** `save()` validates after the `PRE_ADD` / `PRE_UPDATE` event, so listeners can still adjust the setting: an
+empty (or whitespace only) name and another row with the same name, site and language (`NULL` and `0` as the same site,
+B-84) throw a `ValidationException` before anything is written. The unique key is left to I-37: existing installations
+may already hold duplicates, which a migration would have to merge or delete first, and that needs a decision on which
+row to keep. Until then the lowest id wins a tie in both lookups (B-83).
 
 ## [ ] B-87 – `type` is not validated; an unknown type silently makes the setting disappear
 

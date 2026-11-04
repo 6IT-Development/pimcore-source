@@ -26,6 +26,7 @@ use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
 use Pimcore\Event\WebsiteSettingEvents;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
+use Pimcore\Model\Element\ValidationException;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\WebsiteSetting\Dao;
 
@@ -344,6 +345,9 @@ final class WebsiteSetting extends AbstractModel
         $this->dispatchEvent($event, WebsiteSettingEvents::POST_DELETE);
     }
 
+    /**
+     * @throws ValidationException when the name is empty or a setting with the same name, site and language exists
+     */
     public function save(): void
     {
         $event = new WebsiteSettingEvent($this);
@@ -351,8 +355,29 @@ final class WebsiteSetting extends AbstractModel
 
         $this->dispatchEvent($event, $isAdd ? WebsiteSettingEvents::PRE_ADD : WebsiteSettingEvents::PRE_UPDATE);
 
+        $this->validate();
+
         $this->getDao()->save();
 
         $this->dispatchEvent($event, $isAdd ? WebsiteSettingEvents::POST_ADD : WebsiteSettingEvents::POST_UPDATE);
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function validate(): void
+    {
+        if (trim($this->name) === '') {
+            throw new ValidationException('Website setting name must not be empty');
+        }
+
+        if ($this->getDao()->hasDuplicate()) {
+            throw new ValidationException(sprintf(
+                'Website setting "%s" already exists for %s and %s',
+                $this->name,
+                $this->siteId ? 'site ' . $this->siteId : 'all sites',
+                $this->language !== '' ? 'language "' . $this->language . '"' : 'all languages'
+            ));
+        }
     }
 }

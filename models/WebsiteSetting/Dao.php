@@ -95,6 +95,17 @@ class Dao extends Model\Dao\AbstractDao
         }
     }
 
+    /**
+     * Whether another setting has the same name, site and language; no site is stored as NULL or the legacy 0.
+     */
+    public function hasDuplicate(): bool
+    {
+        return (bool)$this->db->fetchOne(
+            'SELECT id FROM website_settings WHERE name = ? AND IFNULL(siteId, 0) = ? AND language = ? AND id != ? LIMIT 1',
+            [$this->model->getName(), (int)$this->model->getSiteId(), $this->model->getLanguage(), (int)$this->model->getId()]
+        );
+    }
+
     public function save(): void
     {
         if ($this->model->getId()) {
