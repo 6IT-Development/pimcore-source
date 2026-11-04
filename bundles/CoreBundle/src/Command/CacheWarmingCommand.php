@@ -116,7 +116,7 @@ class CacheWarmingCommand extends AbstractCommand
         } catch (InvalidArgumentException $e) {
             $this->writeError($e->getMessage());
 
-            return 1;
+            return self::INVALID;
         }
 
         if (in_array('document', $types)) {
@@ -135,7 +135,7 @@ class CacheWarmingCommand extends AbstractCommand
             Warming::objects($objectTypes, $objectClasses);
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 
     protected function writeWarmingMessage(string $type, array $types, string $extra = ''): void

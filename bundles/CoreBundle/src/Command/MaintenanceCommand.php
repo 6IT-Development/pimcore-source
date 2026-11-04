@@ -85,7 +85,7 @@ class MaintenanceCommand extends AbstractCommand
 
         $this->logger->info('All maintenance-jobs finished!');
 
-        return 0;
+        return self::SUCCESS;
     }
 
     /**

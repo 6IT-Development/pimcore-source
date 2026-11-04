@@ -52,7 +52,7 @@ class ThumbnailsFolderStructureCommand extends AbstractCommand
         $this->doMigrateStorage($output, $assetCacheStorage);
         $output->writeln("\nSuccessfully moved asset cache files to new folder structure");
 
-        return 0;
+        return self::SUCCESS;
     }
 
     protected function doMigrateStorage(OutputInterface $output, FilesystemOperator $storage): void

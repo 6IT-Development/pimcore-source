@@ -67,6 +67,6 @@ class InternalMigrationHelpersCommand extends AbstractCommand
             }
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 }

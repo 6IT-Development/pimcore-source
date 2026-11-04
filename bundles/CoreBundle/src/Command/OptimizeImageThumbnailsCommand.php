@@ -69,6 +69,6 @@ class OptimizeImageThumbnailsCommand extends AbstractCommand
         $this->output->writeln('Finished!');
         $this->output->writeln('Saved ' . formatBytes($savedBytesTotal) . ' in total');
 
-        return 0;
+        return self::SUCCESS;
     }
 }

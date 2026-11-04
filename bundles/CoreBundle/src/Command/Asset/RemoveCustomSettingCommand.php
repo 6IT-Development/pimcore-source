@@ -107,6 +107,6 @@ class RemoveCustomSettingCommand extends AbstractCommand
 
         $output->writeln(sprintf('Removed custom setting "%s" from %d asset(s).', $name, $count));
 
-        return 0;
+        return self::SUCCESS;
     }
 }

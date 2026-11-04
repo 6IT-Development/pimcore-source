@@ -120,6 +120,6 @@ class InternalUnicodeCldrLanguageTerritoryGeneratorCommand extends AbstractComma
 
         $this->output->writeln('Updated mappings in ' . $dataFile);
 
-        return 0;
+        return self::SUCCESS;
     }
 }

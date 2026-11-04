@@ -41,7 +41,7 @@ class MigrateElementsCommand extends AbstractCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (!$this->runCommand) {
-            return 0;
+            return self::SUCCESS;
         }
 
         $db = Db::get();

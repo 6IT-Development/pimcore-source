@@ -55,11 +55,11 @@ abstract class AbstractBundleCommand extends AbstractCommand
         if ($this->io->getInput()->getOption('fail-without-error')) {
             $this->io->warning($message);
 
-            return 0;
+            return self::SUCCESS;
         } else {
             $this->io->error($message);
 
-            return 1;
+            return self::FAILURE;
         }
     }
 

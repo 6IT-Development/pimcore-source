@@ -79,7 +79,7 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
             } elseif (!$this->askConfirmation($name)) {
                 $this->output->writeln(sprintf('Skipping import of %s', $logName));
 
-                return 0;
+                return self::SUCCESS;
             }
         } else {
             $this->output->writeln(sprintf('%s was not found', $logName));
@@ -108,11 +108,11 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
         if ($result) {
             $this->output->writeln(sprintf('Successfully imported %s', $logName));
 
-            return 0;
+            return self::SUCCESS;
         } else {
             $this->output->writeln(sprintf('<error>ERROR:</error> Failed to import %s', $logName));
 
-            return 1;
+            return self::FAILURE;
         }
     }
 

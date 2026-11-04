@@ -139,7 +139,7 @@ class ListCommand extends AbstractBundleCommand
             ]));
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 
     private function formatBool(bool $state): string

@@ -72,6 +72,6 @@ class InternalModelDaoMappingGeneratorCommand extends AbstractCommand
 
         $this->output->writeln('Updated mappings in ' . $mapFile);
 
-        return 0;
+        return self::SUCCESS;
     }
 }

@@ -127,7 +127,7 @@ class GeneratePagePreviews extends AbstractCommand
         if (!$hostUrl) {
             $this->io->error('Unable to determine URL prefix, please use option -u or specify a main domain in system settings');
 
-            return 1;
+            return self::FAILURE;
         }
 
         $failed = 0;

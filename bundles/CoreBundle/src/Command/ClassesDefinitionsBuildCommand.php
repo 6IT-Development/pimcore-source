@@ -112,6 +112,6 @@ class ClassesDefinitionsBuildCommand extends AbstractCommand
             }
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 }

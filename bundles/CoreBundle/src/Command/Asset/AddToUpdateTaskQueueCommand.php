@@ -87,7 +87,7 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
             } else {
                 $this->writeError($input->getOption('parent') . ' is not a valid asset folder ID!');
 
-                return 1;
+                return self::INVALID;
             }
         }
 
@@ -111,6 +111,6 @@ class AddToUpdateTaskQueueCommand extends AbstractCommand
             $asset->triggerUpdateTask();
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 }

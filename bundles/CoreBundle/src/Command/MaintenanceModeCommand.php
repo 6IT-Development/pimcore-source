@@ -74,6 +74,6 @@ class MaintenanceModeCommand extends AbstractCommand
             }
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 }

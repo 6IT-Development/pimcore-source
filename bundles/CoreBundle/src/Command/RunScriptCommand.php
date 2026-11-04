@@ -57,7 +57,7 @@ class RunScriptCommand extends AbstractCommand
                 $script
             ));
 
-            return 1;
+            return self::INVALID;
         }
 
         $output->writeln($this->dryRunMessage(sprintf('Running script <info>%s</info>', $script)));

@@ -62,7 +62,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
   `#[AutowireLocator('flysystem.storage')] ContainerInterface $locator` in the constructor.
 - After I-01/I-02 the whole file can shrink to the resource import plus `exclude`.
 
-### [ ] I-03 – Return-code constants and `INVALID` for bad input
+### [x] I-03 – Return-code constants and `INVALID` for bad input
 
 **Files:** almost all commands (`return 0;` / `return 1;`)
 
