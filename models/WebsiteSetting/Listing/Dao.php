@@ -36,7 +36,10 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
         $settings = [];
         foreach ($settingsData as $settingData) {
-            $settings[] = WebsiteSetting::getById($settingData);
+            // null when the setting was deleted between both queries
+            if ($setting = WebsiteSetting::getById((int)$settingData)) {
+                $settings[] = $setting;
+            }
         }
 
         $this->model->setSettings($settings);

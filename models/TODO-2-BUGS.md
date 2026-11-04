@@ -1421,7 +1421,7 @@ dispatched. Marking `setId()` `@internal` is left to I-32.
 `update()` does. A failing write leaves no row behind. The column whitelist is computed once per write in
 `getTableData()` (`array_intersect_key()`), shared by `create()` and `update()`, which covers that part of I-36.
 
-## [ ] B-90 – Website setting listing can contain `null` entries (concurrent delete)
+## [x] B-90 – Website setting listing can contain `null` entries (concurrent delete)
 
 **Files:** `models/WebsiteSetting/Listing/Dao.php:32-43`; consumer `lib/Config.php:210-212`
 
@@ -1430,6 +1430,10 @@ dispatched. Marking `setId()` `@internal` is left to I-32.
   breaks every page that uses `pimcore_website_config()` until the cache is rebuilt.
 
 **Fix direction:** skip `null`s (or hydrate from a single `SELECT *`, see I-35).
+
+**Done:** `Listing\Dao::load()` skips a setting that `getById()` no longer finds, so the listing holds only
+`WebsiteSetting` instances and `getWebsiteConfig()` cannot call a method on `null`. The id from `fetchFirstColumn()`
+is cast to `int` for the typed `getById()`. Hydrating from one `SELECT *` stays with I-35.
 
 ## [ ] B-91 – `clearDependentCache()` does not invalidate the full-page output cache
 
