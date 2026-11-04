@@ -240,6 +240,16 @@ final class UUID extends Model\AbstractModel
     }
 
     /**
+     * Deletes all UUIDs of the given item, also those written under a previous instance identifier.
+     */
+    public static function deleteByItem(Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface $item): void
+    {
+        $self = new self();
+        $self->setItem($item);
+        $self->getDao()->deleteByItem();
+    }
+
+    /**
      * Returns the UUID model stored for the given UUID, or null when the UUID is unknown.
      */
     public static function getByUuid(string $uuid): ?UUID

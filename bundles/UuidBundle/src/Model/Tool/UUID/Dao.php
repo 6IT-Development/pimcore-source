@@ -84,6 +84,14 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
+     * Deletes every UUID row of the model's item, whatever instance identifier it was written under.
+     */
+    public function deleteByItem(): void
+    {
+        $this->db->delete(self::TABLE_NAME, ['itemId' => $this->model->getItemId(), 'type' => $this->model->getType()]);
+    }
+
+    /**
      * Loads the row of the given UUID into the model.
      *
      * @return bool false when no row matches the UUID

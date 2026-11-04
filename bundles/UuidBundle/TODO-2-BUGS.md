@@ -83,13 +83,14 @@ anything.
 **Done:** the new internal `computeUuid()` derives the v5 UUID without DB access; `createUuid()` is `computeUuid()`
 plus the idempotent row write. `getByItem()` takes `bool $create = true`: the default keeps the documented lazy
 creation (rows for items created before the identifier was configured), `false` is a read without writes.
-`onPostDelete()` uses `getByItem($element, false)`, so deleting an element without a row no longer INSERTs one first.
+`onPostDelete()` uses `getByItem($element, false)`, so deleting an element without a row no longer INSERTs one first
+(since B-05 it uses `deleteByItem()`).
 The docs show both calls. Not addressed: making the pure read the default, which would be a BC break while there is no
 backfill command (I-13), and merging the factory bodies (I-12).
 
 ---
 
-## [ ] B-05 – Changing `instance_identifier` leaves orphaned rows that are never deleted
+## [x] B-05 – Changing `instance_identifier` leaves orphaned rows that are never deleted
 
 **Files:** `src/EventListener/UUIDListener.php:71-72`, `src/Model/Tool/UUID/Dao.php:63-74`
 
@@ -99,6 +100,12 @@ written under a previous identifier (the config info text itself warns about cha
 
 **Fix direction:** on element delete, `DELETE FROM uuids WHERE itemId = ? AND type = ?`, which covers every UUID of
 the item. Add an index on (`itemId`, `type`) for this (see I-11).
+
+**Done:** new `UUID::deleteByItem(ElementInterface|ClassDefinitionInterface $item)` and internal `Dao::deleteByItem()`
+run `DELETE FROM uuids WHERE itemId = ? AND type = ?`, which removes the UUIDs of the item under every instance
+identifier and needs no UUID computation. `onPostDelete()` uses it instead of `getByItem($element, false)->delete()`
+(B-04). Not addressed: the (`itemId`, `type`) index for this delete (I-11), which needs a new migration, and cleaning
+up orphans of items deleted before this fix (I-13).
 
 ---
 
