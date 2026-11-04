@@ -2368,7 +2368,7 @@ the same map and `Dao::matchDomain()`, which replaces the `LIKE` query and the w
 precedence rules (empty domain matches nothing, main domain before domain lists, oldest site, most specific wildcard).
 Documenting `framework.trusted_hosts` for multi-site setups is still open.
 
-## [ ] B-132 – Runtime caches are never updated on `save()` / `delete()`: deleted sites are returned, new sites are `null`, listings contain `null`
+## [x] B-132 – Runtime caches are never updated on `save()` / `delete()`: deleted sites are returned, new sites are `null`, listings contain `null`
 
 **Files:** `models/Site.php:68-92`, `:109-134`, `:348-356`; `models/Site/Listing/Dao.php:33-45`;
 `lib/Tool/Frontend.php:70-95`
@@ -2385,6 +2385,12 @@ Documenting `framework.trusted_hosts` for multi-site setups is still open.
 
 **Fix direction:** in `save()` / `delete()` remove the runtime entries for the id, all domain keys and the path mapping
 (or use one registry service that is reset as a whole, I-67). Skip (and log) `null` results in `Listing\Dao::load()`.
+
+**Done:** `clearDependentCache()` (called by `Dao::update()` / `delete()`) also removes every `site_id_*`,
+`site_domain_*` (including `site_domain_map`) and `sites_path_mapping` entry from the `RuntimeCache`, so a deleted site
+is no longer returned and a cached miss does not hide a new site. `Listing\Dao::load()` skips (and logs) ids that no
+longer load, so `Frontend::getSiteMapping()` gets no `null`. The shared mutable instance stays: its only mutator
+without persistence is `setRootPath()` (B-137).
 
 ## [ ] B-133 – `Dao::save()` is not atomic and does not validate: half-created rows, raw DBAL errors, "saved" sites that do not exist
 

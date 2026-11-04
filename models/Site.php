@@ -427,6 +427,23 @@ final class Site extends AbstractModel
         } catch (Exception $e) {
             Logger::crit((string)$e);
         }
+
+        self::clearRuntimeCache();
+    }
+
+    /**
+     * Removes all site lookups of this process: a saved or deleted site can change the result of any ID, any domain
+     * (also cached misses) and the path mapping of Tool\Frontend
+     */
+    private static function clearRuntimeCache(): void
+    {
+        $runtimeCache = RuntimeCache::getInstance();
+        foreach (array_keys($runtimeCache->getArrayCopy()) as $key) {
+            $key = (string) $key;
+            if (str_starts_with($key, 'site_id_') || str_starts_with($key, 'site_domain_') || $key === 'sites_path_mapping') {
+                $runtimeCache->offsetUnset($key);
+            }
+        }
     }
 
     /**

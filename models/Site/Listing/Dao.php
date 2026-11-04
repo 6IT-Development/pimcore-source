@@ -16,6 +16,7 @@
 namespace Pimcore\Model\Site\Listing;
 
 use Exception;
+use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Site\Listing;
 
@@ -35,8 +36,15 @@ class Dao extends Model\Listing\Dao\AbstractDao
         $sites = [];
         $sitesData = $this->db->fetchFirstColumn('SELECT id FROM sites' . $this->getCondition() . $this->getOrder() . $this->getOffsetLimit(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
 
-        foreach ($sitesData as $siteData) {
-            $sites[] = Model\Site::getById($siteData);
+        foreach ($sitesData as $siteId) {
+            // a site deleted between the query and the lookup
+            $site = Model\Site::getById((int) $siteId);
+            if (!$site) {
+                Logger::warning(sprintf('Site %s could not be loaded and is skipped in the listing', $siteId));
+
+                continue;
+            }
+            $sites[] = $site;
         }
 
         $this->model->setSites($sites);
