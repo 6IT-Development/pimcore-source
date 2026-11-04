@@ -21,6 +21,7 @@ use Pimcore\Bundle\CoreBundle\EventListener\Traits\ResponseInjectionTrait;
 use Pimcore\Tool\Admin;
 use Pimcore\Tool\MaintenanceModeHelperInterface;
 use InvalidArgumentException;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\IpUtils;
 use Symfony\Component\HttpFoundation\Response;
@@ -43,13 +44,18 @@ class MaintenancePageListener implements EventSubscriberInterface
 
     protected ?string $templateCode = null;
 
+    private bool $defaultTemplateLoaded = false;
+
     /**
      * @param string[] $excludedIps client IPs or CIDR ranges that never get the maintenance page
+     * @param string $defaultTemplateResource loaded on first use, unless a template was set before
      */
     public function __construct(
         protected KernelInterface                $kernel,
         protected MaintenanceModeHelperInterface $maintenanceModeHelper,
-        private readonly array                   $excludedIps = ['127.0.0.1', '::1']
+        #[Autowire(param: 'pimcore.maintenance_mode.excluded_ips')]
+        private readonly array                   $excludedIps = ['127.0.0.1', '::1'],
+        private readonly string                  $defaultTemplateResource = '@PimcoreCoreBundle/public/misc/maintenance.html'
     )
     {
     }
@@ -69,6 +75,12 @@ class MaintenancePageListener implements EventSubscriberInterface
 
     public function getTemplateCode(): ?string
     {
+        // only read the default template when the maintenance page is actually shown, not on every request
+        if (null === $this->templateCode && !$this->defaultTemplateLoaded) {
+            $this->defaultTemplateLoaded = true;
+            $this->loadTemplateFromResource($this->defaultTemplateResource);
+        }
+
         return $this->templateCode;
     }
 
@@ -82,7 +94,7 @@ class MaintenancePageListener implements EventSubscriberInterface
         try {
             $templateFile = $this->kernel->locateResource($path);
         } catch (InvalidArgumentException) {
-            // this runs when the listener is created, a missing template must not break every request
+            // a missing template must not break the request, the fallback template is used instead
             return;
         }
 

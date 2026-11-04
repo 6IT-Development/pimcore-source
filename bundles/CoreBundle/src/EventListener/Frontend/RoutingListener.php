@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
+use Monolog\Attribute\WithMonologChannel;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Config;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
@@ -26,7 +27,7 @@ use Pimcore\Model\DataObject\ClassDefinition\PreviewGeneratorInterface;
 use Pimcore\Model\Site;
 use Pimcore\SystemSettingsConfig;
 use Pimcore\Tool;
-use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -39,15 +40,16 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * @internal
  */
+#[WithMonologChannel('redirect')]
 class RoutingListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
-    use LoggerAwareTrait;
 
     public function __construct(
         protected RequestHelper $requestHelper,
         protected SiteResolver  $siteResolver,
-        protected Config        $config
+        protected Config        $config,
+        private readonly LoggerInterface $logger
     )
     {
     }

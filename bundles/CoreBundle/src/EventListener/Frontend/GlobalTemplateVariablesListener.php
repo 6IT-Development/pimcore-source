@@ -22,8 +22,6 @@ use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Http\Request\Resolver\DocumentResolver;
 use Pimcore\Http\Request\Resolver\EditmodeResolver;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
@@ -34,9 +32,8 @@ use Twig\Environment;
 /**
  * @internal
  */
-class GlobalTemplateVariablesListener implements EventSubscriberInterface, LoggerAwareInterface, ResetInterface
+class GlobalTemplateVariablesListener implements EventSubscriberInterface, ResetInterface
 {
-    use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
 
     private const ATTRIBUTE_PUSHED = '_pimcore_template_globals_pushed';

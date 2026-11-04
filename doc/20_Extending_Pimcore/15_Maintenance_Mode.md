@@ -20,12 +20,15 @@ Each call prints whether the maintenance mode is active afterwards. `--status` o
 ## Customize Maintenance Page
 
 Overwrite the service `Pimcore\Bundle\CoreBundle\EventListener\MaintenancePageListener` in your `config/services.yaml`. 
+The template is only read when the maintenance page is shown.
 
 ```yaml
 Pimcore\Bundle\CoreBundle\EventListener\MaintenancePageListener:
-    calls:
-        - [loadTemplateFromResource, ['@@App/Resources/misc/maintenance.html']]
+    arguments:
+        $defaultTemplateResource: '@@App/Resources/misc/maintenance.html'
 ```
+
+The `loadTemplateFromResource` call still works, but it reads the file whenever the listener is created.
 
 Use loadTemplateFromPath if the file is located outside a bundle.
 

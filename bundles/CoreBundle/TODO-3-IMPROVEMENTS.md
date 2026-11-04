@@ -767,7 +767,7 @@ IDs continue from I-42. Line numbers are from commit `43948f45d7` (code identica
 
 ## J – Symfony 7.4 / configuration
 
-### [ ] I-43 – Move listener wiring from YAML to attributes
+### [x] I-43 – Move listener wiring from YAML to attributes
 
 **File:** `config/event_listeners.yaml`
 
@@ -791,6 +791,14 @@ IDs continue from I-42. Line numbers are from commit `43948f45d7` (code identica
 - `Pimcore\Cache\FullPage\SessionStatus` (110-112) is not a listener. Move it to `cache.yaml`.
 - `TranslationDebugListener`: `PimcoreCoreExtension::configureTranslations()` removes the definition when the
   parameter is empty, so the `empty($this->parameterName)` check in the listener (line 52) is dead.
+
+**Done:** `FullPageCacheListener` uses `#[AsEventListener]` on its three methods. `RoutingListener` (`redirect`) and
+`ElementListener` (`init`) get their logger with `#[WithMonologChannel]`; they, `PimcoreContextListener`,
+`ResponseExceptionListener` and `EditmodeListener` take `LoggerInterface` in the constructor. `BlockStateListener` and
+`GlobalTemplateVariablesListener` have no logger any more. The toolbar listener and the excluded IPs of
+`MaintenancePageListener` use `#[Autowire]`; its template is the `$defaultTemplateResource` argument and is only read
+when the page is shown (doc updated). `SessionStatus` moved to `cache.yaml`, the duplicate tag and argument and the dead
+`TranslationDebugListener` check are gone. `FullPageCacheListener` stays public until I-44.
 
 ### [ ] I-44 – Stop pulling listeners out of the container as public services
 

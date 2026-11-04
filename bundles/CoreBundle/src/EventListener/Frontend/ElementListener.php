@@ -15,6 +15,7 @@
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
+use Monolog\Attribute\WithMonologChannel;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Http\Request\Resolver\DocumentResolver;
@@ -26,8 +27,7 @@ use Pimcore\Model\Document;
 use Pimcore\Model\User;
 use Pimcore\Model\Version;
 use Pimcore\Security\User\UserLoader;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -41,16 +41,17 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * @internal
  */
-class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
+#[WithMonologChannel('init')]
+class ElementListener implements EventSubscriberInterface
 {
-    use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
 
     public function __construct(
         protected DocumentResolver $documentResolver,
         protected EditmodeResolver $editmodeResolver,
         protected RequestHelper    $requestHelper,
-        protected UserLoader       $userLoader
+        protected UserLoader       $userLoader,
+        private readonly LoggerInterface $logger
     )
     {
     }

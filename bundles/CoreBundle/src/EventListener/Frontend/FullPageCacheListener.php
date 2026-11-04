@@ -34,6 +34,7 @@ use Pimcore\Event\FullPageCacheEvents;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Logger;
 use Pimcore\Tool;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -41,6 +42,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Event\KernelEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
@@ -138,6 +140,7 @@ class FullPageCacheListener implements ResetInterface
         $this->addExpireHeader = true;
     }
 
+    #[AsEventListener(KernelEvents::REQUEST, priority: 120)]
     public function onKernelRequest(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {
@@ -375,6 +378,7 @@ class FullPageCacheListener implements ResetInterface
         return $queryString !== '' ? $uri . '?' . $queryString : $uri;
     }
 
+    #[AsEventListener(KernelEvents::RESPONSE, priority: 100)]
     public function stopPropagationCheck(KernelEvent $event): void
     {
         if ($this->stopResponsePropagation) {
@@ -382,6 +386,7 @@ class FullPageCacheListener implements ResetInterface
         }
     }
 
+    #[AsEventListener(KernelEvents::RESPONSE, priority: -120)]
     public function onKernelResponse(ResponseEvent $event): void
     {
         if (!$event->isMainRequest()) {

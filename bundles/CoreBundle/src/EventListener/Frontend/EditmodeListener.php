@@ -28,7 +28,7 @@ use Pimcore\Model\Document;
 use Pimcore\Security\User\UserLoader;
 use Pimcore\Tool\Admin;
 use Pimcore\Version;
-use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -43,7 +43,6 @@ use Symfony\Component\Routing\RouterInterface;
  */
 class EditmodeListener implements EventSubscriberInterface
 {
-    use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
 
     protected array $contentTypes = [
@@ -56,7 +55,8 @@ class EditmodeListener implements EventSubscriberInterface
         protected UserLoader                                 $userLoader,
         protected PimcoreBundleManager                       $bundleManager,
         protected RouterInterface                            $router,
-        private readonly EditmodeEditableDefinitionCollector $editableConfigCollector
+        private readonly EditmodeEditableDefinitionCollector $editableConfigCollector,
+        private readonly LoggerInterface                     $logger
     )
     {
     }

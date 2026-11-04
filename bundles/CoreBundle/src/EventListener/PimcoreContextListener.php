@@ -21,8 +21,7 @@ use Pimcore;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -32,15 +31,14 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * @internal
  */
-class PimcoreContextListener implements EventSubscriberInterface, LoggerAwareInterface
+class PimcoreContextListener implements EventSubscriberInterface
 {
-    use LoggerAwareTrait;
-
     public const string ATTRIBUTE_PIMCORE_CONTEXT_FORCE_RESOLVING = '_pimcore_context_force_resolving';
 
     public function __construct(
         protected PimcoreContextResolver $resolver,
-        protected RequestStack           $requestStack
+        protected RequestStack           $requestStack,
+        private readonly LoggerInterface $logger
     )
     {
     }

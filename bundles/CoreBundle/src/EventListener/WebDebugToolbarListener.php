@@ -20,6 +20,7 @@ namespace Pimcore\Bundle\CoreBundle\EventListener;
 use Pimcore\Http\RequestHelper;
 use Pimcore\Http\RequestMatcherFactory;
 use Symfony\Bundle\WebProfilerBundle\EventListener\WebDebugToolbarListener as SymfonyWebDebugToolbarListener;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\ChainRequestMatcher;
@@ -45,8 +46,10 @@ class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterfac
     public function __construct(
         protected RequestHelper                   $requestHelper,
         protected RequestMatcherFactory           $requestMatcherFactory,
+        #[Autowire('@?web_profiler.debug_toolbar')]
         protected ?SymfonyWebDebugToolbarListener $debugToolbarListener,
         protected EventDispatcherInterface        $eventDispatcher,
+        #[Autowire(param: 'pimcore.web_profiler.toolbar.excluded_routes')]
         protected array                           $excludeRoutes
     )
     {

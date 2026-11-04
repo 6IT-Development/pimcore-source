@@ -66,3 +66,11 @@ services:
             - [setLogger, ['@logger']]
         tags:
             - { name: monolog.logger, channel: cache }
+
+    #
+    # FULL PAGE CACHE
+    #
+
+    Pimcore\Cache\FullPage\SessionStatus:
+        arguments:
+            $symfonyMetadataStorageKey: '%session.metadata.storage_key%'

@@ -20,8 +20,6 @@ namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Document\Editable\Block\BlockStateStack;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -32,9 +30,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * @internal
  */
-class BlockStateListener implements EventSubscriberInterface, LoggerAwareInterface
+class BlockStateListener implements EventSubscriberInterface
 {
-    use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
 
     private const ATTRIBUTE_PUSHED = '_pimcore_block_state_pushed';

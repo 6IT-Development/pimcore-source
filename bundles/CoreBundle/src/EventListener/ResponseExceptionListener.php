@@ -28,7 +28,7 @@ use Pimcore\Http\Request\Resolver\SiteResolver;
 use Pimcore\Model\Document;
 use Pimcore\Model\Site;
 use Pimcore\SystemSettingsConfig;
-use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -42,7 +42,6 @@ use Throwable;
  */
 class ResponseExceptionListener implements EventSubscriberInterface
 {
-    use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
 
     public function __construct(
@@ -50,7 +49,8 @@ class ResponseExceptionListener implements EventSubscriberInterface
         protected Connection                $db,
         protected SystemSettingsConfig      $config,
         protected Document\Service          $documentService,
-        protected SiteResolver              $siteResolver
+        protected SiteResolver              $siteResolver,
+        private readonly LoggerInterface    $logger
     )
     {
     }
