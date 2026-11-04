@@ -240,33 +240,30 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
-     * Returns a array containing all available languages
+     * Returns the languages that have rows in the domain table
      *
+     * @return string[]
      */
     public function getAvailableLanguages(): array
     {
-        $l = $this->db->fetchAllAssociative('SELECT `language` FROM ' . $this->db->quoteIdentifier($this->getDatabaseTableName()) . ' GROUP BY `language`;');
-        $languages = [];
-
-        foreach ($l as $values) {
-            $languages[] = $values['language'];
-        }
-
-        return $languages;
+        return $this->db->fetchFirstColumn('SELECT DISTINCT `language` FROM ' . $this->db->quoteIdentifier($this->getDatabaseTableName()));
     }
 
     /**
-     * Returns a array containing all available (registered) domains
+     * Returns the registered domains that have a table
      *
+     * @return string[]
      */
     public function getAvailableDomains(): array
     {
-        $domainTables = $this->db->fetchAllAssociative("SHOW TABLES LIKE 'translations_%'");
+        // `_` is a LIKE wildcard, only the prefix itself is cut from the table names
+        $domainTables = $this->db->fetchFirstColumn("SHOW TABLES LIKE 'translations\\_%'");
         $domains = [];
 
         foreach ($domainTables as $domainTable) {
-            $domain = str_replace('translations_', '', $domainTable[array_key_first($domainTable)]);
-            if ($this->isAValidDomain($domain)) {
+            $domain = substr($domainTable, strlen(self::TABLE_PREFIX));
+            if (preg_match(Translation::DOMAIN_PATTERN, $domain)
+                && in_array($domain, Translation::getRegisteredDomains(), true)) {
                 $domains[] = $domain;
             }
         }

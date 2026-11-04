@@ -2114,7 +2114,7 @@ DDL comes from the new `Translation\Dao::getCreateTableSql()`, which `createOrUp
 for the lazy creation and the migration; `install.sql` stays a separate copy, I-62). The `Listing::setDomain()` message
 names the domain and the table in the right order. The console command stays with I-62.
 
-## [ ] B-121 – `Dao::getAvailableLanguages()` fails under `ONLY_FULL_GROUP_BY`; `getAvailableDomains()` uses `_` as a LIKE wildcard
+## [x] B-121 – `Dao::getAvailableLanguages()` fails under `ONLY_FULL_GROUP_BY`; `getAvailableDomains()` uses `_` as a LIKE wildcard
 
 **File:** `models/Translation/Dao.php:139-168`
 
@@ -2126,6 +2126,11 @@ names the domain and the table in the right order. The console command stays wit
 
 **Fix direction:** `SELECT DISTINCT language`; `LIKE 'translations\_%'` and strip the prefix with `substr()`. Better:
 derive available domains from the config plus a table-exists check.
+
+**Done:** `getAvailableLanguages()` runs `SELECT DISTINCT language` (the code here already selected only `language`
+with `GROUP BY`, so it was valid; it is now one `fetchFirstColumn()`). `getAvailableDomains()` lists the tables with
+`LIKE 'translations\_%'`, cuts only the prefix with `substr()`, and keeps the names that are registered domains and
+match the domain pattern, without one more table check per domain (the table was just listed).
 
 ## [ ] B-122 – `Listing::cleanup()` does not invalidate caches and fires no events
 
