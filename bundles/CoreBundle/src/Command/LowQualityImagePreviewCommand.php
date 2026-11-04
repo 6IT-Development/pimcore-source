@@ -32,15 +32,19 @@ use Symfony\Component\Console\Output\OutputInterface;
  * @internal
  */
 #[AsCommand(
-    name: 'pimcore:image:low-quality-preview',
+    name: self::NAME,
     description: 'Regenerates low-quality image previews for all image assets',
-    aliases: ['pimcore:image:svg-preview']
+    aliases: [self::DEPRECATED_ALIAS]
 )]
 class LowQualityImagePreviewCommand extends AbstractCommand
 {
     use AssetBatchTrait;
     use AssetFilterOptionsTrait;
     use DeprecatedOptionNameTrait;
+
+    public const string NAME = 'pimcore:image:low-quality-preview';
+
+    public const string DEPRECATED_ALIAS = 'pimcore:image:svg-preview';
 
     #[\Override]
     protected function configure(): void
@@ -53,7 +57,7 @@ class LowQualityImagePreviewCommand extends AbstractCommand
                 InputOption::VALUE_NONE,
                 'generate preview regardless if it already exists or not'
             )
-            ->addOption('generator', 'g', InputOption::VALUE_REQUIRED, 'Force a generator, either `svg` or `imagick`');
+            ->addOption('generator', 'g', InputOption::VALUE_REQUIRED, 'Deprecated since 11.2 and ignored, will be removed in Pimcore 12');
 
         $this->addDeprecatedOptionName('pathPattern', 'path-pattern');
     }
@@ -63,6 +67,12 @@ class LowQualityImagePreviewCommand extends AbstractCommand
     {
         if (null !== $input->getOption('generator')) {
             trigger_deprecation('pimcore/pimcore', '11.2.0', 'Using the "generator" option is deprecated and will be removed in Pimcore 12.');
+            $this->io->warning('The --generator option is deprecated and ignored, it will be removed in Pimcore 12.');
+        }
+
+        if ($input->getFirstArgument() === self::DEPRECATED_ALIAS) {
+            trigger_deprecation('pimcore/pimcore', '11.5', 'The "%s" command alias is deprecated, use "%s" instead.', self::DEPRECATED_ALIAS, self::NAME);
+            $this->io->warning(sprintf('The %s alias is deprecated, use %s instead.', self::DEPRECATED_ALIAS, self::NAME));
         }
 
         $conditionVariables = [];

@@ -285,13 +285,18 @@ the store row last. The FKs (install.sql, `Classificationstore\Dao::createUpdate
 the enabled or the disabled keys, never both. The command has no SQL any more. The config caches have no tags, so
 instead of `Cache::clearAll()` the command clears `output` and the `class_<id>` tags of the classes that use the store.
 
-### [ ] I-18 – Remove or deprecate legacy/migration commands and options
+### [x] I-18 – Remove or deprecate legacy/migration commands and options
 
 - `Document/MigrateElementsCommand` is a one-time migration for pimcore/pimcore#7384 (Pimcore 6/7 era).
 - `Migrate/ThumbnailsFolderStructureCommand` is a one-time migration for the Pimcore 10 thumbnail folder structure.
 - `LowQualityImagePreviewCommand`: the `--generator` option has been deprecated since 11.2 "for removal in 12", and the
   `pimcore:image:svg-preview` alias is legacy.
 - Decide for this fork whether they stay. If they stay, mark them deprecated (`hidden: true` + deprecation message).
+
+**Done:** they stay for now and are deprecated for removal in Pimcore 12. Both migration commands are `hidden: true`,
+say "[Deprecated]" in their description and trigger a deprecation plus a warning when run. `LowQualityImagePreviewCommand`
+warns when called through the `pimcore:image:svg-preview` alias or with `--generator`, which is ignored (the option text
+now says so). Listed in the upgrade notes.
 
 ### [ ] I-19 – `WorkflowDumpCommand`: inject workflows instead of pulling from the kernel container
 

@@ -33,8 +33,10 @@ use Throwable;
  */
 #[AsCommand(
     name: 'pimcore:documents:migrate-elements',
-    description: 'Migrates document elements to editables',
-    help: 'Migrates document elements to editables. See issue https://github.com/pimcore/pimcore/issues/7384 first.'
+    description: '[Deprecated] Migrates document elements to editables',
+    help: 'Migrates document elements to editables. See issue https://github.com/pimcore/pimcore/issues/7384 first. '
+        . 'Only relevant for versions created before Pimcore 6.7. Deprecated, will be removed in Pimcore 12.',
+    hidden: true
 )]
 class MigrateElementsCommand extends AbstractCommand
 {
@@ -49,6 +51,9 @@ class MigrateElementsCommand extends AbstractCommand
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        trigger_deprecation('pimcore/pimcore', '11.5', 'The "%s" command is deprecated and will be removed in Pimcore 12.', $this->getName());
+        $this->io->warning('This one-time migration for versions created before Pimcore 6.7 is deprecated and will be removed in Pimcore 12.');
+
         if (!$this->isDryRun()) {
             $this->io->warning('This command is potentially dangerous. Please use with caution and make sure you have a proper backup! '
                 . 'See issue https://github.com/pimcore/pimcore/issues/7384 first');

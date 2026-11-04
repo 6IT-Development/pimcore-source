@@ -108,6 +108,10 @@
   `--documentTypes`, `--assetTypes`, `--objectTypes` → `--document-types`, `--asset-types`, `--object-types`
   (`pimcore:cache:warming`). The old names still work but are deprecated and will be removed; the shortcuts are
   unchanged.
+- The one-time migrations `pimcore:documents:migrate-elements` (versions created before Pimcore 6.7) and
+  `pimcore:migrate:thumbnails-folder-structure` (Pimcore 10 thumbnail folders) are deprecated and hidden from
+  `bin/console list`. The `pimcore:image:svg-preview` alias of `pimcore:image:low-quality-preview` is deprecated, as is
+  its `--generator` option, which is ignored. All of them will be removed in Pimcore 12.
 
 ### Security
 #### [Twig]

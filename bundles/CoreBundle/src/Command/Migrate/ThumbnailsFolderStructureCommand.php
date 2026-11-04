@@ -31,7 +31,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 #[AsCommand(
     name: 'pimcore:migrate:thumbnails-folder-structure',
-    description: 'Moves thumbnails to the folder structure with the asset ID',
+    description: '[Deprecated] Moves thumbnails to the folder structure with the asset ID',
     help: <<<'EOT'
         Changes the thumbnail folder structure to
 
@@ -40,7 +40,10 @@ use Symfony\Component\Console\Output\OutputInterface;
         instead of
 
           \<asset storage>/\<path to asset>/image-thumb__\<asset id>__\<thumbnail name>/\<asset filename>
-        EOT
+
+        One-time migration for the Pimcore 10 thumbnail folder structure. Deprecated, will be removed in Pimcore 12.
+        EOT,
+    hidden: true
 )]
 class ThumbnailsFolderStructureCommand extends AbstractCommand
 {
@@ -59,6 +62,9 @@ class ThumbnailsFolderStructureCommand extends AbstractCommand
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        trigger_deprecation('pimcore/pimcore', '11.5', 'The "%s" command is deprecated and will be removed in Pimcore 12.', $this->getName());
+        $this->io->warning('This one-time migration of the Pimcore 10 thumbnail folder structure is deprecated and will be removed in Pimcore 12.');
+
         if (!$this->confirmDestructiveAction(
             'This moves all thumbnail and asset cache files to the new folder structure and deletes files whose target already exists.'
         )) {
