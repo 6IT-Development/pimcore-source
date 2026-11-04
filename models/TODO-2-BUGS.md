@@ -1042,7 +1042,7 @@ warning instead of breaking the pairing. The duplicate `-c:v:N` is gone. Not run
 **Done:** the start offset is compared with `getDuration()` in seconds and reset to `0` only when the duration is known
 and the offset is at or past it.
 
-## [ ] B-66 – Concurrent `process()` calls start duplicate conversions; frontend GETs write to DB
+## [x] B-66 – Concurrent `process()` calls start duplicate conversions; frontend GETs write to DB
 
 **File:** `models/Asset/Video/Thumbnail/Processor.php:86-165`
 
@@ -1050,6 +1050,13 @@ and the offset is at or past it.
   second overwrites `processId`.
 
 **Fix direction:** per-(asset, config) lock around check, save and dispatch.
+
+**Done:** the status check moved to the new private `getFormatsToConvert()`. `process()` runs it first on the loaded
+asset, so a finished or running thumbnail still costs no lock and no write. Only when something has to be converted it
+takes a non-blocking `video-thumbnail-process-<asset id>-<config name>` lock (a request that does not get it returns
+`null`, another one is starting the conversion), reloads the `thumbnails` custom setting from the DB, checks again, and
+then saves and dispatches inside the lock. The first conversion of a thumbnail still saves the asset during a frontend
+GET; that is how the status is stored.
 
 ## [ ] B-67 – Global blocking `video-transcoding` lock with fixed 2 h TTL
 

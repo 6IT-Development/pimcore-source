@@ -24,6 +24,7 @@ use Pimcore\Logger;
 use Pimcore\Messenger\VideoConvertMessage;
 use Pimcore\Model;
 use Pimcore\Model\Tool\TmpStore;
+use Pimcore\Tool\Serialize;
 use Pimcore\Tool\Storage;
 use Pimcore\Video;
 use Pimcore\Video\Adapter;
@@ -69,8 +70,6 @@ class Processor
             throw new Exception('No ffmpeg executable found, please configure the correct path in the system settings');
         }
 
-        $storage = Storage::get('thumbnail');
-
         $instance = new self();
         $formats = empty($onlyFormats) ? ['mp4'] : $onlyFormats;
         $instance->setProcessId(uniqid());
@@ -83,9 +82,114 @@ class Processor
             $formats[] = 'mpd';
         }
 
+        $existingFormats = [];
+        if (self::getFormatsToConvert($asset, $config, $instance, $formats, $existingFormats) === null) {
+            return null;
+        }
+
+        // two renders of the same thumbnail would otherwise both save the asset and dispatch a conversion
+        $lock = Pimcore::getContainer()->get(LockFactory::class)->createLock(
+            'video-thumbnail-process-' . $asset->getId() . '-' . $config->getName()
+        );
+        if (!$lock->acquire()) {
+            // another request is starting this conversion right now
+            return null;
+        }
+
+        try {
+            // check again with the stored state, the conversion may have been started since the asset was loaded
+            $storedSettings = Serialize::unserialize($asset->getDao()->getCustomSettings());
+            $asset->setCustomSetting('thumbnails', is_array($storedSettings) ? ($storedSettings['thumbnails'] ?? null) : null);
+
+            $existingFormats = [];
+            $formats = self::getFormatsToConvert($asset, $config, $instance, $formats, $existingFormats);
+            if ($formats === null) {
+                return null;
+            }
+
+            foreach ($formats as $format) {
+                $thumbDir = $asset->getRealPath() . '/' . $asset->getId() . '/video-thumb__' . $asset->getId() . '__' . $config->getName();
+                $filename = preg_replace('/\.' . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '/', '', $asset->getFilename()) . '.' . $format;
+                $storagePath = $thumbDir . '/' . $filename;
+                // not removed at the end of this request: the worker writes the file later and removes it
+                $tmpPath = File::getLocalTempFilePath($format, true);
+
+                if ($converter = Video::getInstance()) {
+                    // both bitrates are optional in the config, the adapter keeps its defaults then
+                    if ($config->getAudioBitrate() !== null) {
+                        $converter->setAudioBitrate($config->getAudioBitrate());
+                    }
+                    if ($config->getVideoBitrate() !== null) {
+                        $converter->setVideoBitrate($config->getVideoBitrate());
+                    }
+                    $converter->setFormat($format);
+                    $converter->setDestinationFile($tmpPath);
+                    $converter->setStorageFile($storagePath);
+
+                    //add media queries for mpd file generation
+                    if ($format == 'mpd') {
+                        $medias = $config->getMedias();
+                        foreach ($medias as $media => $transformations) {
+                            //used just to generate arguments for medias
+                            if ($subConverter = Video::getInstance()) {
+                                self::applyTransformations($subConverter, $transformations);
+                                $medias[$media]['converter'] = $subConverter;
+                            }
+                        }
+                        $converter->setMedias($medias);
+                    }
+
+                    $transformations = $config->getItems();
+                    self::applyTransformations($converter, $transformations);
+
+                    $instance->queue[] = $converter;
+                }
+            }
+
+            $customSetting = $asset->getCustomSetting('thumbnails');
+            $customSetting = is_array($customSetting) ? $customSetting : [];
+            $customSetting[$config->getName()] = [
+                'status' => 'inprogress',
+                'formats' => $existingFormats,
+                'processId' => $instance->getProcessId(),
+            ];
+            $asset->setCustomSetting('thumbnails', $customSetting);
+
+            Model\Version::disable();
+            $asset->save();
+            Model\Version::enable();
+
+            $instance->save();
+
+            Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
+                new VideoConvertMessage($instance->getProcessId(), $asset->getId())
+            );
+
+            return $instance;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * @param string[] $formats
+     * @param array<string, string> $existingFormats filled with the formats that are already converted
+     *
+     * @return string[]|null the formats to convert, null when there is nothing to do
+     *
+     * @throws Exception when an earlier conversion failed
+     */
+    private static function getFormatsToConvert(
+        Model\Asset\Video $asset,
+        Config $config,
+        self $instance,
+        array $formats,
+        array &$existingFormats
+    ): ?array {
+        $storage = Storage::get('thumbnail');
+
         // check for running or already created thumbnails
         $customSetting = $asset->getCustomSetting('thumbnails');
-        $existingFormats = [];
         if (is_array($customSetting) && array_key_exists($config->getName(), $customSetting)) {
             if ($customSetting[$config->getName()]['status'] == 'inprogress') {
                 if (TmpStore::get($instance->getJobStoreId($customSetting[$config->getName()]['processId']))) {
@@ -103,75 +207,17 @@ class Processor
                     }
                 }
 
-                if (!empty($formatsToConvert)) {
-                    $formats = $formatsToConvert;
-                } else {
+                if (empty($formatsToConvert)) {
                     return null;
                 }
+
+                return $formatsToConvert;
             } elseif ($customSetting[$config->getName()]['status'] == 'error') {
                 throw new Exception('Unable to convert video, see logs for details.');
             }
         }
 
-        foreach ($formats as $format) {
-            $thumbDir = $asset->getRealPath() . '/' . $asset->getId() . '/video-thumb__' . $asset->getId() . '__' . $config->getName();
-            $filename = preg_replace('/\.' . preg_quote(pathinfo($asset->getFilename(), PATHINFO_EXTENSION), '/') . '/', '', $asset->getFilename()) . '.' . $format;
-            $storagePath = $thumbDir . '/' . $filename;
-            // not removed at the end of this request: the worker writes the file later and removes it
-            $tmpPath = File::getLocalTempFilePath($format, true);
-
-            if ($converter = Video::getInstance()) {
-                // both bitrates are optional in the config, the adapter keeps its defaults then
-                if ($config->getAudioBitrate() !== null) {
-                    $converter->setAudioBitrate($config->getAudioBitrate());
-                }
-                if ($config->getVideoBitrate() !== null) {
-                    $converter->setVideoBitrate($config->getVideoBitrate());
-                }
-                $converter->setFormat($format);
-                $converter->setDestinationFile($tmpPath);
-                $converter->setStorageFile($storagePath);
-
-                //add media queries for mpd file generation
-                if ($format == 'mpd') {
-                    $medias = $config->getMedias();
-                    foreach ($medias as $media => $transformations) {
-                        //used just to generate arguments for medias
-                        if ($subConverter = Video::getInstance()) {
-                            self::applyTransformations($subConverter, $transformations);
-                            $medias[$media]['converter'] = $subConverter;
-                        }
-                    }
-                    $converter->setMedias($medias);
-                }
-
-                $transformations = $config->getItems();
-                self::applyTransformations($converter, $transformations);
-
-                $instance->queue[] = $converter;
-            }
-        }
-
-        $customSetting = $asset->getCustomSetting('thumbnails');
-        $customSetting = is_array($customSetting) ? $customSetting : [];
-        $customSetting[$config->getName()] = [
-            'status' => 'inprogress',
-            'formats' => $existingFormats,
-            'processId' => $instance->getProcessId(),
-        ];
-        $asset->setCustomSetting('thumbnails', $customSetting);
-
-        Model\Version::disable();
-        $asset->save();
-        Model\Version::enable();
-
-        $instance->save();
-
-        Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
-            new VideoConvertMessage($instance->getProcessId(), $asset->getId())
-        );
-
-        return $instance;
+        return $formats;
     }
 
     private static function applyTransformations(Adapter $converter, array $transformations): void
