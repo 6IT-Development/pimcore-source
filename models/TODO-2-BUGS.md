@@ -1148,13 +1148,18 @@ such names get the new file name.
 **Done:** `loadList()` skips configs deleted since the id list was read and applies the listing's filter (re-indexed) and
 order callbacks, as the image config listing does. `getTotalCount()` counts the filtered list instead of all ids.
 
-## [ ] B-73 – `Video\Thumbnail\Config::getByName()` returns the shared cached instance
+## [x] B-73 – `Video\Thumbnail\Config::getByName()` returns the shared cached instance
 
 **File:** `models/Asset/Video/Thumbnail/Config.php:113-132`
 
 - Caller mutations (`setItems`, `selectMedia`) leak into the RuntimeCache; missing configs are not negatively cached.
 
 **Fix direction:** `return clone $thumbnail;` (as the Image config does).
+
+**Done:** `getByName()` returns a clone of the cached config, as the image config does, so `setItems()` /
+`selectMedia()` on the result no longer change the config every later caller gets. Missing configs are still not
+cached: video configs are not evicted from the runtime cache on save, so a cached miss would hide a config created later
+in the same process.
 
 ## [ ] B-74 – Listfolder-grid unmarshal of relation metadata throws `TypeError` on `null`/numeric data
 

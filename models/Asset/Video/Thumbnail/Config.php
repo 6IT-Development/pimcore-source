@@ -129,7 +129,9 @@ final class Config extends Model\AbstractModel
             }
         }
 
-        return $thumbnail;
+        // the cached config is shared, callers get a copy so that changes like setItems() or selectMedia() do not leak
+        // into the cache
+        return clone $thumbnail;
     }
 
     /**
