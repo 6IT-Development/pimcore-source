@@ -234,6 +234,18 @@ final class ImageThumbnail implements ImageThumbnailInterface
             throw new Model\Exception\NotFoundException('Thumbnail definition "' . (is_string($selector) ? $selector : '') . '" does not exist');
         }
 
+        // the frame is a PNG; `original` or the video's own format would store it under the video's extension
+        // (`source` already resolves to PNG in the processor, keeping the optimized formats)
+        $format = strtolower($thumbnailConfig->getFormat());
+        $videoExtension = $this->asset ? strtolower(pathinfo($this->asset->getFilename() ?? '', PATHINFO_EXTENSION)) : '';
+        if ($format === 'original' || ($videoExtension !== '' && $format === $videoExtension)) {
+            // a passed config instance belongs to the caller
+            if ($selector instanceof Image\Thumbnail\Config) {
+                $thumbnailConfig = clone $thumbnailConfig;
+            }
+            $thumbnailConfig->setFormat('PNG');
+        }
+
         return $thumbnailConfig;
     }
 

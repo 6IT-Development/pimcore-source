@@ -1107,7 +1107,7 @@ stored (e.g. uploaded before its update task ran) is read again in every request
 `fileExists()` check, and the page image is rendered only when it is still missing. A request that waited reads the
 image the other one wrote instead of returning the placeholder. The temp PNG is removed in a `finally`.
 
-## [ ] B-70 – Video image thumbnail with format `original`/`source` writes PNG data under `.mp4`
+## [x] B-70 – Video image thumbnail with format `original`/`source` writes PNG data under `.mp4`
 
 **File:** `models/Asset/Video/ImageThumbnail.php:94`; `ImageThumbnailTrait.php:436-460`; `Image/Thumbnail/Processor.php:166-168`
 
@@ -1115,6 +1115,13 @@ image the other one wrote instead of returning the placeholder. The temp PNG is 
   MIME type. `Document\ImageThumbnail::createConfig` (`:193-198`) normalises to PNG; Video does not. (Inferred, not run.)
 
 **Fix direction:** map these to PNG in Video `createConfig()`.
+
+**Done:** Video `createConfig()` sets the format to `PNG` for `original` and for the video's own extension (e.g. `mp4`,
+case-insensitive), on a clone when the caller passed a config instance. `source` is left alone: the image Processor
+already turns it into PNG for a video (`getAllowedFormat('mp4', …)` falls back to `png`) and keeps the optimized
+formats (WebP/AVIF) that a fixed `PNG` would switch off, so only `original` and the extension were actually broken.
+With an image used instead of the frame (`imageAsset` / `image_thumbnail_asset`), `original` now also gives a PNG
+instead of the image's own format.
 
 ## [ ] B-71 – Video thumbnail filename regex is unanchored and case-sensitive
 
