@@ -62,6 +62,20 @@ class Service extends Model\Element\Service
     private const array VIDEO_THUMBNAIL_EXTENSIONS = ['mp4', 'webm', 'mpd'];
 
     /**
+     * Requirements of the parts of a public thumbnail URI, used by the `_pimcore_service_thumbnail` route
+     * (CoreBundle `config/routing.yaml`) and by extractThumbnailInfoFromUri()
+     *
+     * @internal
+     */
+    public const array THUMBNAIL_URI_REQUIREMENTS = [
+        'prefix' => '.*',
+        'type' => 'video|image',
+        'assetId' => '\d+',
+        'thumbnailName' => '[a-zA-Z0-9_\-]+',
+        'filename' => '.*',
+    ];
+
+    /**
      * @internal
      */
     protected ?Model\User $_user;
@@ -697,14 +711,13 @@ class Service extends Model\Element\Service
      */
     public static function extractThumbnailInfoFromUri(string $uri): array
     {
-        // See `_pimcore_service_thumbnail` in `CoreBundle\config\routing.yaml`
-
+        $requirements = self::THUMBNAIL_URI_REQUIREMENTS;
         $regExpression = sprintf('/(%s)(%s)-thumb__(%s)__(%s)\/(%s)/',
-            '.*',               // prefix
-            'video|image',      // type
-            '\d+',              // assetId
-            '[a-zA-Z0-9_\-]+',  // thumbnailName
-            '.*'                // filename
+            $requirements['prefix'],
+            $requirements['type'],
+            $requirements['assetId'],
+            $requirements['thumbnailName'],
+            $requirements['filename']
         );
 
         if (preg_match($regExpression, $uri, $matches)) {

@@ -56,11 +56,10 @@ services:
     # CONTROLLERS
     #
 
-    # auto-register all controllers as services
+    # auto-register all controllers as services; autoconfiguration tags them as controllers (AbstractController),
+    # which also makes them public
     Pimcore\Bundle\CoreBundle\Controller\:
         resource: '../src/Controller'
-        public: true
-        tags: ['controller.service_arguments']
 
     Pimcore\Controller\Config\ControllerDataProvider:
         public : true

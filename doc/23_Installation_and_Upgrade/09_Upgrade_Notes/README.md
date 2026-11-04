@@ -83,6 +83,10 @@
 - `pimcore.service_controllers` (used for the controller/action lists of documents) only contains services tagged
   `controller.service_arguments`. Autoconfiguration adds the tag to `AbstractController` subclasses and
   `#[AsController]` classes; a public `AbstractController` service without autoconfiguration needs the tag.
+- The `robots.txt`, common files and thumbnail routes of `@PimcoreCoreBundle/config/routing.yaml` only match `GET`
+  and `HEAD` requests. The common files route no longer lists `robots.txt` (the `/robots.txt` route answers it) and
+  matches any `*.crl` file in the root, not only `/.crl`. The thumbnail route requirements are
+  `Asset\Service::THUMBNAIL_URI_REQUIREMENTS`.
 #### [Profiler]
 - The deprecated template `@PimcoreCore/Profiler/key_value_table.html.twig` was removed. Copy it into your project if
   you still include it.

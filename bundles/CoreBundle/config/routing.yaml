@@ -1,28 +1,33 @@
+# Order matters: these routes, and the thumbnail route in particular, must come before _pimcore_bundle_auto and the
+# document routes (catch-all), so they are kept in YAML instead of #[Route] attributes.
+
 _pimcore_service_robots_txt:
     path: /robots.txt
+    methods: [GET, HEAD]
     defaults: { _controller: Pimcore\Bundle\CoreBundle\Controller\PublicServicesController::robotsTxtAction }
 
+# files that browsers and clients request on their own: answered with a 404 instead of going through the document
+# routing; *.crl are certificate revocation lists
 _pimcore_service_common_files:
     path: /{filename}
+    methods: [GET, HEAD]
     defaults: { _controller: Pimcore\Bundle\CoreBundle\Controller\PublicServicesController::commonFilesAction }
     requirements:
-        filename: '(robots\.txt|crossdomain\.xml|favicon\.ico|browserconfig\.xml|wpad\.dat|\.crl)'
+        filename: '(crossdomain\.xml|favicon\.ico|browserconfig\.xml|wpad\.dat|[^/]*\.crl)'
 
 _pimcore_service_common_files_apple_touch_icon:
     path: /{filename}
+    methods: [GET, HEAD]
     defaults: { _controller: Pimcore\Bundle\CoreBundle\Controller\PublicServicesController::commonFilesAction }
     requirements:
-        filename: 'apple\-touch\-icon.*'
+        filename: 'apple-touch-icon.*'
 
 _pimcore_service_thumbnail:
     path: '{prefix}{type}-thumb__{assetId}__{thumbnailName}/{filename}'
+    methods: [GET, HEAD]
     defaults: { _controller: Pimcore\Bundle\CoreBundle\Controller\PublicServicesController::thumbnailAction}
-    requirements:
-        prefix: '.*'
-        type: 'video|image'
-        assetId: '\d+'
-        thumbnailName: '[a-zA-Z0-9_\-]+'
-        filename: '.*'
+    # shared with Asset\Service::extractThumbnailInfoFromUri()
+    requirements: !php/const Pimcore\Model\Asset\Service::THUMBNAIL_URI_REQUIREMENTS
 
 _fos_js_routing:
     resource: "@FOSJsRoutingBundle/Resources/config/routing/routing.php"

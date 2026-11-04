@@ -1384,7 +1384,7 @@ IDs continue from I-64. Line numbers are from commit `1a059513b7`. Grouped: **R*
 
 ## R – Symfony 7.4 / configuration
 
-### [ ] I-65 – Controller service and route definitions
+### [x] I-65 – Controller service and route definitions
 
 **Files:** `config/services.yaml:58-62`, `config/routing.yaml`, `src/Controller/*.php`
 
@@ -1403,6 +1403,13 @@ IDs continue from I-64. Line numbers are from commit `1a059513b7`. Grouped: **R*
   8.0 blocker. (Verify the deprecation in the app with `bin/console debug:router` + deprecation log.)
 - Consider `#[Route]` attributes on the four actions instead of YAML. Keep the explicit ordering requirement (thumbnail
   route before `_pimcore_bundle_auto` and the document catch-all) documented either way.
+
+**Done:** the controllers rely on autoconfiguration (tag and public). `robots.txt`, common files and thumbnail routes
+are `GET`/`HEAD` only, WebDAV is unchanged. Common files: `robots\.txt` dropped, `[^/]*\.crl` (any root `*.crl`,
+including `/.crl`), plain `apple-touch-icon.*`. The thumbnail requirements are
+`Asset\Service::THUMBNAIL_URI_REQUIREMENTS`, referenced from the YAML route with `!php/const` and used by
+`extractThumbnailInfoFromUri()`. FOSJsRouting already imports `routing.php` (I-41). The routes stay in YAML with a
+comment on the required order.
 
 ### [ ] I-66 – `DataObjectParamResolver` wiring and Symfony 7.4 resolver features
 
