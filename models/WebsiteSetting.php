@@ -252,11 +252,13 @@ final class WebsiteSetting extends AbstractModel
     }
 
     /**
+     * @param int|null $siteId null (or 0, stored as null) for all sites
+     *
      * @return $this
      */
     public function setSiteId(?int $siteId): WebsiteSetting
     {
-        $this->siteId = $siteId;
+        $this->siteId = $siteId ?: null;
 
         return $this;
     }

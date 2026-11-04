@@ -1308,7 +1308,7 @@ listing that is now ordered by id. On equal rank (duplicate rows, B-86) both tak
 has no value (unknown type, deleted element), `getWebsiteConfig()` drops the key instead of keeping a lower-ranked
 value, so both APIs agree. The test extension is left to I-40.
 
-## [ ] B-84 – `siteId = 0` and `siteId IS NULL` are ranked differently in `getByName()`
+## [x] B-84 – `siteId = 0` and `siteId IS NULL` are ranked differently in `getByName()`
 
 **File:** `models/WebsiteSetting/Dao.php:59-69` (`ORDER BY CONCAT(siteId, language) DESC, siteId DESC, language DESC`)
 
@@ -1323,6 +1323,11 @@ value, so both APIs agree. The test extension is left to I-40.
 **Fix direction:** explicit ranking, e.g.
 `ORDER BY (siteId = :site) DESC, (language = :lang) DESC, id ASC`, and normalise `0` → `NULL` on save (plus a data
 migration).
+
+**Done:** the ranking is the explicit `WebsiteSetting::getOverrideRank()` from B-83, which treats `0` and `NULL` alike,
+so the legacy neutral row no longer beats a global language row. `setSiteId()` stores `0` as `null` (also when a row is
+loaded), and migration `Version20261104000100` converts the existing `siteId = 0` rows to `NULL`. The query keeps
+accepting `siteId = 0` for installations that have not run the migration yet.
 
 ## [ ] B-85 – `$fallbackLanguage` is never used when a language-neutral row exists
 
