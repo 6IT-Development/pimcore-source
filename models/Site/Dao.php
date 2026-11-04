@@ -51,7 +51,7 @@ class Dao extends Model\Dao\AbstractDao
     {
         $data = $this->db->fetchAssociative('SELECT * FROM sites WHERE rootId = ?', [$id]);
         if (!$data) {
-            throw new NotFoundException(sprintf('Unable to load site with ID `%s`', $id));
+            throw new NotFoundException(sprintf('Unable to load site with root document ID `%s`', $id));
         }
         $this->assignRowToModel($data);
     }

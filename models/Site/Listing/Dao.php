@@ -15,7 +15,6 @@
 
 namespace Pimcore\Model\Site\Listing;
 
-use Exception;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Site\Listing;
@@ -52,12 +51,11 @@ class Dao extends Model\Listing\Dao\AbstractDao
         return $sites;
     }
 
+    /**
+     * A broken condition throws, as in load(), instead of counting 0 sites
+     */
     public function getTotalCount(): int
     {
-        try {
-            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM sites ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception) {
-            return 0;
-        }
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM sites ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }

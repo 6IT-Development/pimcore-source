@@ -2490,7 +2490,7 @@ moved or deleted error page is reported on the next save of the site instead of 
 one only when the site sets an error document at all, and an empty site default falls back to the system default.
 Storing document ids and tracking them as dependencies is still open: sites are no elements in the dependency graph.
 
-## [ ] B-137 – Small defects: `getByRootId()` error message, `getTotalCount()` swallows errors, `getRootPath()` override
+## [x] B-137 – Small defects: `getByRootId()` error message, `getTotalCount()` swallows errors, `getRootPath()` override
 
 **Files:** `models/Site.php:94-104`, `:278-292`; `models/Site/Dao.php:47-53`; `models/Site/Listing/Dao.php:47-54`
 
@@ -2503,6 +2503,10 @@ Storing document ids and tracking them as dependencies is still open: sites are 
 
 **Fix direction:** fix the message; let `getTotalCount()` throw (or log at error level); deprecate `setRootPath()`
 (I-70).
+
+**Done:** `Dao::getByRootId()` reports "Unable to load site with root document ID". `Listing\Dao::getTotalCount()` no
+longer catches exceptions, so a broken condition throws as in `load()`. `setRootPath()` is deprecated (since 11.5) with
+a `trigger_deprecation()`; removing `$rootPath` stays with I-70.
 
 
 ## Document (Scope 6)

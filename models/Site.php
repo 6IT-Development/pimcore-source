@@ -350,10 +350,15 @@ final class Site extends AbstractModel
     }
 
     /**
+     * @deprecated since 11.5, the value is never saved and changes the path prefix of the (shared) cached site for every
+     *             caller; the root path is the path of the root document
+     *
      * @return $this
      */
     public function setRootPath(?string $path): Site
     {
+        trigger_deprecation('pimcore/pimcore', '11.5', 'Method %s::%s() is deprecated, the root path is the path of the root document.', self::class, __FUNCTION__);
+
         $this->rootPath = $path;
 
         return $this;
