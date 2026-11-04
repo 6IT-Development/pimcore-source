@@ -18,10 +18,8 @@ namespace Pimcore\Model\Dependency;
 use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Exception;
-use Pimcore;
 use Pimcore\Db\Helper;
 use Pimcore\Logger;
-use Pimcore\Messenger\SanityCheckMessage;
 use Pimcore\Model;
 use Pimcore\Model\Dependency;
 use Pimcore\Model\Element;
@@ -203,28 +201,26 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * Clear all relations in the database
      *
+     * Errors are not caught: the rows must be removed in the same transaction as the element.
      *
+     * @return list<array{type: string, id: int}> the sources that required the element
      */
-    public function cleanAllForElement(Element\ElementInterface $element): void
+    public function cleanAllForElement(Element\ElementInterface $element): array
     {
-        try {
-            $id = $element->getId();
-            $type = Element\Service::getElementType($element);
+        $id = $element->getId();
+        $type = Element\Service::getElementType($element);
 
-            //schedule for sanity check
-            $data = $this->db->fetchAllAssociative('SELECT `sourceid`, `sourcetype` FROM dependencies WHERE targettype = ? AND targetid = ?', [$type, $id]);
-            foreach ($data as $row) {
-                Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(
-                    new SanityCheckMessage($row['sourcetype'], $row['sourceid'])
-                );
-            }
-
-            Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'sourceid = ?', $id) . ' AND  ' . Helper::quoteInto($this->db, 'sourcetype = ?', $type));
-            // the sanity check does not re-save every source type (e.g. folders), the rows must not depend on it
-            Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'targetid = ?', $id) . ' AND  ' . Helper::quoteInto($this->db, 'targettype = ?', $type));
-        } catch (Exception $e) {
-            Logger::error((string)$e);
+        $sources = [];
+        $data = $this->db->fetchAllAssociative('SELECT `sourceid`, `sourcetype` FROM dependencies WHERE targettype = ? AND targetid = ?', [$type, $id]);
+        foreach ($data as $row) {
+            $sources[] = ['type' => $row['sourcetype'], 'id' => (int)$row['sourceid']];
         }
+
+        Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'sourceid = ?', $id) . ' AND  ' . Helper::quoteInto($this->db, 'sourcetype = ?', $type));
+        // the sanity check does not re-save every source type (e.g. folders), the rows must not depend on it
+        Helper::selectAndDeleteWhere($this->db, 'dependencies', 'id', Helper::quoteInto($this->db, 'targetid = ?', $id) . ' AND  ' . Helper::quoteInto($this->db, 'targettype = ?', $type));
+
+        return $sources;
     }
 
     /**

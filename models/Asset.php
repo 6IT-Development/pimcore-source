@@ -1072,6 +1072,8 @@ class Asset extends Element\AbstractElement
         }
 
         $this->beginTransaction();
+        // dispatched after the commit, a sanity check run before it would restore the rows of this asset
+        $dispatchesSanityChecks = Dependency::collectSanityChecks();
 
         try {
             $this->closeStream();
@@ -1100,9 +1102,16 @@ class Asset extends Element\AbstractElement
             $this->getDao()->delete();
 
             $this->commit();
+
+            if ($dispatchesSanityChecks) {
+                Dependency::dispatchSanityChecks();
+            }
         } catch (Throwable $e) {
             if ($isOutermostDelete) {
                 self::$deletedAssetIds = null;
+            }
+            if ($dispatchesSanityChecks) {
+                Dependency::discardSanityChecks();
             }
 
             try {

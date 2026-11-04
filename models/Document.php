@@ -659,6 +659,8 @@ class Document extends Element\AbstractElement
         $this->dispatchEvent(new DocumentEvent($this), DocumentEvents::PRE_DELETE);
 
         $this->beginTransaction();
+        // dispatched after the commit, a sanity check run before it would restore the rows of this document
+        $dispatchesSanityChecks = Dependency::collectSanityChecks();
 
         try {
             if ($this->getId() == 1) {
@@ -670,6 +672,10 @@ class Document extends Element\AbstractElement
 
             $this->commit();
 
+            if ($dispatchesSanityChecks) {
+                Dependency::dispatchSanityChecks();
+            }
+
             //clear parent data from registry
             $parentCacheKey = self::getCacheKey($this->getParentId());
             if (RuntimeCache::isRegistered($parentCacheKey)) {
@@ -679,6 +685,10 @@ class Document extends Element\AbstractElement
                 }
             }
         } catch (Throwable $e) {
+            if ($dispatchesSanityChecks) {
+                Dependency::discardSanityChecks();
+            }
+
             try {
                 $this->rollBack();
             } catch (Exception $er) {

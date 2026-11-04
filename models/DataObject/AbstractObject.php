@@ -451,12 +451,18 @@ abstract class AbstractObject extends Model\Element\AbstractElement
         $this->dispatchEvent(new DataObjectEvent($this), DataObjectEvents::PRE_DELETE);
 
         $this->beginTransaction();
+        // dispatched after the commit, a sanity check run before it would restore the rows of this object
+        $dispatchesSanityChecks = Model\Dependency::collectSanityChecks();
 
         try {
             $this->doDelete();
             $this->getDao()->delete();
 
             $this->commit();
+
+            if ($dispatchesSanityChecks) {
+                Model\Dependency::dispatchSanityChecks();
+            }
 
             //clear parent data from registry
             $parentCacheKey = self::getCacheKey($this->getParentId());
@@ -467,6 +473,10 @@ abstract class AbstractObject extends Model\Element\AbstractElement
                 }
             }
         } catch (Throwable $e) {
+            if ($dispatchesSanityChecks) {
+                Model\Dependency::discardSanityChecks();
+            }
+
             try {
                 $this->rollBack();
             } catch (Exception $er) {

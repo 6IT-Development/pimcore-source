@@ -17,6 +17,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Model;
 
+use Pimcore;
+use Pimcore\Logger;
+use Pimcore\Messenger\SanityCheckMessage;
+use Throwable;
+
 /**
  * @internal
  *
@@ -42,6 +47,14 @@ class Dependency extends AbstractModel
      *
      */
     protected array $requires = [];
+
+    /**
+     * Sanity checks of the sources of deleted elements, keyed by type and id. They are dispatched once the outermost
+     * element delete is committed, `null` while no delete collects them.
+     *
+     * @var array<string, array{type: string, id: int}>|null
+     */
+    private static ?array $pendingSanityChecks = null;
 
     /**
      * Static helper to get the dependencies for the given sourceId & type
@@ -72,10 +85,68 @@ class Dependency extends AbstractModel
      * Used when element gets deleted. Removes entries (by source or target = element) and
      * schedules a sanity check for the sources that required the element.
      *
+     * Inside an element delete the sanity checks are dispatched after its commit, see collectSanityChecks().
      */
     public function cleanAllForElement(Element\ElementInterface $element): void
     {
-        $this->getDao()->cleanAllForElement($element);
+        foreach ($this->getDao()->cleanAllForElement($element) as $source) {
+            if (self::$pendingSanityChecks === null) {
+                self::dispatchSanityCheck($source['type'], $source['id']);
+            } else {
+                self::$pendingSanityChecks[$source['type'] . '-' . $source['id']] = $source;
+            }
+        }
+    }
+
+    /**
+     * Collects the sanity checks of cleanAllForElement() until dispatchSanityChecks() or discardSanityChecks().
+     * A sanity check handled before the delete is committed (sync or external transport) would re-save the source
+     * while the deleted element still exists and restore its rows.
+     *
+     * @internal
+     *
+     * @return bool false if an outer delete collects them already, the caller must then neither dispatch nor discard
+     */
+    public static function collectSanityChecks(): bool
+    {
+        if (self::$pendingSanityChecks !== null) {
+            return false;
+        }
+
+        self::$pendingSanityChecks = [];
+
+        return true;
+    }
+
+    /**
+     * @internal
+     */
+    public static function dispatchSanityChecks(): void
+    {
+        $pendingSanityChecks = self::$pendingSanityChecks ?? [];
+        self::$pendingSanityChecks = null;
+
+        foreach ($pendingSanityChecks as $source) {
+            self::dispatchSanityCheck($source['type'], $source['id']);
+        }
+    }
+
+    /**
+     * @internal
+     */
+    public static function discardSanityChecks(): void
+    {
+        self::$pendingSanityChecks = null;
+    }
+
+    private static function dispatchSanityCheck(string $type, int $id): void
+    {
+        try {
+            Pimcore::getContainer()->get('messenger.bus.pimcore-core')->dispatch(new SanityCheckMessage($type, $id));
+        } catch (Throwable $e) {
+            // the delete is committed, a failed sanity check must not make it look failed
+            Logger::error(sprintf('Dispatching the sanity check of %s %d failed: %s', $type, $id, $e));
+        }
     }
 
     /**

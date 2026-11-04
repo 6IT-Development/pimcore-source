@@ -1588,7 +1588,7 @@ by earlier deletes are hidden: `getBySourceId()` and `getRequiredBy()` skip rows
 `getRequiredByTotalCount()` / `isRequired()` count with the same joins, so `getRequiresTotalCount()`,
 `getRequiredByTotalCount()` and the lists match the `INNER JOIN` path queries.
 
-## [ ] B-98 – `cleanAllForElement()` dispatches sanity checks before deleting and swallows DB errors inside the element's delete transaction
+## [x] B-98 – `cleanAllForElement()` dispatches sanity checks before deleting and swallows DB errors inside the element's delete transaction
 
 **File:** `models/Dependency/Dao.php:185-203`; callers `models/Asset.php:1018`, `models/Document.php:640`,
 `models/DataObject/AbstractObject.php:438` (all inside `beginTransaction()` … `commit()`)
@@ -1604,6 +1604,16 @@ by earlier deletes are hidden: `getBySourceId()` and `getRequiredBy()` skip rows
 **Fix direction:** delete first, dispatch after commit (collect messages and dispatch them from the caller, or use
 `DispatchAfterCurrentBusStamp` / a post-commit hook). Let DB exceptions propagate so the element transaction rolls
 back.
+
+**Done:** `Dao::cleanAllForElement()` deletes the rows and returns the sources that required the element; it
+no longer dispatches anything and no longer catches errors, so a DB failure rolls back the element delete and reaches the
+caller and `POST_DELETE_FAILURE`. `Dependency::cleanAllForElement()` queues the sanity checks while an element delete
+collects them: `Asset::delete()`, `Document::delete()` and `AbstractObject::delete()` call
+`Dependency::collectSanityChecks()` after `beginTransaction()`, dispatch the collected checks (deduplicated by type and
+id) after their commit and discard them on rollback. Only the outermost delete owns the queue, so the checks of
+recursively deleted children are dispatched once, after the whole tree is committed. A dispatch error is logged and does
+not fail the committed delete. When the element delete itself runs inside a transaction of the caller, "after the
+commit" is still inside that outer transaction, as before.
 
 ## [ ] B-99 – Uninitialized typed properties and `null` ids crash `Dependency` (`Error` / `TypeError`)
 
