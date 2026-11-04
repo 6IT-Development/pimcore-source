@@ -124,11 +124,13 @@ final class UUID extends Model\AbstractModel
     }
 
     /**
+     * Computes the deterministic v5 UUID from instance identifier, type and item id, without touching the database.
+     *
      * @throws Exception
      * @internal
      *
      */
-    public function createUuid(): string
+    public function computeUuid(): string
     {
         if (!$this->getInstanceIdentifier()) {
             throw new Exception('No instance identifier specified.');
@@ -139,6 +141,19 @@ final class UUID extends Model\AbstractModel
         $uuid = Uid::v5($namespace, $this->getInstanceIdentifier() . '~' . $this->getType() . '~' . $this->getItemId());
         $this->uuid = $uuid->toRfc4122();
 
+        return $this->uuid;
+    }
+
+    /**
+     * Computes the UUID and stores its row unless it exists already.
+     *
+     * @throws Exception
+     * @internal
+     *
+     */
+    public function createUuid(): string
+    {
+        $this->computeUuid();
         $this->getDao()->create();
 
         return $this->uuid;
@@ -205,15 +220,21 @@ final class UUID extends Model\AbstractModel
     }
 
     /**
-     *
+     * Returns the UUID of the given item. With $create (the default) a missing row is stored, so that getByUuid()
+     * finds items created before the instance identifier was configured; pass false for a read without DB writes.
      *
      * @throws Exception
      */
-    public static function getByItem(mixed $item): UUID
+    public static function getByItem(mixed $item, bool $create = true): UUID
     {
         $self = new self();
-        $self->setSystemInstanceIdentifier();
-        $self->setUuid($self->setItem($item)->createUuid());
+        $self->setSystemInstanceIdentifier()->setItem($item);
+
+        if ($create) {
+            $self->createUuid();
+        } else {
+            $self->computeUuid();
+        }
 
         return $self;
     }

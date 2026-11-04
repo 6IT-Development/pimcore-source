@@ -17,9 +17,12 @@ With the class `Tool\UUID` you have access to the UUIDs as follows:
 ```php
 use Pimcore\Bundle\UuidBundle\Model\Tool;
   
-//get UUID for given element (document, asset, class, object)
+//get UUID for given element (document, asset, class, object), stores a missing UUID row
 $uuid = Tool\UUID::getByItem($document);
 $uuidString = $uuid->getUuid();
+
+//only compute the UUID of an element, without writing to the database
+$uuidString = Tool\UUID::getByItem($document, false)->getUuid();
  
 //get the UUID model for a given UUID string, null if the UUID is unknown
 $uuid = Tool\UUID::getByUuid($uuidString);

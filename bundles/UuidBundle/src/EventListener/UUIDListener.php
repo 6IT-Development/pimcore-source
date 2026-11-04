@@ -87,7 +87,7 @@ class UUIDListener implements EventSubscriberInterface
                 $element = $this->extractElement($e);
 
                 if ($element) {
-                    $uuidObject = UUID::getByItem($element);
+                    $uuidObject = UUID::getByItem($element, false);
                     $uuidObject->delete();
                 }
             }

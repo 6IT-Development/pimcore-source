@@ -67,7 +67,7 @@ not used because it would also downgrade strict-mode errors (for example a too-l
 
 ---
 
-## [ ] B-04 – `getByItem()` writes to the DB, and the delete path does INSERT-then-DELETE
+## [x] B-04 – `getByItem()` writes to the DB, and the delete path does INSERT-then-DELETE
 
 **Files:** `src/Model/Tool/UUID.php:182-189`, `src/EventListener/UUIDListener.php:65-75`
 
@@ -79,6 +79,13 @@ not used because it would also downgrade strict-mode errors (for example a too-l
 **Fix direction:** split the API into `compute(item): string` (pure, deterministic v5), `getByItem()` (compute, plus
 an optional lazy create made explicit with a flag or a separate `getOrCreate()`), and a delete that does not create
 anything.
+
+**Done:** the new internal `computeUuid()` derives the v5 UUID without DB access; `createUuid()` is `computeUuid()`
+plus the idempotent row write. `getByItem()` takes `bool $create = true`: the default keeps the documented lazy
+creation (rows for items created before the identifier was configured), `false` is a read without writes.
+`onPostDelete()` uses `getByItem($element, false)`, so deleting an element without a row no longer INSERTs one first.
+The docs show both calls. Not addressed: making the pure read the default, which would be a BC break while there is no
+backfill command (I-13), and merging the factory bodies (I-12).
 
 ---
 
