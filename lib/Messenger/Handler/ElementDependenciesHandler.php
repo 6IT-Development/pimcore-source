@@ -46,10 +46,6 @@ class ElementDependenciesHandler
 
     private function saveDependencies(AbstractElement $element): void
     {
-        $hideUnpublished = $this->showUnpublished($element);
-        $getInheritedValues = AbstractObject::getGetInheritedValues();
-        AbstractObject::setGetInheritedValues(false);
-
         $id = $element->getId();
         $type = Service::getElementType($element);
 
@@ -59,16 +55,24 @@ class ElementDependenciesHandler
         $d->setSourceType($type);
         $d->setSourceId($id);
 
-        foreach ($element->resolveDependencies() as $requirement) {
-            if ($requirement['id'] == $id && $requirement['type'] == $type) {
-                // dont't add a reference to yourself
-                continue;
-            }
+        // the flags are process wide, they must be restored even if resolving fails
+        $hideUnpublished = $this->showUnpublished($element);
+        $getInheritedValues = AbstractObject::getGetInheritedValues();
+        AbstractObject::setGetInheritedValues(false);
 
-            $d->addRequirement($requirement['id'], $requirement['type']);
+        try {
+            foreach ($element->resolveDependencies() as $requirement) {
+                if ($requirement['id'] == $id && $requirement['type'] == $type) {
+                    // dont't add a reference to yourself
+                    continue;
+                }
+
+                $d->addRequirement($requirement['id'], $requirement['type']);
+            }
+        } finally {
+            $this->resetHideUnpublished($element, $hideUnpublished);
+            AbstractObject::setGetInheritedValues($getInheritedValues);
         }
-        $this->resetHideUnpublished($element, $hideUnpublished);
-        AbstractObject::setGetInheritedValues($getInheritedValues);
 
         $d->save();
 

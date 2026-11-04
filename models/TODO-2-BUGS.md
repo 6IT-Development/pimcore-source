@@ -1455,7 +1455,7 @@ save. Documented in `doc/18_Tools_and_Features/27_Website_Settings.md`.
 
 ## Dependency (Scope 3)
 
-## [ ] B-92 – `ElementDependenciesHandler` leaks `hideUnpublished = false` / `getInheritedValues = false` into the rest of the process on any exception
+## [x] B-92 – `ElementDependenciesHandler` leaks `hideUnpublished = false` / `getInheritedValues = false` into the rest of the process on any exception
 
 **File:** `lib/Messenger/Handler/ElementDependenciesHandler.php:47-75`
 
@@ -1472,6 +1472,10 @@ save. Documented in `doc/18_Tools_and_Features/27_Website_Settings.md`.
 **Fix direction:** wrap the resolve loop in `try { … } finally { restore }`, or run it through the existing scoped helper
 `DataObject\Service::useInheritedValues(false, fn () => …)` (`models/DataObject/Service.php:1962`) plus an equivalent
 helper for `hideUnpublished`.
+
+**Done:** The flags are changed right before the resolve loop and restored in a `finally`, so an exception from
+`resolveDependencies()` no longer leaves `hideUnpublished = false` / `getInheritedValues = false` behind for the rest of
+the process.
 
 ## [ ] B-93 – `getFilterRequiredByPath()` joins on `targettype` instead of `sourcetype`: wrong or missing "required by" results
 
