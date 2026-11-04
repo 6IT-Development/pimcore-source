@@ -127,9 +127,12 @@ final class Note extends Model\AbstractModel
             }
         }
 
+        // the DAO sets the id of a new note
+        $isNew = !$this->getId();
+
         $this->getDao()->save();
 
-        if (!$this->getId()) {
+        if ($isNew) {
             Pimcore::getEventDispatcher()->dispatch(new ModelEvent($this), NoteEvents::POST_ADD);
         }
     }
@@ -194,7 +197,7 @@ final class Note extends Model\AbstractModel
         return $this->description;
     }
 
-    public function setId(int $id): Note
+    public function setId(?int $id): Note
     {
         $this->id = $id;
 

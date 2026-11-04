@@ -24,6 +24,7 @@ use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element\Note;
+use Throwable;
 
 /**
  * @internal
@@ -56,22 +57,23 @@ class Dao extends Model\Dao\AbstractDao
             $type = $keyValue['type'];
             $name = $keyValue['name'];
 
+            // notes_data.data is a text column, the ids and timestamps come back as strings
             if ($type == 'document') {
                 if ($data) {
-                    $data = Document::getById($data);
+                    $data = Document::getById((int)$data);
                 }
             } elseif ($type == 'asset') {
                 if ($data) {
-                    $data = Asset::getById($data);
+                    $data = Asset::getById((int)$data);
                 }
             } elseif ($type == 'object') {
                 if ($data) {
-                    $data = DataObject::getById($data);
+                    $data = DataObject::getById((int)$data);
                 }
             } elseif ($type == 'date') {
                 if ($data > 0) {
                     $date = new DateTime();
-                    $date->setTimestamp($data);
+                    $date->setTimestamp((int)$data);
                     $data = $date;
                 }
             } elseif ($type == 'bool') {
@@ -92,6 +94,28 @@ class Dao extends Model\Dao\AbstractDao
      * @throws Exception
      */
     public function save(): bool
+    {
+        $id = $this->model->getId();
+
+        // the note and its data are written together
+        try {
+            $this->db->transactional(function (): void {
+                $this->doSave();
+            });
+        } catch (Throwable $e) {
+            // a new note must not keep the id of the rolled back insert
+            $this->model->setId($id);
+
+            throw $e;
+        }
+
+        return true;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function doSave(): void
     {
         $version = $this->model->getObjectVars();
 
@@ -138,8 +162,6 @@ class Dao extends Model\Dao\AbstractDao
                 'data' => $data,
             ]);
         }
-
-        return true;
     }
 
     /** Deletes note from database.
@@ -147,8 +169,10 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function delete(): void
     {
-        $this->db->delete('notes', ['id' => $this->model->getId()]);
-        $this->deleteData();
+        $this->db->transactional(function (): void {
+            $this->db->delete('notes', ['id' => $this->model->getId()]);
+            $this->deleteData();
+        });
     }
 
     /** Deletes note data from database.

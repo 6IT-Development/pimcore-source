@@ -3143,7 +3143,7 @@ inserts the new one, the unique index rejects it while another session holds the
 editors gets it. The `isLocked()` + `lock()` sequence in the admin controllers (`admin-ui-classic-bundle`) should move
 to `tryLock()`. `cpath` is `?string`, `null` when the element no longer exists.
 
-## [ ] B-170 – Notes: `POST_ADD` never fires; element ids are loaded as strings
+## [x] B-170 – Notes: `POST_ADD` never fires; element ids are loaded as strings
 
 **Files:** `models/Element/Note.php:102-119`; `models/Element/Note/Dao.php:39-143`
 
@@ -3153,6 +3153,11 @@ to `tryLock()`. `cpath` is `?string`, `null` when the element no longer exists.
 - `save()` / `delete()` are not atomic (`notes` vs `notes_data`).
 
 **Fix direction:** remember "is new" before saving; `(int)` casts; transaction.
+
+**Done:** `Note::save()` remembers whether the note is new before the DAO sets the id, so `NoteEvents::POST_ADD` fires
+for new notes. `Dao::getById()` casts the `notes_data` values of the `document` / `asset` / `object` / `date` types to
+`int`. `Dao::save()` and `delete()` write `notes` and `notes_data` in one transaction; a failed save resets the id of a
+new note (`setId()` accepts `null`, like `getId()` returns it).
 
 ## [ ] B-171 – Tags: moving a tag below itself hangs; batch assignment is not atomic
 
