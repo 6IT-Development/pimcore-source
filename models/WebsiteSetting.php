@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Model;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Config;
@@ -58,6 +59,13 @@ final class WebsiteSetting extends AbstractModel
      * It lives in the RuntimeCache (not in a static property), so it is cleared together with it, e.g. in workers.
      */
     private const string NAME_ID_MAPPING_CACHE_KEY = 'website_setting_name_id_mapping';
+
+    /**
+     * The values of the website_settings.type enum column.
+     */
+    private const array TYPES = ['text', 'document', 'asset', 'object', 'bool'];
+
+    private const array ELEMENT_TYPES = ['document', 'asset', 'object'];
 
     protected static function getCacheKey(string $name, ?int $siteId = null, ?string $language = null, ?string $fallbackLanguage = null): string
     {
@@ -237,7 +245,7 @@ final class WebsiteSetting extends AbstractModel
     public function getData(): mixed
     {
         // lazy-load data of type asset, document, object
-        if (in_array($this->getType(), ['document', 'asset', 'object']) && !$this->data instanceof ElementInterface && is_numeric($this->data)) {
+        if (in_array($this->getType(), self::ELEMENT_TYPES, true) && !$this->data instanceof ElementInterface && is_numeric($this->data)) {
             return Element\Service::getElementById($this->getType(), (int)$this->data);
         }
 
@@ -279,11 +287,24 @@ final class WebsiteSetting extends AbstractModel
     /**
      * enum('text','document','asset','object','bool')
      *
-     *
      * @return $this
+     *
+     * @throws InvalidArgumentException for any other type; '' (an invalid value stored before) is read as null
      */
     public function setType(?string $type): WebsiteSetting
     {
+        if ($type === '') {
+            $type = null;
+        }
+
+        if ($type !== null && !in_array($type, self::TYPES, true)) {
+            throw new InvalidArgumentException(sprintf(
+                'Invalid website setting type "%s", allowed are: %s',
+                $type,
+                implode(', ', self::TYPES)
+            ));
+        }
+
         $this->type = $type;
 
         return $this;
@@ -346,7 +367,8 @@ final class WebsiteSetting extends AbstractModel
     }
 
     /**
-     * @throws ValidationException when the name is empty or a setting with the same name, site and language exists
+     * @throws ValidationException when the name is empty, a setting with the same name, site and language exists or
+     *                             the data of an element type is no element id
      */
     public function save(): void
     {
@@ -369,6 +391,19 @@ final class WebsiteSetting extends AbstractModel
     {
         if (trim($this->name) === '') {
             throw new ValidationException('Website setting name must not be empty');
+        }
+
+        // e.g. setType('document')->setData('hello'): getData() would return the text, the website config an "element"
+        if (in_array($this->type, self::ELEMENT_TYPES, true)
+            && !in_array($this->data, [null, ''], true)
+            && !(is_int($this->data) || (is_string($this->data) && ctype_digit($this->data)))
+        ) {
+            throw new ValidationException(sprintf(
+                'Website setting "%s" of type %s needs an element id as data, got %s',
+                $this->name,
+                $this->type,
+                get_debug_type($this->data)
+            ));
         }
 
         if ($this->getDao()->hasDuplicate()) {

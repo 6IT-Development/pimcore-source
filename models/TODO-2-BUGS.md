@@ -1368,7 +1368,7 @@ B-84) throw a `ValidationException` before anything is written. The unique key i
 may already hold duplicates, which a migration would have to merge or delete first, and that needs a decision on which
 row to keep. Until then the lowest id wins a tie in both lookups (B-83).
 
-## [ ] B-87 – `type` is not validated; an unknown type silently makes the setting disappear
+## [x] B-87 – `type` is not validated; an unknown type silently makes the setting disappear
 
 **Files:** `models/WebsiteSetting.php:228-248`; `install.sql:606` (`ENUM('text','document','asset','object','bool')`);
 `lib/Config.php:229-234`
@@ -1382,6 +1382,12 @@ row to keep. Until then the lowest id wins a tie in both lookups (B-83).
 
 **Fix direction:** backed enum for the type (I-33); reject unknown values in `setType()`; validate data against the
 type in `save()`.
+
+**Done:** `setType()` throws an `InvalidArgumentException` for anything outside the enum column values. `''`, which
+earlier saves could have stored for an invalid type, is read as `null`, so such rows still load. `save()` throws a
+`ValidationException` when a `document` / `asset` / `object` setting holds data that is not an element id (empty
+data is allowed), which catches `setType('document')->setData('hello')`. The backed enum stays with I-33. A setting
+without any type (`null`) still has no value in `pimcore_website_config()`; that is the existing meaning of "no type".
 
 ## [ ] B-88 – `save()` with a manually set id that does not exist silently does nothing; add/update detection differs from the DAO
 
