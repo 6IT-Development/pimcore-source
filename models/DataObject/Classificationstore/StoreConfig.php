@@ -110,12 +110,29 @@ final class StoreConfig extends Model\AbstractModel
     }
 
     /**
-     * Deletes the key value group configuration
+     * Deletes the store with its collections, groups and keys
+     *
+     * The configs are deleted through their models, so their caches are cleared and their delete events are
+     * dispatched. ON DELETE CASCADE foreign keys remove the group/key and collection/group relations and the object
+     * data of the deleted groups (`object_classificationstore_groups_*` / `object_classificationstore_data_*`).
+     * The store row is deleted last, so a run that fails halfway can be repeated.
      */
     public function delete(): void
     {
         $this->dispatchEvent(new StoreConfigEvent($this), DataObjectClassificationStoreEvents::STORE_CONFIG_PRE_DELETE);
-        $this->getDao()->delete();
+
+        $dao = $this->getDao();
+        foreach ($dao->getConfigIds(CollectionConfig\Dao::TABLE_NAME_COLLECTIONS) as $collectionId) {
+            CollectionConfig::getById($collectionId, true)?->delete();
+        }
+        foreach ($dao->getConfigIds(GroupConfig\Dao::TABLE_NAME_GROUPS) as $groupId) {
+            GroupConfig::getById($groupId, true)?->delete();
+        }
+        foreach ($dao->getConfigIds(KeyConfig\Dao::TABLE_NAME_KEYS) as $keyId) {
+            KeyConfig::getById($keyId, true)?->delete();
+        }
+
+        $dao->delete();
         $this->dispatchEvent(new StoreConfigEvent($this), DataObjectClassificationStoreEvents::STORE_CONFIG_POST_DELETE);
     }
 

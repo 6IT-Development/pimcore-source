@@ -17,12 +17,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
-use Doctrine\DBAL\Connection;
 use Pimcore\Bundle\CoreBundle\Command\Traits\DestructiveCommandTrait;
 use Pimcore\Cache;
 use Pimcore\Console\AbstractCommand;
-use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\Classificationstore\CollectionConfig;
+use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
+use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 use Pimcore\Model\DataObject\Classificationstore\StoreConfig;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
@@ -75,10 +76,13 @@ class DeleteClassificationStoreCommand extends AbstractCommand
             ));
         }
 
-        $db = Db::get();
         $counts = [];
-        foreach (['keys', 'groups', 'collections'] as $type) {
-            $counts[] = $db->fetchOne('select count(*) from classificationstore_' . $type . ' where storeId = ?', [$storeId]) . ' ' . $type;
+        foreach ([
+            'keys' => KeyConfig\Dao::TABLE_NAME_KEYS,
+            'groups' => GroupConfig\Dao::TABLE_NAME_GROUPS,
+            'collections' => CollectionConfig\Dao::TABLE_NAME_COLLECTIONS,
+        ] as $type => $table) {
+            $counts[] = count($store->getDao()->getConfigIds($table)) . ' ' . $type;
         }
 
         if ($this->isDryRun()) {
@@ -100,39 +104,22 @@ class DeleteClassificationStoreCommand extends AbstractCommand
             return self::SUCCESS;
         }
 
-        $db->transactional(function (Connection $db) use ($storeId, $output): void {
-            foreach ($db->fetchFirstColumn("show tables like 'object_classificationstore_data_%'") as $table) {
-                $this->executeDelete($db, $output, 'delete from ' . $db->quoteIdentifier($table) . ' where keyId In (select id from classificationstore_keys where storeId = ?)', $storeId);
-            }
+        // deletes the collections, groups and keys through their models; FK cascades remove the relations and object data
+        $store->delete();
 
-            foreach ($db->fetchFirstColumn("show tables like 'object_classificationstore_groups_%'") as $table) {
-                $this->executeDelete($db, $output, 'delete from ' . $db->quoteIdentifier($table) . ' where groupId In (select id from classificationstore_groups where storeId = ?)', $storeId);
-            }
-
-            $this->executeDelete($db, $output, 'delete from classificationstore_keys where storeId = ?', $storeId);
-            $this->executeDelete($db, $output, 'delete from classificationstore_groups where storeId = ?', $storeId);
-            $this->executeDelete($db, $output, 'delete from classificationstore_collections where storeId = ?', $storeId);
-            $this->executeDelete($db, $output, 'delete from classificationstore_stores where id = ?', $storeId);
-        });
-
-        Cache::clearAll();
+        // cached objects of these classes still hold the deleted classification store values
+        Cache::clearTags([
+            'output',
+            ...array_map(static fn (int|string $classId): string => 'class_' . $classId, array_keys($affectedClasses)),
+        ]);
 
         $this->io->success(sprintf('Classification store "%s" (ID %d) deleted with %s.', $store->getName(), $storeId, implode(', ', $counts)));
 
         return self::SUCCESS;
     }
 
-    private function executeDelete(Connection $db, OutputInterface $output, string $sql, int $storeId): void
-    {
-        if ($output->isVerbose()) {
-            $output->writeln($sql . ' [' . $storeId . ']');
-        }
-
-        $db->executeStatement($sql, [$storeId]);
-    }
-
     /**
-     * @return string[]
+     * @return array<int|string, string> class names by class ID
      */
     private function getClassesUsingStore(int $storeId): array
     {
@@ -141,7 +128,7 @@ class DeleteClassificationStoreCommand extends AbstractCommand
             foreach ($class->getFieldDefinitions() as $fieldDefinition) {
                 if ($fieldDefinition instanceof ClassDefinition\Data\Classificationstore
                     && $fieldDefinition->getStoreId() === $storeId) {
-                    $classes[] = $class->getName();
+                    $classes[$class->getId()] = $class->getName();
 
                     break;
                 }

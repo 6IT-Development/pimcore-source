@@ -265,7 +265,7 @@ mode each one lists the planned deletes, moves or re-saves, and every command en
 asks in `execute()` instead of `interact()`. `ClassesRebuildCommand --delete-classes` keeps its own question, because
 its `--force` already means "rebuild all classes".
 
-### [ ] I-17 – `DeleteClassificationStoreCommand`: rely on FK cascades or the model API
+### [x] I-17 – `DeleteClassificationStoreCommand`: rely on FK cascades or the model API
 
 **File:** `src/Command/DeleteClassificationStoreCommand.php:55-85`
 
@@ -276,6 +276,14 @@ its `--force` already means "rebuild all classes".
 - Check whether `StoreConfig::delete()` (`models/DataObject/Classificationstore/StoreConfig.php:115`) can be extended to
   do the full cascade. The command should not hand-write SQL.
 - `Cache::clearAll()` is heavy. Clearing the classification-store tags is enough.
+
+**Done:** `StoreConfig::delete()` deletes the store's collections, groups and keys through `CollectionConfig`,
+`GroupConfig` and `KeyConfig::delete()`, so their caches are cleared and their delete events are dispatched, and deletes
+the store row last. The FKs (install.sql, `Classificationstore\Dao::createUpdateTable()`, migration
+`Version20221222181745` for older installs) remove the relations and the `object_classificationstore_groups_*` /
+`_data_*` rows. The IDs come from the new `StoreConfig\Dao::getConfigIds()`, because `KeyConfig\Listing` returns either
+the enabled or the disabled keys, never both. The command has no SQL any more. The config caches have no tags, so
+instead of `Cache::clearAll()` the command clears `output` and the `class_<id>` tags of the classes that use the store.
 
 ### [ ] I-18 – Remove or deprecate legacy/migration commands and options
 

@@ -92,6 +92,21 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
+     * Returns the IDs of the configs (keys, groups or collections) in $table that belong to this store
+     *
+     * Read directly instead of through the listings, because the key listing returns either enabled or disabled keys.
+     *
+     * @return int[]
+     */
+    public function getConfigIds(string $table): array
+    {
+        return array_map('intval', $this->db->fetchFirstColumn(
+            'SELECT id FROM ' . $this->db->quoteIdentifier($table) . ' WHERE storeId = ? ORDER BY id',
+            [$this->model->getId()]
+        ));
+    }
+
+    /**
      * @throws Exception
      */
     public function update(): void
