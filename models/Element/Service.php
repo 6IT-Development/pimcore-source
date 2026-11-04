@@ -643,7 +643,7 @@ class Service extends Model\AbstractModel
         }
 
         if ($userRoleIds = $user->getRoles()) {
-            $roleWorkspacesSql = 'SELECT cpath, userid, max(list) as list FROM users_workspaces_' . $type . ' WHERE userId IN (' . implode(',', $userRoleIds) . ')';
+            $roleWorkspacesSql = 'SELECT cpath, max(list) as list FROM users_workspaces_' . $type . ' WHERE userId IN (' . implode(',', $userRoleIds) . ')';
             if ($workspaceCids) {
                 $roleWorkspacesSql .= ' AND cid NOT IN (' . implode(',', $workspaceCids) . ')';
             }
@@ -670,14 +670,17 @@ class Service extends Model\AbstractModel
                 $path = $uniquePathsKeys[$index];
                 if ($uniquePaths[$path] == 0) {
                     $forbidden[$path] = [];
+                    // children start with the path and a slash; in the sorted keys every path that starts with $path
+                    // follows it, siblings like /foo-bar can sort in between /foo and /foo/bar
+                    $childPrefix = rtrim($path, '/') . '/';
                     for ($findIndex = $index + 1; $findIndex < $totalPaths; $findIndex++) { //NB: the starting index is the last index we got
                         $findPath = $uniquePathsKeys[$findIndex];
-                        if (str_contains($findPath, $path)) { //it means that we found a children
-                            if ($uniquePaths[$findPath] == 1) {
-                                $forbidden[$path][] = $findPath; //adding list=1 children
-                            }
-                        } else {
+                        if (!str_starts_with($findPath, $path)) {
                             break;
+                        }
+
+                        if (str_starts_with($findPath, $childPrefix) && $uniquePaths[$findPath] == 1) {
+                            $forbidden[$path][] = $findPath; //adding list=1 children
                         }
                     }
                 } else {

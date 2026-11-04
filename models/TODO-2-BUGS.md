@@ -3071,7 +3071,7 @@ Saved elements keep the `<type>_properties_<id>` cache entry.
 (as in `isAllowed()`). The no-user behaviour (all allowed on the CLI, nothing otherwise) is unchanged and now documented
 on the method.
 
-## [ ] B-167 – Workspace path matching is not anchored for documents and objects (B-28 extended)
+## [x] B-167 – Workspace path matching is not anchored for documents and objects (B-28 extended)
 
 **Files:** `models/Element/Service.php:624-688` (`:642-646`, `:671`); `models/Document/Dao.php:344-346`, `:381-383`;
 `models/DataObject/AbstractObject/Dao.php:306-310`, `:405-407`, `:611-632`; `models/Element/Dao.php:81-95`
@@ -3087,6 +3087,14 @@ on the method.
 
 **Fix direction:** compare with `/` appended on both sides (`str_starts_with($findPath, $path . '/')`); use
 `getRealPath()`.
+
+**Done:** `findForbiddenPaths()` counts a path as child of a forbidden workspace only when it starts with the workspace
+path and a slash, and keeps scanning the sorted paths while they start with the workspace path (a sibling like
+`/foo-bar` sorts between `/foo` and `/foo/bar`, so the old `break` also missed children). The role query no longer
+selects the non-aggregated `userid`. `hasChildren()` / `getChildAmount()` of documents and objects compare `CONCAT(path,
+key)` and `cpath` with a trailing slash on both sides as the asset DAO does since B-28, and the object
+`getChildPermissions()` matches `<path>/%`. `Element\Dao::InheritingPermission()` uses `getRealFullPath()`, so a
+document's site-rewritten path in the frontend no longer changes the result.
 
 ## [ ] B-168 – Recycle bin: global state leaks, permission check after side effects, swallowed errors
 
