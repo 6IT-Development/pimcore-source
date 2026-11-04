@@ -1186,13 +1186,16 @@ clears the value, instead of passing it to `getByPath(string)` and throwing a `T
 metadata types cast the numeric value to `int` before `getElementById()` / `getById()`, so ids read from the
 database as strings no longer trigger the string-id deprecation.
 
-## [ ] B-76 – Inconsistent "empty" values in relation metadata
+## [x] B-76 – Inconsistent "empty" values in relation metadata
 
 **File:** `MetaData/ClassDefinition/Data/Asset.php:76`, `Document.php:76`, `DataObject.php:76`
 
 - `getDataFromEditMode()` returns `''`, `normalize()` returns `null`; affects `isEmpty` and the search index.
 
 **Fix direction:** return `null`.
+
+**Done:** `getDataFromEditMode()` of the asset, document and object metadata types returns `null` (now typed `?int`)
+for a value that does not resolve to an element, the same as `normalize()` and `getDataFromListfolderGrid()`.
 
 ## [ ] B-77 – Document/DataObject metadata grid round-trip uses `getFullPath()`
 

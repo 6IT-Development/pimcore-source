@@ -63,7 +63,7 @@ class DataObject extends Data
         return $data;
     }
 
-    public function getDataFromEditMode(mixed $data, array $params = []): int|string|null
+    public function getDataFromEditMode(mixed $data, array $params = []): ?int
     {
         $element = $data;
         if (is_string($data)) {
@@ -73,7 +73,7 @@ class DataObject extends Data
             return $element->getId();
         }
 
-        return '';
+        return null;
     }
 
     public function getDataForResource(mixed $data, array $params = []): mixed
