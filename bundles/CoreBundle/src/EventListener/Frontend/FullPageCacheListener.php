@@ -25,6 +25,7 @@ use Pimcore;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\StaticPageContextAwareTrait;
 use Pimcore\Cache;
+use Pimcore\Cache\FullPage\FullPageCacheState;
 use Pimcore\Cache\FullPage\SessionStatus;
 use Pimcore\Config;
 use Pimcore\Event\Cache\FullPage\CacheResponseEvent;
@@ -46,6 +47,10 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
+/**
+ * Serves pages from and stores them in the full page cache. Whether the current page may be cached, and for how long,
+ * is kept in FullPageCacheState; enable(), disable() and the lifetime methods here only forward to it.
+ */
 class FullPageCacheListener implements ResetInterface
 {
     use PimcoreContextAwareTrait;
@@ -57,62 +62,47 @@ class FullPageCacheListener implements ResetInterface
      */
     private const array IGNORED_VARY_HEADERS = ['accept-encoding', 'x-requested-with'];
 
-    protected bool $enabled = true;
-
     protected bool $stopResponsePropagation = false;
-
-    protected ?int $lifetime = null;
-
-    protected bool $addExpireHeader = true;
-
-    protected ?string $disableReason = null;
 
     protected ?string $defaultCacheKey = null;
 
     public function __construct(
         protected SessionStatus            $sessionStatus,
         protected EventDispatcherInterface $eventDispatcher,
-        protected Config                   $config
+        protected Config                   $config,
+        private readonly FullPageCacheState $state
     )
     {
     }
 
     /**
      * All state is per request, reset it before the next request (worker runtimes): otherwise one cache hit stops the
-     * response propagation of every following request, one POST disables the cache for good and the cache key of the
-     * previous request can be reused.
+     * response propagation of every following request and the cache key of the previous request can be reused.
+     * FullPageCacheState is reset on its own.
      */
     public function reset(): void
     {
-        $this->enabled = true;
         $this->stopResponsePropagation = false;
-        $this->lifetime = null;
-        $this->addExpireHeader = true;
-        $this->disableReason = null;
         $this->defaultCacheKey = null;
     }
 
     public function disable(?string $reason = null): bool
     {
-        if ($reason) {
-            $this->disableReason = $reason;
-        }
-
-        $this->enabled = false;
+        $this->state->disable($reason);
 
         return true;
     }
 
     public function enable(): bool
     {
-        $this->enabled = true;
+        $this->state->enable();
 
         return true;
     }
 
     public function isEnabled(): bool
     {
-        return $this->enabled;
+        return $this->state->enabled;
     }
 
     /**
@@ -120,24 +110,24 @@ class FullPageCacheListener implements ResetInterface
      */
     public function setLifetime(?int $lifetime): static
     {
-        $this->lifetime = $lifetime;
+        $this->state->setLifetime($lifetime);
 
         return $this;
     }
 
     public function getLifetime(): ?int
     {
-        return $this->lifetime;
+        return $this->state->lifetime;
     }
 
     public function disableExpireHeader(): void
     {
-        $this->addExpireHeader = false;
+        $this->state->disableExpireHeader();
     }
 
     public function enableExpireHeader(): void
     {
-        $this->addExpireHeader = true;
+        $this->state->enableExpireHeader();
     }
 
     #[AsEventListener(KernelEvents::REQUEST, priority: 120)]
@@ -412,23 +402,25 @@ class FullPageCacheListener implements ResetInterface
             $this->disable('Response can\'t be cached');
         }
 
-        if ($this->enabled && $this->sessionStatus->isDisabledBySession($request)) {
+        if ($this->state->enabled && $this->sessionStatus->isDisabledBySession($request)) {
             $this->disable('Session in use');
         }
 
-        if ($this->disableReason) {
-            $response->headers->set('X-Pimcore-Output-Cache-Disable-Reason', $this->disableReason);
+        if ($this->state->disableReason) {
+            $response->headers->set('X-Pimcore-Output-Cache-Disable-Reason', $this->state->disableReason);
         }
 
-        if ($this->enabled && $response->getStatusCode() == 200 && $this->defaultCacheKey) {
+        $lifetime = $this->state->lifetime;
+
+        if ($this->state->enabled && $response->getStatusCode() == 200 && $this->defaultCacheKey) {
             try {
-                if ($this->lifetime && $this->addExpireHeader) {
+                if ($lifetime && $this->state->expireHeaderEnabled) {
                     // add cache control for proxies and http-caches like varnish, ...
-                    $response->headers->set('Cache-Control', 'public, max-age=' . $this->lifetime);
+                    $response->headers->set('Cache-Control', 'public, max-age=' . $lifetime);
 
                     // add expire header
                     $date = new DateTime('now');
-                    $date->add(new DateInterval('PT' . $this->lifetime . 'S'));
+                    $date->add(new DateInterval('PT' . $lifetime . 'S'));
                     $response->headers->set('Expires', $date->format(DateTimeInterface::RFC1123));
                 }
 
@@ -449,9 +441,9 @@ class FullPageCacheListener implements ResetInterface
                 $this->eventDispatcher->dispatch($event, FullPageCacheEvents::PREPARE_TAGS);
                 $tags = $event->getTags();
 
-                $tags[] = $this->lifetime ? 'output_lifetime' : 'output';
+                $tags[] = $lifetime ? 'output_lifetime' : 'output';
 
-                Cache::save($cacheItem, $cacheKey, $tags, $this->lifetime, 1000, true);
+                Cache::save($cacheItem, $cacheKey, $tags, $lifetime, 1000, true);
             } catch (Exception $e) {
                 Logger::error((string)$e);
 

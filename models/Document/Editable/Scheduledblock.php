@@ -19,7 +19,7 @@ namespace Pimcore\Model\Document\Editable;
 
 use Generator;
 use Pimcore;
-use Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener;
+use Pimcore\Cache\FullPage\FullPageCacheState;
 use Pimcore\Document\Editable\Block\BlockName;
 use Pimcore\Http\Request\Resolver\OutputTimestampResolver;
 use Pimcore\Tool\HtmlUtils;
@@ -114,18 +114,18 @@ class Scheduledblock extends Block implements BlockInterface
             return;
         }
 
-        $cacheService = Pimcore::getContainer()->get(FullPageCacheListener::class);
+        $cacheState = Pimcore::getContainer()->get(FullPageCacheState::class);
 
-        if ($cacheService->isEnabled()) {
+        if ($cacheState->enabled) {
             $calculatedLifetime = (int)$nextElement['date'] - $outputTimestamp;
             if ($calculatedLifetime <= 0) {
                 return;
             }
 
-            $currentLifetime = $cacheService->getLifetime();
+            $currentLifetime = $cacheState->lifetime;
 
             if (empty($currentLifetime) || $currentLifetime > $calculatedLifetime) {
-                $cacheService->setLifetime($calculatedLifetime);
+                $cacheState->setLifetime($calculatedLifetime);
             }
         }
     }

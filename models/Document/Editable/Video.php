@@ -19,7 +19,7 @@ namespace Pimcore\Model\Document\Editable;
 
 use DateTime;
 use Pimcore;
-use Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener;
+use Pimcore\Cache\FullPage\FullPageCacheState;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Asset;
@@ -445,8 +445,7 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
 
                 if ($thumbnail['status'] === 'inprogress') {
                     // disable the output-cache if enabled
-                    $cacheService = Pimcore::getContainer()->get(FullPageCacheListener::class);
-                    $cacheService->disable('Video rendering in progress');
+                    Pimcore::getContainer()->get(FullPageCacheState::class)->disable('Video rendering in progress');
 
                     return $this->getProgressCode((string)$image);
                 }

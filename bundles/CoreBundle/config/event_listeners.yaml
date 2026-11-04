@@ -58,8 +58,9 @@ services:
     # VARIOUS MODEL SPECIFIC LISTENERS
     #
 
+    # public so that bulk imports can disable it: Pimcore::getContainer()->get(WorkflowManagementListener::class)->disable()
     Pimcore\Bundle\CoreBundle\EventListener\WorkflowManagementListener:
-        public: true # can be disabled
+        public: true
 
     Pimcore\Bundle\CoreBundle\EventListener\ElementTagsListener: ~
 
@@ -85,8 +86,7 @@ services:
 
     Pimcore\Bundle\CoreBundle\EventListener\Frontend\InternalWysiwygHtmlAttributeFilterListener: ~
 
-    Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener:
-        public: true
+    Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener: ~
 
     Pimcore\Bundle\CoreBundle\EventListener\MaintenancePageListener: ~
 

@@ -42,6 +42,12 @@
   fallback document and the `Content-Language` locale are stored as request attributes, and the current site is reset
   at the start of each main request (`Site::resetCurrentSite()`). The web debug toolbar is no longer disabled by
   removing its subscriber but via `WebDebugToolbarListener::setMode()` for the current request only.
+#### [Full page cache]
+- Whether the current page is cached, its lifetime and the expire header are kept in the new public service
+  `Pimcore\Cache\FullPage\FullPageCacheState`. `FullPageCacheListener` is no longer public, so
+  `Pimcore::getContainer()->get(FullPageCacheListener::class)` fails: inject `FullPageCacheState` (or the listener) or
+  get the state from the container. The listener's `disable()`, `enable()`, `setLifetime()` etc. forward to the state.
+  The listener has a new constructor argument `$state`.
 #### [Areabricks]
 - Fixed: an areabrick with both a `pimcore.area.brick` tag in the service config and the `#[AsAreabrick]` attribute
   was registered twice, so every editmode/areablock render failed with "Areabrick … is already registered" (or the brick

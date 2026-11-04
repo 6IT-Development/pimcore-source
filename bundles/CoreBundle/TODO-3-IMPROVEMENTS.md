@@ -800,7 +800,7 @@ IDs continue from I-42. Line numbers are from commit `43948f45d7` (code identica
 when the page is shown (doc updated). `SessionStatus` moved to `cache.yaml`, the duplicate tag and argument and the dead
 `TranslationDebugListener` check are gone. `FullPageCacheListener` stays public until I-44.
 
-### [ ] I-44 – Stop pulling listeners out of the container as public services
+### [x] I-44 – Stop pulling listeners out of the container as public services
 
 **Files:** `config/event_listeners.yaml:75-76, 114-115`, `lib/Tool/Frontend.php:103`,
 `models/Document/Editable/Video.php:448`, `models/Document/Editable/Scheduledblock.php:112`
@@ -810,6 +810,13 @@ when the page is shown (doc updated). `SessionStatus` moved to `cache.yaml`, the
 - Extract a small `FullPageCacheState` (request-attribute based, see C-08) or a `FullPageCacheControl` service.
   Inject it where possible, and let the listener read it. The listener can then be private and `final`.
 - `WorkflowManagementListener` `public: true` (see B-42).
+
+**Done:** new public `Pimcore\Cache\FullPage\FullPageCacheState` (`kernel.reset`, asymmetric-visibility properties)
+holds enabled flag, disable reason, lifetime and expire-header flag. `Tool\Frontend`, `Video` and `Scheduledblock` use
+it, and the listener reads it and is private now. Its `disable()` / `setLifetime()` etc. forward to the state for BC.
+The listener is not `final` because it is not `@internal` and the docs show it as an injectable service. Docs and
+upgrade notes are updated. `WorkflowManagementListener` stays public: B-42 kept `disable()` for bulk imports, and that
+only works through the container. The YAML now says so.
 
 ### [ ] I-45 – Document and centralise listener priorities; fix stale comments
 

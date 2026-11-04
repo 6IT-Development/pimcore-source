@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Tool;
 
 use Pimcore;
-use Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener;
+use Pimcore\Cache\FullPage\FullPageCacheState;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element;
@@ -108,12 +108,12 @@ final class Frontend
      */
     public static function isOutputCacheEnabled(): bool|array
     {
-        $cacheService = Pimcore::getContainer()->get(FullPageCacheListener::class);
+        $cacheState = Pimcore::getContainer()->get(FullPageCacheState::class);
 
-        if ($cacheService->isEnabled()) {
+        if ($cacheState->enabled) {
             return [
                 'enabled' => true,
-                'lifetime' => $cacheService->getLifetime(),
+                'lifetime' => $cacheState->lifetime,
             ];
         }
 

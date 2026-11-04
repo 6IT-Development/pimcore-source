@@ -20,6 +20,7 @@ namespace Pimcore\Tests\Unit\HttpKernel;
 use Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener;
 use Pimcore\Bundle\CoreBundle\EventListener\Frontend\LocaleListener;
 use Pimcore\Bundle\CoreBundle\EventListener\ResponseStackListener;
+use Pimcore\Cache\FullPage\FullPageCacheState;
 use Pimcore\Cache\FullPage\SessionStatus;
 use Pimcore\Config;
 use Pimcore\Http\ResponseStack;
@@ -77,20 +78,28 @@ class LongRunningProcessStateTest extends TestCase
 
     public function testFullPageCacheStateIsReset(): void
     {
+        $state = new FullPageCacheState();
         $listener = new FullPageCacheListener(
             $this->createMock(SessionStatus::class),
             $this->createMock(EventDispatcherInterface::class),
-            new Config()
+            new Config(),
+            $state
         );
 
         $listener->disable('POST request');
         $listener->setLifetime(60);
         $listener->disableExpireHeader();
 
+        $this->assertFalse($state->enabled);
+        $this->assertSame(60, $state->lifetime);
+
+        $state->reset();
         $listener->reset();
 
         $this->assertTrue($listener->isEnabled());
         $this->assertNull($listener->getLifetime());
+        $this->assertNull($state->disableReason);
+        $this->assertTrue($state->expireHeaderEnabled);
     }
 
     public function testCurrentSiteCanBeReset(): void

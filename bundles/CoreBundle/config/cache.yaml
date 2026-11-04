@@ -74,3 +74,7 @@ services:
     Pimcore\Cache\FullPage\SessionStatus:
         arguments:
             $symfonyMetadataStorageKey: '%session.metadata.storage_key%'
+
+    # public for models and static helpers that can't inject it (editables, Tool\Frontend::isOutputCacheEnabled())
+    Pimcore\Cache\FullPage\FullPageCacheState:
+        public: true

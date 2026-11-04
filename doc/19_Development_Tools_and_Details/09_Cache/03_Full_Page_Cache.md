@@ -90,19 +90,23 @@ class DetermineFullPageCacheEventListener
 }
 ```
 
-### Disable the full page cache listener entirely
-You can obtain the full page cache service from the container and disable it, e.g. in a Controller via DI: 
+### Disable the full page cache for the current request
+Inject `FullPageCacheState` (e.g. into a controller action) and disable the cache or change its lifetime. The state
+only applies to the current request:
 ```php
 <?php
 
-    use Pimcore\Bundle\CoreBundle\EventListener\Frontend\FullPageCacheListener;
+    use Pimcore\Cache\FullPage\FullPageCacheState;
     
-    public function portalAction(Request $request, FullPageCacheListener $fullPageCacheListener)
+    public function portalAction(Request $request, FullPageCacheState $fullPageCacheState)
     {
-       $fullPageCacheListener->disable('Your disable reason');
+       $fullPageCacheState->disable('Your disable reason');
        return $this->redirect('de');
     }
 ```
+
+`FullPageCacheListener::disable()`, `setLifetime()` etc. still work and forward to the state, but the listener is no
+longer a public service: use DI, or `Pimcore::getContainer()->get(FullPageCacheState::class)` where DI is not possible.
 
 ## Disable the Full Page Cache via your request
 
