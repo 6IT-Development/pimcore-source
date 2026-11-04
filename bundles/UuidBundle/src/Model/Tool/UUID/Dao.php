@@ -73,7 +73,7 @@ class Dao extends Model\Dao\AbstractDao
     public function delete(): void
     {
         $uuid = $this->model->getUuid();
-        if (!$uuid) {
+        if ($uuid === null || $uuid === '') {
             throw new Exception("Couldn't delete UUID - no UUID specified.");
         }
 

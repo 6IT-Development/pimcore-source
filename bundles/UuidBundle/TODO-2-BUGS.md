@@ -201,7 +201,7 @@ its UUIDs.
 
 ---
 
-## [ ] B-10 – Guard checks are dead code because typed properties are uninitialised
+## [x] B-10 – Guard checks are dead code because typed properties are uninitialised
 
 **Files:** `src/Model/Tool/UUID.php:37-55, 73-76, 133-135, 149-152`, `src/Model/Tool/UUID/Dao.php:65-68`
 
@@ -214,6 +214,12 @@ The intended domain exceptions are never raised.
 
 **Fix direction:** make these properties nullable with a `null` default and getters returning `?string` (or use
 `isset()` checks), so the guards work as written.
+
+**Done:** `$itemId`, `$type`, `$uuid` and `$instanceIdentifier` are nullable with a `null` default, and their getters
+return `?string` (`int|string|null` for the item id). The guards compare against `null` and `""` instead of using `!`,
+so `"0"` stays valid: `computeUuid()` throws its "No instance identifier specified." exception and a new "No item
+specified." exception when type or item id is missing, and `Dao::delete()` throws "no UUID specified" for a fresh
+model. `resolveItem()` checks `null` instead of `isset()`.
 
 ---
 

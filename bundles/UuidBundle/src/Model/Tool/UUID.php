@@ -36,25 +36,25 @@ final class UUID extends Model\AbstractModel
      * @internal
      *
      */
-    protected int|string $itemId;
+    protected int|string|null $itemId = null;
 
     /**
      * @internal
      *
      */
-    protected string $type;
+    protected ?string $type = null;
 
     /**
      * @internal
      *
      */
-    protected string $uuid;
+    protected ?string $uuid = null;
 
     /**
      * @internal
      *
      */
-    protected string $instanceIdentifier;
+    protected ?string $instanceIdentifier = null;
 
     /**
      * @internal
@@ -72,7 +72,7 @@ final class UUID extends Model\AbstractModel
         return $this;
     }
 
-    public function getInstanceIdentifier(): string
+    public function getInstanceIdentifier(): ?string
     {
         return $this->instanceIdentifier;
     }
@@ -111,7 +111,7 @@ final class UUID extends Model\AbstractModel
         return $this;
     }
 
-    public function getItemId(): int|string
+    public function getItemId(): int|string|null
     {
         return $this->itemId;
     }
@@ -126,7 +126,7 @@ final class UUID extends Model\AbstractModel
         return $this;
     }
 
-    public function getType(): string
+    public function getType(): ?string
     {
         return $this->type;
     }
@@ -140,8 +140,13 @@ final class UUID extends Model\AbstractModel
      */
     public function computeUuid(): string
     {
-        if (!$this->getInstanceIdentifier()) {
+        $instanceIdentifier = $this->getInstanceIdentifier();
+        if ($instanceIdentifier === null || $instanceIdentifier === '') {
             throw new Exception('No instance identifier specified.');
+        }
+
+        if ($this->getType() === null || $this->getItemId() === null) {
+            throw new Exception('No item specified.');
         }
 
         // namespace originally used from \Ramsey\Uuid\Uuid::NAMESPACE_DNS
@@ -167,7 +172,7 @@ final class UUID extends Model\AbstractModel
         return $this->uuid;
     }
 
-    public function getUuid(): string
+    public function getUuid(): ?string
     {
         return $this->uuid;
     }
@@ -213,7 +218,7 @@ final class UUID extends Model\AbstractModel
 
     private function resolveItem(): Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface|null
     {
-        if (!isset($this->type, $this->itemId)) {
+        if ($this->type === null || $this->itemId === null) {
             return null;
         }
 
