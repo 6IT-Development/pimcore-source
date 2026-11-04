@@ -865,7 +865,7 @@ their runtime cache is reset, as before.
 
 **Done:** `exists()` looks up the `$name` it is given.
 
-## [ ] B-53 – `clearTempFiles()` deletes the other config type's directories with the same name; full recursive listing
+## [x] B-53 – `clearTempFiles()` deletes the other config type's directories with the same name; full recursive listing
 
 **File:** `models/Asset/Thumbnail/ClearTempFilesTrait.php:30-37` (regex at `:32`)
 
@@ -873,6 +873,12 @@ their runtime cache is reset, as before.
   Lists the entire thumbnail storage recursively (very slow on S3).
 
 **Fix direction:** pass the type prefix per config class; list only the relevant subtree or keep an index.
+
+**Done:** the trait takes the directory prefix from the new abstract `getTempFilesPrefix()` (`image` for image
+configs, `video` for video configs), so clearing one config type no longer deletes the other type's directories. The old
+`pdf` alternative matched only the fixed `pdf-thumb__*__libreoffice-document.pdf` file, never a config. Not addressed: the
+storage is still listed recursively, because the asset path above each `<id>/<prefix>-thumb__…` directory is not known
+without a DB lookup (the status cache can be disabled).
 
 ## [ ] B-54 – Image config listing can contain `null`s and non-list arrays
 

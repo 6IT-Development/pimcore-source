@@ -156,6 +156,11 @@ final class Config extends Model\AbstractModel
         return $config;
     }
 
+    protected function getTempFilesPrefix(): string
+    {
+        return 'video';
+    }
+
     private function createMediaIfNotExists(string $name): void
     {
         if (!array_key_exists($name, $this->medias)) {

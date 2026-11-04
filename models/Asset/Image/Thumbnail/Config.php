@@ -240,6 +240,11 @@ final class Config extends Model\AbstractModel
         }
     }
 
+    protected function getTempFilesPrefix(): string
+    {
+        return 'image';
+    }
+
     public static function exists(string $name): bool
     {
         $cacheKey = self::getCacheKey($name);

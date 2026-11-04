@@ -25,11 +25,17 @@ use Pimcore\Tool\Storage;
  */
 trait ClearTempFilesTrait
 {
+    /**
+     * The prefix of the thumbnail directories generated for this config type, e.g. `image` for `image-thumb__…`.
+     */
+    abstract protected function getTempFilesPrefix(): string;
+
     public function clearTempFiles(): void
     {
         $storage = Storage::get('thumbnail');
-        $contents = $storage->listContents('/', true)->filter(function (StorageAttributes $item) {
-            return $item->isDir() && preg_match('@(image|video|pdf)-thumb__[\d]+__' . preg_quote($this->getName(), '@') . '(?:_auto_.+)?$@', $item->path());
+        $pattern = '@' . preg_quote($this->getTempFilesPrefix(), '@') . '-thumb__[\d]+__' . preg_quote($this->getName(), '@') . '(?:_auto_.+)?$@';
+        $contents = $storage->listContents('/', true)->filter(function (StorageAttributes $item) use ($pattern) {
+            return $item->isDir() && preg_match($pattern, $item->path());
         })->map(fn(StorageAttributes $attributes) => $attributes->path())->toArray();
 
         foreach ($contents as $item) {
