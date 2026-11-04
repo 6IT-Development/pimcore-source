@@ -1352,7 +1352,7 @@ decision for the Kernel and for `loadSymfonyConfigFiles()` (bundles): the read d
 
 ## Q – Tests
 
-### [ ] I-64 – Tests for the configuration tree and the helper
+### [x] I-64 – Tests for the configuration tree and the helper
 
 - There are no tests for `Configuration`, `ConfigurationHelper` or `PimcoreCoreExtension` (only
   `tests/Unit/Tool/PlaceholderProcessorTest.php`). Minimum set (plain `Processor` / `ContainerBuilder`, no kernel):
@@ -1363,6 +1363,15 @@ decision for the Kernel and for `loadSymfonyConfigFiles()` (bundles): the read d
   - `addConfigLocationTargetNode()` with an absolute folder outside `PIMCORE_PROJECT_ROOT` (C-11);
   - `SecurityPolicy` denies method/property access on non-allowlisted objects (C-12);
   - `PimcoreCoreExtension::load()` with an empty config: compiles without notices (I-56).
+
+**Done:** `tests/Unit/DependencyInjection/ConfigurationTest.php` (boolean strings and `%env(bool:…)%` / `%env(csv:…)%`
+placeholders resolved from the env var, B-54/B-70; CSV trimming; workflow placeholders per workflow, in any key order
+and across files, B-56; workflow without `label` and a `numeric` global action field, B-57; unknown place, I-62;
+`config_location` keys, I-63). `ConfigurationHelperTest` adds the default directories of `config_location` nodes
+(C-11), the deep merge of `config_location` from two configs (B-55) and `resolveSymfonyConfigDirectory()` (I-63).
+`PimcoreCoreExtensionTest` loads the extension with an empty config without notices (I-56) and rejects an invalid
+main domain. The sandbox policy (C-12) is already covered by `tests/Unit/Twig/Sandbox/SecurityPolicyTest.php`.
+Writing these found B-70.
 
 ---
 
