@@ -2642,7 +2642,7 @@ source document go through `addSourceLanguage()`, which leaves out a document th
 `language` property instead of dereferencing `null` or adding an `''` key; translation rows with an empty language are
 skipped as well. `getTranslationSourceId()` returns `int`, as the `@method` tag on `Document\Service` already declared.
 
-## [ ] B-145 – `Document\Link::getHtml()`: parameters and anchor twice, no escaping, `TypeError` without `navigation_name`
+## [x] B-145 – `Document\Link::getHtml()`: parameters and anchor twice, no escaping, `TypeError` without `navigation_name`
 
 **File:** `models/Document/Link.php:177-192`, `:310-334`
 
@@ -2653,6 +2653,11 @@ skipped as well. `getTranslationSourceId()` returns `int`, as the `@method` tag 
 - `htmlspecialchars($this->getProperty('navigation_name'))` with a missing property → `TypeError` (strict).
 
 **Fix direction:** remove the second append, escape `href` and attribute values, cast to string.
+
+**Done:** `getHtml()` uses `getLink()` as is, so the parameters and the anchor appear once. The `href`, the
+`navigation_*` attribute values and the link text are escaped with `htmlspecialchars()`, and the values are cast to
+`string`, so a missing `navigation_name` gives an empty text instead of a `TypeError`. Empty attributes are still left
+out; the output differs from before only in the attribute spacing (no space before `>` when there are no attributes).
 
 ## [ ] B-146 – `Document\Link`: object targets are neither dependencies nor cache tags; a lookup error wipes the target
 

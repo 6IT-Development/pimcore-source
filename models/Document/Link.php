@@ -318,19 +318,17 @@ class Link extends Model\Document
             'rel' => 'relation',
         ];
 
-        $link = $this->getLink();
-        $link .= $this->getProperty('navigation_parameters') . $this->getProperty('navigation_anchor');
-
-        $attribs = [];
+        // getLink() already contains the parameters and the anchor
+        $attribs = ['href="' . htmlspecialchars($this->getLink()) . '"'];
         foreach ($attributes as $key => $name) {
             $key = is_numeric($key) ? $name : $key;
             $value = $this->getProperty('navigation_' . $name);
             if ($value) {
-                $attribs[] = $key . '="' . $value . '"';
+                $attribs[] = $key . '="' . htmlspecialchars((string) $value) . '"';
             }
         }
 
-        return '<a href="' . $link . '" ' . implode(' ', $attribs) . '>' . htmlspecialchars($this->getProperty('navigation_name')) . '</a>';
+        return '<a ' . implode(' ', $attribs) . '>' . htmlspecialchars((string) $this->getProperty('navigation_name')) . '</a>';
     }
 
     protected function update(array $params = []): void
