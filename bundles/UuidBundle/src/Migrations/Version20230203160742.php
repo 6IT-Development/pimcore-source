@@ -43,12 +43,15 @@ final class Version20230203160742 extends AbstractMigration
         $this->addSql('ALTER TABLE `uuids` MODIFY COLUMN `itemId` VARCHAR(50) NOT NULL;');
     }
 
+    /**
+     * Class definition rows store string ids (e.g. `news`), which an INT column would reject or truncate to 0.
+     */
     public function down(Schema $schema): void
     {
         if (!$schema->hasTable('uuids')) {
             return;
         }
 
-        $this->addSql('ALTER TABLE `uuids` MODIFY COLUMN `itemId` int(11) unsigned NOT NULL;');
+        $this->throwIrreversibleMigrationException('`uuids`.`itemId` holds string ids of class definitions and cannot be changed back to INT.');
     }
 }

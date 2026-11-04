@@ -132,7 +132,7 @@ addressed: moving the schema into PHP (B-11 / I-14).
 
 ---
 
-## [ ] B-07 – `Version20230203160742::down()` corrupts or fails on class-definition rows
+## [x] B-07 – `Version20230203160742::down()` corrupts or fails on class-definition rows
 
 **Files:** `src/Migrations/Version20230203160742.php:33-36`
 
@@ -145,6 +145,11 @@ example `CAR`, `news`):
 
 **Fix direction:** make `down()` throw `IrreversibleMigration` (`$this->throwIrreversibleMigrationException()`), or
 delete or abort on non-numeric `itemId` rows first.
+
+**Done:** `down()` throws `IrreversibleMigration` through `throwIrreversibleMigrationException()` when the `uuids`
+table exists, instead of changing `itemId` back to `INT` and failing on, or truncating, the string ids of
+class-definition rows. Without the table it stays a no-op (C-02). Uninstalling is not affected, because it only
+unmarks the migration in the metadata storage.
 
 ---
 
