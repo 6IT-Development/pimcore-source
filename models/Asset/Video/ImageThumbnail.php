@@ -97,19 +97,10 @@ final class ImageThumbnail implements ImageThumbnailInterface
             }
 
             $cs = $this->asset->getCustomSetting('image_thumbnail_time');
-            $im = $this->asset->getCustomSetting('image_thumbnail_asset');
 
-            if ($im || $this->imageAsset) {
-                if ($this->imageAsset) {
-                    $im = $this->imageAsset;
-                } else {
-                    $im = Model\Asset::getById($im);
-                }
-
-                if ($im instanceof Image) {
-                    $imageThumbnail = $im->getThumbnail($this->getConfig());
-                    $this->pathReference = $imageThumbnail->getPathReference();
-                }
+            if ($im = $this->getImageAsset()) {
+                $imageThumbnail = $im->getThumbnail($this->getConfig());
+                $this->pathReference = $imageThumbnail->getPathReference();
             }
 
             if (!$this->pathReference) {
@@ -197,6 +188,25 @@ final class ImageThumbnail implements ImageThumbnailInterface
     }
 
     /**
+     * The image used instead of a video frame: the one passed to the constructor, or the one set on the video.
+     */
+    private function getImageAsset(): ?Image
+    {
+        if ($this->imageAsset) {
+            return $this->imageAsset;
+        }
+
+        $imageId = $this->asset?->getCustomSetting('image_thumbnail_asset');
+        if (!is_numeric($imageId)) {
+            return null;
+        }
+
+        $image = Model\Asset::getById((int)$imageId);
+
+        return $image instanceof Image ? $image : null;
+    }
+
+    /**
      * Get the public path to the thumbnail image.
      * This method is here for backwards compatility.
      * Up to Pimcore 1.4.8 a thumbnail was returned as a path to an image.
@@ -243,14 +253,9 @@ final class ImageThumbnail implements ImageThumbnailInterface
                 $thumbConfigRes->selectMedia($name);
                 $thumbConfigRes->setHighResolution($highRes);
                 $thumbConfigRes->setMedias([]);
-                $imgId = $this->asset->getCustomSetting('image_thumbnail_asset');
-                $img = Model\Asset::getById($imgId);
 
-                if ($img instanceof Image) {
-                    $thumb = $img->getThumbnail($thumbConfigRes);
-                }
-
-                return $thumb ?? null;
+                // a thumbnail of a video frame is no image thumbnail, so only an image used instead of the frame has one
+                return $this->getImageAsset()?->getThumbnail($thumbConfigRes);
             } else {
                 throw new Exception("Media query '" . $name . "' doesn't exist in thumbnail configuration: " . $thumbConfig->getName());
             }

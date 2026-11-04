@@ -967,7 +967,7 @@ image thumbnails therefore no longer get status-cache rows from the dimension fa
 
 ## Video / Document / MetaData
 
-## [ ] B-61 – Video `ImageThumbnail::getMedia()` throws `TypeError` for normal videos and ignores frame / `imageAsset`
+## [x] B-61 – Video `ImageThumbnail::getMedia()` throws `TypeError` for normal videos and ignores frame / `imageAsset`
 
 **File:** `models/Asset/Video/ImageThumbnail.php:233-240`
 
@@ -976,6 +976,13 @@ image thumbnails therefore no longer get status-cache rows from the dimension fa
   (`Video.php:147`).
 
 **Fix direction:** reuse `generate()`'s source resolution; null-guard.
+
+**Done:** `getMedia()` and `generate()` share the new private `getImageAsset()`: the `$imageAsset` passed to the
+constructor first, then the video's `image_thumbnail_asset` setting (numeric ids only, cast to `int`), null-safe for a
+missing video. For a video without such an image `getMedia()` returns `null` instead of throwing a `TypeError`. Not
+addressed: a media thumbnail of a video frame (time offset) cannot be returned, because `ThumbnailMediaInterface::getMedia()`
+is typed `?Image\ThumbnailInterface`, which the video `ImageThumbnail` does not implement (no `getHtml()` /
+`getImageTag()`); supporting it needs an interface change.
 
 ## [ ] B-62 – Exceptions during video conversion leave status `finished` → endless re-conversion on page views
 
