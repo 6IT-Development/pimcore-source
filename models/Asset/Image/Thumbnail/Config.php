@@ -808,7 +808,15 @@ final class Config extends Model\AbstractModel
         }
 
         //rebuild asset path for overlays
-        foreach ($this->items as &$item) {
+        $this->items = self::rebuildOverlayPaths($this->items);
+        foreach ($this->medias as $mediaName => $mediaItems) {
+            $this->medias[$mediaName] = self::rebuildOverlayPaths($mediaItems);
+        }
+    }
+
+    private static function rebuildOverlayPaths(array $items): array
+    {
+        foreach ($items as &$item) {
             if (in_array($item['method'], ['addOverlay', 'addOverlayFit'])) {
                 if (isset($item['arguments']['id'])) {
                     $img = Model\Asset\Image::getById($item['arguments']['id']);
@@ -818,6 +826,9 @@ final class Config extends Model\AbstractModel
                 }
             }
         }
+        unset($item);
+
+        return $items;
     }
 
     /**

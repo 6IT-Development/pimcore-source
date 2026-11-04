@@ -935,13 +935,16 @@ the default config appended with an empty media query, so it no longer gets the 
 **Done:** `getSourceTagHtml()` builds `$thumb` from a clone with `selectMedia()`, like `getSrcset()`, so its path
 carries the media filename suffix and matches the srcset variant; the no-op `reset()` is gone.
 
-## [ ] B-59 – Media overlays keep stale paths after clone
+## [x] B-59 – Media overlays keep stale paths after clone
 
 **File:** `models/Asset/Image/Thumbnail/Config.php:778-787`
 
 - `__clone` rebuilds `addOverlay` paths only in `$this->items`, not `$this->medias`.
 
 **Fix direction:** iterate media item lists too.
+
+**Done:** `__clone()` rebuilds the overlay paths of `$this->items` and of every media item list through the new
+private `rebuildOverlayPaths()`.
 
 ## [ ] B-60 – Infinite recursion when `assets.preview_image_thumbnail` = `pimcore-system-treepreview`; inconsistent status-cache writes
 
