@@ -1058,7 +1058,7 @@ takes a non-blocking `video-thumbnail-process-<asset id>-<config name>` lock (a 
 then saves and dispatches inside the lock. The first conversion of a thumbnail still saves the asset during a frontend
 GET; that is how the status is stored.
 
-## [ ] B-67 – Global blocking `video-transcoding` lock with fixed 2 h TTL
+## [x] B-67 – Global blocking `video-transcoding` lock with fixed 2 h TTL
 
 **File:** `models/Asset/Video/Thumbnail/Processor.php:232-233`
 
@@ -1066,6 +1066,14 @@ GET; that is how the status is stored.
   other `pimcore-core` messages). Conversions > 2 h lose the lock (no `refresh()`).
 
 **Fix direction:** per-asset / semaphore lock or dedicated transport; `refresh()` during long runs.
+
+**Done:** the lock is now `video-transcoding-<asset id>-<config name>` with a 10 min TTL, so it only keeps two jobs for
+the same thumbnail apart (the files they write are the same) and no longer serialises all conversions of the system.
+How many conversions run at the same time is now bounded by the number of workers consuming `pimcore_core`; route
+`VideoConvertMessage` to a dedicated transport with fewer workers to limit it. The new `Adapter::setProgressCallback()`
+is called from the ffmpeg output callback, and the Processor uses it to `refresh()` the lock at most once a minute, so a
+conversion longer than the TTL keeps it. The callback is set only in the worker and reset afterwards, so it is never
+stored with the job in the TmpStore.
 
 ## [ ] B-68 – Video getters save the asset and permanently flag processing as failed when ffmpeg is unavailable on the web node
 

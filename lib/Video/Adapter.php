@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Video;
 
+use Closure;
+
 /**
  * @internal
  */
@@ -40,6 +42,11 @@ abstract class Adapter
      */
     public int $length;
 
+    /**
+     * Called while a conversion runs, e.g. to keep a lock alive; set in the worker, not stored with the job
+     */
+    private ?Closure $progressCallback = null;
+
     public function setAudioBitrate(int $audioBitrate): static
     {
         $this->audioBitrate = $audioBitrate;
@@ -62,6 +69,20 @@ abstract class Adapter
     public function getVideoBitrate(): int
     {
         return $this->videoBitrate;
+    }
+
+    public function setProgressCallback(?Closure $progressCallback): static
+    {
+        $this->progressCallback = $progressCallback;
+
+        return $this;
+    }
+
+    protected function reportProgress(): void
+    {
+        if ($this->progressCallback) {
+            ($this->progressCallback)();
+        }
     }
 
     abstract public function load(string $file, array $options = []): static;

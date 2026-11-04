@@ -36,6 +36,8 @@ use Throwable;
  */
 class Processor
 {
+    private const TRANSCODING_LOCK_TTL = 600;
+
     protected static array $argumentMapping = [
         'resize' => ['width', 'height'],
         'scaleByWidth' => ['width'],
@@ -301,9 +303,21 @@ class Processor
             return;
         }
 
-        // check if there is already a transcoding process running, wait if so ...
-        $lock = Pimcore::getContainer()->get(LockFactory::class)->createLock('video-transcoding', 7200);
+        // only one conversion per thumbnail at a time, how many run in parallel is up to the number of workers
+        $lock = Pimcore::getContainer()->get(LockFactory::class)->createLock(
+            'video-transcoding-' . $asset->getId() . '-' . $instance->getConfig()->getName(),
+            self::TRANSCODING_LOCK_TTL
+        );
         $lock->acquire(true);
+
+        // ffmpeg reports progress continuously, so a long conversion keeps the lock
+        $lastRefresh = time();
+        $keepLockAlive = static function () use ($lock, &$lastRefresh): void {
+            if (time() - $lastRefresh >= 60) {
+                $lock->refresh();
+                $lastRefresh = time();
+            }
+        };
 
         $workerSourceFile = null;
 
@@ -313,6 +327,7 @@ class Processor
             // start converting
             foreach ($instance->queue as $converter) {
                 try {
+                    $converter->setProgressCallback($keepLockAlive);
                     $converter->load($workerSourceFile, ['asset' => $asset]);
 
                     Logger::info('start video ' . $converter->getFormat() . ' to ' . $converter->getDestinationFile());
@@ -350,6 +365,7 @@ class Processor
                     $conversionStatus = 'error';
                     Logger::error((string)$e);
                 } finally {
+                    $converter->setProgressCallback(null);
                     $converter->destroy();
 
                     // process() created these paths with $keep, so the worker removes the files

@@ -200,6 +200,7 @@ class Ffmpeg extends Adapter
 
             $process->wait(function ($type, $buffer) use ($logHandle) {
                 fwrite($logHandle, $buffer);
+                $this->reportProgress();
             });
             fclose($logHandle);
 
