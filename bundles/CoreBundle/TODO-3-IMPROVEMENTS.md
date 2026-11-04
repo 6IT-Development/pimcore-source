@@ -26,7 +26,7 @@ Grouped: **A** Symfony 7.4 / configuration, **B** PHP 8.4 / code style, **C** sh
 
 ## A – Symfony 7.4 / configuration
 
-### [ ] I-01 – Move names/descriptions to `#[AsCommand]` everywhere (lazy loading)
+### [x] I-01 – Move names/descriptions to `#[AsCommand]` everywhere (lazy loading)
 
 **Files:** `Bundle/InstallCommand.php:41`, `Bundle/UninstallCommand.php:40`, `Bundle/ListCommand.php:35`,
 `Bundle/AbstractBundleCommand.php:40-51,68-71`, `Definition/Import/AbstractStructureImportCommand.php:42-45`

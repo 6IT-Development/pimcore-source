@@ -22,6 +22,7 @@ use Pimcore\Logger;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\CustomLayout;
 use Pimcore\Model\ModelInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -29,6 +30,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @internal
  */
+#[AsCommand(
+    name: 'pimcore:definition:import:customlayout',
+    description: 'Import Customlayout definition from a JSON export',
+    aliases: ['definition:import:customlayout']
+)]
 class CustomLayoutCommand extends AbstractStructureImportCommand
 {
     protected function configure(): void

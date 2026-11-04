@@ -38,9 +38,6 @@ abstract class AbstractStructureImportCommand extends AbstractCommand
         $type = $this->getType();
 
         $this
-            ->setName(sprintf('pimcore:definition:import:%s', strtolower($type)))
-            ->setAliases([sprintf('definition:import:%s', strtolower($type))])
-            ->setDescription(sprintf('Import %s definition from a JSON export', $type))
             ->addArgument(
                 'path',
                 InputArgument::REQUIRED,

@@ -20,10 +20,16 @@ namespace Pimcore\Bundle\CoreBundle\Command\Definition\Import;
 use Pimcore\Model\DataObject\ClassDefinition\Service;
 use Pimcore\Model\DataObject\Fieldcollection\Definition;
 use Pimcore\Model\ModelInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * @internal
  */
+#[AsCommand(
+    name: 'pimcore:definition:import:fieldcollection',
+    description: 'Import FieldCollection definition from a JSON export',
+    aliases: ['definition:import:fieldcollection']
+)]
 class FieldCollectionCommand extends AbstractStructureImportCommand
 {
     /**

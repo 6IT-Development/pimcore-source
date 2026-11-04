@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
 
 use InvalidArgumentException;
 use Pimcore\Extension\Bundle\Exception\BundleNotFoundException;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -29,13 +30,15 @@ use const JSON_THROW_ON_ERROR;
 /**
  * @internal
  */
+#[AsCommand(
+    name: 'pimcore:bundle:list',
+    description: 'Lists all pimcore bundles and their enabled/installed state'
+)]
 class ListCommand extends AbstractBundleCommand
 {
     protected function configure(): void
     {
         $this
-            ->setName($this->buildName('list'))
-            ->setDescription('Lists all pimcore bundles and their enabled/installed state')
             ->addOption(
                 'fully-qualified-classnames',
                 'f',

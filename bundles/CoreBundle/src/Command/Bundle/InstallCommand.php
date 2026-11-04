@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command\Bundle;
 
 use Pimcore\Bundle\CoreBundle\Command\Bundle\Helper\PostStateChange;
 use Pimcore\Extension\Bundle\PimcoreBundleManager;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,6 +28,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @internal
  */
+#[AsCommand(
+    name: 'pimcore:bundle:install',
+    description: 'Installs a bundle',
+    help: 'Installs a bundle. Bundle can be passed as fully qualified class name or as bundle short name (e.g. <comment>PimcoreEcommerceFrameworkBundle</comment>).'
+)]
 class InstallCommand extends AbstractBundleCommand
 {
     public function __construct(PimcoreBundleManager $bundleManager, private readonly PostStateChange $postStateChangeHelper)
@@ -37,8 +43,6 @@ class InstallCommand extends AbstractBundleCommand
     protected function configure(): void
     {
         $this
-            ->setName($this->buildName('install'))
-            ->configureDescriptionAndHelp('Installs a bundle')
             ->addArgument('bundle', InputArgument::REQUIRED, 'The bundle to install')
             ->configureFailWithoutErrorOption();
 

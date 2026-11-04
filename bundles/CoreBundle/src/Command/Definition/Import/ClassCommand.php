@@ -20,10 +20,16 @@ namespace Pimcore\Bundle\CoreBundle\Command\Definition\Import;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Service;
 use Pimcore\Model\ModelInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * @internal
  */
+#[AsCommand(
+    name: 'pimcore:definition:import:class',
+    description: 'Import Class definition from a JSON export',
+    aliases: ['definition:import:class']
+)]
 class ClassCommand extends AbstractStructureImportCommand
 {
     /**
