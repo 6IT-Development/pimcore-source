@@ -2170,7 +2170,7 @@ languages. The length check counts characters against the now public `Translatio
 `save()`), and a longer key is logged as a warning and not queued instead of throwing from `trans()`; it is still put
 into the catalogue, so it is logged once per process and the page gets the id. `IsAValidLanguage()` compares strictly.
 
-## [ ] B-124 – Translator DB catalogues never refresh in long-running processes (Messenger workers, worker runtimes)
+## [x] B-124 – Translator DB catalogues never refresh in long-running processes (Messenger workers, worker runtimes)
 
 **File:** `lib/Translation/Translator.php:138-212`
 
@@ -2184,6 +2184,12 @@ into the catalogue, so it is logged once per process and the page gets the id. `
 
 **Fix direction:** implement `ResetInterface` (tag `kernel.reset`) and reset the in-memory catalogues. Messenger
 already calls `kernel.reset` between messages via `ResetServicesListener`.
+
+**Done:** `Translator` implements `ResetInterface` (tagged `kernel.reset` by autoconfiguration). `reset()` forgets the
+initialized DB catalogues and re-sets the fallback locales of the decorated translator, the public way to make the
+Symfony translator drop its loaded catalogues (with the merged DB texts and the keys added at runtime); they are
+rebuilt from its compiled resources and the persistent cache on next use. `LoggingTranslator` /
+`DataCollectorTranslator` forward the call through `__call()`.
 
 ## [ ] B-125 – Event recursion guard stays set after a listener exception: later saves of the same instance skip events silently
 

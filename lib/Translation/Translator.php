@@ -29,9 +29,10 @@ use Symfony\Component\Translation\MessageCatalogue;
 use Symfony\Component\Translation\MessageCatalogueInterface;
 use Symfony\Component\Translation\TranslatorBagInterface;
 use Symfony\Contracts\Translation\LocaleAwareInterface;
+use Symfony\Contracts\Service\ResetInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleAwareInterface, WarmableInterface
+class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleAwareInterface, WarmableInterface, ResetInterface
 {
     protected TranslatorInterface|WarmableInterface|TranslatorBagInterface $translator;
 
@@ -210,6 +211,21 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
     public function resetCache(): void
     {
         $this->initializedCatalogues = [];
+    }
+
+    /**
+     * Runs on kernel.reset (e.g. between Messenger messages): a long-running process must load the DB translations
+     * again instead of keeping the texts of its first use.
+     */
+    public function reset(): void
+    {
+        $this->resetCache();
+
+        // the DB catalogues and the keys added at runtime were merged into the catalogues of the decorated translator;
+        // setting its fallback locales drops its loaded catalogues, which are rebuilt from its resources on next use
+        if (is_callable([$this->translator, 'getFallbackLocales']) && is_callable([$this->translator, 'setFallbackLocales'])) {
+            $this->translator->setFallbackLocales($this->translator->getFallbackLocales());
+        }
     }
 
     private function checkForEmptyTranslation(string $id, string $translated, array $parameters, string $domain, string $locale): string
