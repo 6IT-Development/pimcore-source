@@ -724,7 +724,8 @@ class Document extends Element\AbstractElement
             if (!$link && Tool::isFrontend() && Site::isSiteRequest()) {
                 $site = Site::getCurrentSite();
                 if ($site instanceof Site) {
-                    if ($site->getRootDocument()->getId() == $this->getId()) {
+                    // the id and not the root document, which is null for a site whose root is no page any more
+                    if ($site->getRootId() === $this->getId()) {
                         $link = '/';
                     }
                 }
@@ -761,13 +762,17 @@ class Document extends Element\AbstractElement
                         $hardlink = $mainDocument->getHardLinkSource();
                         $hardlinkTarget = $hardlink->getSourceDocument();
 
+                        // also reached for a different domain outside a site request
+                        $currentSiteRootPath = Site::isSiteRequest() ? Site::getCurrentSite()->getRootPath() : null;
                         if ($hardlinkTarget) {
-                            $hardlinkPath = preg_replace('@^' . preg_quote(Site::getCurrentSite()->getRootPath(), '@') . '@', '', $hardlink->getRealFullPath());
+                            $hardlinkPath = preg_replace('@^' . preg_quote((string) $currentSiteRootPath, '@') . '@', '', $hardlink->getRealFullPath());
 
                             $link = preg_replace('@^' . preg_quote($hardlinkTarget->getRealFullPath(), '@') . '@', $hardlinkPath, $this->getRealFullPath());
                         }
 
-                        if (!str_contains($link, $hardlinkPath) && !str_contains($this->getRealFullPath(), Site::getCurrentSite()->getRootDocument()->getRealFullPath())) {
+                        if (!str_contains((string) $link, $hardlinkPath)
+                            && ($currentSiteRootPath === null || !str_contains($this->getRealFullPath(), $currentSiteRootPath))
+                        ) {
                             $link = null;
                         }
                     }
@@ -783,7 +788,7 @@ class Document extends Element\AbstractElement
                     if ($site) {
                         if ($site->getMainDomain()) {
                             // check if current document is the root of the different site, if so, preg_replace below doesn't work, so just return /
-                            if ($site->getRootDocument()->getId() == $this->getId()) {
+                            if ($site->getRootId() === $this->getId()) {
                                 $link = $scheme . $site->getMainDomain() . '/';
                             } else {
                                 $link = $scheme . $site->getMainDomain() .

@@ -120,6 +120,12 @@ final class Site extends AbstractModel
         $siteId = Site\Dao::matchDomain(self::getDomainMap(), $domain);
         $site = $siteId !== null ? self::getById($siteId) : null;
 
+        // the root was deleted or is no page any more (e.g. converted to a link): the site is disabled
+        if ($site && !$site->getRootDocument()) {
+            Logger::error(sprintf('Site %s is ignored for domain "%s": its root document %s is no page', $site->getId(), $domain, $site->getRootId()));
+            $site = null;
+        }
+
         RuntimeCache::set($cacheKey, $site);
 
         return $site;
@@ -275,6 +281,9 @@ final class Site extends AbstractModel
         return $this->rootId;
     }
 
+    /**
+     * Null when the root document does not exist or is no page (any more), getByDomain() ignores such a site
+     */
     public function getRootDocument(): ?Document\Page
     {
         // loaded lazily: the site is cached without it, the page has its own (correctly tagged) cache

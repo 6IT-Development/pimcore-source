@@ -89,6 +89,10 @@ final class Frontend
             );
             $sites = $sites->load();
             foreach ($sites as $site) {
+                // a site without a root page would map '' and so claim every document
+                if ($site->getRootPath() === null) {
+                    continue;
+                }
                 $siteMapping[$site->getRootPath()] = $site->getId();
                 $tags[] = Element\Service::getElementCacheTag('document', $site->getRootId());
             }

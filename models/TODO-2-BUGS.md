@@ -2418,7 +2418,7 @@ id does not exist (0 rows can also mean unchanged values). `Site::save()` valida
 `InvalidArgumentException` instead of a raw DBAL error. New sites fire the new `SiteEvents::PRE_ADD` / `POST_ADD` around
 `PRE_SAVE` / `POST_SAVE`. Rejecting domains claimed by another site stays with I-69.
 
-## [ ] B-134 – A site whose root is missing or not a page: the domain serves the main tree, and site path code fatals
+## [x] B-134 – A site whose root is missing or not a page: the domain serves the main tree, and site path code fatals
 
 **Files:** `models/Site.php:205-213`, `:256-273`, `:285-292`;
 `bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:118-124`; `models/Document.php:698-704`, `:744`,
@@ -2436,6 +2436,13 @@ id does not exist (0 rows can also mean unchanged values). `Site::save()` valida
 **Fix direction:** validate the root on save (B-133); on load, treat a site without a valid root page as disabled
 (log it, `getByDomain()` returns `null`); null-safe access in `Document`, or make `getRootDocument()` throw a clear
 exception.
+
+**Done:** saving requires a root page (B-133). A stored site whose root is deleted or no page any more is disabled:
+`Site::getByDomain()` logs it and returns `null`, so `RoutingListener` no longer prefixes `''`, and
+`Frontend::getSiteMapping()` skips it instead of mapping `''` (which claimed every document for that site).
+`Document::getFullPath()` compares `getRootId()` instead of calling `getRootDocument()->getId()` and handles a missing
+current-site root path in the hardlink branch. A site disabled this way still serves its domains from the main tree,
+as a host without a site does.
 
 ## [ ] B-135 – `delete()`: not atomic, leaves references to the deleted site, keeps runtime caches
 
