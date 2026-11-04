@@ -65,6 +65,8 @@ A setting can exist several times with the same name, for a site and/or a langua
 
 A site specific setting therefore wins over a language specific one without site.
 
+Saving or deleting a website setting clears the full page cache, so cached pages show the new value right away.
+
 ### Manipulate the values in a Controller
 
 If you want to change the value of a website setting from your PHP script, for example from a controller, you can use this code.

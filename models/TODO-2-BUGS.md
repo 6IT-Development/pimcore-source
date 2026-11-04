@@ -1435,7 +1435,7 @@ dispatched. Marking `setId()` `@internal` is left to I-32.
 `WebsiteSetting` instances and `getWebsiteConfig()` cannot call a method on `null`. The id from `fetchFirstColumn()`
 is cast to `int` for the typed `getById()`. Hydrating from one `SELECT *` stays with I-35.
 
-## [ ] B-91 – `clearDependentCache()` does not invalidate the full-page output cache
+## [x] B-91 – `clearDependentCache()` does not invalidate the full-page output cache
 
 **File:** `models/WebsiteSetting.php:268-271`; `lib/Config.php:205`
 
@@ -1445,6 +1445,11 @@ is cast to `int` for the typed `getById()`. Hydrating from one `SELECT *` stays 
   config is tagged `output`.) Needs a decision on whether this is intended; document it if so.
 
 **Fix direction:** clear `output` as well (as document saves do), or document the expected delay in the admin UI.
+
+**Done:** `clearDependentCache()` clears the tags `website_config` and `output`, like `Document::clearDependentCache()`,
+so a saved or deleted setting reaches full-page-cached pages at once. A website setting is site/language wide
+configuration that is changed rarely, so dropping the output cache on a change is the same trade-off as for a document
+save. Documented in `doc/18_Tools_and_Features/27_Website_Settings.md`.
 
 ---
 

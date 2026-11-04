@@ -339,7 +339,8 @@ final class WebsiteSetting extends AbstractModel
      */
     public function clearDependentCache(): void
     {
-        Cache::clearTag('website_config');
+        // 'output': full page cache entries rendered with the old value, as a document save does
+        Cache::clearTags(['website_config', 'output']);
 
         $runtimeCache = RuntimeCache::getInstance();
         if ($this->getId() && $runtimeCache->offsetExists('website_setting_' . $this->getId())) {
