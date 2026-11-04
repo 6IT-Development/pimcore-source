@@ -30,10 +30,16 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 #[AsCommand(
     name: 'pimcore:migrate:thumbnails-folder-structure',
-    description: 'Change thumbnail folder structure to
-    <asset storage>/<path to asset>/<asset id>/image-thumb__<asset id>__<thumbnail name>/<asset filename>
-    instead of
-    <asset storage>/<path to asset>/image-thumb__<asset id>__<thumbnail name>/<asset filename>'
+    description: 'Moves thumbnails to the folder structure with the asset ID',
+    help: <<<'EOT'
+        Changes the thumbnail folder structure to
+
+          \<asset storage>/\<path to asset>/\<asset id>/image-thumb__\<asset id>__\<thumbnail name>/\<asset filename>
+
+        instead of
+
+          \<asset storage>/\<path to asset>/image-thumb__\<asset id>__\<thumbnail name>/\<asset filename>
+        EOT
 )]
 class ThumbnailsFolderStructureCommand extends AbstractCommand
 {

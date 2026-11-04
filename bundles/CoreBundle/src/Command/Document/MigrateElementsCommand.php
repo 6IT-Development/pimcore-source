@@ -29,8 +29,8 @@ use Throwable;
 
 #[AsCommand(
     name: 'pimcore:documents:migrate-elements',
-    description: 'Migrates document elements to editables.
-    See issue https://github.com/pimcore/pimcore/issues/7384 first'
+    description: 'Migrates document elements to editables',
+    help: 'Migrates document elements to editables. See issue https://github.com/pimcore/pimcore/issues/7384 first.'
 )]
 class MigrateElementsCommand extends AbstractCommand
 {

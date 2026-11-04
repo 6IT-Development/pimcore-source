@@ -51,9 +51,7 @@ class MaintenanceCommand extends AbstractCommand
 
     protected function configure(): void
     {
-        $description = 'Asynchronous maintenance jobs of pimcore (needs to be set up as cron job)';
-
-        $help = $description . '. Valid jobs are: ' . "\n\n";
+        $help = $this->getDescription() . '. Valid jobs are: ' . "\n\n";
         $help .= '  <comment>*</comment> any bundle class name handling maintenance (e.g. <comment>PimcoreEcommerceFrameworkBundle</comment>)' . "\n";
 
         foreach ($this->maintenanceExecutor->getTaskNames() as $taskName) {

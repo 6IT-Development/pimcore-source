@@ -32,9 +32,9 @@ use Throwable;
  */
 #[AsCommand(
     name: 'pimcore:deployment:classes-rebuild',
-    description: 'rebuilds db structure for classes, field collections and object bricks
-    based on updated var/classes/definition_*.php files',
-    aliases: ['deployment:classes-rebuild']
+    description: 'Rebuilds the database structure of classes, field collections and object bricks',
+    aliases: ['deployment:classes-rebuild'],
+    help: 'Rebuilds the database structure of classes, field collections and object bricks based on updated var/classes/definition_*.php files.'
 )]
 class ClassesRebuildCommand extends AbstractCommand
 {

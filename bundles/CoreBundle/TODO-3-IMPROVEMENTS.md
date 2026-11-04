@@ -114,7 +114,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
   `MaintenanceModeCommand`, `DeleteClassificationStoreCommand`, `EmailLogsCleanupCommand`, `RecyclebinCleanupCommand`.
 - Evaluate whether `AbstractCommand` can offer the `dump()` helpers without forcing `execute()`, e.g. as a trait.
 
-### [ ] I-08 – Move long multi-line descriptions into `help:`
+### [x] I-08 – Move long multi-line descriptions into `help:`
 
 **Files:** `ClassesDefinitionsBuildCommand.php:35-39`, `ClassesRebuildCommand.php:34-39`,
 `Document/MigrateElementsCommand.php:29-33`, `Migrate/ThumbnailsFolderStructureCommand.php:32-38`

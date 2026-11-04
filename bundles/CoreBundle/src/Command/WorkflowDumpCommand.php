@@ -33,8 +33,13 @@ use Symfony\Component\Workflow\Marking;
  */
 #[AsCommand(
     name: 'pimcore:workflow:dump',
-    description: 'Dump a workflow'
+    description: 'Dump a workflow',
+    help: <<<'EOT'
+        The <info>%command.name%</info> command dumps the graphical representation of a
+        workflow in DOT format
 
+            %command.full_name% <workflow name> | dot -Tpng > workflow.png
+        EOT
 )]
 class WorkflowDumpCommand extends AbstractCommand
 {
@@ -49,15 +54,7 @@ class WorkflowDumpCommand extends AbstractCommand
             ->setDefinition([
                 new InputArgument('name', InputArgument::REQUIRED, 'A workflow name', null, fn () => $this->workflowManager->getAllWorkflows()),
                 new InputArgument('marking', InputArgument::IS_ARRAY, 'A marking (a list of places)'),
-            ])
-            ->setHelp(<<<'EOF'
-The <info>%command.name%</info> command dumps the graphical representation of a
-workflow in DOT format
-
-    %command.full_name% <workflow name> | dot -Tpng > workflow.png
-
-EOF
-            );
+            ]);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
