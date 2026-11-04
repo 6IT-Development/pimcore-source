@@ -2316,7 +2316,7 @@ the same decoder. Of the public setters, `setDomains()` takes a string that is n
 domain, and `setLocalizedErrorDocuments()` throws `InvalidArgumentException` for such a string instead of assigning
 `false`. Separate hydration (`fromDbRow()`) stays with I-69.
 
-## [ ] B-130 – `getByDomain()` matching: unescaped `LIKE` wildcards, empty host matches, arbitrary winner for duplicates and overlapping wildcards
+## [x] B-130 – `getByDomain()` matching: unescaped `LIKE` wildcards, empty host matches, arbitrary winner for duplicates and overlapping wildcards
 
 **File:** `models/Site/Dao.php:60-95`
 
@@ -2336,6 +2336,13 @@ domain, and `setLocalizedErrorDocuments()` throws `InvalidArgumentException` for
 **Fix direction:** reject empty input; escape with `addcslashes($domain, '%_\\')` or (better) match on a normalised
 domain table (I-65); enforce unique domains across sites in `save()` (I-69); sort wildcard candidates by specificity
 (longest literal part first) and stop at the first match.
+
+**Done:** `Dao::getByDomain()` rejects an empty (normalised) domain with `NotFoundException`, escapes `%`, `_` and `\`
+in the `LIKE` value and orders the exact match deterministically: a main domain wins over the domain list, then the
+oldest site (`ORDER BY mainDomain = ? DESC, id LIMIT 1`). The wildcard scan moved to `findSiteIdByWildcard()`: it reads
+only rows whose domains contain `*` (`str_contains()` semantics in SQL instead of the `strpos()` boolean), keeps the
+oldest site for a pattern claimed twice, tries the patterns with the most literal characters first and stops at the
+first match. Rejecting duplicate domains across sites in `save()` stays with I-69.
 
 ## [ ] B-131 – Every unknown `Host` header writes a permanent cache entry and scans the whole `sites` table
 

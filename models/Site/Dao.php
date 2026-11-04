@@ -55,38 +55,27 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
+     * An exact domain wins over a wildcard, the main domain over the domain list and, if several sites claim the
+     * same domain, the oldest site. Among the wildcards the most specific one (most literal characters) wins.
      *
      * @throws NotFoundException
      */
     public function getByDomain(string $domain): void
     {
         $domain = Site::normalizeDomain($domain);
-        $data = $this->db->fetchAssociative('SELECT * FROM sites WHERE mainDomain = ? OR domains LIKE ?', [$domain, '%"' . $domain . '"%']);
-        if (!$data) {
-            // check for wildcards
-            // @TODO: refactor this to be more clear
-            $sitesRaw = $this->db->fetchAllAssociative('SELECT id,domains FROM sites');
-            $wildcardDomains = [];
-            foreach ($sitesRaw as $site) {
-                if (!empty($site['domains']) && strpos($site['domains'], '*')) {
-                    $siteDomains = Site::unserializeList($site['domains']);
-                    if (is_array($siteDomains) && count($siteDomains) > 0) {
-                        foreach ($siteDomains as $siteDomain) {
-                            if (str_contains($siteDomain, '*')) {
-                                $siteDomain = str_replace('.*', '*', $siteDomain); // backward compatibility
-                                $wildcardDomains[$siteDomain] = $site['id'];
-                            }
-                        }
-                    }
-                }
-            }
+        if ($domain === '') {
+            // sites without a main domain store '', an empty host must not resolve to any of them
+            throw new NotFoundException('there is no site for an empty domain');
+        }
 
-            foreach ($wildcardDomains as $wildcardDomain => $siteId) {
-                $wildcardDomain = preg_quote($wildcardDomain, '#');
-                $wildcardDomain = str_replace('\\*', '.*', $wildcardDomain);
-                if (preg_match('#^' . $wildcardDomain . '$#i', $domain)) {
-                    $data = $this->db->fetchAssociative('SELECT * FROM sites WHERE id = ?', [$siteId]);
-                }
+        $data = $this->db->fetchAssociative(
+            'SELECT * FROM sites WHERE mainDomain = ? OR domains LIKE ? ORDER BY mainDomain = ? DESC, id LIMIT 1',
+            [$domain, '%"' . addcslashes($domain, '%_\\') . '"%', $domain]
+        );
+        if (!$data) {
+            $siteId = $this->findSiteIdByWildcard($domain);
+            if ($siteId !== null) {
+                $data = $this->db->fetchAssociative('SELECT * FROM sites WHERE id = ?', [$siteId]);
             }
 
             if (!$data) {
@@ -94,6 +83,32 @@ class Dao extends Model\Dao\AbstractDao
             }
         }
         $this->assignRowToModel($data);
+    }
+
+    private function findSiteIdByWildcard(string $domain): ?int
+    {
+        $wildcardDomains = [];
+        foreach ($this->db->fetchAllAssociative("SELECT id, domains FROM sites WHERE domains LIKE '%*%' ORDER BY id") as $site) {
+            foreach (Site::unserializeList($site['domains']) ?? [] as $siteDomain) {
+                if (is_string($siteDomain) && str_contains($siteDomain, '*')) {
+                    $siteDomain = str_replace('.*', '*', $siteDomain); // backward compatibility
+                    // the first (oldest) site keeps a pattern claimed twice
+                    $wildcardDomains[$siteDomain] ??= (int) $site['id'];
+                }
+            }
+        }
+
+        // most literal characters first, so `shop.*.example.com` is tried before `*.example.com`
+        uksort($wildcardDomains, static fn (string $a, string $b): int => strlen(str_replace('*', '', $b)) <=> strlen(str_replace('*', '', $a)));
+
+        foreach ($wildcardDomains as $wildcardDomain => $siteId) {
+            $pattern = str_replace('\\*', '.*', preg_quote((string) $wildcardDomain, '#'));
+            if (preg_match('#^' . $pattern . '$#i', $domain)) {
+                return $siteId;
+            }
+        }
+
+        return null;
     }
 
     /**
