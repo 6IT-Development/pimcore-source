@@ -1968,7 +1968,7 @@ Return `$id` when `$returnIdIfEmpty` is set and the language has no row.
 is gone), then the current locale, then the system default language for the admin domain (`['general']['language'] ??
 null`). With `$returnIdIfEmpty`, a language without a row or with an empty text returns `$id` instead of `null`.
 
-## [ ] B-115 – `TranslationEntriesDumper`: queue keyed by key only (domains overwrite each other); one failing save aborts the dump and keeps a poison queue
+## [x] B-115 – `TranslationEntriesDumper`: queue keyed by key only (domains overwrite each other); one failing save aborts the dump and keeps a poison queue
 
 **File:** `lib/Translation/TranslationEntriesDumper.php:27-40`
 
@@ -1982,6 +1982,12 @@ null`). With `$returnIdIfEmpty`, a language without a row or with an empty text 
 
 **Fix direction:** key by `domain . '|' . key`. Save each entry in its own `try/catch` (log and drop failures) and
 clear the queue first. See CoreBundle I-52 for flushing in Messenger workers.
+
+**Done:** the queue is keyed by `domain|key`, so the same missing key in several domains is saved for each of them
+(`removeFromSaveQueue()` from B-113 uses the same key). `dumpToDb()` takes the queue and clears it before saving, then
+saves each entry in its own `try/catch`: a failure is logged through the injected PSR logger and dropped, the other
+entries are still saved, and a long-running process does not retry the failing entry on every later request.
+Flushing in Messenger workers stays with CoreBundle I-52.
 
 ## [ ] B-116 – CSV import: shared fixed temp files (concurrent imports mix data), temp files never removed, silent no-ops, lossy comparisons
 
