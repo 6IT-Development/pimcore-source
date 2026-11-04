@@ -36,8 +36,8 @@ readonly class ResponseHeaderListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::CONTROLLER_ARGUMENTS => ['onKernelControllerArguments', 10],
-            KernelEvents::RESPONSE => ['onKernelResponse', 32],
+            KernelEvents::CONTROLLER_ARGUMENTS => ['onKernelControllerArguments', ListenerPriority::RESPONSE_HEADER_ATTRIBUTES],
+            KernelEvents::RESPONSE => ['onKernelResponse', ListenerPriority::RESPONSE_HEADER],
         ];
     }
 

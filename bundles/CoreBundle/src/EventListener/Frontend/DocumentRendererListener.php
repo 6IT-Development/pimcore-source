@@ -22,7 +22,8 @@ use Pimcore\Twig\Extension\Templating\Placeholder\ContainerService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
- * Handles block state for sub requests (saves parent state and restores it after request completes)
+ * Gives every rendered document (DocumentRenderer, e.g. snippets and error pages) its own placeholder index, so the
+ * placeholders of the outer page are kept
  *
  * @internal
  */

@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
 use DateTimeInterface;
 use Exception;
+use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\StaticPageContextAwareTrait;
 use Pimcore\Cache\FullPage\SessionStatus;
@@ -71,10 +72,10 @@ class StaticPageGeneratorListener implements EventSubscriberInterface
             DocumentEvents::POST_ADD => 'onPostAddUpdateDeleteDocument',
             DocumentEvents::POST_DELETE => 'onPostDeleteDocument',
             DocumentEvents::POST_UPDATE => 'onPostAddUpdateDeleteDocument',
-            // this must run after the firewall (8) so access_control applies, and after the maintenance page
-            // listener (126), but before the targeting listener
-            KernelEvents::REQUEST => ['onKernelRequest', 7],
-            KernelEvents::RESPONSE => ['onKernelResponse', -120], //this must run after code injection listeners
+            // after the firewall (8) so access_control applies, and after the maintenance page
+            KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::STATIC_PAGE_GENERATOR],
+            // after the listeners that inject code into the response
+            KernelEvents::RESPONSE => ['onKernelResponse', ListenerPriority::STATIC_PAGE_GENERATOR_STORE],
         ];
     }
 

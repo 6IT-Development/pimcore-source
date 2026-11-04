@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
 use Pimcore\Bundle\CoreBundle\Controller\PublicServicesController;
+use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Http\Request\Resolver\DocumentResolver;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
@@ -73,11 +74,9 @@ class DocumentFallbackListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            // priority must be before
-            // -> Symfony\Component\HttpKernel\EventListener\LocaleListener::onKernelRequest()
-            // -> Pimcore\Bundle\CoreBundle\EventListener\Frontend\EditmodeListener::onKernelRequest()
-            KernelEvents::REQUEST => ['onKernelRequest', 20],
-            KernelEvents::CONTROLLER => ['onKernelController', 50],
+            // before Symfony's LocaleListener (16) and the EditmodeListener
+            KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::DOCUMENT_FALLBACK],
+            KernelEvents::CONTROLLER => ['onKernelController', ListenerPriority::DOCUMENT_FALLBACK_CONTROLLER],
         ];
     }
 

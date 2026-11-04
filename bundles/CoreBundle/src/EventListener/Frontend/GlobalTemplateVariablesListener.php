@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
 use Exception;
+use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Http\Request\Resolver\DocumentResolver;
 use Pimcore\Http\Request\Resolver\EditmodeResolver;
@@ -51,7 +52,8 @@ class GlobalTemplateVariablesListener implements EventSubscriberInterface, Reset
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::CONTROLLER => ['onKernelController', 15], // has to be after DocumentFallbackListener
+            // after ElementListener, which sets the final document
+            KernelEvents::CONTROLLER => ['onKernelController', ListenerPriority::GLOBAL_TEMPLATE_VARIABLES],
             // kernel.finish_request is dispatched even if the sub-request throws, kernel.response is not
             KernelEvents::FINISH_REQUEST => 'onKernelFinishRequest',
         ];

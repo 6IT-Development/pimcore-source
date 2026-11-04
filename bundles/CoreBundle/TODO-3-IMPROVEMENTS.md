@@ -818,7 +818,7 @@ The listener is not `final` because it is not `@internal` and the docs show it a
 upgrade notes are updated. `WorkflowManagementListener` stays public: B-42 kept `disable()` for bulk imports, and that
 only works through the container. The YAML now says so.
 
-### [ ] I-45 – Document and centralise listener priorities; fix stale comments
+### [x] I-45 – Document and centralise listener priorities; fix stale comments
 
 - Put the priority table (TODO-1 Scope 3 notes) into a `ListenerPriority` constants class, or at least into the
   class docblocks, with the Symfony listener each one must run before or after.
@@ -835,6 +835,12 @@ only works through the container. The YAML now says so.
   - `RoutingListener.php:87`: "puroposes".
 - `WebDebugToolbarListener::onKernelResponse()` is subscribed to **`kernel.request`** (line 51). Rename it to
   `onKernelRequest()`.
+
+**Done:** new `@internal` `ListenerPriority` constants class. Its docblock has the table for request, controller,
+view and response, with the Symfony neighbours (checked against a 7.4 vendor tree), and each constant says why it sits
+there. Every subscriber and the `#[AsEventListener]` attributes use the constants. The listed comments are fixed
+(`puroposes` was already gone; the static page generator now runs at 7, after the firewall, see C-09). The old
+`ElementListener` TODOs are removed. `WebDebugToolbarListener::onKernelResponse()` is renamed to `onKernelRequest()`.
 
 ### [ ] I-46 – Decouple CoreBundle listeners from AdminBundle, StaticRoutesBundle and FOSJsRouting
 

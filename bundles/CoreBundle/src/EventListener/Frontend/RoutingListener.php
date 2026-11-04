@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
 use Monolog\Attribute\WithMonologChannel;
+use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Config;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
@@ -57,8 +58,7 @@ class RoutingListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            // run with high priority as we need to set the site early
-            KernelEvents::REQUEST => ['onKernelRequest', 512],
+            KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::ROUTING],
         ];
     }
 

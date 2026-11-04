@@ -16,6 +16,7 @@
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
 use Monolog\Attribute\WithMonologChannel;
+use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Http\Request\Resolver\DocumentResolver;
@@ -59,7 +60,8 @@ class ElementListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::CONTROLLER => ['onKernelController', 30], // has to be after DocumentFallbackListener
+            // after DocumentFallbackListener::onKernelController()
+            KernelEvents::CONTROLLER => ['onKernelController', ListenerPriority::ELEMENT],
         ];
     }
 
@@ -155,11 +157,6 @@ class ElementListener implements EventSubscriberInterface
         // document preview
         if ($request->query->getBoolean('pimcore_preview')) {
             // get document from session
-
-            // TODO originally, this was the following call. What was in this->getParam('document') and
-            // why was it an object?
-            // $docKey = "document_" . $this->getParam("document")->getId();
-
             if ($documentFromSession = Document\Service::getElementFromSession('document', $document->getId(), $request->getSession()->getId())) {
                 // if there is a document in the session use it
                 $this->logger->debug('Loading preview document {document} from session', [
@@ -172,7 +169,6 @@ class ElementListener implements EventSubscriberInterface
         // for version preview
         if ($request->query->has('pimcore_version')) {
             $versionId = $request->query->getInt('pimcore_version');
-            // TODO there was a check with a registry flag here - check if the main request handling is sufficient
             $version = Version::getById($versionId);
             $documentVersion = $version && $document->isAllowed('versions', $user)
                 ? $this->getDocumentFromVersion($version, $document)
@@ -262,7 +258,6 @@ class ElementListener implements EventSubscriberInterface
                     'objectId' => $object->getId(),
                 ]);
 
-                // TODO remove \Pimcore\Cache\Runtime
                 // add the object to the registry so every call to DataObject::getById() will return this object instead of the real one
                 RuntimeCache::set('object_' . $object->getId(), $object);
             }

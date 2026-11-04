@@ -22,6 +22,7 @@ use DateTime;
 use DateTimeInterface;
 use Exception;
 use Pimcore;
+use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\StaticPageContextAwareTrait;
 use Pimcore\Cache;
@@ -130,7 +131,7 @@ class FullPageCacheListener implements ResetInterface
         $this->state->enableExpireHeader();
     }
 
-    #[AsEventListener(KernelEvents::REQUEST, priority: 120)]
+    #[AsEventListener(KernelEvents::REQUEST, priority: ListenerPriority::FULL_PAGE_CACHE)]
     public function onKernelRequest(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {
@@ -368,7 +369,7 @@ class FullPageCacheListener implements ResetInterface
         return $queryString !== '' ? $uri . '?' . $queryString : $uri;
     }
 
-    #[AsEventListener(KernelEvents::RESPONSE, priority: 100)]
+    #[AsEventListener(KernelEvents::RESPONSE, priority: ListenerPriority::FULL_PAGE_CACHE_STOP_PROPAGATION)]
     public function stopPropagationCheck(KernelEvent $event): void
     {
         if ($this->stopResponsePropagation) {
@@ -376,7 +377,7 @@ class FullPageCacheListener implements ResetInterface
         }
     }
 
-    #[AsEventListener(KernelEvents::RESPONSE, priority: -120)]
+    #[AsEventListener(KernelEvents::RESPONSE, priority: ListenerPriority::FULL_PAGE_CACHE_STORE)]
     public function onKernelResponse(ResponseEvent $event): void
     {
         if (!$event->isMainRequest()) {
@@ -450,8 +451,8 @@ class FullPageCacheListener implements ResetInterface
                 return;
             }
         } else {
-            // output-cache was disabled, add "output" as cleared tag to ensure that no other "output" tagged elements
-            // like the inc and snippet cache get into the cache
+            // output-cache was disabled: ignore the "output_inline" tag on save, so that no other "output_inline" tagged
+            // elements like the inc and snippet cache get into the cache
             Cache::addIgnoredTagOnSave('output_inline');
         }
     }

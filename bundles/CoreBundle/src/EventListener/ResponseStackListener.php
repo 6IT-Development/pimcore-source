@@ -36,7 +36,7 @@ readonly class ResponseStackListener implements EventSubscriberInterface
         return [
             // before the ResponseHeaderListener (32), so the #[ResponseHeader] headers are applied to the response
             // that is actually sent and not to the one that gets replaced
-            KernelEvents::RESPONSE => ['onKernelResponse', 40],
+            KernelEvents::RESPONSE => ['onKernelResponse', ListenerPriority::RESPONSE_STACK],
         ];
     }
 

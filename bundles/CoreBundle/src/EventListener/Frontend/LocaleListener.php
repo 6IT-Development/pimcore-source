@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
 use Locale;
+use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
 use Pimcore\Bundle\CoreBundle\EventListener\Traits\PimcoreContextAwareTrait;
 use Pimcore\Http\Request\Resolver\PimcoreContextResolver;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -48,8 +49,9 @@ class LocaleListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::REQUEST => ['onKernelRequest', 1], // need to be after ElementListener
-            KernelEvents::RESPONSE => ['onKernelResponse'], // need to be after ElementListener
+            // after Symfony's LocaleListener (16), which sets the locale from the _locale attribute
+            KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::LOCALE],
+            KernelEvents::RESPONSE => ['onKernelResponse'],
             KernelEvents::FINISH_REQUEST => ['onKernelFinishRequest'],
         ];
     }

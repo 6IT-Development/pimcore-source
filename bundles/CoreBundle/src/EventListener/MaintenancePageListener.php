@@ -63,8 +63,8 @@ class MaintenancePageListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            //run after Pimcore\Bundle\AdminBundle\EventListener\AdminSessionBagListener
-            KernelEvents::REQUEST => ['onKernelRequest', 126],
+            // after Symfony's SessionListener (128), before the full page cache
+            KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::MAINTENANCE_PAGE],
         ];
     }
 

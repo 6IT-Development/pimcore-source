@@ -46,9 +46,8 @@ class PimcoreContextListener implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            // run after router to be able to match the _route attribute
-            // TODO check if this is early enough
-            KernelEvents::REQUEST => ['onKernelRequest', 24],
+            // listeners with a higher priority get a context guessed from the path, see ListenerPriority
+            KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::PIMCORE_CONTEXT],
         ];
     }
 

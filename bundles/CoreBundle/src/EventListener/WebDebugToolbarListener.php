@@ -58,12 +58,12 @@ class WebDebugToolbarListener implements EventSubscriberInterface, ResetInterfac
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::REQUEST => ['onKernelResponse', -118],
+            KernelEvents::REQUEST => ['onKernelRequest', ListenerPriority::WEB_DEBUG_TOOLBAR],
             KernelEvents::FINISH_REQUEST => 'onKernelFinishRequest',
         ];
     }
 
-    public function onKernelResponse(RequestEvent $event): void
+    public function onKernelRequest(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {
             return;
