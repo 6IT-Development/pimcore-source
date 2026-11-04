@@ -108,6 +108,8 @@ final class Site extends AbstractModel
      */
     public static function getByDomain(string $domain): ?Site
     {
+        $domain = self::normalizeDomain($domain);
+
         // cached because this is called in the route
         $cacheKey = 'site_domain_' . md5($domain);
 
@@ -131,6 +133,30 @@ final class Site extends AbstractModel
         RuntimeCache::set($cacheKey, $site);
 
         return $site;
+    }
+
+    /**
+     * Brings a domain into the form of Request::getHost(): trimmed, lower case and with the labels of an IDN in
+     * punycode. A label containing a wildcard is only lower-cased, a part of a label has no punycode of its own.
+     *
+     * @internal
+     */
+    public static function normalizeDomain(string $domain): string
+    {
+        $domain = mb_strtolower(trim($domain));
+        if (!preg_match('/[^\x00-\x7F]/', $domain)) {
+            return $domain;
+        }
+
+        $labels = explode('.', $domain);
+        foreach ($labels as &$label) {
+            if (!str_contains($label, '*') && preg_match('/[^\x00-\x7F]/', $label)) {
+                $label = idn_to_ascii($label, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46) ?: $label;
+            }
+        }
+        unset($label);
+
+        return implode('.', $labels);
     }
 
     /**
@@ -250,7 +276,10 @@ final class Site extends AbstractModel
             $domains = Serialize::unserialize($domains);
         }
         if (is_array($domains)) {
-            $domains = array_filter($domains);
+            $domains = array_values(array_unique(array_filter(array_map(
+                static fn (mixed $domain): string => self::normalizeDomain((string) $domain),
+                $domains
+            ))));
             array_map(static function ($domain) {
                 //replace all wildcards with a placeholder dummy string
                 $wildCardLessDomain = str_replace('*', 'anystring', $domain);
@@ -342,6 +371,7 @@ final class Site extends AbstractModel
 
     public function setMainDomain(string $mainDomain): void
     {
+        $mainDomain = self::normalizeDomain($mainDomain);
         if ($mainDomain && !filter_var(idn_to_ascii($mainDomain), FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
             throw new InvalidArgumentException(sprintf('Invalid main domain name "%s"', $mainDomain));
         }

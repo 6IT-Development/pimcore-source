@@ -59,6 +59,7 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function getByDomain(string $domain): void
     {
+        $domain = Site::normalizeDomain($domain);
         $data = $this->db->fetchAssociative('SELECT * FROM sites WHERE mainDomain = ? OR domains LIKE ?', [$domain, '%"' . $domain . '"%']);
         if (!$data) {
             // check for wildcards
@@ -82,7 +83,7 @@ class Dao extends Model\Dao\AbstractDao
             foreach ($wildcardDomains as $wildcardDomain => $siteId) {
                 $wildcardDomain = preg_quote($wildcardDomain, '#');
                 $wildcardDomain = str_replace('\\*', '.*', $wildcardDomain);
-                if (preg_match('#^' . $wildcardDomain . '$#', $domain)) {
+                if (preg_match('#^' . $wildcardDomain . '$#i', $domain)) {
                     $data = $this->db->fetchAssociative('SELECT * FROM sites WHERE id = ?', [$siteId]);
                 }
             }

@@ -2256,7 +2256,7 @@ ID, any other string by domain, and a site is returned as it is. Unsupported val
 with a `TypeError` at the call instead of silently returning `null`; a non-strict caller passing `5.0` gets it
 coerced to `5`.
 
-## [ ] B-128 – Domains are stored un-normalised: IDN domains never match, uppercase causes redirect loops, wildcards are case-sensitive
+## [x] B-128 – Domains are stored un-normalised: IDN domains never match, uppercase causes redirect loops, wildcards are case-sensitive
 
 **Files:** `models/Site.php:228-251`, `:322-328`; `models/Site/Dao.php:60-95`;
 `bundles/CoreBundle/src/EventListener/Frontend/RoutingListener.php:160` (see CoreBundle **B-41**)
@@ -2276,6 +2276,14 @@ coerced to `5`.
 **Fix direction:** normalise once in the setters: `trim()`, `mb_strtolower()`, `idn_to_ascii()` (store ASCII, show
 Unicode in the UI); remove empty and duplicate entries with `array_values(array_unique())`. Normalise the lookup
 input in `getByDomain()` the same way. Migrate existing rows.
+
+**Done:** the new internal `Site::normalizeDomain()` trims, lower-cases and converts the labels of an IDN to punycode
+(UTS #46), the form of `Request::getHost()`; a label with a wildcard is only lower-cased. `setDomains()` normalises
+every entry and drops empty values and duplicates, `setMainDomain()` normalises before validating, and
+`Site::getByDomain()` / `Dao::getByDomain()` normalise the lookup input, so `Example.com` and `example.com` share one
+cache entry. The wildcard match is case-insensitive as well. Migration `Version20261104000300` normalises the stored
+rows from the raw values (a row whose domains do not unserialize is reported and left alone, B-129) and clears the
+`site` cache tag. Showing the Unicode form in the admin UI is up to the admin bundle.
 
 ## [ ] B-129 – Loading a site validates and unserializes stored data: one legacy or corrupt row throws on every load
 
