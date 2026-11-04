@@ -203,7 +203,7 @@ deleted in keyset batches of 500 (B-18). `Email\Log::delete()` also removes the 
 `email_log` storage, so email logs stay deleted one by one through the model. Both commands end with a count. The
 recycle bin cleanup returns `FAILURE` when an entry could not be deleted.
 
-### [ ] I-13 – Share CSV/array option parsing
+### [x] I-13 – Share CSV/array option parsing
 
 **Files:** `CacheClearCommand::prepareTags()` (`:96-114`), `MaintenanceCommand::getArrayOptionValue()` (`:88-105`),
 plus the inline `explode(',', ...)` in `DeleteUnusedLocaleData`, `ThumbnailsImage` and `ThumbnailsVideo` (some of them
@@ -211,6 +211,12 @@ without trim)
 
 - These are the same "array option, also accept comma-separated values, trim, drop empties" helper written several
   times. Add one helper on `AbstractCommand` (or a small trait).
+
+**Done:** `Traits/CsvOptionTrait` with `getCsvOptionValues()` and the static `splitCsvValues()` (split at commas, trim,
+drop empty and duplicate values). `CacheClearCommand`, `MaintenanceCommand`, `DeleteUnusedLocaleDataCommand`,
+`ThumbnailsImageCommand` and `ThumbnailsVideoCommand` use it; `prepareTags()` and `getArrayOptionValue()` are gone.
+`ThumbnailsVideoCommand --thumbnails` now trims its values too. `IdOptionTrait` keeps its own loop because it validates
+each value and rejects an empty list.
 
 ### [ ] I-14 – Remove duplicated JSON/path helpers in `QuantityValueCommand`
 

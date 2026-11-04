@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 
 use DateTime;
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\CsvOptionTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\Parallelization;
@@ -41,6 +42,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class ThumbnailsImageCommand extends AbstractCommand
 {
     use AssetFilterOptionsTrait;
+    use CsvOptionTrait;
     use DeprecatedOptionNameTrait;
     use Parallelization;
 
@@ -137,10 +139,8 @@ class ThumbnailsImageCommand extends AbstractCommand
             $thumbnailList = $thumbnailList->getThumbnails();
         }
 
-        $allowedThumbs = [];
-        if ($input->getOption('thumbnails')) {
-            $allowedThumbs = array_map('trim', explode(',', $input->getOption('thumbnails')));
-
+        $allowedThumbs = $this->getCsvOptionValues($input, 'thumbnails');
+        if ($allowedThumbs) {
             $availableThumbs = array_map(static fn (Image\Thumbnail\Config $config) => $config->getName(), $thumbnailList);
             $unknownThumbs = array_diff($allowedThumbs, $availableThumbs);
             if ($unknownThumbs) {

@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
+use Pimcore\Bundle\CoreBundle\Command\Traits\CsvOptionTrait;
 use Pimcore\Bundle\CoreBundle\Command\Traits\DeprecatedOptionNameTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Maintenance\Executor;
@@ -38,6 +39,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 )]
 class MaintenanceCommand extends AbstractCommand
 {
+    use CsvOptionTrait;
     use DeprecatedOptionNameTrait;
 
     public function __construct(
@@ -84,8 +86,9 @@ class MaintenanceCommand extends AbstractCommand
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $validJobs = $this->getArrayOptionValue($input, 'job');
-        $excludedJobs = $this->getArrayOptionValue($input, 'excluded-jobs');
+        // the options are repeatable, comma-separated values are still accepted for backwards compatibility
+        $validJobs = $this->getCsvOptionValues($input, 'job');
+        $excludedJobs = $this->getCsvOptionValues($input, 'excluded-jobs');
 
         $this->maintenanceExecutor->executeMaintenance(
             $validJobs,
@@ -95,27 +98,5 @@ class MaintenanceCommand extends AbstractCommand
         $this->logger->info('All maintenance-jobs finished!');
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Get an array option value, but still support the value being comma-separated for backwards compatibility
-     */
-    private function getArrayOptionValue(InputInterface $input, string $name): array
-    {
-        $value = $input->getOption($name);
-        $result = [];
-
-        if (!empty($value)) {
-            foreach ($value as $val) {
-                foreach (explode(',', $val) as $part) {
-                    $part = trim($part);
-                    if (!empty($part)) {
-                        $result[] = $part;
-                    }
-                }
-            }
-        }
-
-        return array_unique($result);
     }
 }

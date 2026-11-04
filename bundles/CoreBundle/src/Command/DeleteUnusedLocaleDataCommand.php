@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
+use Pimcore\Bundle\CoreBundle\Command\Traits\CsvOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\DryRun;
 use Pimcore\Db;
@@ -35,6 +36,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class DeleteUnusedLocaleDataCommand extends AbstractCommand
 {
+    use CsvOptionTrait;
     use DryRun;
 
     #[\Override]
@@ -56,13 +58,7 @@ class DeleteUnusedLocaleDataCommand extends AbstractCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $db = Db::get();
-        $skipLocales = [];
-        if ($input->getOption('skip-locales')) {
-            $skipLocales = array_values(array_filter(
-                array_map('trim', explode(',', $input->getOption('skip-locales'))),
-                static fn (string $locale): bool => $locale !== ''
-            ));
-        }
+        $skipLocales = $this->getCsvOptionValues($input, 'skip-locales');
 
         $validLanguages = Tool::getValidLanguages();
         if (!$validLanguages) {

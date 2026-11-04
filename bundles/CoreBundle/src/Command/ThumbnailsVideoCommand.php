@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 
 use Pimcore;
 use Pimcore\Bundle\CoreBundle\Command\Traits\AssetFilterOptionsTrait;
+use Pimcore\Bundle\CoreBundle\Command\Traits\CsvOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Console\Traits\Parallelization;
 use Pimcore\Logger;
@@ -41,6 +42,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class ThumbnailsVideoCommand extends AbstractCommand
 {
     use AssetFilterOptionsTrait;
+    use CsvOptionTrait;
     use Parallelization;
 
     private const DEFAULT_MAX_WAIT = 1800;
@@ -104,10 +106,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
         // get all thumbnails
         $videoThumbnailList = new Asset\Video\Thumbnail\Config\Listing();
 
-        $allowedThumbs = [];
-        if ($input->getOption('thumbnails')) {
-            $allowedThumbs = explode(',', $input->getOption('thumbnails'));
-        }
+        $allowedThumbs = $this->getCsvOptionValues($input, 'thumbnails');
 
         $items = [];
         foreach ($assetIdsList as $assetId) {

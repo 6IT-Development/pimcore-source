@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\Command;
 
+use Pimcore\Bundle\CoreBundle\Command\Traits\CsvOptionTrait;
 use Pimcore\Cache;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Event\SystemEvents;
@@ -34,6 +35,8 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 )]
 class CacheClearCommand extends AbstractCommand
 {
+    use CsvOptionTrait;
+
     public function __construct(private readonly EventDispatcherInterface $eventDispatcher)
     {
         parent::__construct();
@@ -62,7 +65,8 @@ class CacheClearCommand extends AbstractCommand
         }
 
         if ([] !== $tags) {
-            $tags = $this->prepareTags($tags);
+            // -t foo -t bar,baz results in [foo, bar, baz]
+            $tags = self::splitCsvValues($tags);
             if ([] === $tags) {
                 $this->io->error('No valid tags given.');
 
@@ -83,30 +87,5 @@ class CacheClearCommand extends AbstractCommand
         }
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param string[] $tags
-     *
-     * @return string[]
-     */
-    private function prepareTags(array $tags): array
-    {
-        // previous implementations didn't use VALUE_IS_ARRAY and just supported csv strings, so we not iterate
-        // through the input array and split values
-        // -t foo -t bar,baz results in [foo, bar, baz]
-        $result = [];
-        foreach ($tags as $tagEntries) {
-            $tagEntries = explode(',', $tagEntries);
-            foreach ($tagEntries as $tagEntry) {
-                $tagEntry = trim($tagEntry);
-
-                if ('' !== $tagEntry) {
-                    $result[] = $tagEntry;
-                }
-            }
-        }
-
-        return $result;
     }
 }
