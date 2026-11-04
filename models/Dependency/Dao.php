@@ -107,8 +107,8 @@ class Dao extends Model\Dao\AbstractDao
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
-        if ($offset !== null && $limit !== null) {
-            $query .= ' LIMIT ' . $offset . ', ' . $limit;
+        if ($limit !== null) {
+            $query .= ' LIMIT ' . ($offset ?? 0) . ', ' . $limit;
         }
 
         // the search value comes from user input, it must only ever be bound as a parameter
@@ -171,8 +171,8 @@ class Dao extends Model\Dao\AbstractDao
         ) dep
         ORDER BY " . $orderBy . ' ' . $orderDirection;
 
-        if ($offset !== null && $limit !== null) {
-            $query .= ' LIMIT ' . $offset . ', ' . $limit;
+        if ($limit !== null) {
+            $query .= ' LIMIT ' . ($offset ?? 0) . ', ' . $limit;
         }
 
         // the search value comes from user input, it must only ever be bound as a parameter
@@ -348,8 +348,8 @@ class Dao extends Model\Dao\AbstractDao
             ORDER BY objects.path, objects.key, documents.path, documents.key, assets.path, assets.filename
         ';
 
-        if ($offset !== null && $limit !== null) {
-            $query .= ' LIMIT ' . $offset . ', ' . $limit;
+        if ($limit !== null) {
+            $query .= ' LIMIT ' . ($offset ?? 0) . ', ' . $limit;
         }
 
         $data = $this->db->fetchAllAssociative($query, [$this->model->getSourceType(), $this->model->getSourceId()]);
@@ -404,8 +404,8 @@ class Dao extends Model\Dao\AbstractDao
             ) dep
             ORDER BY " . $orderBy . ' ' . $orderDirection;
 
-        if (is_int($offset) && is_int($limit)) {
-            $query .= ' LIMIT ' . $offset . ', ' . $limit;
+        if ($limit !== null) {
+            $query .= ' LIMIT ' . ($offset ?? 0) . ', ' . $limit;
         }
 
         return $this->db->fetchAllAssociative($query);

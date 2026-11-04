@@ -166,8 +166,8 @@ class Dependency extends AbstractModel
 
     public function getRequires(?int $offset = null, ?int $limit = null): array
     {
-        if ($offset !== null) {
-            return array_slice($this->requires, $offset, $limit);
+        if ($offset !== null || $limit !== null) {
+            return array_slice($this->requires, $offset ?? 0, $limit);
         }
 
         return $this->requires;

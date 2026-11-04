@@ -1660,7 +1660,7 @@ the cached `Dependency` before the rows are rewritten, and `Asset::delete()`, `D
 next call instead of returning the list from before the save. Removing the cache entirely stays with I-44.
 `DependenciesTest` still reloads with `force`; a test without it stays with I-50.
 
-## [ ] B-101 – Pagination: `$limit` without `$offset` is ignored in `getRequires()` and the SQL getters
+## [x] B-101 – Pagination: `$limit` without `$offset` is ignored in `getRequires()` and the SQL getters
 
 **Files:** `models/Dependency.php:96-103`; `models/Dependency/Dao.php:108`, `:167`, `:301`, `:357`
 
@@ -1668,6 +1668,11 @@ next call instead of returning the list from before the save. Removing the cache
   apply `LIMIT` only when both are non-null. Callers that pass only a limit ("first 25") get everything.
 
 **Fix direction:** treat `null` offset as `0` when a limit is given, in all getters.
+
+**Done:** `getRequires()` slices whenever an offset or a limit is given, and the four SQL getters
+(`getFilterRequiresByPath()`, `getFilterRequiredByPath()`, `getRequiredBy()`, `getRequiredByWithPath()`) add `LIMIT`
+whenever a limit is given. A missing offset counts as `0`, so `getRequires(null, 25)` returns the first 25 rows. An
+offset without a limit is still ignored by the SQL getters.
 
 ## [ ] B-102 – No unique tie-breaker in `ORDER BY`: pages overlap or skip rows
 
