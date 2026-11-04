@@ -693,7 +693,7 @@ loop (upgrade notes).
 stays separate: it works on a prefix and must run after Monolog's `LoggerChannelPass` (I-35). The callers still use
 `Pimcore::getContainer()->get()` (long-term item, open).
 
-### [ ] I-40 – `WorkflowPass` readability
+### [x] I-40 – `WorkflowPass` readability
 
 **File:** `src/DependencyInjection/Compiler/WorkflowPass.php`
 
@@ -708,6 +708,13 @@ stays separate: it works on a prefix and must run after Monolog's `LoggerChannel
   or drop the fallback.
 - Line 258 checks `Security::class` (SecurityBundle). FrameworkBundle checks `AuthenticationEvents::class`
   (security-core), which is the component that is actually needed.
+
+**Done:** `process()` only loads the fallback services and loops over the workflows; `registerWorkflow()` delegates to
+`createTransitions()`, `createCustomHtmlService()`, `createMarkingStore()` (a `match` on the type, no variable left over
+from an earlier workflow), `registerSupportStrategy()`, `registerAuditTrail()` and `registerGuard()`. The fallback
+branch is documented; the guard checks `AuthenticationEvents::class`. A container built with the old and the new pass
+from the same config (workflow and state machines, all marking store kinds, custom HTML, guard, audit trail) is
+identical.
 
 ### [ ] I-41 – `PimcoreCoreExtension` tidy-up
 
