@@ -1351,3 +1351,25 @@ check the bundle via `kernel.bundles` (or move the action into SeoBundle, I-69);
   URIs; consistent only by accident.
 
 **Fix direction:** `rawurldecode()`; check `$storagePath`; document that the argument is the path info.
+
+---
+
+## [x] B-70 – `getConfigNodeFromSymfonyTree()` fails on env placeholders in typed nodes (kernel cannot boot)
+
+Scope 4, found while writing the I-64 tests.
+
+**Files:** `src/DependencyInjection/ConfigurationHelper.php` (`getConfigNodeFromSymfonyTree()`), `lib/Kernel.php`
+(`registerContainerConfiguration()`), `lib/Config/LocationAwareConfigRepository.php` (`loadSymfonyConfigFiles()`)
+
+- The helper processes the raw extension configs with a plain `Processor`. `'%env(bool:REDIRECT)%'` reaches a
+  `booleanNode` as a string: `InvalidTypeException` "Invalid type for path "pimcore.general.redirect_to_maindomain".
+  Expected "bool", but got "string"" (reproduced with symfony/config 7.4). The same applies to integer, float and enum
+  nodes.
+- The Kernel calls the helper for the `pimcore` tree on every container build, so a project that sets any typed
+  `pimcore.*` option from an env var cannot build the container. Before B-54 the string was cast to `true` and the
+  error was hidden; the native boolean nodes failed already.
+- `MergeExtensionConfigurationPass` avoids this by resolving the configs with the `EnvPlaceholderParameterBag` (env
+  placeholders) and registering its unique prefix with `BaseNode`, which accepts placeholders for every node type.
+
+**Done:** the helper does the same (`BaseNode::setPlaceholderUniquePrefix()` around the processing, reset in
+`finally`). Env values stay placeholders in the result, as before (B-55).

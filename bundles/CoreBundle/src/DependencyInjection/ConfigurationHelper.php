@@ -18,12 +18,14 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection;
 
 use Pimcore\Config\LocationAwareConfigRepository;
+use Symfony\Component\Config\Definition\BaseNode;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
+use Symfony\Component\DependencyInjection\ParameterBag\EnvPlaceholderParameterBag;
 use Symfony\Component\Filesystem\Path;
 use Symfony\Component\Finder\Finder;
 
@@ -152,9 +154,21 @@ final class ConfigurationHelper
             throw new LogicException(sprintf('The extension "%s" does not provide a configuration.', $nodeName));
         }
 
-        $processor = new Processor();
-        $containerConfig = $processor->processConfiguration($configuration, $containerConfigs);
+        $parameterBag = $container->getParameterBag();
+        if (!$parameterBag instanceof EnvPlaceholderParameterBag) {
+            return $parameterBag->resolveValue((new Processor())->processConfiguration($configuration, $containerConfigs));
+        }
 
-        return $container->getParameterBag()->resolveValue($containerConfig);
+        // like MergeExtensionConfigurationPass: "%env(bool:X)%" becomes an env placeholder that the nodes accept
+        // whatever their type; it stays unresolved in the result
+        BaseNode::setPlaceholderUniquePrefix($parameterBag->getEnvPlaceholderUniquePrefix());
+
+        try {
+            $containerConfig = (new Processor())->processConfiguration($configuration, $parameterBag->resolveValue($containerConfigs));
+        } finally {
+            BaseNode::resetPlaceholders();
+        }
+
+        return $parameterBag->resolveValue($containerConfig);
     }
 }
