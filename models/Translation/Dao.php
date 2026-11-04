@@ -17,12 +17,12 @@ namespace Pimcore\Model\Translation;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Exception;
-use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Translation;
 use Pimcore\Model\User;
 use Pimcore\Tool\Admin;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
  * @internal
@@ -99,6 +99,8 @@ class Dao extends Model\Dao\AbstractDao
      * Save object to database
      *
      * @param bool $onlyMissing insert only the languages that have no row yet, never overwrite existing texts
+     *
+     * @throws AccessDeniedException if the modifying user changed a language they may not edit
      */
     public function save(bool $onlyMissing = false): void
     {
@@ -110,9 +112,10 @@ class Dao extends Model\Dao\AbstractDao
 
         $user = null;
 
-        // null means no restriction, an empty array means the user may edit no language at all
+        // null means no restriction, an empty array means the user may edit no language at all. Missing languages are
+        // only added by the auto-create of the Translator, a system write that the current editor did not make.
         $editableLanguages = null;
-        if ($this->model->getDomain() != Translation::DOMAIN_ADMIN) {
+        if (!$onlyMissing && $this->model->getDomain() != Translation::DOMAIN_ADMIN) {
             if ($user = User::getById($this->model->getUserModification())) {
                 $editableLanguages = $user->getAllowedLanguagesForEditingWebsiteTranslations();
             }
@@ -122,12 +125,6 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($this->model->getTranslations() as $language => $text) {
             // setTranslations() does not type its values, never write a NULL (it breaks the catalogue)
             $text = (string)$text;
-
-            if ($editableLanguages !== null && !in_array($language, $editableLanguages, true)) {
-                Logger::warning(sprintf('User %s not allowed to edit %s translation', $user?->getUsername() ?? 'N/A', $language)); // @phpstan-ignore-line
-
-                continue;
-            }
 
             if ($text != strip_tags($text)) {
                 $text = $sanitizer->sanitizeFor('body', $text);
@@ -147,7 +144,7 @@ class Dao extends Model\Dao\AbstractDao
         }
 
         // all languages or none: a failure in between must not leave the key partially saved
-        $this->db->transactional(function () use ($rows, $onlyMissing): void {
+        $this->db->transactional(function () use ($rows, $onlyMissing, $editableLanguages, $user): void {
             $existing = $this->db->fetchAllAssociativeIndexed(
                 'SELECT `language`, `text`, `type` FROM ' . $this->db->quoteIdentifier($this->getDatabaseTableName()) . ' WHERE `key` = ?',
                 [$this->model->getKey()]
@@ -158,10 +155,26 @@ class Dao extends Model\Dao\AbstractDao
                     // an unchanged language keeps its modification info and is not overwritten from a stale object
                     if ($onlyMissing || ((string)$existing[$language]['text'] === $data['text']
                             && ($existing[$language]['type'] ?: 'simple') === $data['type'])) {
-                        continue;
+                        unset($rows[$language]);
                     }
                 }
+            }
 
+            // a restricted editor may still save an object that holds the other languages unchanged, but a change to
+            // one of them rejects the whole save: nothing is written and POST_SAVE is not dispatched
+            if ($editableLanguages !== null) {
+                $deniedLanguages = array_diff(array_map('strval', array_keys($rows)), $editableLanguages);
+                if ($deniedLanguages) {
+                    throw new AccessDeniedException(sprintf(
+                        'User %s is not allowed to edit the %s translation of "%s"',
+                        $user?->getUsername() ?? 'N/A', // @phpstan-ignore-line
+                        implode(', ', $deniedLanguages),
+                        $this->model->getKey()
+                    ));
+                }
+            }
+
+            foreach ($rows as $data) {
                 // the creation date and owner of an existing language stay as they are
                 $this->insertOrUpdate($data, $onlyMissing ? [] : ['type', 'text', 'modificationDate', 'userModification']);
             }

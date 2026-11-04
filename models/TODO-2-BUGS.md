@@ -1878,7 +1878,7 @@ untouched languages keep their modification info and a concurrent edit of anothe
 writes run in one transaction (the table DDL stays before it, B-112). One multi-row statement and the
 `TranslationType` enum stay with I-55 / I-52.
 
-## [ ] B-111 – Disallowed languages are skipped silently: `save()` reports success, `POST_SAVE` fires, the in-memory object keeps the rejected text
+## [x] B-111 – Disallowed languages are skipped silently: `save()` reports success, `POST_SAVE` fires, the in-memory object keeps the rejected text
 
 **File:** `models/Translation/Dao.php:92-105`; `models/Translation.php:354-363`
 
@@ -1895,6 +1895,13 @@ writes run in one transaction (the table DDL stays before it, B-112). One multi-
 **Fix direction:** throw an access-denied exception for disallowed languages (or return the skipped list), and do not
 dispatch `POST_SAVE` for data that was not written. Auto-create entries (system writes) should bypass the editor
 permission check explicitly. See C-20 for the bypass in the same check.
+
+**Done:** `Dao::save()` determines the new or changed languages first (B-110) and throws a Symfony
+`AccessDeniedException` naming the languages if any of them is not editable for the modifying user. Nothing is
+written, `save()` does not return normally and `POST_SAVE` is not dispatched. Unchanged languages that the object
+merely holds (the admin grid sends all of them) do not count. `saveMissingLanguages()`, used by the Translator's
+auto-create, skips the editor check, so missing locales are created once instead of being queued on every request.
+A CSV import with such a change now stops with the exception instead of counting the row as imported.
 
 ## [ ] B-112 – `createOrUpdateTable()` runs DDL on every save: implicit commit of the caller's transaction
 
