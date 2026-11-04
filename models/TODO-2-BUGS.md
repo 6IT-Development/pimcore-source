@@ -880,13 +880,16 @@ configs, `video` for video configs), so clearing one config type no longer delet
 storage is still listed recursively, because the asset path above each `<id>/<prefix>-thumb__…` directory is not known
 without a DB lookup (the status cache can be disabled).
 
-## [ ] B-54 – Image config listing can contain `null`s and non-list arrays
+## [x] B-54 – Image config listing can contain `null`s and non-list arrays
 
 **File:** `models/Asset/Image/Thumbnail/Config/Listing/Dao.php:33`, `:36`
 
 - `getByName()` can return `null` → typed filter/order callbacks throw; `array_filter` keeps keys → JSON object.
 
 **Fix direction:** drop nulls and `array_values()`.
+
+**Done:** `loadList()` skips names for which `getByName()` returns `null` and re-indexes the filtered list with
+`array_values()`. The video listing has the same `null` issue; it is handled with B-72.
 
 ## [ ] B-55 – `getImageTag()` cannot remove or customise `srcset`
 
