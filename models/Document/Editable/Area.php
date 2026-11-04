@@ -20,6 +20,7 @@ namespace Pimcore\Model\Document\Editable;
 use Exception;
 use Pimcore;
 use Pimcore\Document\Editable\Block\BlockName;
+use Pimcore\Document\Editable\Block\BlockState;
 use Pimcore\Document\Editable\EditableHandler;
 use Pimcore\Extension\Document\Areabrick\AreabrickManagerInterface;
 use Pimcore\Extension\Document\Areabrick\EditableDialogBoxInterface;
@@ -153,8 +154,20 @@ class Area extends Model\Document\Editable
 
         // push current block name
         $blockState = $this->getBlockState();
+        $blockCount = count($blockState->getBlocks());
+        $indexCount = count($blockState->getIndexes());
         $blockState->pushBlock(BlockName::createFromEditable($this));
 
+        try {
+            $this->renderFrontend($config, $editableHandler, $blockState);
+        } finally {
+            // remove current block and index from stack, also when the brick throws
+            $blockState->truncate($blockCount, $indexCount);
+        }
+    }
+
+    private function renderFrontend(array $config, EditableHandler $editableHandler, BlockState $blockState): void
+    {
         // create info object and assign it to the view
         $this->buildInfoObject();
 
@@ -202,10 +215,6 @@ class Area extends Model\Document\Editable
         }
 
         echo $editableHandler->renderAreaFrontend($info);
-
-        // remove current block and index from stack
-        $blockState->popIndex();
-        $blockState->popBlock();
     }
 
     public function setDataFromResource(mixed $data): static

@@ -2896,7 +2896,7 @@ a non-empty brick type, keeping the first entry of a duplicate key; anything els
 checked against `allowed` when rendering, since the configuration is not known when the data is set. `getElement()`
 returns `[]` when the document cannot be loaded.
 
-## [ ] B-158 – Block-type editables leave `BlockStateStack` unbalanced when a child throws
+## [x] B-158 – Block-type editables leave `BlockStateStack` unbalanced when a child throws
 
 **Files:** `models/Document/Editable/Block.php:105-145`, `:197-221`; `Areablock.php:304-347`; `Area.php:147-209`;
 `Scheduledblock.php:124-169`
@@ -2906,6 +2906,15 @@ returns `[]` when the document cannot be loaded.
   (and is saved under that name) and the output buffer leaks. Model side of CoreBundle **B-43**.
 
 **Fix direction:** `try/finally` around every push/pop pair and around `ob_start()` / `stashPush()`.
+
+**Done:** `BlockState::truncate()` drops the blocks and indexes pushed after the stacks had a given size.
+`Area::frontend()` pushes its block and index inside `try/finally` and truncates back in `finally`.
+`Areablock::frontend()` and `renderIndex()` catch a throwing brick, truncate the state, reset `current` / `blockStarted`
+and rethrow. The iterators of `Block`, `Areablock` and `Scheduledblock` wrap their body in `try/finally`: PHP runs the
+`finally` block when a suspended generator is destroyed, so a child that throws inside the template loop (or a loop left
+with `break`) restores the block state and resets `current`; `Block` in editmode also closes the output buffers it
+opened (down to the level before its `ob_start()`), pulls the stashed editable definitions back and restores the
+indices. Manual mode (`loop()`, `start()` and `end()` called by the template) stays the template's responsibility.
 
 ## [ ] B-159 – `Editable\Link::frontend()` mutates its config, emits internal data as attributes, does not escape `href`
 

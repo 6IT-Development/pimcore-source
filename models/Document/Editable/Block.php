@@ -104,43 +104,72 @@ class Block extends Model\Document\Editable implements BlockInterface
 
     public function getIterator(): Generator
     {
-        while ($this->loop()) {
-            yield $this->getCurrentIndex();
-        }
+        // a child that throws (or a loop left early) destroys the generator in the middle of an entry: the finally
+        // block then restores the block state, the output buffer and the editable collector for the following editables
+        $blockState = $this->getBlockState();
+        $blockCount = count($blockState->getBlocks());
+        $indexCount = count($blockState->getIndexes());
+        $completed = false;
+        $obLevel = null;
+        $editableDefCollector = null;
+        $indicesBackup = null;
 
-        if ($this->getEditmode() && !$this->isIgnoreEditmodeIndices()) {
-            // yeah, I know the following is f******* crazy :D
-            $this->current = 0;
-            $indicesBackup = $this->indices;
-            $this->indices[0] = 1000000;
-            $this->getBlockState()->pushBlock(BlockName::createFromEditable($this));
-            $this->blockConstruct();
-            $blockStartHtml = $this->blockStart(true, true);
-            ob_start();
-
-            $editableDefCollector = $this->getEditableDefinitionCollector();
-            $editableDefCollector->stashPush();
-
-            yield $this->getCurrentIndex() + 1;
-
-            $blockEndHtml = $this->blockEnd(true);
-            $this->blockDestruct();
-            $blockState = $this->getBlockState();
-            if ($blockState->hasBlocks()) {
-                $blockState->popBlock();
+        try {
+            while ($this->loop()) {
+                yield $this->getCurrentIndex();
             }
 
-            $templateEditableDefinitions = $editableDefCollector->getDefinitions();
-            $editableDefCollector->stashPull();
+            if ($this->getEditmode() && !$this->isIgnoreEditmodeIndices()) {
+                // yeah, I know the following is f******* crazy :D
+                $this->current = 0;
+                $indicesBackup = $this->indices;
+                $this->indices[0] = 1000000;
+                $this->getBlockState()->pushBlock(BlockName::createFromEditable($this));
+                $this->blockConstruct();
+                $blockStartHtml = $this->blockStart(true, true);
+                $obLevel = ob_get_level();
+                ob_start();
 
-            $this->config['template'] = [
-                'html' => $blockStartHtml . ob_get_clean() . $blockEndHtml,
-                'editables' => $templateEditableDefinitions,
-            ];
+                $editableDefCollector = $this->getEditableDefinitionCollector();
+                $editableDefCollector->stashPush();
 
-            $editableDefCollector->add($this);
+                yield $this->getCurrentIndex() + 1;
 
-            $this->indices = $indicesBackup;
+                $blockEndHtml = $this->blockEnd(true);
+                $this->blockDestruct();
+                $blockState = $this->getBlockState();
+                if ($blockState->hasBlocks()) {
+                    $blockState->popBlock();
+                }
+
+                $templateEditableDefinitions = $editableDefCollector->getDefinitions();
+                $editableDefCollector->stashPull();
+                $editableDefCollector = null;
+
+                $this->config['template'] = [
+                    'html' => $blockStartHtml . ob_get_clean() . $blockEndHtml,
+                    'editables' => $templateEditableDefinitions,
+                ];
+                $obLevel = null;
+
+                $this->getEditableDefinitionCollector()->add($this);
+
+                $this->indices = $indicesBackup;
+            }
+
+            $completed = true;
+        } finally {
+            if (!$completed) {
+                while ($obLevel !== null && ob_get_level() > $obLevel) {
+                    ob_end_clean();
+                }
+                $editableDefCollector?->stashPull();
+                if ($indicesBackup !== null) {
+                    $this->indices = $indicesBackup;
+                }
+                $this->current = 0;
+                $blockState->truncate($blockCount, $indexCount);
+            }
         }
     }
 

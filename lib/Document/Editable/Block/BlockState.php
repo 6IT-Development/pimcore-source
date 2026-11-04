@@ -105,6 +105,16 @@ final class BlockState implements JsonSerializable
         $this->indexes = [];
     }
 
+    /**
+     * Drops the blocks and indexes pushed after the stacks had the given sizes, so a render that failed between a push
+     * and its pop leaves the state as it found it
+     */
+    public function truncate(int $blockCount, int $indexCount): void
+    {
+        $this->blocks = array_slice($this->blocks, 0, $blockCount);
+        $this->indexes = array_slice($this->indexes, 0, $indexCount);
+    }
+
     public function jsonSerialize(): array
     {
         return [

@@ -26,6 +26,7 @@ use Pimcore\Model;
 use Pimcore\Model\Document;
 use Pimcore\Templating\Renderer\EditableRenderer;
 use Pimcore\Tool\HtmlUtils;
+use Throwable;
 
 /**
  * @method Dao getDao()
@@ -83,8 +84,28 @@ class Areablock extends Model\Document\Editable implements BlockInterface
 
     public function frontend(): void
     {
-        reset($this->indices);
-        while ($this->loop()) ;
+        $blockState = $this->getBlockState();
+        $blockCount = count($blockState->getBlocks());
+        $indexCount = count($blockState->getIndexes());
+
+        try {
+            reset($this->indices);
+            while ($this->loop()) ;
+        } catch (Throwable $e) {
+            $this->resetAfterFailedRender($blockCount, $indexCount);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Restores the block state a render found, when a brick threw between a push and its pop
+     */
+    private function resetAfterFailedRender(int $blockCount, int $indexCount): void
+    {
+        $this->getBlockState()->truncate($blockCount, $indexCount);
+        $this->current = 0;
+        $this->blockStarted = false;
     }
 
     /**
@@ -94,22 +115,32 @@ class Areablock extends Model\Document\Editable implements BlockInterface
      */
     public function renderIndex(int $index, bool $return = false)
     {
-        $this->start($return);
+        $blockState = $this->getBlockState();
+        $blockCount = count($blockState->getBlocks());
+        $indexCount = count($blockState->getIndexes());
 
-        $this->currentIndex = $this->indices[$index];
-        $this->current = $index;
+        try {
+            $this->start($return);
 
-        $this->blockConstruct();
-        $templateParams = $this->blockStart();
+            $this->currentIndex = $this->indices[$index];
+            $this->current = $index;
 
-        $content = $this->content(null, $templateParams, $return);
-        if (!$return) {
-            echo $content;
+            $this->blockConstruct();
+            $templateParams = $this->blockStart();
+
+            $content = $this->content(null, $templateParams, $return);
+            if (!$return) {
+                echo $content;
+            }
+
+            $this->blockDestruct();
+            $this->blockEnd();
+            $this->end($return);
+        } catch (Throwable $e) {
+            $this->resetAfterFailedRender($blockCount, $indexCount);
+
+            throw $e;
         }
-
-        $this->blockDestruct();
-        $this->blockEnd();
-        $this->end($return);
 
         if ($return) {
             return $content;
@@ -118,8 +149,21 @@ class Areablock extends Model\Document\Editable implements BlockInterface
 
     public function getIterator(): Generator
     {
-        while ($this->loop()) {
-            yield $this->getCurrentIndex();
+        $blockState = $this->getBlockState();
+        $blockCount = count($blockState->getBlocks());
+        $indexCount = count($blockState->getIndexes());
+        $completed = false;
+
+        // a brick that throws (or a loop left early) destroys the generator in the middle of an entry
+        try {
+            while ($this->loop()) {
+                yield $this->getCurrentIndex();
+            }
+            $completed = true;
+        } finally {
+            if (!$completed) {
+                $this->resetAfterFailedRender($blockCount, $indexCount);
+            }
         }
     }
 

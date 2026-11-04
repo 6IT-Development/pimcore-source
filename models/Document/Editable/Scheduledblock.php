@@ -223,8 +223,22 @@ class Scheduledblock extends Block implements BlockInterface
 
     public function getIterator(): Generator
     {
-        while ($this->loop()) {
-            yield $this->getCurrentIndex();
+        $blockState = $this->getBlockState();
+        $blockCount = count($blockState->getBlocks());
+        $indexCount = count($blockState->getIndexes());
+        $completed = false;
+
+        // a child that throws (or a loop left early) destroys the generator in the middle of an entry
+        try {
+            while ($this->loop()) {
+                yield $this->getCurrentIndex();
+            }
+            $completed = true;
+        } finally {
+            if (!$completed) {
+                $this->current = 0;
+                $blockState->truncate($blockCount, $indexCount);
+            }
         }
     }
 
