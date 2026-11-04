@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\CoreBundle\Migrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use Pimcore\Bundle\CoreBundle\WebDav\WebDavServerFactory;
 
 /**
  * Auto-generated Migration: Please modify to your needs!
@@ -33,7 +34,7 @@ final class Version20210505093841 extends AbstractMigration
     public function up(Schema $schema): void
     {
         $this->addSql(
-            'CREATE TABLE IF NOT EXISTS webdav_locks (
+            'CREATE TABLE IF NOT EXISTS ' . WebDavServerFactory::LOCKS_TABLE . ' (
                 id INTEGER UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 owner VARCHAR(100),
                 timeout INTEGER UNSIGNED,
@@ -50,6 +51,6 @@ final class Version20210505093841 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP TABLE IF EXISTS webdav_locks');
+        $this->addSql('DROP TABLE IF EXISTS ' . WebDavServerFactory::LOCKS_TABLE);
     }
 }

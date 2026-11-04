@@ -61,6 +61,10 @@ services:
     Pimcore\Bundle\CoreBundle\Controller\:
         resource: '../src/Controller'
 
+    Pimcore\Bundle\CoreBundle\WebDav\WebDavServerFactory:
+        tags:
+            - { name: monolog.logger, channel: pimcore }
+
     Pimcore\Controller\Config\ControllerDataProvider:
         public : true
         arguments:

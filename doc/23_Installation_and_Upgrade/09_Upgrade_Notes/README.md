@@ -242,6 +242,10 @@
   removes the row again when a storage file cannot be written. `Item::restore()` checks the `publish` permission on
   the parent before it writes anything, and renames the restored element to `<key>_restore_2`, `_restore_3`, … when
   `<key>_restore` is taken as well.
+#### [WebDAV]
+- `sabre/dav` 4.7 or newer is required (PHP 8.4 support); the conflict with 4.2.2 was dropped.
+- The WebDAV server is built by the internal `WebDavServerFactory` service. Without a PDO database connection (e.g. the
+  `mysqli` driver) the locks are stored in `PIMCORE_SYSTEM_TEMP_DIRECTORY/webdav-locks.dat` instead of failing.
 ### Security
 #### [Twig]
 - The `container` Twig global was removed from the default configuration. Templates using `container.get(...)` or

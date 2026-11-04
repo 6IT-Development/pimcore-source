@@ -1435,7 +1435,7 @@ to the request attributes is kept for BC with the former `@ParamConverter` (temp
 `app.request.attributes.get('news')`) and documented on the class. The user docs were moved to the attribute with
 B-63.
 
-### [ ] I-67 – Move WebDAV server setup into a service; dependency hygiene
+### [x] I-67 – Move WebDAV server setup into a service; dependency hygiene
 
 **Files:** `src/Controller/WebDavController.php`, root `composer.json` (`sabre/dav: ^4.1.2`, conflict `4.2.2`)
 
@@ -1447,6 +1447,12 @@ B-63.
 - Use `Sabre\DAV\Locks\Backend\PDO` only with a `\PDO` (B-64), otherwise fall back to `Locks\Backend\File` in
   `var/` or disable locking.
 - Browser plugin only in debug / read-only (C-14).
+
+**Done:** `WebDav\WebDavServerFactory` (injects `Connection`, `UrlGeneratorInterface` and the `pimcore` logger) builds
+the server; the controller checks the user, runs it and converts the response. `LOCKS_TABLE` is shared with the
+migration. Without a PDO connection the locks fall back to `Locks\Backend\File` in the system temp directory instead
+of a `RuntimeException`. `sabre/dav: ^4.7.0`, the `4.2.2` conflict is gone. The browser plugin stays read-only in all
+environments (C-14), so `%kernel.debug%` is not needed.
 
 ---
 
