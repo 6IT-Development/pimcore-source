@@ -1561,3 +1561,13 @@ There are no tests for any class in this scope. Minimum set:
 - `DataObjectParamResolver` (unit, with a stub admin checker): concrete class, `Folder`, `AbstractObject`, nullable
   empty value, unknown ID, unpublished with/without `unpublished: true`, `class` override mismatch, `options` passed to
   `getById()` (B-62, B-63).
+
+**Partly done:** `tests/Unit/Request/DataObjectParamResolverTest.php` covers the resolver with objects in the route
+parameters and a stub admin check (I-66): concrete class, `Folder`, `AbstractObject`, other types ignored, wrong class,
+non-numeric ID, nullable empty value, unpublished with/without `unpublished: true` and for an admin preview, `class`
+override and mismatch (B-62, B-63). `tests/Unit/Controller/PublicServicesTest.php` covers robots.txt per site, the
+fallbacks and the cache headers / `304` of the SEO bundle (B-67, I-69), the core fallback and the plain 404 of the common
+files filter (I-68). The SelectOptions provider has unit tests for the default values and a missing ID since B-60/B-61.
+**Open:** functional tests that need a booted kernel, the database and the asset storage: thumbnail delivery (B-65,
+C-15, B-69, I-71), WebDAV permissions and the browser plugin (C-13, C-14, B-64), loading by ID with `options` and an
+unknown ID in the resolver, and the provider's option mapping (needs a select options configuration).
