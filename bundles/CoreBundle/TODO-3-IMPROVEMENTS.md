@@ -1114,7 +1114,7 @@ so the whole node is deprecated instead of typed. The password algorithm list is
 stay, the Argon constants only exist when PHP is built with Argon2 (`use const` does not change that). Checked with
 `Processor` against Symfony 7.4: bundled `config/pimcore/*.yaml`, admin-form strings, env placeholders.
 
-### [ ] I-56 – Make the tree self-contained: `addDefaultsIfNotSet()` where the extension/consumers read unguarded
+### [x] I-56 – Make the tree self-contained: `addDefaultsIfNotSet()` where the extension/consumers read unguarded
 
 - Without `addDefaultsIfNotSet()` the tree depends on `config/pimcore/default.yaml` to supply the structure. A project
   that loads CoreBundle without that file gets "Undefined array key" from the extension:
@@ -1126,6 +1126,14 @@ stay, the Argon constants only exist when PHP is built with Argon2 (`use const` 
   `assets.versions` already has defaults, so the three `versions` nodes are inconsistent.
 - After adding defaults, remove the `??` fallbacks and the duplicate defaults from `default.yaml`
   (e.g. `gotenberg.base_url`, `dependency.enabled`, which repeat the tree defaults).
+
+**Done:** `assets.metadata.class_definitions(.data)`, `templating_engine.twig.sandbox_security_policy`,
+`objects|documents.versions`, `documents.error_pages` and `applicationlog.mail_notification` have
+`addDefaultsIfNotSet()`. `PimcoreCoreExtension::load([[]])` now runs without notices (checked against Symfony 7.4
+without `default.yaml`). `gotenberg.base_url` and `dependency.enabled` were the only `default.yaml` values that repeat
+a tree default; both are removed. The consumer fallbacks stay: `models/Asset.php`, `Concrete`, `PageSnippet`,
+`VersionsCleanupTask` and `ResponseExceptionListener` read `SystemSettingsConfig::get()`, which returns the stored
+system settings unprocessed when the settings store is the read target, so the keys are not guaranteed there.
 
 ### [ ] I-57 – Remove dead / deprecated config and stale texts
 

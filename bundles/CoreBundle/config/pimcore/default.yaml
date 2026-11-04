@@ -339,13 +339,7 @@ pimcore:
                 filters: ['escape', 'trans', 'default']
                 functions: ['path', 'asset']
 
-    gotenberg:
-        base_url: 'http://gotenberg:3000'
-
     config_location:
         select_options:
             read_target:
                 type: 'symfony-config'
-
-    dependency:
-        enabled: true
