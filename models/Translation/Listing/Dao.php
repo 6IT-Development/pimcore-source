@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\Translation\Listing;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder as DoctrineQueryBuilder;
 use Pimcore\Cache;
 use Pimcore\Model;
@@ -62,35 +63,23 @@ class Dao extends Model\Listing\Dao\AbstractDao
     public function getAllTranslations(): array
     {
         $queryBuilder = $this->getQueryBuilder('*');
-        $cacheKey = $this->getDatabaseTableName() . '_data_' . md5((string)$queryBuilder);
-        if (!empty($this->model->getConditionParams()) || !$translations = Cache::load($cacheKey)) {
-            $translations = [];
-            $queryBuilder->setMaxResults(null); //retrieve all results
-            $translationsData = $this->db->fetchAllAssociative($queryBuilder->getSql(), $queryBuilder->getParameters(), $queryBuilder->getParameterTypes());
+        $queryBuilder->setMaxResults(null); //retrieve all results
 
-            foreach ($translationsData as $t) {
-                if (!isset($translations[$t['key']])) {
-                    $translations[$t['key']] = new Model\Translation();
-                    $translations[$t['key']]->setDomain($this->model->getDomain());
-                    $translations[$t['key']]->setKey($t['key']);
-                    $translations[$t['key']]->setType($t['type']);
-                }
+        $cacheKey = $this->getCacheKey($queryBuilder);
+        $rows = $this->loadRowsFromCache($cacheKey);
+        if ($rows === null) {
+            $rows = $this->db->fetchAllAssociative($queryBuilder->getSql(), $queryBuilder->getParameters(), $queryBuilder->getParameterTypes());
+            $this->saveRowsToCache($cacheKey, $rows);
+        }
 
-                $translation = $translations[$t['key']];
-                $translation->addTranslation($t['language'], $t['text'] ?? '');
+        $rowsByKey = [];
+        foreach ($rows as $row) {
+            $rowsByKey[$row['key']][] = $row;
+        }
 
-                // the key was created with its first language and changed with its latest one
-                if ($t['creationDate'] !== null && ($translation->getCreationDate() === null || $t['creationDate'] < $translation->getCreationDate())) {
-                    $translation->setCreationDate((int)$t['creationDate']);
-                }
-                if ($t['modificationDate'] !== null && $t['modificationDate'] > (int)$translation->getModificationDate()) {
-                    $translation->setModificationDate((int)$t['modificationDate']);
-                }
-            }
-
-            if (empty($this->model->getConditionParams())) {
-                Cache::save($translations, $cacheKey, ['translator', 'translate'], null, 999);
-            }
+        $translations = [];
+        foreach ($rowsByKey as $keyRows) {
+            $translations[$keyRows[0]['key']] = $this->createTranslation($keyRows);
         }
 
         return $translations;
@@ -110,27 +99,98 @@ class Dao extends Model\Listing\Dao\AbstractDao
         $this->model->setGroupBy($this->getDatabaseTableName() . '.key', false);
 
         $queryBuilder = $this->getQueryBuilder($this->getDatabaseTableName() . '.key');
-        $cacheKey = $this->getDatabaseTableName() . '_data_' . md5((string)$queryBuilder);
 
-        if (!empty($this->model->getConditionParams()) || !$translations = Cache::load($cacheKey)) {
-            $translations = [];
-            $translationsData = $this->db->fetchAllAssociative($queryBuilder->getSql(), $queryBuilder->getParameters(), $queryBuilder->getParameterTypes());
-            foreach ($translationsData as $t) {
-                $transObj = Model\Translation::getByKey(id: $t['key'], domain: $this->model->getDomain(), languages: $this->model->getLanguages());
+        // the same languages as Translation::getByKey(): the requested ones that are valid for the domain
+        $validLanguages = Model\Translation::getValidLanguages($this->model->getDomain());
+        $languages = $this->model->getLanguages() ? array_values(array_intersect($validLanguages, $this->model->getLanguages())) : $validLanguages;
 
-                if ($transObj) {
-                    $translations[] = $transObj;
-                }
+        $cacheKey = $this->getCacheKey($queryBuilder, $languages);
+        $rows = $this->loadRowsFromCache($cacheKey);
+        if ($rows === null) {
+            $keys = $this->db->fetchFirstColumn($queryBuilder->getSql(), $queryBuilder->getParameters(), $queryBuilder->getParameterTypes());
+
+            // one query for the texts of the whole page, ordered like the keys
+            $rows = [];
+            if ($keys && $languages) {
+                $positions = array_flip(array_map('strval', $keys));
+                $rows = $this->db->fetchAllAssociative(
+                    'SELECT * FROM ' . $this->db->quoteIdentifier($this->getDatabaseTableName()) . ' WHERE `key` IN (:keys) AND `language` IN (:languages) ORDER BY `creationDate`',
+                    ['keys' => $keys, 'languages' => $languages],
+                    ['keys' => ArrayParameterType::STRING, 'languages' => ArrayParameterType::STRING]
+                );
+                usort($rows, fn (array $a, array $b) => ($positions[(string)$a['key']] ?? PHP_INT_MAX) <=> ($positions[(string)$b['key']] ?? PHP_INT_MAX));
             }
 
-            if (empty($this->model->getConditionParams())) {
-                Cache::save($translations, $cacheKey, ['translator', 'translate'], null, 999);
-            }
+            $this->saveRowsToCache($cacheKey, $rows);
+        }
+
+        $rowsByKey = [];
+        foreach ($rows as $row) {
+            $rowsByKey[$row['key']][] = $row;
+        }
+
+        // keys without a row in the languages are left out, like Translation::getByKey() does not find them
+        $translations = [];
+        foreach ($rowsByKey as $keyRows) {
+            $translations[] = $this->createTranslation($keyRows);
         }
 
         $this->model->setTranslations($translations);
 
         return $translations;
+    }
+
+    /**
+     * @param non-empty-list<array<string, mixed>> $rows
+     */
+    private function createTranslation(array $rows): Model\Translation
+    {
+        $translation = new Model\Translation();
+        $translation->setDomain($this->model->getDomain());
+        $translation->getDao()->assignRows($rows);
+
+        return $translation;
+    }
+
+    /**
+     * The SQL holds placeholders, not their values: a listing with bound values is not cached, so two searches with
+     * different values cannot share an entry
+     *
+     * @param string[] $languages
+     */
+    private function getCacheKey(DoctrineQueryBuilder $queryBuilder, array $languages = []): ?string
+    {
+        if ($queryBuilder->getParameters()) {
+            return null;
+        }
+
+        return $this->getDatabaseTableName() . '_rows_' . md5($queryBuilder->getSql() . '|' . implode(',', $languages));
+    }
+
+    /**
+     * @return list<array<string, mixed>>|null
+     */
+    private function loadRowsFromCache(?string $cacheKey): ?array
+    {
+        if ($cacheKey === null) {
+            return null;
+        }
+
+        $rows = Cache::load($cacheKey);
+
+        return is_array($rows) ? $rows : null;
+    }
+
+    /**
+     * Rows instead of model objects: they carry no services or event state into the cache
+     *
+     * @param list<array<string, mixed>> $rows
+     */
+    private function saveRowsToCache(?string $cacheKey, array $rows): void
+    {
+        if ($cacheKey !== null && count($rows) <= Listing::getCacheLimit()) {
+            Cache::save($rows, $cacheKey, ['translator', 'translate'], null, 999);
+        }
     }
 
     public function isCacheable(): bool

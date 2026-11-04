@@ -2024,7 +2024,7 @@ imported and `"0"` is not overwritten as empty in merge mode. New keys are no lo
 file (the other languages are auto-created by the Translator without the editor check, B-111). `&quot;` is still
 decoded, because the admin UI export writes `"` that way. The service, `league/csv` and batching stay with I-57.
 
-## [ ] B-117 – Listing persistent cache key ignores bound condition values and `languages`: wrong results
+## [x] B-117 – Listing persistent cache key ignores bound condition values and `languages`: wrong results
 
 **File:** `models/Translation/Listing/Dao.php:62-96`, `:107-133`
 
@@ -2041,6 +2041,14 @@ decoded, because the admin UI export writes `"` that way. The service, `league/c
 
 **Fix direction:** include the bound values, types and languages in the cache key (or do not cache filtered listings
 at all), and cache rows (arrays), not model objects. Either use `isCacheable()` or remove it.
+
+**Done:** `load()` and `getAllTranslations()` are no longer cached when the query has bound values (from
+`setCondition()`, `addConditionParam()` or an `onCreateQueryBuilder()` callback); literal conditions are part of the SQL
+in the key. The `load()` key also contains the languages. Both cache plain rows instead of `Translation` objects and
+hydrate them through the new `Translation\Dao::assignRows()` (the B-109 logic of `getByKey()`). To have rows to cache,
+`load()` now reads the texts of the page with one `key IN (…) AND language IN (…)` query in the page order instead of
+one `getByKey()` per key (the N+1 part of I-56). A result with more rows than `Listing::getCacheLimit()` is not cached;
+`isCacheable()`, which counts the whole table, stays unused (I-58).
 
 ## [ ] B-118 – Listing counts: `getTotalCount()` changes after `load()`, counts rows instead of keys, and does not match the loaded page
 

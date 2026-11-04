@@ -66,6 +66,18 @@ class Dao extends Model\Dao\AbstractDao
             throw new NotFoundException("Translation-Key -->'" . $key . "'<-- not found");
         }
 
+        $this->assignRows($data);
+    }
+
+    /**
+     * Sets the texts and the key-level fields of the model from the rows of one key
+     *
+     * @param non-empty-list<array<string, mixed>> $data
+     *
+     * @internal
+     */
+    public function assignRows(array $data): void
+    {
         // the key-level fields come from one row each, not from whichever language was loaded last: the language
         // created first owns the key, the latest change names the type and the modifying user
         $created = null;
