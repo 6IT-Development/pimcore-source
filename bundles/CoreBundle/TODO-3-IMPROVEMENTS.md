@@ -716,7 +716,7 @@ branch is documented; the guard checks `AuthenticationEvents::class`. A containe
 from the same config (workflow and state machines, all marking store kinds, custom HTML, guard, audit trail) is
 identical.
 
-### [ ] I-41 – `PimcoreCoreExtension` tidy-up
+### [x] I-41 – `PimcoreCoreExtension` tidy-up
 
 **File:** `src/DependencyInjection/PimcoreCoreExtension.php`
 
@@ -729,6 +729,13 @@ identical.
 - Domain validation (lines 89-99): `idn_to_ascii()` needs ext-intl and returns `false` for invalid input. Use
   `$domain` instead of re-reading `$config['general']['domain']`.
 - `configurePasswordHashers()` uses positional `replaceArgument(1, …)`. Use a named argument.
+
+**Done:** `prepend()` and `PrependExtensionInterface` are removed; the service files are a `SERVICE_FILES` constant
+loaded in a loop. `Pimcore::disableShutdown()` and `.container.dumper.inline_class_loader` moved to
+`Kernel::buildContainer()`. `pimcore.config` stays because `Config::getSystemConfiguration()` (public API) returns it;
+`AreabrickAutoloadPass` reads the new `pimcore.documents.areas.autoload` parameter instead. The domain check handles
+`idn_to_ascii()` returning `false` and uses `$domain`. The password hasher factories are set as the named argument
+`$passwordHasherFactories` (also named in `services.yaml`).
 
 ---
 

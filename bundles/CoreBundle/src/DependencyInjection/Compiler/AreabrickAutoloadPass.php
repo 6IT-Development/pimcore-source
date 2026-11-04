@@ -62,8 +62,7 @@ final class AreabrickAutoloadPass implements CompilerPassInterface
      */
     public function process(ContainerBuilder $container): void
     {
-        $config = $container->getParameter('pimcore.config');
-        if (!$config['documents']['areas']['autoload']) {
+        if (!$container->getParameter('pimcore.documents.areas.autoload')) {
             return;
         }
 

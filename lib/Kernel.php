@@ -153,6 +153,23 @@ abstract class Kernel extends SymfonyKernel
         parent::shutdown();
     }
 
+    protected function buildContainer(): ContainerBuilder
+    {
+        // a process that builds the container must not write the cache on shutdown,
+        // see https://github.com/pimcore/pimcore/issues/4709
+        Pimcore::disableShutdown();
+
+        $container = parent::buildContainer();
+
+        // inline the class loader in the dumped container in every environment (Symfony: only in debug),
+        // see https://github.com/symfony/symfony/pull/26276
+        if (!$container->hasParameter('.container.dumper.inline_class_loader')) {
+            $container->setParameter('.container.dumper.inline_class_loader', true);
+        }
+
+        return $container;
+    }
+
     protected function initializeContainer(): void
     {
         parent::initializeContainer();

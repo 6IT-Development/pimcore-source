@@ -18,7 +18,9 @@ services:
     pimcore.security.password_hasher_factory:
         class: Pimcore\Security\Hasher\PasswordHasherFactory
         decorates: security.password_hasher_factory
-        arguments: ['@.inner', '@?']
+        arguments:
+            $frameworkFactory: '@.inner'
+            $passwordHasherFactories: [] # set by PimcoreCoreExtension::configurePasswordHashers()
 
     #
     # INFRASTRUCTURE

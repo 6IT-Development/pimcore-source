@@ -18,13 +18,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection;
 
 use InvalidArgumentException;
-use Pimcore;
 use Pimcore\Bundle\CoreBundle\EventListener\TranslationDebugListener;
 use Pimcore\Extension\Document\Areabrick\Attribute\AsAreabrick;
-use Pimcore\Maintenance\Attribute\AsMaintenanceTask;
 use Pimcore\Http\Context\PimcoreContextGuesser;
 use Pimcore\Loader\ImplementationLoader\ClassMapLoader;
 use Pimcore\Loader\ImplementationLoader\PrefixLoader;
+use Pimcore\Maintenance\Attribute\AsMaintenanceTask;
 use Pimcore\Model\Document\Editable\Loader\EditableLoader;
 use Pimcore\Model\Document\Editable\Loader\PrefixLoader as DocumentEditablePrefixLoader;
 use Pimcore\Model\Factory;
@@ -32,7 +31,6 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\ConfigurableExtension;
@@ -40,8 +38,38 @@ use Symfony\Component\HttpKernel\DependencyInjection\ConfigurableExtension;
 /**
  * @internal
  */
-final class PimcoreCoreExtension extends ConfigurableExtension implements PrependExtensionInterface
+final class PimcoreCoreExtension extends ConfigurableExtension
 {
+    /**
+     * The service files in config/, loaded in this order.
+     */
+    private const array SERVICE_FILES = [
+        'services.yaml',
+        'services_routing.yaml',
+        'services_workflow.yaml',
+        'extensions.yaml',
+        'request_response.yaml',
+        'l10n.yaml',
+        'argument_resolvers.yaml',
+        'class_resolvers.yaml',
+        'implementation_factories.yaml',
+        'documents.yaml',
+        'event_listeners.yaml',
+        'templating.yaml',
+        'templating_twig.yaml',
+        'profiler.yaml',
+        'migrations.yaml',
+        'aliases.yaml',
+        'image_optimizers.yaml',
+        'maintenance.yaml',
+        'commands.yaml',
+        'cache.yaml',
+        'marshaller.yaml',
+        'message_handler.yaml',
+        'class_builder.yaml',
+        'serializer.yaml',
+    ];
+
     public function getAlias(): string
     {
         return 'pimcore';
@@ -49,15 +77,6 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
 
     protected function loadInternal(array $config, ContainerBuilder $container): void
     {
-        // on container build the shutdown handler shouldn't be called
-        // for details please see https://github.com/pimcore/pimcore/issues/4709
-        Pimcore::disableShutdown();
-
-        // performance improvement, see https://github.com/symfony/symfony/pull/26276/files
-        if (!$container->hasParameter('.container.dumper.inline_class_loader')) {
-            $container->setParameter('.container.dumper.inline_class_loader', true);
-        }
-
         // bundle manager/locator config
         $container->setParameter('pimcore.extensions.bundles.search_paths', $config['bundles']['search_paths']);
         $container->setParameter('pimcore.extensions.bundles.handle_composer', $config['bundles']['handle_composer']);
@@ -82,23 +101,25 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
         $container->setParameter('pimcore.templating.twig.sandbox_security_policy.functions', $config['templating_engine']['twig']['sandbox_security_policy']['functions']);
         $container->setParameter('pimcore.templating.twig.sandbox_security_policy.methods', $config['templating_engine']['twig']['sandbox_security_policy']['methods']);
 
-        // register pimcore config on container
-        // TODO is this bad practice?
-        // TODO only extract what we need as parameter?
+        // the whole config tree: Config::getSystemConfiguration() returns it (public API), so it stays a parameter.
+        // Services and passes should use a dedicated parameter like the ones above.
         $container->setParameter('pimcore.config', $config);
+        $container->setParameter('pimcore.documents.areas.autoload', $config['documents']['areas']['autoload']);
 
         // set default domain for router to main domain if configured
         // this will be overridden from the request in web context but is handy for CLI scripts
         $domain = $config['general']['domain'] ?? '';
         if ($domain) {
             // when not an env variable, check if the domain is valid
+            // idn_to_ascii() (ext-intl, a requirement) returns false for an invalid international domain
+            $asciiDomain = str_starts_with($domain, 'env_') ? $domain : idn_to_ascii($domain);
             if (
                 !str_starts_with($domain, 'env_') &&
-                !filter_var(idn_to_ascii($domain), FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)
+                ($asciiDomain === false || !filter_var($asciiDomain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME))
             ) {
                 throw new InvalidArgumentException(sprintf('Invalid main domain name "%s"', $domain));
             }
-            $container->setParameter('router.request_context.host', $config['general']['domain']);
+            $container->setParameter('router.request_context.host', $domain);
         }
 
         $loader = new YamlFileLoader(
@@ -106,30 +127,9 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
             new FileLocator(__DIR__ . '/../../config')
         );
 
-        $loader->load('services.yaml');
-        $loader->load('services_routing.yaml');
-        $loader->load('services_workflow.yaml');
-        $loader->load('extensions.yaml');
-        $loader->load('request_response.yaml');
-        $loader->load('l10n.yaml');
-        $loader->load('argument_resolvers.yaml');
-        $loader->load('class_resolvers.yaml');
-        $loader->load('implementation_factories.yaml');
-        $loader->load('documents.yaml');
-        $loader->load('event_listeners.yaml');
-        $loader->load('templating.yaml');
-        $loader->load('templating_twig.yaml');
-        $loader->load('profiler.yaml');
-        $loader->load('migrations.yaml');
-        $loader->load('aliases.yaml');
-        $loader->load('image_optimizers.yaml');
-        $loader->load('maintenance.yaml');
-        $loader->load('commands.yaml');
-        $loader->load('cache.yaml');
-        $loader->load('marshaller.yaml');
-        $loader->load('message_handler.yaml');
-        $loader->load('class_builder.yaml');
-        $loader->load('serializer.yaml');
+        foreach (self::SERVICE_FILES as $file) {
+            $loader->load($file);
+        }
 
         $this->configureImplementationLoaders($container, $config);
         $this->configureModelFactory($container, $config);
@@ -258,7 +258,10 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
     private function configurePasswordHashers(ContainerBuilder $container, array $config): void
     {
         $definition = $container->findDefinition('pimcore.security.password_hasher_factory');
-        $definition->replaceArgument(1, array_map(fn($factoryConfig) => new Reference($factoryConfig['id']), $config['security']['password_hasher_factories']));
+        $definition->setArgument(
+            '$passwordHasherFactories',
+            array_map(static fn (array $factoryConfig): Reference => new Reference($factoryConfig['id']), $config['security']['password_hasher_factories'])
+        );
     }
 
     /**
@@ -276,15 +279,6 @@ final class PimcoreCoreExtension extends ConfigurableExtension implements Prepen
     /**
      * Allows us to prepend/modify configurations of different extensions
      */
-    public function prepend(ContainerBuilder $container): void
-    {
-        /*$securityConfigs = $container->getExtensionConfig('security');
-
-        if (count($securityConfigs) > 1) {
-            $this->setExtensionConfig($container, 'security', $securityConfigs);
-        }*/
-    }
-
     /**
      * Extract class definitions and prefixes if configuration has more than just a class definition
      */
