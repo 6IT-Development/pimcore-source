@@ -16,7 +16,6 @@
 namespace Pimcore\Model\Element\Recyclebin\Item;
 
 use Exception;
-use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Element\Recyclebin\Item;
 
@@ -45,19 +44,17 @@ class Dao extends Model\Dao\AbstractDao
     /**
      * Save object to database
      *
-     *
      * @todo: not all save methods return a boolean, why this one?
+     *
+     * @throws \Doctrine\DBAL\Exception
      */
     public function save(): bool
     {
         $version = $this->model->getObjectVars();
 
-        try {
-            $this->db->insert('recyclebin', array_filter($version, fn($key) => in_array($key, $this->getValidTableColumns('recyclebin'), true), ARRAY_FILTER_USE_KEY));
-            $this->model->setId((int)$this->db->lastInsertId());
-        } catch (Exception $e) {
-            Logger::error((string)$e);
-        }
+        // the caller writes the storage files under the new id, an error must not be swallowed
+        $this->db->insert('recyclebin', array_filter($version, fn($key) => in_array($key, $this->getValidTableColumns('recyclebin'), true), ARRAY_FILTER_USE_KEY));
+        $this->model->setId((int)$this->db->lastInsertId());
 
         return true;
     }

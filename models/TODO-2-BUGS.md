@@ -3096,7 +3096,7 @@ key)` and `cpath` with a trailing slash on both sides as the asset DAO does sinc
 `getChildPermissions()` matches `<path>/%`. `Element\Dao::InheritingPermission()` uses `getRealFullPath()`, so a
 document's site-rewritten path in the frontend no longer changes the result.
 
-## [ ] B-168 – Recycle bin: global state leaks, permission check after side effects, swallowed errors
+## [x] B-168 – Recycle bin: global state leaks, permission check after side effects, swallowed errors
 
 **Files:** `models/Element/Recyclebin/Item.php:87-148`, `:150-189`, `:191-206`, `:208-240`;
 `models/Element/Recyclebin/Item/Dao.php:51-63`; `Item/Listing/Dao.php:33-45`
@@ -3113,6 +3113,15 @@ document's site-rewritten path in the frontend no longer changes the result.
   items are removed); the listing can contain `null` entries.
 
 **Fix direction:** `finally` blocks, permission check first, propagate DB errors, one storage directory per item.
+
+**Done:** `restore()` checks the `publish` permission (for the given or the current user) before the placeholder object
+is saved, restores `Version` enabling (only if it was enabled) and the dirty detection in `finally`, and removes the
+placeholder only when it is in the tree. A taken path gets `_restore`, then `_restore_2`, `_restore_3` … (new private
+`renameOnCollision()`). `Item\Dao::save()` no longer swallows insert errors; `save()` removes the row again when a
+storage file cannot be written, and resets the dump state of the live elements `loadChildren()` set once they are
+serialized. The binaries, tags and sites of an item are stored in `<type>/<id>/`, which `delete()` removes as a
+directory; the `<type>/<id>_…` files of older items are still read, and the type directory is only listed for an older
+asset item. The listing skips rows deleted since the ids were fetched. Upgrade notes added.
 
 ## [ ] B-169 – Edit locks: several rows per element, unlock removes one, uninitialised `cpath`
 

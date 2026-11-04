@@ -36,7 +36,10 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
         $items = [];
         foreach ($itemsData as $itemData) {
-            $items[] = Model\Element\Recyclebin\Item::getById($itemData);
+            // the row may have been deleted since the ids were fetched
+            if ($item = Model\Element\Recyclebin\Item::getById((int)$itemData)) {
+                $items[] = $item;
+            }
         }
 
         $this->model->setItems($items);

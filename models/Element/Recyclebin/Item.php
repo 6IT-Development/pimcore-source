@@ -38,6 +38,7 @@ use Pimcore\Model\Element\DeepCopy\PimcoreClassDefinitionReplaceFilter;
 use Pimcore\Tool\Admin;
 use Pimcore\Tool\Serialize;
 use Pimcore\Tool\Storage;
+use Throwable;
 
 /**
  * @internal
@@ -78,6 +79,13 @@ class Item extends Model\AbstractModel
      */
     protected array $sites = [];
 
+    /**
+     * The elements {@see loadChildren()} put into dump state, to reset them once they are serialized.
+     *
+     * @var Element\ElementDumpStateInterface[]
+     */
+    private array $dumpStateElements = [];
+
     public static function create(Element\ElementInterface $element, ?Model\User $user = null): void
     {
         $item = new self();
@@ -106,64 +114,81 @@ class Item extends Model\AbstractModel
         $raw = Storage::get('recycle_bin')->read($this->getStorageFile());
         $element = Serialize::unserialize($raw);
 
-        // check for element with the same name
-        if ($element instanceof Document) {
-            $indentElement = Document::getByPath($element->getRealFullPath());
-            if ($indentElement) {
-                $element->setKey($element->getKey() . '_restore');
-            }
-        } elseif ($element instanceof Asset) {
-            $indentElement = Asset::getByPath($element->getRealFullPath());
-            if ($indentElement) {
-                $element->setFilename($element->getFilename() . '_restore');
-            }
-        } elseif ($element instanceof DataObject\AbstractObject) {
-            $indentElement = DataObject::getByPath($element->getRealFullPath());
-            if ($indentElement) {
-                $element->setKey($element->getKey() . '_restore');
-            }
-
-            // create an empty object first and clone it
-            // see https://github.com/pimcore/pimcore/issues/4219
-            Model\Version::disable();
-            $className = get_class($element);
-            /** @var Document|Asset|AbstractObject $dummy */
-            $dummy = Pimcore::getContainer()->get('pimcore.model.factory')->build($className);
-            $dummy->setId($element->getId());
-            $dummy->setParentId($element->getParentId() ?: 1);
-            $dummy->setKey($element->getKey());
-            if ($dummy instanceof DataObject\Concrete) {
-                $dummy->setOmitMandatoryCheck(true);
-            }
-            $dummy->save(['isRecycleBinRestore' => true]);
-            Model\Version::enable();
-        }
-
-        if (Admin::getCurrentUser()) {
+        // check the permission before anything is written
+        if ($user || Admin::getCurrentUser()) {
             $parent = $element->getParent();
-            if ($parent && !$parent->isAllowed('publish')) {
+            if ($parent && !$parent->isAllowed('publish', $user)) {
                 throw new Exception('Not sufficient permissions');
             }
         }
 
+        $this->renameOnCollision($element);
+
         $this->tags = $this->loadTags();
         $this->sites = $this->loadSites();
 
+        $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
+
         try {
-            $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
+            if ($element instanceof DataObject\AbstractObject) {
+                // create an empty object first and clone it
+                // see https://github.com/pimcore/pimcore/issues/4219
+                $versionsEnabled = Model\Version::isEnabled();
+                Model\Version::disable();
+
+                try {
+                    $className = get_class($element);
+                    /** @var AbstractObject $dummy */
+                    $dummy = Pimcore::getContainer()->get('pimcore.model.factory')->build($className);
+                    $dummy->setId($element->getId());
+                    $dummy->setParentId($element->getParentId() ?: 1);
+                    $dummy->setKey($element->getKey());
+                    if ($dummy instanceof DataObject\Concrete) {
+                        $dummy->setOmitMandatoryCheck(true);
+                    }
+                    $dummy->save(['isRecycleBinRestore' => true]);
+                } finally {
+                    if ($versionsEnabled) {
+                        Model\Version::enable();
+                    }
+                }
+            }
+
             DataObject::disableDirtyDetection();
 
             $this->doRecursiveRestore($element);
-
-            DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Logger::error((string)$e);
-            $dummy?->delete();
+
+            try {
+                // the dummy has the id of the element even if its save failed, remove it only when it is in the tree
+                if ($dummy && DataObject::getById($dummy->getId(), ['force' => true])) {
+                    $dummy->delete();
+                }
+            } catch (Throwable $deleteException) {
+                Logger::error('Unable to remove the placeholder of the restored object: ' . $deleteException);
+            }
 
             throw $e;
+        } finally {
+            DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
         }
 
         $this->delete();
+    }
+
+    /**
+     * A restored element whose path is taken gets the suffix "_restore", or "_restore_2", "_restore_3" ... while that
+     * is taken too. Its children are restored below it, so only the element itself can collide.
+     */
+    private function renameOnCollision(Element\ElementInterface $element): void
+    {
+        $type = Element\Service::getElementType($element);
+        $key = (string)$element->getKey();
+
+        for ($i = 1; Element\Service::getElementByPath($type, $element->getRealFullPath()); $i++) {
+            $element->setKey($key . '_restore' . ($i > 1 ? '_' . $i : ''));
+        }
     }
 
     public function save(?Model\User $user = null): void
@@ -173,60 +198,98 @@ class Item extends Model\AbstractModel
         $this->setPath($this->getElement()->getRealFullPath());
         $this->setDate(time());
 
-        $this->loadChildren($this->getElement());
+        try {
+            $this->loadChildren($this->getElement());
 
-        if ($user instanceof Model\User) {
-            $this->setDeletedby($user->getName());
+            if ($user instanceof Model\User) {
+                $this->setDeletedby($user->getName());
+            }
+
+            // serialize data
+            Element\Service::loadAllFields($this->element);
+
+            $condensedData = $this->marshalData($this->getElement());
+            $data = Serialize::serialize($condensedData);
+        } finally {
+            // the live elements only need the dump state while they are serialized
+            foreach ($this->dumpStateElements as $element) {
+                $element->setInDumpState(false);
+            }
+            $this->dumpStateElements = [];
         }
 
-        // serialize data
-        Element\Service::loadAllFields($this->element);
-
-        $condensedData = $this->marshalData($this->getElement());
-        $data = Serialize::serialize($condensedData);
-
+        // the storage files are named by the id of the row
         $this->getDao()->save();
 
-        $storage = Storage::get('recycle_bin');
-        $storage->write($this->getStorageFile(), $data);
+        try {
+            $storage = Storage::get('recycle_bin');
+            $storage->write($this->getStorageFile(), $data);
 
-        $saveBinaryData = function ($element, $rec, self $scope) use ($storage) {
-            // assets are kind of special because they can contain massive amount of binary data which isn't serialized, we create separate files for them
-            if ($element instanceof Asset) {
-                if ($element->getType() != 'folder') {
-                    $storage->writeStream($scope->getStorageFileBinary($element), $element->getStream());
-                }
+            $saveBinaryData = function ($element, $rec, self $scope) use ($storage) {
+                // assets are kind of special because they can contain massive amount of binary data which isn't serialized, we create separate files for them
+                if ($element instanceof Asset) {
+                    if ($element->getType() != 'folder') {
+                        $storage->writeStream($scope->getStorageFileBinary($element), $element->getStream());
+                    }
 
-                $children = $element->getChildren();
-                foreach ($children as $child) {
-                    $rec($child, $rec, $scope);
+                    $children = $element->getChildren();
+                    foreach ($children as $child) {
+                        $rec($child, $rec, $scope);
+                    }
                 }
+            };
+
+            $saveBinaryData($this->getElement(), $saveBinaryData, $this);
+
+            if ($this->tags) {
+                $storage->write($this->getStorageFileTags(), json_encode($this->tags, JSON_THROW_ON_ERROR));
             }
-        };
 
-        $saveBinaryData($this->getElement(), $saveBinaryData, $this);
+            if ($this->sites) {
+                $storage->write($this->getStorageFileSites(), json_encode($this->sites, JSON_THROW_ON_ERROR));
+            }
+        } catch (Throwable $e) {
+            // no row without its files
+            try {
+                $this->delete();
+            } catch (Throwable $deleteException) {
+                Logger::error('Unable to remove the incomplete recycle bin item ' . $this->getId() . ': ' . $deleteException);
+            }
 
-        if ($this->tags) {
-            $storage->write($this->getStorageFileTags(), json_encode($this->tags, JSON_THROW_ON_ERROR));
-        }
-
-        if ($this->sites) {
-            $storage->write($this->getStorageFileSites(), json_encode($this->sites, JSON_THROW_ON_ERROR));
+            throw $e;
         }
     }
 
+    /**
+     * Deletes the row and the storage files. The files besides the serialized element are kept in a directory per
+     * item; items stored before that have them next to it, named "<id>_...".
+     */
     public function delete(): void
     {
         $storage = Storage::get('recycle_bin');
         $storage->delete($this->getStorageFile());
 
-        $files = $storage->listContents($this->getType())->filter(function (StorageAttributes $item) {
-            return (bool)strpos($item->path(), '/' . $this->getId() . '_');
-        });
+        $directory = $this->getStorageDirectory();
+        $hasDirectory = $storage->directoryExists($directory);
+        if ($hasDirectory) {
+            $storage->deleteDirectory($directory);
+        }
 
-        /** @var StorageAttributes $item */
-        foreach ($files as $item) {
-            $storage->delete($item->path());
+        foreach (['tags.json', 'sites.json'] as $name) {
+            $storage->delete($this->getLegacyStorageFile($name));
+        }
+
+        // only legacy asset items have binary files that are not in the directory
+        if (!$hasDirectory && $this->getType() === 'asset') {
+            $prefix = $this->getType() . '/' . $this->getId() . '_';
+            $files = $storage->listContents($this->getType())->filter(
+                fn (StorageAttributes $item) => $item->isFile() && str_starts_with($item->path(), $prefix)
+            );
+
+            /** @var StorageAttributes $item */
+            foreach ($files as $item) {
+                $storage->delete($item->path());
+            }
         }
 
         $this->getDao()->delete();
@@ -258,8 +321,9 @@ class Item extends Model\AbstractModel
             ];
         }
 
-        if ($element instanceof Element\ElementDumpStateInterface) {
+        if ($element instanceof Element\ElementDumpStateInterface && !$element->isInDumpState()) {
             $element->setInDumpState(true);
+            $this->dumpStateElements[] = $element;
         }
 
         // we need to add the tag of each item to the cache cleared stack, so that the item doesn't gets into the cache
@@ -288,10 +352,10 @@ class Item extends Model\AbstractModel
     private function loadTags(): array
     {
         $storage = Storage::get('recycle_bin');
-        $file = $this->getStorageFileTags();
+        $file = $this->findStorageFile($this->getStorageFileTags(), $this->getLegacyStorageFile('tags.json'));
 
         // items created before the tags were stored don't have this file
-        if (!$storage->fileExists($file)) {
+        if ($file === null) {
             return [];
         }
 
@@ -319,10 +383,10 @@ class Item extends Model\AbstractModel
     private function loadSites(): array
     {
         $storage = Storage::get('recycle_bin');
-        $file = $this->getStorageFileSites();
+        $file = $this->findStorageFile($this->getStorageFileSites(), $this->getLegacyStorageFile('sites.json'));
 
         // items created before the sites were stored don't have this file
-        if (!$storage->fileExists($file)) {
+        if ($file === null) {
             return [];
         }
 
@@ -356,8 +420,11 @@ class Item extends Model\AbstractModel
         $restoreBinaryData = function (Element\ElementInterface $element, self $scope) use ($storage) {
             // assets are kinda special because they can contain massive amount of binary data which isn't serialized, we create separate files for them
             if ($element instanceof Asset) {
-                $binFile = $scope->getStorageFileBinary($element);
-                if ($storage->fileExists($binFile)) {
+                $binFile = $scope->findStorageFile(
+                    $scope->getStorageFileBinary($element),
+                    $scope->getLegacyStorageFile(sprintf('%s-%s.bin', Element\Service::getElementType($element), $element->getId()))
+                );
+                if ($binFile !== null) {
                     $element->setStream($storage->readStream($binFile));
                 }
             }
@@ -473,21 +540,44 @@ class Item extends Model\AbstractModel
         return $this->getStorageFile();
     }
 
+    private function getStorageDirectory(): string
+    {
+        return sprintf('%s/%s', $this->getType(), $this->getId());
+    }
+
     private function getStorageFileTags(): string
     {
-        // the "<id>_" prefix makes delete() remove it together with the binary files
-        return sprintf('%s/%s_tags.json', $this->getType(), $this->getId());
+        return $this->getStorageDirectory() . '/tags.json';
     }
 
     private function getStorageFileSites(): string
     {
-        // the "<id>_" prefix makes delete() remove it together with the binary files
-        return sprintf('%s/%s_sites.json', $this->getType(), $this->getId());
+        return $this->getStorageDirectory() . '/sites.json';
     }
 
     protected function getStorageFileBinary(Element\ElementInterface $element): string
     {
-        return sprintf('%s/%s_%s-%s.bin', $this->getType(), $this->getId(), Element\Service::getElementType($element), $element->getId());
+        return sprintf('%s/%s-%s.bin', $this->getStorageDirectory(), Element\Service::getElementType($element), $element->getId());
+    }
+
+    /**
+     * The name of a file of an item stored before the files got a directory per item.
+     */
+    private function getLegacyStorageFile(string $name): string
+    {
+        return sprintf('%s/%s_%s', $this->getType(), $this->getId(), $name);
+    }
+
+    private function findStorageFile(string ...$files): ?string
+    {
+        $storage = Storage::get('recycle_bin');
+        foreach ($files as $file) {
+            if ($storage->fileExists($file)) {
+                return $file;
+            }
+        }
+
+        return null;
     }
 
     public function getId(): int

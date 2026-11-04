@@ -230,6 +230,14 @@
   their delete events are dispatched), and with them the object data of the store. Before, it only deleted the store
   row and left its configs behind. `pimcore:classificationstore:delete-store` uses it.
 
+#### [Recycle bin]
+- The files of a recycle bin item besides the serialized element (asset binaries, tags, sites) are stored in a
+  directory per item, `<type>/<id>/`, instead of `<type>/<id>_...` next to it. Items stored before are still restored
+  and deleted.
+- `Item::save()` throws when the `recyclebin` row cannot be inserted (it was logged and the item was half written) and
+  removes the row again when a storage file cannot be written. `Item::restore()` checks the `publish` permission on
+  the parent before it writes anything, and renames the restored element to `<key>_restore_2`, `_restore_3`, … when
+  `<key>_restore` is taken as well.
 ### Security
 #### [Twig]
 - The `container` Twig global was removed from the default configuration. Templates using `container.get(...)` or
