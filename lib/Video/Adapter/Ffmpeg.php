@@ -177,8 +177,9 @@ class Ffmpeg extends Adapter
             array_unshift($command, '-i', realpath($this->file));
             // prepend seeking before input file to use input seeking method
             if (isset($this->inputSeeking)) {
-                $sourceDuration = $this->getDuration() * 100;
-                if ($this->inputSeeking >= $sourceDuration) {
+                // an offset past the end would give an empty video; without a known duration it is kept
+                $sourceDuration = $this->getDuration();
+                if ($sourceDuration !== null && $this->inputSeeking >= $sourceDuration) {
                     $this->inputSeeking = 0;
                 }
                 array_unshift($command, '-ss', $this->inputSeeking);

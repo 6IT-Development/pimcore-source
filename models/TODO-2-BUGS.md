@@ -1031,13 +1031,16 @@ for a flag), and a media config contributes only options that take a stream spec
 `-s:v:N`, …); options that act on the whole output (`-t` from `cut`, the `-an` flag from `mute`) are ignored with a
 warning instead of breaking the pairing. The duplicate `-c:v:N` is gone. Not run against a real ffmpeg.
 
-## [ ] B-65 – `cut` start time is silently reset
+## [x] B-65 – `cut` start time is silently reset
 
 **File:** `lib/Video/Adapter/Ffmpeg.php:167-170`
 
 - `$this->getDuration() * 100`: `null * 100 = 0` resets every offset; the `*100` factor is wrong (seconds vs. 100×).
 
 **Fix direction:** compare with the real duration, only when non-null.
+
+**Done:** the start offset is compared with `getDuration()` in seconds and reset to `0` only when the duration is known
+and the offset is at or past it.
 
 ## [ ] B-66 – Concurrent `process()` calls start duplicate conversions; frontend GETs write to DB
 
