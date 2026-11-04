@@ -153,7 +153,7 @@ unmarks the migration in the metadata storage.
 
 ---
 
-## [ ] B-08 – `setItem()` / `getByItem()` accept anything and fail with engine errors
+## [x] B-08 – `setItem()` / `getByItem()` accept anything and fail with engine errors
 
 **Files:** `src/Model/Tool/UUID.php:162-175, 182, 203`
 
@@ -166,6 +166,11 @@ unmarks the migration in the metadata storage.
 
 **Fix direction:** type the parameter as `ElementInterface|ClassDefinitionInterface`, and throw an
 `InvalidArgumentException` with a clear message for a `null` id or an unknown type.
+
+**Done:** `setItem()`, `getByItem()` and `create()` take `ElementInterface|ClassDefinitionInterface`, and the `$item`
+property has the same nullable type. `setItem()` throws an `InvalidArgumentException` naming the item class for an
+unsaved item (`null` or empty id) and for an element whose type `Element\Service::getElementType()` does not know,
+before any property is set. `getItem()` is simplified to `??=` now that `$item` can only hold a valid item.
 
 ---
 

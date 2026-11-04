@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\UuidBundle\Model\Tool;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Bundle\UuidBundle\Model\Tool\UUID\Dao;
 use Pimcore\Model;
@@ -58,7 +59,7 @@ final class UUID extends Model\AbstractModel
      * @internal
      *
      */
-    protected mixed $item = null;
+    protected Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface|null $item = null;
 
     /**
      * @return $this
@@ -171,16 +172,23 @@ final class UUID extends Model\AbstractModel
 
     /**
      * @return $this
+     *
+     * @throws InvalidArgumentException when the item has no id yet or its element type is unknown
      */
-    public function setItem(mixed $item): UUID
+    public function setItem(Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface $item): UUID
     {
-        $this->setItemId($item->getId());
-
-        if ($item instanceof Model\Element\ElementInterface) {
-            $this->setType(Model\Element\Service::getElementType($item));
-        } elseif ($item instanceof Model\DataObject\ClassDefinitionInterface) {
-            $this->setType('class');
+        $id = $item->getId();
+        if ($id === null || $id === '') {
+            throw new InvalidArgumentException(sprintf('Cannot get the UUID of an unsaved %s, it has no id.', get_debug_type($item)));
         }
+
+        $type = $item instanceof Model\Element\ElementInterface ? Model\Element\Service::getElementType($item) : 'class';
+        if ($type === null) {
+            throw new InvalidArgumentException(sprintf('Cannot get the UUID of %s, its element type is unknown.', get_debug_type($item)));
+        }
+
+        $this->setItemId($id);
+        $this->setType($type);
 
         $this->item = $item;
 
@@ -193,13 +201,7 @@ final class UUID extends Model\AbstractModel
      */
     public function getItem(): Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface|null
     {
-        if (!$this->item instanceof Model\Element\ElementInterface
-            && !$this->item instanceof Model\DataObject\ClassDefinitionInterface
-        ) {
-            $this->item = $this->resolveItem();
-        }
-
-        return $this->item;
+        return $this->item ??= $this->resolveItem();
     }
 
     private function resolveItem(): Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface|null
@@ -225,7 +227,7 @@ final class UUID extends Model\AbstractModel
      *
      * @throws Exception
      */
-    public static function getByItem(mixed $item, bool $create = true): UUID
+    public static function getByItem(Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface $item, bool $create = true): UUID
     {
         $self = new self();
         $self->setSystemInstanceIdentifier()->setItem($item);
@@ -264,7 +266,7 @@ final class UUID extends Model\AbstractModel
      *
      * @throws Exception
      */
-    public static function create(mixed $item): UUID
+    public static function create(Model\Element\ElementInterface|Model\DataObject\ClassDefinitionInterface $item): UUID
     {
         $uuid = new UUID();
         $uuid->setSystemInstanceIdentifier()->setItem($item);
