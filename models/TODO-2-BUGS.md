@@ -1161,7 +1161,7 @@ order callbacks, as the image config listing does. `getTotalCount()` counts the 
 cached: video configs are not evicted from the runtime cache on save, so a cached miss would hide a config created later
 in the same process.
 
-## [ ] B-74 – Listfolder-grid unmarshal of relation metadata throws `TypeError` on `null`/numeric data
+## [x] B-74 – Listfolder-grid unmarshal of relation metadata throws `TypeError` on `null`/numeric data
 
 **File:** `models/Asset/MetaData/ClassDefinition/Data/Asset.php:133`, `Document.php:133`, `DataObject.php:133`; caller
 `models/Asset/Service.php:274`
@@ -1169,6 +1169,10 @@ in the same process.
 - `getByPath(string)` receives `$item['data'] ?? null`; clearing a cell or sending an id crashes.
 
 **Fix direction:** `is_string($data) && $data !== ''`; accept numeric ids.
+
+**Done:** `getDataFromListfolderGrid()` of the asset, document and object metadata types looks a numeric value up as
+an id and a non-empty string as a path. Any other value (`null` from an emptied cell, `''`, arrays) gives `null`, which
+clears the value, instead of passing it to `getByPath(string)` and throwing a `TypeError`.
 
 ## [ ] B-75 – Relation metadata passes string ids to `Element\Service::getElementById` (deprecation on every load)
 

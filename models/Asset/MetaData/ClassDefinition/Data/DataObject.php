@@ -130,7 +130,15 @@ class DataObject extends Data
 
     public function getDataFromListfolderGrid(mixed $data, array $params = []): ?int
     {
-        $data = \Pimcore\Model\DataObject::getByPath($data);
+        // the grid sends the path, an id is accepted as well; an emptied cell clears the value
+        if (is_numeric($data)) {
+            $data = \Pimcore\Model\DataObject::getById((int)$data);
+        } elseif (is_string($data) && $data !== '') {
+            $data = \Pimcore\Model\DataObject::getByPath($data);
+        } else {
+            $data = null;
+        }
+
         if ($data instanceof AbstractObject) {
             return $data->getId();
         }

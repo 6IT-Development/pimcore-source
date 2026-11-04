@@ -130,7 +130,14 @@ class Document extends Data
 
     public function getDataFromListfolderGrid(mixed $data, array $params = []): ?int
     {
-        $data = \Pimcore\Model\Document::getByPath($data);
+        // the grid sends the path, an id is accepted as well; an emptied cell clears the value
+        if (is_numeric($data)) {
+            $data = \Pimcore\Model\Document::getById((int)$data);
+        } elseif (is_string($data) && $data !== '') {
+            $data = \Pimcore\Model\Document::getByPath($data);
+        } else {
+            $data = null;
+        }
 
         if ($data instanceof \Pimcore\Model\Document) {
             return $data->getId();
