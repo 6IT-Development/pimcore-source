@@ -79,23 +79,43 @@ abstract class AbstractCommand extends Command
         $this->cliDumper->dump($this->varCloner->cloneVar($data));
     }
 
+    /**
+     * @deprecated since Pimcore 11.5, use $this->io->error() instead
+     */
     protected function writeError(string $message): void
     {
+        trigger_deprecation('pimcore/pimcore', '11.5', 'Method %s::%s() is deprecated, use %s instead.', static::class, __FUNCTION__, '$this->io->error()');
+
         $this->output->writeln(sprintf('<error>ERROR: %s</error>', $message));
     }
 
+    /**
+     * @deprecated since Pimcore 11.5, use $this->io->info() instead
+     */
     protected function writeInfo(string $message): void
     {
+        trigger_deprecation('pimcore/pimcore', '11.5', 'Method %s::%s() is deprecated, use %s instead.', static::class, __FUNCTION__, '$this->io->info()');
+
         $this->output->writeln(sprintf('<info>INFO: %s</info>', $message));
     }
 
+    /**
+     * @deprecated since Pimcore 11.5, use $this->io->comment() instead
+     */
     protected function writeComment(string $message): void
     {
+        trigger_deprecation('pimcore/pimcore', '11.5', 'Method %s::%s() is deprecated, use %s instead.', static::class, __FUNCTION__, '$this->io->comment()');
+
         $this->output->writeln(sprintf('<comment>COMMENT: %s</comment>', $message));
     }
 
+    /**
+     * @deprecated since Pimcore 11.5, use $this->io->writeln() instead
+     */
     protected function writeQuestion(string $message): void
     {
+        trigger_deprecation('pimcore/pimcore', '11.5', 'Method %s::%s() is deprecated, use %s instead.', static::class, __FUNCTION__, '$this->io->writeln()');
+
         $this->output->writeln(sprintf('<question>QUESTION: %s</question>', $message));
     }
 }

@@ -27,15 +27,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 final class PimcoreStyle extends SymfonyStyle
 {
-    private InputInterface $input;
-
-    private OutputInterface $output;
-
-    public function __construct(InputInterface $input, OutputInterface $output)
+    /**
+     * SymfonyStyle keeps input and output private, they are stored again for the getters
+     */
+    public function __construct(
+        private readonly InputInterface $input,
+        private readonly OutputInterface $output
+    )
     {
-        $this->input = $input;
-        $this->output = $output;
-
         parent::__construct($input, $output);
     }
 

@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Console\Traits;
 
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\Input;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 
 /**
@@ -53,7 +53,7 @@ trait DryRun
 
     protected function isDryRun(): bool
     {
-        /** @var Input $input */
+        /** @var InputInterface $input */
         $input = $this->input;
 
         return (bool)$input->getOption('dry-run');

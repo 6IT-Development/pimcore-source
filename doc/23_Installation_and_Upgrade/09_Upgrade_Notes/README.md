@@ -117,6 +117,10 @@
   formats with the new `--skip-formats=<format>,...`.
 - `pimcore:mysql-tools` takes the mode as argument: `bin/console pimcore:mysql-tools optimize`. The `--mode` option
   still works but is deprecated and will be removed in Pimcore 12.
+- `AbstractCommand::writeError()`, `writeInfo()`, `writeComment()` and `writeQuestion()` are deprecated, use the
+  `SymfonyStyle` in `$this->io` instead (e.g. `$this->io->error()`).
+- Without `webmozarts/console-parallelization`, commands using the `Parallelization` trait continue after a failing
+  item and return `FAILURE` at the end, like with the package. Before, the first failing item aborted the command.
 #### [Classification Store]
 - `StoreConfig::delete()` now also deletes the collections, groups and keys of the store (through their models, so
   their delete events are dispatched), and with them the object data of the store. Before, it only deleted the store

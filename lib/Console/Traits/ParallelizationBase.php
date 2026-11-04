@@ -20,6 +20,7 @@ namespace Pimcore\Console\Traits;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 use Webmozarts\Console\Parallelization\Input\ParallelizationInput;
 
 if (trait_exists('\Webmozarts\Console\Parallelization\Parallelization')) {
@@ -37,6 +38,10 @@ if (trait_exists('\Webmozarts\Console\Parallelization\Parallelization')) {
 } else {
     trait ParallelizationBase
     {
+        /**
+         * Runs all items in this process. Like the error handler of webmozarts/console-parallelization, a failing item
+         * is reported and the remaining items are still processed; the command then returns FAILURE.
+         */
         public function execute(InputInterface $input, OutputInterface $output): int
         {
             $this->runBeforeFirstCommand($input, $output);
@@ -48,8 +53,19 @@ if (trait_exists('\Webmozarts\Console\Parallelization\Parallelization')) {
                 $this->runBeforeBatch($input, $output, $items);
             }
 
+            $failed = 0;
             foreach ($items as $item) {
-                $this->runSingleCommand(trim((string)$item), $input, $output);
+                $item = trim((string)$item);
+
+                try {
+                    $this->runSingleCommand($item, $input, $output);
+                } catch (Throwable $e) {
+                    $failed++;
+                    $output->writeln(sprintf('<error>Failed to process "%s": %s</error>', $item, $e->getMessage()));
+                    if ($output->isDebug()) {
+                        $output->writeln($e->getTraceAsString());
+                    }
+                }
             }
 
             //Method executed after executing all the items
@@ -59,7 +75,7 @@ if (trait_exists('\Webmozarts\Console\Parallelization\Parallelization')) {
 
             $this->runAfterLastCommand($input, $output);
 
-            return 0;
+            return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
         }
 
         protected static function configureCommand(Command $command): void

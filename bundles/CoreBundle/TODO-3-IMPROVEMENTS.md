@@ -457,7 +457,7 @@ group with name, state, message, link) and keeps the exit codes. The display hel
 
 ## E – Related code outside scope (affects commands)
 
-### [ ] I-29 – `lib/Console` base classes and traits
+### [x] I-29 – `lib/Console` base classes and traits
 
 - `Traits/Parallelization.php:37-43`: `exit(1)` when the lock is held. Throw or return `FAILURE` instead (see C-06,
   B-26).
@@ -468,6 +468,12 @@ group with name, state, message, link) and keeps the exit codes. The display hel
   (I-06).
 - `Style/PimcoreStyle.php` stores `$input`/`$output` again although `SymfonyStyle` already keeps them privately. That
   is acceptable, but the accessors could be `readonly` promoted properties.
+
+**Done:** the `exit(1)` was already replaced by an exception (C-06). The fallback `execute()` reports a failing item,
+continues with the others and returns `FAILURE`, like the webmozarts error handler; it stays `public` because
+`Parallelization::execute()` is public and narrowing it would break callers. `DryRun` uses `InputInterface`. The
+`write*()` helpers of `AbstractCommand` are deprecated (no internal callers left). `PimcoreStyle` uses `readonly`
+promoted properties.
 
 ### [ ] I-30 – Tests for commands
 
