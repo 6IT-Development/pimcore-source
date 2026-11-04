@@ -174,7 +174,7 @@ before any property is set. `getItem()` is simplified to `??=` now that `$item` 
 
 ---
 
-## [ ] B-09 – `instance_identifier` is not validated
+## [x] B-09 – `instance_identifier` is not validated
 
 **Files:** `src/DependencyInjection/Configuration.php:28-31`, `src/Resources/install/install.sql:6`
 
@@ -187,6 +187,17 @@ before any property is set. `getItem()` is simplified to `??=` now that `$item` 
 
 **Fix direction:** use `stringNode()` (Symfony 7.2+) with `->cannotBeEmpty()`, plus a `validate()` that checks a length
 of 50 or less and a safe character set. Keep `null` as the "disabled" default.
+
+**Done:** `instance_identifier` stays a `scalarNode` with a `null` default (an explicit `null` is unset, so it also
+means "disabled"). An int is cast to its string form, which gives the same UUIDs as before; other non-strings are
+rejected, `cannotBeEmpty()` rejects `""`, and the new `Configuration::getInstanceIdentifierError()` rejects more than
+50 characters (`mb_strlen`, `INSTANCE_IDENTIFIER_MAX_LENGTH`), `~` and control characters.
+`setSystemInstanceIdentifier()` runs the same check at runtime, because a value from an env variable is only known
+then (`ValidateEnvPlaceholdersPass` passes). `isEnabled()` and `setSystemInstanceIdentifier()` no longer use
+`empty()`, so `"0"` is a valid identifier. Checked with Symfony Config 7.4 for absent, `null`, `"0"`, int, `""`, bool,
+51 characters, `~`, 50 multibyte characters and an env placeholder. Not used: `stringNode()`, because it would reject
+the int identifiers that worked so far; no stricter character set, because changing an existing identifier invalidates
+its UUIDs.
 
 ---
 

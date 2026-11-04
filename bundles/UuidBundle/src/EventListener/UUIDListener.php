@@ -115,11 +115,9 @@ class UUIDListener implements EventSubscriberInterface
         }
 
         $config = Pimcore::getKernel()->getContainer()->getParameter('pimcore_uuid.instance_identifier');
-        if (!empty($config)) {
-            return true;
-        }
 
-        return false;
+        // not empty(): "0" is a valid identifier
+        return $config !== null && $config !== '';
     }
 
     protected function extractElement(Event $event): ClassDefinitionInterface|ElementInterface|null
