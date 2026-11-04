@@ -180,12 +180,46 @@ class Hardlink extends Document
 
     public function hasChildren(?bool $includingUnpublished = null): bool
     {
-        return count($this->getChildren((bool)$includingUnpublished)) > 0;
+        // the same sources as getChildren(), without loading and wrapping every source child
+        if (parent::hasChildren($includingUnpublished)) {
+            return true;
+        }
+
+        return $this->getChildrenFromSource()
+            && !Pimcore::inAdmin()
+            && $this->getSourceDocument()?->hasChildren($includingUnpublished);
     }
 
     protected function update(array $params = []): void
     {
+        $this->validateSource();
+
         parent::update($params);
         $this->saveScheduledTasks();
+    }
+
+    /**
+     * Following the sources of hardlink sources must not lead back to the hardlink, and with children from the
+     * source the source must not be one of its ancestors: navigation and sitemaps would recurse without end
+     *
+     * @throws Model\Element\ValidationException
+     */
+    private function validateSource(): void
+    {
+        $visited = [];
+        $source = $this->getSourceDocument();
+        while ($source && !isset($visited[$source->getId()])) {
+            if ($this->getId() && $source->getId() === $this->getId()) {
+                throw new Model\Element\ValidationException('A hardlink cannot use itself or a hardlink pointing back to it as its source');
+            }
+            if ($this->getChildrenFromSource()
+                && str_starts_with($this->getRealFullPath() . '/', rtrim($source->getRealFullPath(), '/') . '/')
+            ) {
+                throw new Model\Element\ValidationException('A hardlink cannot use one of its ancestors as its source');
+            }
+
+            $visited[$source->getId()] = true;
+            $source = $source instanceof self ? $source->getSourceDocument() : null;
+        }
     }
 }

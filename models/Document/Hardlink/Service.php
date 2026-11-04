@@ -52,13 +52,44 @@ class Service
     }
 
     /**
+     * Wrapper classes by the document class they wrap, most specific first; a custom document type (configured in
+     * documents.type_definitions) has no wrapper of its own and is wrapped by the one of the class it extends
+     *
+     * @var array<class-string<Document>, class-string<Wrapper\WrapperInterface>>
+     */
+    private const WRAPPER_CLASSES = [
+        Document\Email::class => Wrapper\Email::class,
+        Document\Page::class => Wrapper\Page::class,
+        Document\Snippet::class => Wrapper\Snippet::class,
+        Document\Link::class => Wrapper\Link::class,
+        Document\Hardlink::class => Wrapper\Hardlink::class,
+        Document\Folder::class => Wrapper\Folder::class,
+    ];
+
+    /**
      * @return Document\Hardlink\Wrapper\WrapperInterface
+     *
+     * @throws Exception if no wrapper exists for the document's class
+     *
      * @internal
      *
      */
     public static function upperCastDocument(Document $doc): Wrapper\WrapperInterface
     {
         $to_class = 'Pimcore\\Model\\Document\\Hardlink\\Wrapper\\' . ucfirst($doc->getType());
+        if (!is_a($to_class, Wrapper\WrapperInterface::class, true)) {
+            $to_class = null;
+            foreach (self::WRAPPER_CLASSES as $documentClass => $wrapperClass) {
+                if ($doc instanceof $documentClass) {
+                    $to_class = $wrapperClass;
+
+                    break;
+                }
+            }
+            if ($to_class === null) {
+                throw new Exception(sprintf('No hardlink wrapper for document type "%s" (%s)', $doc->getType(), get_class($doc)));
+            }
+        }
 
         $old_serialized_prefix = 'O:' . strlen(get_class($doc));
         $old_serialized_prefix .= ':"' . get_class($doc) . '":';

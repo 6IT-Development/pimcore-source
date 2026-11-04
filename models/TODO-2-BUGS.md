@@ -2679,7 +2679,7 @@ target on a lookup error and leaves `internal` / `internalType` alone, so a save
 `Link\Dao::getById()` no longer calls `getHref()`: the target and the link generator are resolved when the href is
 used.
 
-## [ ] B-147 – Hardlinks: no source validation, `null` dereferences after the source is deleted, custom types crash
+## [x] B-147 – Hardlinks: no source validation, `null` dereferences after the source is deleted, custom types crash
 
 **Files:** `models/Document/Hardlink.php:51-58`, `:102-107`, `:156-184`; `models/Document/Hardlink/Service.php:29-74`;
 `models/Document/Hardlink/Wrapper.php:108-128`; `models/Document/Hardlink/Wrapper/Link.php:30-60`
@@ -2695,6 +2695,16 @@ used.
 
 **Fix direction:** validate the source on save (not self, not an ancestor, no hardlink cycle); null-safe wrappers; a
 configurable wrapper map with a generic fallback.
+
+**Done:** `Hardlink::update()` validates the source with `validateSource()`: following the sources of hardlink sources
+(with a visited set) must not reach the hardlink itself, and with `childrenFromSource` the source must not be the
+hardlink's ancestor; both throw a `ValidationException`. The ancestor rule is limited to `childrenFromSource`, the only
+mode that recurses, so existing property-only hardlinks to a parent can still be saved. `Wrapper::getProperty()` and
+`Wrapper\Link::getHref()` skip the path rewriting when the hardlink's source no longer exists. `upperCastDocument()`
+falls back to the wrapper of the built-in class a custom document type extends (`Hardlink\Service::WRAPPER_CLASSES`,
+most specific first) and throws a descriptive exception when there is none; the map is a constant, not configuration.
+`Hardlink::hasChildren()` asks the own children and then the source's `hasChildren()` instead of loading and wrapping
+every source child.
 
 ## [ ] B-148 – Document type DAOs: a missing type row overwrites `id` with `NULL`
 

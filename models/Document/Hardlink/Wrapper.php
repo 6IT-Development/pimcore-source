@@ -108,15 +108,17 @@ trait Wrapper
     public function getProperty(string $name, bool $asContainer = false): mixed
     {
         $result = parent::getProperty($name, $asContainer);
-        if ($result instanceof Document) {
-            $hardLink = $this->getHardLinkSource();
-            if (str_starts_with($result->getRealFullPath(), $hardLink->getSourceDocument()->getRealFullPath() . '/')
-                || $hardLink->getSourceDocument()->getRealFullPath() === $result->getRealFullPath()
+        $hardLink = $this->getHardLinkSource();
+        // the hardlink loads its source again, which is gone once the source was deleted
+        $hardLinkSourceDocument = $hardLink->getSourceDocument();
+        if ($result instanceof Document && $hardLinkSourceDocument) {
+            if (str_starts_with($result->getRealFullPath(), $hardLinkSourceDocument->getRealFullPath() . '/')
+                || $hardLinkSourceDocument->getRealFullPath() === $result->getRealFullPath()
             ) {
                 $c = Service::wrap($result);
                 if ($c instanceof Document\Hardlink\Wrapper\WrapperInterface) {
                     $c->setHardLinkSource($hardLink);
-                    $c->setPath(preg_replace('@^' . preg_quote($hardLink->getSourceDocument()->getRealPath(), '@') . '@',
+                    $c->setPath(preg_replace('@^' . preg_quote($hardLinkSourceDocument->getRealPath(), '@') . '@',
                         $hardLink->getRealPath(), $c->getRealPath()));
 
                     return $c;
