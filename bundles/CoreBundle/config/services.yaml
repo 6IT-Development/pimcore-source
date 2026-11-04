@@ -7,12 +7,11 @@ services:
     # SECURITY
     #
 
-    # Only use with Symfony ver 5.3 or higher
-    # Decorate the symfony encoder factory with our own. Encoders operating on pimcore admin users and pimcore objects using
-    # the password field definition need access to the user instance while encoding the password. Our factory allows delegating
-    # encoder building to sub-factories which are able to build and cache an encoder per user object.
+    # Decorate the Symfony password hasher factory with our own. Hashers operating on pimcore admin users and pimcore objects
+    # using the password field definition need access to the user instance while hashing the password. Our factory allows
+    # delegating hasher building to sub-factories which are able to build and cache a hasher per user object.
     #
-    # See UserAwareEncoderFactory which is used from the admin bundle and from CMS demo profile.
+    # See UserAwarePasswordHasherFactory, which is used for pimcore admin users (config/pimcore/security.yaml).
     #
     # The second argument (factory mapping) is read from config (pimcore.security.password_hasher_factories) and set by the extension.
     pimcore.security.password_hasher_factory:

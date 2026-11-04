@@ -143,6 +143,14 @@
   and cast by the consumers; they are now rejected with a configuration error.
 - The `pimcore.applicationlog` options are deprecated, they were never read. Configure `pimcore_application_logger`
   (ApplicationLoggerBundle) instead.
+- Deprecated the unused options `pimcore.flags` and `pimcore.email.usespecific`, and `pimcore.security.factory_type` /
+  `pimcore.security.encoder_factories`, which have no effect since the encoder API was removed in Symfony 6 (use
+  `password_hasher_factories`). Remove them from your configuration. The `relativePath` option of
+  `ConfigurationHelper::getSymfonyConfigFiles()` is deprecated as well.
+- The legacy class definition prefixes `\Object_Class_Data_` and `\Object_Class_Layout_` (Pimcore 4 class names) were
+  removed from `pimcore.objects.class_definitions.*.prefixes`. Add them to your configuration if you still have such
+  classes.
+- The unused `@PimcoreCoreBundle/config/paginator.yaml` was removed. It was never loaded.
 - `@PimcoreCoreBundle/config/routing_dev.yaml` imports the PHP route files of the WebProfilerBundle instead of the XML
   ones, which are deprecated in Symfony 7.4. The file itself is deprecated: replace its import in your
   `config/routes/dev/*.yaml` with the `config/routes/web_profiler.yaml` of the Symfony recipe:

@@ -292,9 +292,6 @@ final class PimcoreCoreExtension extends ConfigurableExtension
     }
 
     /**
-     * Allows us to prepend/modify configurations of different extensions
-     */
-    /**
      * Extract class definitions and prefixes if configuration has more than just a class definition
      */
     private function flattenConfigurationForClassResolver(array $configuration): array

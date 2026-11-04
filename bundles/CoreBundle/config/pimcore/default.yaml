@@ -278,12 +278,10 @@ pimcore:
 
                 prefixes:
                     - \Pimcore\Model\DataObject\ClassDefinition\Data\
-                    - \Object_Class_Data_
 
             layout:
                 prefixes:
                     - \Pimcore\Model\DataObject\ClassDefinition\Layout\
-                    - \Object_Class_Layout_
 
     documents:
         type_definitions:

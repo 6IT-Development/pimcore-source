@@ -18,6 +18,5 @@ services:
 # Pimcore
 pimcore:
     security:
-        factory_type: password_hasher
         password_hasher_factories:
             Pimcore\Security\User\User: pimcore.security.user_password_hasher_factory

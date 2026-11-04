@@ -148,13 +148,13 @@ final class ConfigurationHelper
             $finder->name($namePattern);
         }
 
-        foreach ($finder as $file) {
-            $path = $file->getRealPath();
-            if ($params['relativePath'] ?? false) {
-                $path = $file->getRelativePathname();
-            }
+        $relativePath = $params['relativePath'] ?? false;
+        if ($relativePath) {
+            trigger_deprecation('pimcore/pimcore', '11.5', 'The "relativePath" option of "%s()" is deprecated and will be removed in Pimcore 12.', __METHOD__);
+        }
 
-            $result[] = $path;
+        foreach ($finder as $file) {
+            $result[] = $relativePath ? $file->getRelativePathname() : $file->getRealPath();
         }
 
         return $result;

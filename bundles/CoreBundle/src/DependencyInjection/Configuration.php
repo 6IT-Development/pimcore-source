@@ -60,6 +60,7 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->arrayNode('flags')
             ->info('Generic map for feature flags')
+            ->setDeprecated('pimcore/pimcore', '11.5', 'The "%path%.%node%" option is not used and will be removed in Pimcore 12.')
             ->prototype('scalar')->end()
             ->end()
             ->arrayNode('translations')
@@ -1225,11 +1226,13 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->end()
             ->enumNode('factory_type')
+            ->setDeprecated('pimcore/pimcore', '11.5', 'The "%path%.%node%" option has no effect since the encoder API was removed in Symfony 6 and will be removed in Pimcore 12.')
             ->values(['encoder', 'password_hasher'])
             ->defaultValue('encoder')
             ->end()
             ->arrayNode('encoder_factories')
             ->info('Encoder factories to use as className => factory service ID mapping')
+            ->setDeprecated('pimcore/pimcore', '11.5', 'The "%path%.%node%" option has no effect since the encoder API was removed in Symfony 6 and will be removed in Pimcore 12, use "password_hasher_factories" instead.')
             ->example([
                 'App\Model\DataObject\User1' => [
                     'id' => 'website_demo.security.encoder_factory2',
@@ -1399,6 +1402,7 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->end()
             ->scalarNode('usespecific')
+            ->setDeprecated('pimcore/pimcore', '11.5', 'The "%path%.%node%" option is not used and will be removed in Pimcore 12.')
             ->defaultFalse()
             ->end()
             ->end()
@@ -1487,7 +1491,7 @@ final class Configuration implements ConfigurationInterface
             ->cannotBeEmpty()
             ->end()
             ->end()
-            ->info('Handles the way how the state/place is stored. If not defined "state_table" will be used as default. Take a look at @TODO for a description of the different types.')
+            ->info('Handles the way how the state/place is stored. If not defined "state_table" will be used as default. See the workflow documentation for a description of the different types.')
             ->validate()
             ->ifTrue(function ($v) {
                 return isset($v['type']) && isset($v['service']);
@@ -1559,7 +1563,7 @@ final class Configuration implements ConfigurationInterface
             ])
             ->end()
             ->arrayNode('initial_markings')
-            ->info('Can be used to set the initial places (markings) for a workflow. Note that this option is Symfony 4.3+ only')
+            ->info('Can be used to set the initial places (markings) for a workflow.')
             ->beforeNormalization()
             ->ifString()
             ->then(function ($v) {

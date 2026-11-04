@@ -1135,7 +1135,7 @@ a tree default; both are removed. The consumer fallbacks stay: `models/Asset.php
 `VersionsCleanupTask` and `ResponseExceptionListener` read `SystemSettingsConfig::get()`, which returns the stored
 system settings unprocessed when the settings store is the read target, so the keys are not guaranteed there.
 
-### [ ] I-57 – Remove dead / deprecated config and stale texts
+### [x] I-57 – Remove dead / deprecated config and stale texts
 
 - Dead keys (no consumer in core or `admin-ui-classic-bundle`):
   - `flags` (71-74);
@@ -1156,6 +1156,13 @@ system settings unprocessed when the settings store is the read target, so the k
   - `services.yaml:10-15`: "Only use with Symfony ver 5.3 or higher", "UserAwareEncoderFactory";
   - `PimcoreCoreExtension::prepend()` (see I-41).
 - `ConfigurationHelper::getSymfonyConfigFiles()` option `relativePath` has no caller.
+
+**Done:** the dead keys `flags`, `email.usespecific`, `security.factory_type` and `security.encoder_factories` are
+deprecated rather than removed, so stored system settings and project configs keep compiling; `security.yaml` no longer
+sets `factory_type`. The legacy `\Object_Class_*` prefixes and `config/paginator.yaml` are removed. The stale infos,
+the 6.x docs link, the `services.yaml` encoder comment and an orphaned `prepend` docblock in `PimcoreCoreExtension`
+are fixed. `relativePath` triggers a deprecation. `general.language` and `chromium` stay deprecated (11.2) until the
+Chromium adapter is removed. Upgrade notes updated.
 
 ### [ ] I-58 – `ignoreExtraKeys()` hides typos in six sections
 
