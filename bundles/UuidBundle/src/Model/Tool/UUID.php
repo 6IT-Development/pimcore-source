@@ -188,11 +188,14 @@ final class UUID extends Model\AbstractModel
         return $self;
     }
 
-    public static function getByUuid(string $uuid): UUID
+    /**
+     * Returns the UUID model stored for the given UUID, or null when the UUID is unknown.
+     */
+    public static function getByUuid(string $uuid): ?UUID
     {
         $self = new self();
 
-        return $self->getDao()->getByUuid($uuid);
+        return $self->getDao()->getByUuid($uuid) ? $self : null;
     }
 
     /**

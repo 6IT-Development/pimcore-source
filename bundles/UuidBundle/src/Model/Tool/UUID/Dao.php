@@ -73,7 +73,12 @@ class Dao extends Model\Dao\AbstractDao
         $this->db->delete(self::TABLE_NAME, ['itemId' => $itemId, 'type' => $type, 'uuid' => $uuid]);
     }
 
-    public function getByUuid(string $uuid): UUID
+    /**
+     * Loads the row of the given UUID into the model.
+     *
+     * @return bool false when no row matches the UUID
+     */
+    public function getByUuid(string $uuid): bool
     {
         $queryBuilder = $this->db->createQueryBuilder();
         $queryBuilder
@@ -86,10 +91,13 @@ class Dao extends Model\Dao\AbstractDao
             ->executeQuery()
             ->fetchAssociative();
 
-        $model = new UUID();
-        $model->setValues($data);
+        if ($data === false) {
+            return false;
+        }
 
-        return $model;
+        $this->model->setValues($data);
+
+        return true;
     }
 
     public function exists(string $uuid): bool

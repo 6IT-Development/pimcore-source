@@ -36,7 +36,10 @@ class Dao extends Model\Listing\Dao\AbstractDao
         $items = $this->db->fetchFirstColumn('SELECT uuid FROM ' . UUID\Dao::TABLE_NAME . ' ' . $this->getCondition() . $this->getOrder() . $this->getOffsetLimit(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
         $result = [];
         foreach ($items as $uuid) {
-            $result[] = UUID::getByUuid($uuid);
+            // the row may have been deleted since the query above
+            if ($model = UUID::getByUuid($uuid)) {
+                $result[] = $model;
+            }
         }
 
         return $result;

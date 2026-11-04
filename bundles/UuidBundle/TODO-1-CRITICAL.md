@@ -9,7 +9,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – `UUID::getByUuid()` throws `TypeError` for any unknown UUID
+## [x] C-01 – `UUID::getByUuid()` throws `TypeError` for any unknown UUID
 
 **Files:** `src/Model/Tool/UUID/Dao.php:76-93`, `src/Model/Tool/UUID.php:191-196`
 
@@ -30,6 +30,11 @@ $model->setValues($data);                                     // setValues(array
 **Fix direction:** return `?UUID` (`null` when there is no row), or throw a documented `NotFoundException`. Fill
 `$this->model` in the DAO instead of building a second instance (see I-09). Change `Listing\Dao` to load full rows in
 one query (see I-10).
+
+**Done:** `UUID::getByUuid()` now returns `?UUID` and gives `null` for an unknown UUID. The internal
+`Dao::getByUuid()` fills `$this->model` and returns `false` when no row matches, instead of building a second instance
+and passing `false` to `setValues()` (part of I-09). `Listing\Dao::load()` skips rows deleted between its two queries.
+Not addressed: the N+1 query in `Listing\Dao::load()` (I-10) and the docs (B-02 / I-17).
 
 ---
 
