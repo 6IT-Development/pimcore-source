@@ -467,32 +467,13 @@ class Image extends Model\Document\Editable implements IdRewriterInterface, Edit
             }
         }
 
-        $getMetaDataCacheTags = function ($data, $tags) {
-            if (!is_array($data)) {
-                return $tags;
+        foreach ($this->getMetaDataElements() as $element) {
+            if (!array_key_exists($element->getCacheTag(), $tags)) {
+                $tags = $element->getCacheTags($tags);
             }
+        }
 
-            foreach ($data as $element) {
-                if (array_key_exists('data', $element) && is_array($element['data']) && count($element['data']) > 0) {
-                    foreach ($element['data'] as $metaData) {
-                        if ($metaData instanceof Element\Data\MarkerHotspotItem) {
-                            $metaData = get_object_vars($metaData);
-                        }
-
-                        if ($metaData['value'] instanceof Element\ElementInterface) {
-                            if (!array_key_exists($metaData['value']->getCacheTag(), $tags)) {
-                                $tags = $metaData['value']->getCacheTags($tags);
-                            }
-                        }
-                    }
-                }
-            }
-
-            return $tags;
-        };
-
-        $tags = $getMetaDataCacheTags($this->marker, $tags);
-        return $getMetaDataCacheTags($this->hotspots, $tags);
+        return $tags;
     }
 
     public function resolveDependencies(): array
@@ -509,33 +490,55 @@ class Image extends Model\Document\Editable implements IdRewriterInterface, Edit
             ];
         }
 
-        $getMetaDataDependencies = function ($data, $dependencies) {
-            if (!is_array($data)) {
-                return $dependencies;
-            }
+        foreach ($this->getMetaDataElements() as $element) {
+            $type = Element\Service::getElementType($element);
+            $dependencies[$type . '_' . $element->getId()] = [
+                'id' => $element->getId(),
+                'type' => $type,
+            ];
+        }
 
-            foreach ($data as $element) {
-                if (array_key_exists('data', $element) && is_array($element['data']) && count($element['data']) > 0) {
-                    foreach ($element['data'] as $metaData) {
-                        if ($metaData instanceof Element\Data\MarkerHotspotItem) {
-                            $metaData = get_object_vars($metaData);
-                        }
+        return $dependencies;
+    }
 
-                        if ($metaData['value'] instanceof Element\ElementInterface) {
-                            $dependencies[$metaData['type'] . '_' . $metaData['value']->getId()] = [
-                                'id' => $metaData['value']->getId(),
-                                'type' => $metaData['type'],
-                            ];
-                        }
+    /**
+     * The elements linked in the marker and hotspot metadata. The entries store the element id (see
+     * {@see Element\Data\MarkerHotspotItem::offsetSet()}), older serialized data may hold the element itself.
+     *
+     * @return Element\ElementInterface[]
+     */
+    private function getMetaDataElements(): array
+    {
+        $elements = [];
+
+        foreach ([$this->marker, $this->hotspots] as $data) {
+            foreach ($data as $item) {
+                if (!is_array($item) || !isset($item['data']) || !is_array($item['data'])) {
+                    continue;
+                }
+
+                foreach ($item['data'] as $metaData) {
+                    if (!$metaData instanceof Element\Data\MarkerHotspotItem && !is_array($metaData)) {
+                        continue;
+                    }
+
+                    $type = $metaData['type'] ?? null;
+                    $value = $metaData['value'] ?? null;
+                    if (!$value instanceof Element\ElementInterface
+                        && in_array($type, ['object', 'asset', 'document'], true)
+                        && is_numeric($value)
+                    ) {
+                        $value = Element\Service::getElementById($type, (int) $value);
+                    }
+
+                    if ($value instanceof Element\ElementInterface) {
+                        $elements[] = $value;
                     }
                 }
             }
+        }
 
-            return $dependencies;
-        };
-
-        $dependencies = $getMetaDataDependencies($this->marker, $dependencies);
-        return $getMetaDataDependencies($this->hotspots, $dependencies);
+        return $elements;
     }
 
     /**

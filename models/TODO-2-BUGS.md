@@ -2973,7 +2973,7 @@ flag instead of `empty($this->elements)`, so an editable whose targets are all m
 call. `setDataFromEditmode()` / `setDataFromResource()` and `rewriteIds()` reset the flag; it is not serialized, so an
 instance from the cache loads its elements again.
 
-## [ ] B-162 – Image editable: hotspot / marker element links never become dependencies or cache tags
+## [x] B-162 – Image editable: hotspot / marker element links never become dependencies or cache tags
 
 **File:** `models/Document/Editable/Image.php:460-539` (`:477-486`, `:519-529`)
 
@@ -2982,6 +2982,11 @@ instance from the cache loads its elements again.
   no dependency rows (linked assets, documents and objects look unused and can be deleted) and no cache tags.
 
 **Fix direction:** read through `$metaData['value']` (`offsetGet()` resolves the element) or resolve by type/id.
+
+**Done:** `getCacheTags()` and `resolveDependencies()` read the linked elements through a new private
+`getMetaDataElements()`, which takes `value` via `offsetGet()` (that resolves the stored id) and resolves a numeric id
+of a plain array entry by its type, so linked assets, documents and objects become dependency rows and cache tags again.
+The dependency type comes from the element itself.
 
 ## [ ] B-163 – Editables assign unnormalised values to typed properties: `TypeError` while loading or saving
 
