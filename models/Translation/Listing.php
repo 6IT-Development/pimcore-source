@@ -53,9 +53,14 @@ class Listing extends Model\Listing\AbstractListing
      */
     protected ?array $languages = null;
 
+    /**
+     * The columns of the domain table, or a language whose text the caller joins under that alias
+     * (onCreateQueryBuilder())
+     */
     public function isValidOrderKey(string $key): bool
     {
-        return in_array($key, ['key', 'type']) || in_array($key, $this->getLanguages());
+        return in_array($key, ['key', 'type', 'language', 'text', 'creationDate', 'modificationDate'], true)
+            || in_array($key, $this->languages ?? [], true);
     }
 
     public function getDomain(): string

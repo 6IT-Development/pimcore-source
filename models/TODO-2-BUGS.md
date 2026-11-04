@@ -2070,7 +2070,7 @@ those keys before and after `load()`, and every key of a page has texts, so page
 count uses the parameters of the query builder, so values bound by an `onCreateQueryBuilder()` callback are included.
 `getCount()` returns the size of the loaded page with a single load.
 
-## [ ] B-119 – `Listing::isValidOrderKey()`: `TypeError` without languages, real columns rejected, `type` breaks under `ONLY_FULL_GROUP_BY`
+## [x] B-119 – `Listing::isValidOrderKey()`: `TypeError` without languages, real columns rejected, `type` breaks under `ONLY_FULL_GROUP_BY`
 
 **File:** `models/Translation/Listing.php:56-59`; `models/Translation/Listing/Dao.php:109-111`
 
@@ -2083,6 +2083,12 @@ count uses the parameters of the query builder, so values bound by an `onCreateQ
 
 **Fix direction:** `in_array($key, [...columns], true) || in_array($key, $this->languages ?? [], true)`; order by
 `MIN(type)` / `MAX(modificationDate)` in the grouped query.
+
+**Done:** `isValidOrderKey()` accepts the table columns (`key`, `type`, `language`, `text`, `creationDate`,
+`modificationDate`) and the listing's languages (strict, `null` languages no longer throw). Language codes stay valid
+because the admin grid joins their texts under that alias. The grouped key query of `load()` / `getTotalCount()` (B-118)
+builds its own `ORDER BY`: a column other than `key` (quoted, unquoted or prefixed with the table) is ordered by
+`MIN()`, `modificationDate` by `MAX()`, so `ONLY_FULL_GROUP_BY` accepts it. Other order keys are used as they are.
 
 ## [ ] B-120 – Domain checks: `isAValidDomain()` swallows DB errors; the `admin` table is missing on a fresh install; swapped message arguments
 

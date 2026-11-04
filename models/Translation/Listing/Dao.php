@@ -31,6 +31,17 @@ class Dao extends Model\Listing\Dao\AbstractDao
 {
     use QueryBuilderHelperTrait;
 
+    /**
+     * The columns besides `key` and the aggregate that orders a key by them
+     */
+    private const array AGGREGATED_ORDER_COLUMNS = [
+        'type' => 'MIN',
+        'language' => 'MIN',
+        'text' => 'MIN',
+        'creationDate' => 'MIN',
+        'modificationDate' => 'MAX',
+    ];
+
     public function getDatabaseTableName(): string
     {
         return Model\Translation\Dao::TABLE_PREFIX . $this->model->getDomain();
@@ -153,8 +164,19 @@ class Dao extends Model\Listing\Dao\AbstractDao
     {
         $table = $this->getDatabaseTableName();
 
-        $queryBuilder = $this->getQueryBuilder($table . '.key');
+        // applyListingParametersToQueryBuilder() with an order by that is valid for the grouped query
+        $queryBuilder = $this->db->createQueryBuilder();
+        $queryBuilder->select($table . '.key')->from($table);
+        $this->applyConditionsToQueryBuilder($queryBuilder);
+        $this->applyGroupByToQueryBuilder($queryBuilder);
         $queryBuilder->addGroupBy($table . '.key');
+        $this->applyGroupedOrderByToQueryBuilder($queryBuilder);
+        $this->applyLimitToQueryBuilder($queryBuilder);
+
+        $callback = $this->onCreateQueryBuilderCallback;
+        if (is_callable($callback)) {
+            $callback($queryBuilder);
+        }
 
         // literal values: the listing conditions may use positional or named placeholders, they cannot be mixed
         $languages = $this->getLanguagesToLoad();
@@ -163,6 +185,34 @@ class Dao extends Model\Listing\Dao\AbstractDao
             : '0 = 1');
 
         return $queryBuilder;
+    }
+
+    /**
+     * A key has one row per language, so its other columns are not functionally dependent on it and ONLY_FULL_GROUP_BY
+     * rejects ordering by them directly: they are ordered by their first value, the modification date by the latest
+     */
+    private function applyGroupedOrderByToQueryBuilder(DoctrineQueryBuilder $queryBuilder): void
+    {
+        $order = $this->model->getOrder();
+        $lastOrder = $order[0] ?? null;
+
+        $parts = [];
+        foreach ($this->model->getOrderKey() as $c => $key) {
+            if (!empty($order[$c])) {
+                $lastOrder = $order[$c];
+            }
+
+            $column = trim(substr((string)strrchr('.' . $key, '.'), 1), '`');
+            if (isset(self::AGGREGATED_ORDER_COLUMNS[$column])) {
+                $key = self::AGGREGATED_ORDER_COLUMNS[$column] . '(' . $this->db->quoteIdentifier($this->getDatabaseTableName()) . '.' . $this->db->quoteIdentifier($column) . ')';
+            }
+
+            $parts[] = $key . ' ' . $lastOrder;
+        }
+
+        if ($parts) {
+            $queryBuilder->orderBy(implode(', ', $parts), ' ');
+        }
     }
 
     /**
