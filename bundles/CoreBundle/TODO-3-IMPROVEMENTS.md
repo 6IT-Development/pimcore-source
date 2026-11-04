@@ -105,7 +105,7 @@ dynamic `setName()` in `AbstractStructureImportCommand`. Then remove the redunda
 - In `AbstractBundleCommand::handlePrerequisiteError()`/`getBundle()`, use `$this->input` rather than
   `$this->io->getInput()`.
 
-### [ ] I-07 – Invokable commands (Symfony 7.3/7.4) for new or rewritten commands
+### [x] I-07 – Invokable commands (Symfony 7.3/7.4) for new or rewritten commands
 
 - Symfony 7.4 supports `__invoke()` with `#[Argument]`, `#[Option]`, `#[MapInput]`, `#[Ask]`, `#[Interact]`, which
   removes `configure()` boilerplate and gives typed input.

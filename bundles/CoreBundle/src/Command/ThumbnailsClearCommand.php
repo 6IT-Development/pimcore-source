@@ -20,10 +20,8 @@ namespace Pimcore\Bundle\CoreBundle\Command;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\Asset;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Completion\CompletionInput;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * @internal
@@ -34,31 +32,47 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class ThumbnailsClearCommand extends AbstractCommand
 {
-    protected function configure(): void
-    {
-        $this
-            ->addOption(
-                'type',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'video or image',
-                null,
-                ['image', 'video']
-            )
-            ->addOption(
-                'name',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'name of the thumbnail config of which the temp. files should be cleared',
-                null,
-                $this->suggestConfigNames(...)
-            );
+    public function __invoke(
+        #[Option('video or image', suggestedValues: ['image', 'video'])]
+        ?string $type = null,
+        #[Option('name of the thumbnail config of which the temp. files should be cleared', suggestedValues: [self::class, 'suggestConfigNames'])]
+        ?string $name = null,
+    ): int {
+        $possibleOptions = ['image', 'video'];
+        if (!in_array($type, $possibleOptions, true)) {
+            $this->io->error(sprintf('Input option `type` must be one of %s', implode(',', $possibleOptions)));
+
+            return self::INVALID;
+        }
+
+        if (!$name) {
+            $this->io->error('Input option `name` is required');
+
+            return self::INVALID;
+        }
+
+        $configClass = 'Pimcore\Model\Asset\\' . ucfirst($type) . '\Thumbnail\Config';
+        /** @var Asset\Image\Thumbnail\Config|Asset\Video\Thumbnail\Config|null $thumbConfig */
+        $thumbConfig = $configClass::getByName($name);
+        if (!$thumbConfig) {
+            $this->io->error(sprintf('Unable to find %s thumbnail config with name: %s. Nevertheless trying to delete remaining files', $type, $name));
+            $thumbConfig = new $configClass();
+            $thumbConfig->setName($name);
+        }
+
+        $thumbConfig->clearTempFiles();
+
+        return self::SUCCESS;
     }
 
     /**
+     * Completion for --name: the config names of the type given in --type.
+     *
+     * @internal
+     *
      * @return string[]
      */
-    private function suggestConfigNames(CompletionInput $input): array
+    public function suggestConfigNames(CompletionInput $input): array
     {
         $configs = match ($input->getOption('type')) {
             'image' => (new Asset\Image\Thumbnail\Config\Listing())->getThumbnails(),
@@ -67,34 +81,5 @@ class ThumbnailsClearCommand extends AbstractCommand
         };
 
         return array_map(static fn ($config) => $config->getName(), $configs);
-    }
-
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $possibleOptions = ['image', 'video'];
-        if (!in_array($input->getOption('type'), $possibleOptions)) {
-            $this->io->error(sprintf('Input option `type` must be one of %s', implode(',', $possibleOptions)));
-
-            return self::INVALID;
-        }
-
-        if (!$input->getOption('name')) {
-            $this->io->error('Input option `name` is required');
-
-            return self::INVALID;
-        }
-
-        $configClass = 'Pimcore\Model\Asset\\' . ucfirst($input->getOption('type')) . '\Thumbnail\Config';
-        /** @var Asset\Image\Thumbnail\Config|Asset\Video\Thumbnail\Config|null $thumbConfig */
-        $thumbConfig = $configClass::getByName($input->getOption('name'));
-        if (!$thumbConfig) {
-            $this->io->error(sprintf('Unable to find %s thumbnail config with name: %s. Nevertheless trying to delete remaining files', $input->getOption('type'), $input->getOption('name')));
-            $thumbConfig = new $configClass();
-            $thumbConfig->setName($input->getOption('name'));
-        }
-
-        $thumbConfig->clearTempFiles();
-
-        return self::SUCCESS;
     }
 }

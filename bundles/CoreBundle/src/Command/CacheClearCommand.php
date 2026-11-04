@@ -21,9 +21,7 @@ use Pimcore\Cache;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Event\SystemEvents;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -41,38 +39,20 @@ class CacheClearCommand extends AbstractCommand
         parent::__construct();
     }
 
-    protected function configure(): void
-    {
-        $this
-            ->addOption(
-                'tags',
-                't',
-                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'Only specific tags (csv list of tags)'
-            )
-            ->addOption(
-                'output',
-                'o',
-                InputOption::VALUE_NONE,
-                'Only output cache'
-            )
-            ->addOption(
-                'all',
-                'a',
-                InputOption::VALUE_NONE,
-                'Clear all (default when no other option is given)'
-            );
-    }
-
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
+    public function __invoke(
+        #[Option('Only specific tags (csv list of tags)', shortcut: 't')]
+        array $tags = [],
+        #[Option('Only output cache', name: 'output', shortcut: 'o')]
+        bool $outputOnly = false,
+        #[Option('Clear all (default when no other option is given)', shortcut: 'a')]
+        bool $all = false,
+    ): int {
         $this->io->newLine();
 
-        $tagOptions = $input->getOption('tags');
         $selectedModes = array_keys(array_filter([
-            '--tags' => [] !== $tagOptions,
-            '--output' => $input->getOption('output'),
-            '--all' => $input->getOption('all'),
+            '--tags' => [] !== $tags,
+            '--output' => $outputOnly,
+            '--all' => $all,
         ]));
 
         if (count($selectedModes) > 1) {
@@ -81,8 +61,8 @@ class CacheClearCommand extends AbstractCommand
             return self::INVALID;
         }
 
-        if ([] !== $tagOptions) {
-            $tags = $this->prepareTags($tagOptions);
+        if ([] !== $tags) {
+            $tags = $this->prepareTags($tags);
             if ([] === $tags) {
                 $this->io->error('No valid tags given.');
 
@@ -91,7 +71,7 @@ class CacheClearCommand extends AbstractCommand
 
             Cache::clearTags($tags);
             $this->io->success('Pimcore data cache cleared tags: ' . implode(',', $tags));
-        } elseif ($input->getOption('output')) {
+        } elseif ($outputOnly) {
             Cache::clearTag('output');
             $this->io->success('Pimcore output cache cleared successfully');
         } else {
