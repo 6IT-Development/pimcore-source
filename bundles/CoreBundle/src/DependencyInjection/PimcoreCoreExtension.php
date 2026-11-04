@@ -83,6 +83,8 @@ final class PimcoreCoreExtension extends ConfigurableExtension
         $container->setParameter('pimcore.extensions.bundles.search_paths', $config['bundles']['search_paths']);
         $container->setParameter('pimcore.extensions.bundles.handle_composer', $config['bundles']['handle_composer']);
 
+        // a pimcore.encryption.secret parameter defined by the project (e.g. from an env var) takes precedence over
+        // pimcore.encryption.secret in the config tree
         if (!$container->hasParameter('pimcore.encryption.secret')) {
             $container->setParameter('pimcore.encryption.secret', $config['encryption']['secret']);
         }
@@ -105,13 +107,14 @@ final class PimcoreCoreExtension extends ConfigurableExtension
         $container->setParameter('pimcore.templating.twig.sandbox_security_policy.methods', $config['templating_engine']['twig']['sandbox_security_policy']['methods']);
 
         // the whole config tree: Config::getSystemConfiguration() returns it (public API), so it stays a parameter.
-        // Services and passes should use a dedicated parameter like the ones above.
+        // Services and passes should use a dedicated parameter like the ones above. Note that it includes secrets
+        // (encryption.secret, httpclient.proxy_pass), which debug:container --parameters shows.
         $container->setParameter('pimcore.config', $config);
         $container->setParameter('pimcore.documents.areas.autoload', $config['documents']['areas']['autoload']);
 
         // set default domain for router to main domain if configured
         // this will be overridden from the request in web context but is handy for CLI scripts
-        $domain = $config['general']['domain'] ?? '';
+        $domain = $config['general']['domain'];
         if ($domain) {
             // when not an env variable, check if the domain is valid
             // idn_to_ascii() (ext-intl, a requirement) returns false for an invalid international domain
@@ -136,8 +139,9 @@ final class PimcoreCoreExtension extends ConfigurableExtension
 
         $this->configureImplementationLoaders($container, $config);
         $this->configureModelFactory($container, $config);
-        $this->configureClassResolvers($container, $config);
-        $this->configureRouting($container, $config['routing']);
+        $container->setParameter('pimcore.documents.classes.map', $this->flattenConfigurationForClassResolver($config['documents']['type_definitions']));
+        $container->setParameter('pimcore.assets.classes.map', $this->flattenConfigurationForClassResolver($config['assets']['type_definitions']));
+        $container->setParameter('pimcore.routing.static.locale_params', $config['routing']['static']['locale_params']);
         $this->configureTranslations($container, $config['translations']);
         $this->configurePasswordHashers($container, $config);
         $this->configureEditmodeAssets($container);
@@ -164,12 +168,15 @@ final class PimcoreCoreExtension extends ConfigurableExtension
         );
     }
 
+    /**
+     * ImplementationLoader asks its loaders last-added first, so the class overrides added here win over the
+     * FallbackBuilder added in implementation_factories.yaml.
+     */
     private function configureModelFactory(ContainerBuilder $container, array $config): void
     {
         $service = $container->getDefinition(Factory::class);
 
         $classMapLoader = new Definition(ClassMapLoader::class, [$config['models']['class_overrides']]);
-        $classMapLoader->setPublic(false);
 
         $classMapLoaderId = 'pimcore.model.factory.classmap_builder';
         $container->setDefinition($classMapLoaderId, $classMapLoader);
@@ -202,13 +209,14 @@ final class PimcoreCoreExtension extends ConfigurableExtension
         ];
 
         // read config and add map/prefix loaders if configured - makes sure only needed objects are built
-        // loaders are defined as private services as we don't need them outside the main type loader
+        // loaders are private services (the default) as we don't need them outside the main type loader.
+        // ImplementationLoader asks its loaders last-added first: the class map is added after the prefix loader, so
+        // an explicitly mapped type wins over a class found by prefix
         foreach ($services as $serviceId => $cfg) {
             $loaders = [];
 
             if ($cfg['config']['prefixes']) {
                 $prefixLoader = new Definition($cfg['prefixLoader'], [$cfg['config']['prefixes']]);
-                $prefixLoader->setPublic(false);
 
                 $prefixLoaderId = $serviceId . '.prefix_loader';
                 $container->setDefinition($prefixLoaderId, $prefixLoader);
@@ -218,7 +226,6 @@ final class PimcoreCoreExtension extends ConfigurableExtension
 
             if ($cfg['config']['map']) {
                 $classMapLoader = new Definition(ClassMapLoader::class, [$cfg['config']['map']]);
-                $classMapLoader->setPublic(false);
                 $classMapLoaderId = $serviceId . '.class_map_loader';
                 $container->setDefinition($classMapLoaderId, $classMapLoader);
                 $loaders[] = new Reference($classMapLoaderId);
@@ -227,20 +234,6 @@ final class PimcoreCoreExtension extends ConfigurableExtension
             $service = $container->getDefinition($serviceId);
             $service->setArguments([$loaders]);
         }
-    }
-
-    private function configureClassResolvers(ContainerBuilder $container, array $config): void
-    {
-        $container->setParameter('pimcore.documents.classes.map', $this->flattenConfigurationForClassResolver($config['documents']['type_definitions']));
-        $container->setParameter('pimcore.assets.classes.map', $this->flattenConfigurationForClassResolver($config['assets']['type_definitions']));
-    }
-
-    private function configureRouting(ContainerBuilder $container, array $config): void
-    {
-        $container->setParameter(
-            'pimcore.routing.static.locale_params',
-            $config['static']['locale_params']
-        );
     }
 
     private function configureTranslations(ContainerBuilder $container, array $config): void
@@ -292,20 +285,12 @@ final class PimcoreCoreExtension extends ConfigurableExtension
     }
 
     /**
-     * Extract class definitions and prefixes if configuration has more than just a class definition
+     * The type => class map of document or asset type definitions
+     *
+     * @return array<string, string>
      */
     private function flattenConfigurationForClassResolver(array $configuration): array
     {
-        $newConfiguration = [];
-
-        if (isset($configuration['map'])) {
-            foreach ($configuration['map'] as $type => $config) {
-                if (isset($config['class'])) {
-                    $newConfiguration[$type] = $config['class'];
-                }
-            }
-        }
-
-        return $newConfiguration;
+        return array_filter(array_map(static fn (array $type): ?string => $type['class'] ?? null, $configuration['map'] ?? []));
     }
 }

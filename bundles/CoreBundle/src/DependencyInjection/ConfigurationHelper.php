@@ -27,6 +27,12 @@ use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\Filesystem\Path;
 use Symfony\Component\Finder\Finder;
 
+/**
+ * Builds the `config_location` nodes of configuration trees and reads their YAML files. Used by Pimcore bundles
+ * (e.g. CustomReports, StaticRoutes) for their own admin-editable configurations.
+ *
+ * @api
+ */
 final class ConfigurationHelper
 {
     public static function addConfigLocationWithWriteTargetNodes(ArrayNodeDefinition $rootNode, array $nodes, array $additionalNodes = []): NodeBuilder
@@ -38,7 +44,7 @@ final class ConfigurationHelper
             ->children();
 
         foreach ($nodes as $node => $dir) {
-            ConfigurationHelper::addConfigLocationTargetNode($storageNode, $node, $dir, $additionalNodes);
+            self::addConfigLocationTargetNode($storageNode, $node, $dir, $additionalNodes);
         }
 
         return $storageNode;
@@ -48,54 +54,40 @@ final class ConfigurationHelper
     {
         $folder = self::resolveConfigDirectory($folder);
 
-        if (in_array(LocationAwareConfigRepository::READ_TARGET, $additionalNodes)) {
-            $node
-                ->arrayNode($name)
+        $targets = $node
+            ->arrayNode($name)
+                ->addDefaultsIfNotSet()
+                ->children();
+
+        $targets
+            ->arrayNode(LocationAwareConfigRepository::WRITE_TARGET)
                 ->addDefaultsIfNotSet()
                 ->children()
-                ->arrayNode(LocationAwareConfigRepository::WRITE_TARGET)
-                ->addDefaultsIfNotSet()
-                ->children()
-                ->enumNode(LocationAwareConfigRepository::TYPE)
-                ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE, LocationAwareConfigRepository::LOCATION_DISABLED])
-                ->defaultValue('symfony-config')
+                    ->enumNode(LocationAwareConfigRepository::TYPE)
+                        ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE, LocationAwareConfigRepository::LOCATION_DISABLED])
+                        ->defaultValue(LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG)
+                    ->end()
+                    ->arrayNode(LocationAwareConfigRepository::OPTIONS)
+                        ->defaultValue([LocationAwareConfigRepository::DIRECTORY => $folder])
+                        ->variablePrototype()->end()
+                    ->end()
                 ->end()
-                ->arrayNode(LocationAwareConfigRepository::OPTIONS)
-                ->defaultValue([LocationAwareConfigRepository::DIRECTORY => $folder])
-                ->variablePrototype()->end()
-                ->end()
-                ->end()
-                ->end()
+            ->end();
+
+        if (in_array(LocationAwareConfigRepository::READ_TARGET, $additionalNodes, true)) {
+            $targets
                 ->arrayNode(LocationAwareConfigRepository::READ_TARGET)
-                ->addDefaultsIfNotSet()
-                ->children()
-                ->enumNode(LocationAwareConfigRepository::TYPE)
-                ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE])
-                ->defaultValue(null)
-                ->end()
-                ->arrayNode(LocationAwareConfigRepository::OPTIONS)
-                ->defaultValue([LocationAwareConfigRepository::DIRECTORY => null])
-                ->variablePrototype()->end()
-                ->end()
-                ->end()
-                ->end()
-                ->end();
-        } else {
-            $node
-                ->arrayNode($name)
-                ->addDefaultsIfNotSet()
-                ->children()
-                ->arrayNode(LocationAwareConfigRepository::WRITE_TARGET)
-                ->addDefaultsIfNotSet()
-                ->children()
-                ->enumNode(LocationAwareConfigRepository::TYPE)
-                ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE, LocationAwareConfigRepository::LOCATION_DISABLED])
-                ->defaultValue('symfony-config')
-                ->end()
-                ->arrayNode(LocationAwareConfigRepository::OPTIONS)
-                ->defaultValue([LocationAwareConfigRepository::DIRECTORY => $folder])
-                ->variablePrototype()->end()
-                ->end()
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->enumNode(LocationAwareConfigRepository::TYPE)
+                            ->values([LocationAwareConfigRepository::LOCATION_SYMFONY_CONFIG, LocationAwareConfigRepository::LOCATION_SETTINGS_STORE])
+                            ->defaultNull()
+                        ->end()
+                        ->arrayNode(LocationAwareConfigRepository::OPTIONS)
+                            ->defaultValue([LocationAwareConfigRepository::DIRECTORY => null])
+                            ->variablePrototype()->end()
+                        ->end()
+                    ->end()
                 ->end();
         }
     }
@@ -127,27 +119,17 @@ final class ConfigurationHelper
 
     public static function getSymfonyConfigFiles(string $configPath, array $params = []): array
     {
-        $result = [];
-        $dirs = [];
-        $finder = new Finder();
-
-        if (is_dir($configPath)) {
-            $dirs[] = $configPath;
-        }
-
-        if (empty($dirs)) {
+        if (!is_dir($configPath)) {
             return [];
         }
 
-        $finder
+        $finder = (new Finder())
             ->files()
-            ->in($dirs)
+            ->in($configPath)
+            ->name(['*.yml', '*.yaml'])
             ->sortByName();
 
-        foreach (['*.yml', '*.yaml'] as $namePattern) {
-            $finder->name($namePattern);
-        }
-
+        $result = [];
         $relativePath = $params['relativePath'] ?? false;
         if ($relativePath) {
             trigger_deprecation('pimcore/pimcore', '11.5', 'The "relativePath" option of "%s()" is deprecated and will be removed in Pimcore 12.', __METHOD__);

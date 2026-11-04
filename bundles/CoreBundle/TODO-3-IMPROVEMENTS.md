@@ -1263,7 +1263,7 @@ sandbox `info` is one line. `PlaceholderProcessor` is `final` (it was already st
 `tests/Unit/DependencyInjection/`. Verified with the YAML and XML reference dumps and the normalized output of sample
 configs before and after: identical apart from the fixed texts.
 
-### [ ] I-61 – `ConfigurationHelper`, `PimcoreCoreExtension` and compiler passes: smaller items (complements I-38, I-41)
+### [x] I-61 – `ConfigurationHelper`, `PimcoreCoreExtension` and compiler passes: smaller items (complements I-38, I-41)
 
 - `ConfigurationHelper` (used by CustomReports/StaticRoutes bundles, so it is public API):
   - document it as `@api` or move it to `lib/Config`;
@@ -1290,6 +1290,15 @@ configs before and after: identical apart from the fixed texts.
 - `MonologPsrLogMessageProcessorPass` exists only for `ApplicationLoggerBundle/config/services.yaml:44`. MonologBundle
   defines `monolog.processor.psr_log_message` only when a handler uses `process_psr_3_messages`. Move the pass (or a
   private `PsrLogMessageProcessor` definition) into ApplicationLoggerBundle.
+
+**Done:** `ConfigurationHelper` is documented `@api`, builds the `write_target` block once and adds `read_target`
+when requested (`self::`, strict `in_array()`, the type constant); `getSymfonyConfigFiles()` without `$dirs`, one
+`name([...])`. `PimcoreCoreExtension`: no `setPublic(false)`, no `?? ''`, the two one-line wrappers are inlined,
+`flattenConfigurationForClassResolver()` is one `array_filter(array_map())`, the last-added-first loader order is
+documented at both places, and comments explain that a `pimcore.encryption.secret` parameter wins and that
+`pimcore.config` contains secrets. Exposing only the needed sub-keys stays with I-41's reasoning (public
+`Config::getSystemConfiguration()`). The application logger has its own private `PsrLogMessageProcessor` service and
+`MonologPsrLogMessageProcessorPass` is removed. The tree dump and the class map parameters are unchanged.
 
 ---
 

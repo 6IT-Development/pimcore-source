@@ -39,13 +39,18 @@ services:
                 - 'Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogger'
                 - 'Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor'
 
+    # MonologBundle only defines monolog.processor.psr_log_message if a handler uses process_psr_3_messages
+    pimcore.app_logger.psr_log_message_processor:
+        class: Monolog\Processor\PsrLogMessageProcessor
+        autoconfigure: false
+
     # the DB write handler, public for the static ApplicationLogger::getInstance()
     # pushProcessor() prepends, so the processors run in reverse order of this list: ApplicationLoggerProcessor first,
     # then the PSR message processor, whose placeholders get the values the first one has prepared.
     Pimcore\Bundle\ApplicationLoggerBundle\Handler\ApplicationLoggerDb:
         public: true
         calls:
-            - [ pushProcessor, [ '@monolog.processor.psr_log_message' ] ]
+            - [ pushProcessor, [ '@pimcore.app_logger.psr_log_message_processor' ] ]
             - [ pushProcessor, [ '@Pimcore\Bundle\ApplicationLoggerBundle\Processor\ApplicationLoggerProcessor' ] ]
 
     Pimcore\Bundle\ApplicationLoggerBundle\ApplicationLogRepository: ~

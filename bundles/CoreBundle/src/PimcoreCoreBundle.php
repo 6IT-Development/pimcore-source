@@ -22,7 +22,6 @@ use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\AreabrickPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\CacheFallbackPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\ImageAdapterAliasPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\LongRunningHelperPass;
-use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MonologPsrLogMessageProcessorPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\MonologPublicLoggerPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\ProfilerAliasPass;
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler\PublicServicesPass;
@@ -80,8 +79,6 @@ class PimcoreCoreBundle extends Bundle
 
         // after Monolog's LoggerChannelPass (0), which creates the monolog.logger.<channel> services
         $container->addCompilerPass(new MonologPublicLoggerPass(), $beforeOptimization, -1);
-        // after Monolog's extension, which registers the processor only if a handler uses it
-        $container->addCompilerPass(new MonologPsrLogMessageProcessorPass(), $beforeOptimization, 0);
         // after Monolog's extension, which defines the monolog.handler.* services
         $container->addCompilerPass(new LongRunningHelperPass(), $beforeOptimization, 0);
 

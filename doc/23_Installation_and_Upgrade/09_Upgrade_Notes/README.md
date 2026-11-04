@@ -162,6 +162,10 @@
   `friendsofsymfony/jsrouting-bundle` 3.6 or newer.
 - Class names in `@PimcoreCoreBundle/config/pimcore/default.yaml` have no leading backslash anymore. The `redirect`
   Monolog channel is declared in `monolog.channels`.
+- CoreBundle no longer defines `monolog.processor.psr_log_message` when MonologBundle does not; the application logger
+  uses its own `pimcore.app_logger.psr_log_message_processor` service. If your code references
+  `monolog.processor.psr_log_message`, enable `process_psr_3_messages` on a Monolog handler or define the service.
+- `ConfigurationHelper` (`config_location` nodes for bundle configurations) is marked `@api`.
 - Unknown keys under `pimcore.objects`, `documents`, `full_page_cache`, `properties`, `perspectives` and `custom_views`
   were silently ignored, so typos (e.g. `full_page_cache.exclude_cookies`) went unnoticed. They are still ignored but
   trigger a deprecation naming the keys; Pimcore 12 will reject them with a configuration error.
