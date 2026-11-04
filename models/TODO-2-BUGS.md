@@ -3015,7 +3015,7 @@ parse. `Input` / `Textarea` cast the input to string before `html_entity_decode(
 `''` for an empty editable. `Video` only looks up `path` / `poster` when they are strings and casts the stored poster
 id, title and description; `Embed` and `Pdf` check `url` / `id` before using them, and `Pdf` casts the stored id.
 
-## [ ] B-164 – Editor-supplied values are output without escaping
+## [x] B-164 – Editor-supplied values are output without escaping
 
 **Files:** `models/Document/Editable/Video.php:537-566`, `:640-663`, `:750-812`, `:822-924`; `Numeric.php`,
 `Select.php`, `Multiselect.php`, `Table.php`, `Pdf.php` (`frontend()`)
@@ -3029,6 +3029,15 @@ id, title and description; `Embed` and `Pdf` check `url` / `id` before using the
 - Editors are semi-trusted, but this is stored XSS on public pages.
 
 **Fix direction:** escape attribute/URL/JSON output; validate against the configured options / numeric format.
+
+**Done:** Video: `parseYoutubeId()` returns `''` (empty code) for anything but a YouTube video / playlist id
+(`[A-Za-z0-9_-]+`), Dailymotion ids must be `[A-Za-z0-9]+`, Vimeo ids are compared as strings. `<video>` attributes are
+always double-quoted and escaped (names that are not valid attribute names are skipped), `<source>` type / src / media
+are escaped and the JSON-LD block is encoded with `JSON_HEX_TAG | JSON_HEX_AMP`. Numeric stores only numeric editmode
+values and escapes its output. Select, Multiselect and Table escape their frontend output unless the editable has
+`htmlspecialchars: false` (as `Input` / `Textarea`), since Select allows custom values (`editable: true`) and the
+options are not known when saving; Table ignores non-array editmode data. Pdf escapes the asset path and thumbnail URL.
+Documented in the editable pages and the security upgrade notes.
 
 ## Element (Scope 6)
 

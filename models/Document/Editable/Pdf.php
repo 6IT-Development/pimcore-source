@@ -140,8 +140,8 @@ class Pdf extends Model\Document\Editable implements EditmodeDataInterface
 
         if ($asset instanceof Asset\Document && $asset->getPageCount()) {
             $divId = 'pimcore-pdf-' . uniqid();
-            $pdfPath = $asset->getFullPath();
-            $thumbnailPath = $asset->getImageThumbnail($thumbnailConfig, 1, true);
+            $pdfPath = htmlspecialchars($asset->getFullPath(), ENT_QUOTES);
+            $thumbnailPath = htmlspecialchars((string)$asset->getImageThumbnail($thumbnailConfig, 1, true), ENT_QUOTES);
 
             return <<<HTML
             <div id="$divId" class="pimcore-pdfViewer">

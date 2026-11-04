@@ -48,6 +48,11 @@ class Select extends Model\Document\Editable
 
     public function frontend(): ?string
     {
+        $config = $this->getConfig();
+        if ($this->text !== null && ($config['htmlspecialchars'] ?? true) !== false) {
+            return htmlspecialchars($this->text);
+        }
+
         return $this->text;
     }
 

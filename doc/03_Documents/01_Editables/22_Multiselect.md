@@ -12,6 +12,7 @@ The Multiselect editable generates a **multiselect** box component in editmode.
 | `width`  | integer | Width of a generated block in editmode                                             |
 | `height` | integer | Height of a generated block in editmode                                            |
 | `class`  | string  | A CSS class that is added to the surrounding container of this element in editmode |
+| `htmlspecialchars` | boolean | Set to false to get the raw values without HTML special chars like & (default to true) |
 
 ## Methods
 

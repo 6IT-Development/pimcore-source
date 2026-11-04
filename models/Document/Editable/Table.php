@@ -47,13 +47,16 @@ class Table extends Model\Document\Editable
         $html = '';
 
         if (count($this->data) > 0) {
+            $config = $this->getConfig();
+            $escape = ($config['htmlspecialchars'] ?? true) !== false;
+
             $html .= '<table border="0" cellpadding="0" cellspacing="0">';
 
             foreach ($this->data as $row) {
                 $html .= '<tr>';
                 foreach ($row as $col) {
                     $html .= '<td>';
-                    $html .= $col;
+                    $html .= $escape ? htmlspecialchars((string)$col) : $col;
                     $html .= '</td>';
                 }
                 $html .= '</tr>';
@@ -74,7 +77,7 @@ class Table extends Model\Document\Editable
 
     public function setDataFromEditmode(mixed $data): static
     {
-        $this->data = $data;
+        $this->data = is_array($data) ? $data : [];
 
         return $this;
     }

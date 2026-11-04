@@ -11,6 +11,7 @@ The table editable provides the ability to edit a table structure.
 | `defaults` | array   | Array can have the following properties: rows, cols, data (see example)            |
 | `width`    | integer | Width of the field in pixel                                                        |
 | `class`    | string  | A CSS class that is added to the surrounding container of this element in editmode |
+| `htmlspecialchars` | boolean | Set to false to output the cells as HTML instead of escaped text (default to true) |
 
 ## Methods
 

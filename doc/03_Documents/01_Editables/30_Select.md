@@ -15,6 +15,7 @@ The select editable generates select-box component in Editmode.
 | `defaultValue` | string   | A default value for the available options. Note: This value needs to be saved before calling getData() or use setDataFromResource().      |
 | `required`     | boolean  | (default: false) set to true to make field value required for publish                                                                     |
 | `editable`     | boolean  | (default: false) set to true to allow custom option                                                                                       |
+| `htmlspecialchars` | boolean | Set to false to get the raw value without HTML special chars like & (default to true)                                                |
 
 ## Methods
 

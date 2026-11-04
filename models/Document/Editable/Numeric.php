@@ -52,7 +52,7 @@ class Numeric extends Model\Document\Editable
 
     public function frontend(): ?string
     {
-        return $this->number;
+        return $this->number === null ? null : htmlspecialchars($this->number);
     }
 
     public function setDataFromResource(mixed $data): static
@@ -64,7 +64,7 @@ class Numeric extends Model\Document\Editable
 
     public function setDataFromEditmode(mixed $data): static
     {
-        $this->number = (string)$data;
+        $this->number = is_numeric($data) ? (string)$data : null;
 
         return $this;
     }

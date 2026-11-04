@@ -240,6 +240,13 @@
   `pimcore.templating_engine.twig.sandbox_security_policy.methods`. Objects that give access to services, the database,
   the request or the session (container, kernel, `app` global, DBAL connection, DAOs, storages, …) and the password/2FA
   getters of `Pimcore\Model\User` can no longer be used in sandboxed templates.
+#### [Editables]
+- The frontend output of the `select`, `multiselect` and `table` editables is escaped with `htmlspecialchars()`. Set
+  the new `htmlspecialchars: false` option (as for `input` and `textarea`) if a value or table cell is meant as HTML.
+  `numeric` stores only numeric values and escapes its output.
+- The `video` editable only accepts YouTube ids of letters, digits, `-` and `_` and Dailymotion ids of letters and
+  digits, escapes the `<video>` / `<source>` attributes (attribute names that are not valid HTML names are dropped)
+  and encodes the JSON-LD block with `JSON_HEX_TAG`. The `pdf` editable escapes the asset path and thumbnail URL.
 #### [Glossary]
 - The `pimcore_glossary` filter escapes a plain variable before processing it: `{{ text|pimcore_glossary }}` no longer
   outputs the HTML of `text` unescaped. `{% apply pimcore_glossary %}` blocks are not affected. For trusted HTML in a

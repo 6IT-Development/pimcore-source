@@ -538,7 +538,7 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
     {
         $youtubeId = '';
         if ($this->type === self::TYPE_YOUTUBE) {
-            if ($youtubeId = $this->id) {
+            if ($youtubeId = (string)$this->id) {
                 if (str_contains($youtubeId, '//')) {
                     $parts = parse_url($this->id);
                     if (array_key_exists('query', $parts)) {
@@ -560,6 +560,11 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
                     }
                 }
             }
+        }
+
+        // the id ends up in the iframe URL, so anything but a video / playlist id is rejected
+        if (!is_string($youtubeId) || !preg_match('/^[A-Za-z0-9_-]+$/', $youtubeId)) {
+            return '';
         }
 
         return $youtubeId;
@@ -675,11 +680,11 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
         $code = '';
 
         // get vimeo id
-        if (preg_match('@vimeo.*/([\d]+)@i', $this->id, $matches)) {
-            $vimeoId = (int)$matches[1];
+        if (preg_match('@vimeo.*/([\d]+)@i', (string)$this->id, $matches)) {
+            $vimeoId = $matches[1];
         } else {
             // for object-videos
-            $vimeoId = $this->id;
+            $vimeoId = (string)$this->id;
         }
 
         if (ctype_digit($vimeoId)) {
@@ -757,14 +762,14 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
         $code = '';
 
         // get dailymotion id
-        if (preg_match('@dailymotion.*/video/([^_]+)@i', $this->id, $matches)) {
+        if (preg_match('@dailymotion.*/video/([A-Za-z0-9]+)@i', (string)$this->id, $matches)) {
             $dailymotionId = $matches[1];
         } else {
             // for object-videos
-            $dailymotionId = $this->id;
+            $dailymotionId = (string)$this->id;
         }
 
-        if ($dailymotionId) {
+        if (preg_match('/^[A-Za-z0-9]+$/', $dailymotionId)) {
             if ($inAdmin && isset($config['editmodeImagePreview']) && $config['editmodeImagePreview'] === true) {
                 return '<div id="pimcore_video_' . $this->getName() . '" class="pimcore_editable_video ' . ($config['class'] ?? '') . '">
                     <img src="https://www.dailymotion.com/thumbnail/video/' . $dailymotionId . '">
@@ -860,7 +865,8 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
                 $jsonLd['thumbnailUrl'] = Tool::getHostUrl() . $thumbnailUrl;
             }
 
-            $code .= "\n\n<script type=\"application/ld+json\">\n" . json_encode($jsonLd) . "\n</script>\n\n";
+            // JSON_HEX_TAG keeps a "</script>" in the title or description from closing the script element
+            $code .= "\n\n<script type=\"application/ld+json\">\n" . json_encode($jsonLd, JSON_HEX_TAG | JSON_HEX_AMP) . "\n</script>\n\n";
 
             // default attributes
             $attributesString = '';
@@ -894,13 +900,13 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
             }
 
             foreach ($attributes as $key => $value) {
+                if (!is_string($key) || !preg_match('/^[a-zA-Z_:][a-zA-Z0-9_:.-]*$/', $key)) {
+                    continue;
+                }
+
                 $attributesString .= ' ' . $key;
                 if (!empty($value)) {
-                    $quoteChar = '"';
-                    if (is_string($value) && strpos($value, '"')) {
-                        $quoteChar = "'";
-                    }
-                    $attributesString .= '=' . $quoteChar . $value . $quoteChar;
+                    $attributesString .= '="' . htmlspecialchars((string)$value, ENT_QUOTES) . '"';
                 }
             }
 
@@ -910,11 +916,11 @@ class Video extends Model\Document\Editable implements IdRewriterInterface
                 if ($type == 'medias') {
                     foreach ($url as $format => $medias) {
                         foreach ($medias as $media => $mediaUrl) {
-                            $code .= '<source type="video/' . $format . '" src="' . $mediaUrl . '" media="' . $media . '"  />' . "\n";
+                            $code .= '<source type="video/' . htmlspecialchars((string)$format, ENT_QUOTES) . '" src="' . htmlspecialchars((string)$mediaUrl, ENT_QUOTES) . '" media="' . htmlspecialchars((string)$media, ENT_QUOTES) . '"  />' . "\n";
                         }
                     }
                 } else {
-                    $code .= '<source type="video/' . $type . '" src="' . $url . '" />' . "\n";
+                    $code .= '<source type="video/' . htmlspecialchars((string)$type, ENT_QUOTES) . '" src="' . htmlspecialchars((string)$url, ENT_QUOTES) . '" />' . "\n";
                 }
             }
 
