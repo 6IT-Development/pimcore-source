@@ -29,6 +29,20 @@ use Pimcore\Model\Document;
 class Link extends Model\Document\Editable implements IdRewriterInterface, EditmodeDataInterface
 {
     /**
+     * Editable options in the config that are not attributes of the <a> tag
+     */
+    private const array CONFIG_OPTIONS = [
+        'reload', 'required', 'allowedTypes', 'allowedTargets', 'textPrefix', 'textSuffix', 'noText', 'disabledFields',
+    ];
+
+    /**
+     * Link data that is not an attribute of the <a> tag (target, title, rel, ... are)
+     */
+    private const array NON_ATTRIBUTE_DATA = [
+        'path', 'text', 'linktype', 'internal', 'internalType', 'internalId', 'parameters', 'anchor', 'attributes', 'type',
+    ];
+
+    /**
      * Contains the data for the link
      *
      * @internal
@@ -72,40 +86,41 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
         $url = $this->getHref();
 
         if (strlen($url) > 0) {
+            // work on a copy, the options must survive for the next render of the same instance
+            $config = $this->config;
             $prefix = '';
             $suffix = '';
             $noText = false;
             $disabledText = false;
 
-            if (array_key_exists('textPrefix', $this->config)) {
-                $prefix = $this->config['textPrefix'];
-                unset($this->config['textPrefix']);
+            if (array_key_exists('textPrefix', $config)) {
+                $prefix = $config['textPrefix'];
             }
 
-            if (array_key_exists('textSuffix', $this->config)) {
-                $suffix = $this->config['textSuffix'];
-                unset($this->config['textSuffix']);
+            if (array_key_exists('textSuffix', $config)) {
+                $suffix = $config['textSuffix'];
             }
 
-            if (isset($this->config['noText']) && $this->config['noText']) {
+            if (isset($config['noText']) && $config['noText']) {
                 $noText = true;
-                unset($this->config['noText']);
             }
 
-            if (array_key_exists('disabledFields', $this->config) && is_array($this->config['disabledFields'])) {
-                $disabledText = in_array('text', $this->config['disabledFields'], true);
-                unset($this->config['disabledFields']);
+            if (array_key_exists('disabledFields', $config) && is_array($config['disabledFields'])) {
+                $disabledText = in_array('text', $config['disabledFields'], true);
             }
 
+            // the editable options and the link data that is not an attribute of the <a> tag
+            $config = array_diff_key($config, array_flip(self::CONFIG_OPTIONS));
             $this->data = is_array($this->data) ? $this->data : [];
-            $availableAttribs = array_merge($this->data, $this->config);
+            $data = array_diff_key($this->data, array_flip(self::NON_ATTRIBUTE_DATA));
+            $availableAttribs = array_merge($data, $config);
 
             // add attributes to link
             $attribs = [];
             foreach ($availableAttribs as $key => $value) {
                 if (is_string($value) || is_numeric($value)) {
-                    if (!empty($this->data[$key]) && !empty($this->config[$key])) {
-                        $attribs[] = $key . '="' . htmlspecialchars($this->data[$key]) . ' ' . htmlspecialchars($this->config[$key]) . '"';
+                    if (!empty($data[$key]) && !empty($config[$key])) {
+                        $attribs[] = $key . '="' . htmlspecialchars((string) $data[$key]) . ' ' . htmlspecialchars((string) $config[$key]) . '"';
                     } elseif ($value) {
                         $attribs[] = (is_string($value)) ?
                             $key . '="' . htmlspecialchars($value) . '"' :
@@ -120,7 +135,10 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 $text = htmlspecialchars($disabledText ? $url : ($this->data['text'] ?? $url));
             }
 
-            return '<a href="' . $url . '" ' . implode(' ', $attribs) . '>' . $prefix . $text . $suffix . '</a>';
+            // parameters and anchor are already escaped by getHref(), so existing entities are not encoded again
+            $href = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8', false);
+
+            return '<a href="' . $href . '" ' . implode(' ', $attribs) . '>' . $prefix . $text . $suffix . '</a>';
         }
 
         return '';
@@ -135,7 +153,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 if (!$doc) {
                     $sane = false;
                     Logger::notice(
-                        'Detected insane relation, removing reference to non existent document with id [' . $this->getDocumentId() . ']'
+                        'Detected insane relation, removing reference to non existent document with id [' . $this->data['internalId'] . '] in document [' . $this->getDocumentId() . ']'
                     );
                     $this->data = null;
                 }
@@ -144,7 +162,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 if (!$asset) {
                     $sane = false;
                     Logger::notice(
-                        'Detected insane relation, removing reference to non existent asset with id [' . $this->getDocumentId() . ']'
+                        'Detected insane relation, removing reference to non existent asset with id [' . $this->data['internalId'] . '] in document [' . $this->getDocumentId() . ']'
                     );
                     $this->data = null;
                 }
@@ -153,7 +171,7 @@ class Link extends Model\Document\Editable implements IdRewriterInterface, Editm
                 if (!$object) {
                     $sane = false;
                     Logger::notice(
-                        'Detected insane relation, removing reference to non existent object with id [' . $this->getDocumentId() . ']'
+                        'Detected insane relation, removing reference to non existent object with id [' . $this->data['internalId'] . '] in document [' . $this->getDocumentId() . ']'
                     );
                     $this->data = null;
                 }

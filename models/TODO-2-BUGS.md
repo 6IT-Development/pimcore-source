@@ -2916,7 +2916,7 @@ with `break`) restores the block state and resets `current`; `Block` in editmode
 opened (down to the level before its `ob_start()`), pulls the stashed editable definitions back and restores the
 indices. Manual mode (`loop()`, `start()` and `end()` called by the template) stays the template's responsibility.
 
-## [ ] B-159 – `Editable\Link::frontend()` mutates its config, emits internal data as attributes, does not escape `href`
+## [x] B-159 – `Editable\Link::frontend()` mutates its config, emits internal data as attributes, does not escape `href`
 
 **File:** `models/Document/Editable/Link.php:70-127`, `:129-164`
 
@@ -2930,6 +2930,15 @@ indices. Manual mode (`loop()`, `start()` and `end()` called by the template) st
 
 **Fix direction:** work on a local copy of the config; skip the internal keys (or allowlist + `data-*` / `aria-*`);
 `htmlspecialchars()` the href.
+
+**Done:** `frontend()` reads `textPrefix`, `textSuffix`, `noText` and `disabledFields` from a local copy of the config,
+so a second render of the same instance keeps them. The editable options (`reload`, `required`, `allowedTypes`,
+`allowedTargets` and the four above) are no longer emitted as attributes, and neither is the link data that is not an
+`<a>` attribute (`path`, `text`, `linktype`, `internal`, `internalType`, `internalId`, `parameters`, `anchor`,
+`attributes`, `type`); `target`, `title`, `rel`, `class`, `accesskey`, `tabindex` from the dialog and any other
+attribute passed in the template config still are. The href is escaped with `htmlspecialchars(..., double_encode:
+false)`, since `getHref()` already escapes the parameters and the anchor. `checkValidity()` logs the missing target id
+and the document id.
 
 ## [ ] B-160 – Relation / Snippet editables keep the old target after `rewriteIds()`; Snippet skips lazy loading
 
