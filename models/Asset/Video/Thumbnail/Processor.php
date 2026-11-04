@@ -28,6 +28,7 @@ use Pimcore\Tool\Storage;
 use Pimcore\Video;
 use Pimcore\Video\Adapter;
 use Symfony\Component\Lock\LockFactory;
+use Throwable;
 
 /**
  * @internal
@@ -310,12 +311,17 @@ class Processor
                     } else {
                         $conversionStatus = 'error';
                     }
-
-                    $converter->destroy();
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
+                    // a missing format would otherwise look finished and be converted again on every page view
+                    $conversionStatus = 'error';
                     Logger::error((string)$e);
+                } finally {
+                    $converter->destroy();
                 }
             }
+        } catch (Throwable $e) {
+            $conversionStatus = 'error';
+            Logger::error((string)$e);
         } finally {
             $lock->release();
 

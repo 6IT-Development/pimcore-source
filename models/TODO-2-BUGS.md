@@ -984,7 +984,7 @@ addressed: a media thumbnail of a video frame (time offset) cannot be returned, 
 is typed `?Image\ThumbnailInterface`, which the video `ImageThumbnail` does not implement (no `getHtml()` /
 `getImageTag()`); supporting it needs an interface change.
 
-## [ ] B-62 – Exceptions during video conversion leave status `finished` → endless re-conversion on page views
+## [x] B-62 – Exceptions during video conversion leave status `finished` → endless re-conversion on page views
 
 **File:** `models/Asset/Video/Thumbnail/Processor.php:288-290`, `:93-106`
 
@@ -992,6 +992,11 @@ is typed `?Image\ThumbnailInterface`, which the video `ImageThumbnail` does not 
   every page view. `Error`s are not caught; lock not released in `finally` (see C-11).
 
 **Fix direction:** set `error` in the catch, catch `\Throwable`, release lock in `finally`.
+
+**Done:** `execute()` catches `Throwable` per format and sets the status `error`, so `process()` reports the failure
+instead of dispatching the conversion again; a failure before the formats run (e.g. `getTemporaryFile()`) is caught
+the same way and still writes the status. `$converter->destroy()` runs in a `finally`. The lock was already released in
+a `finally` (C-11).
 
 ## [ ] B-63 – Temp files leak in the video conversion worker
 
