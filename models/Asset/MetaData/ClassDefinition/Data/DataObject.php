@@ -39,7 +39,7 @@ class DataObject extends Data
     {
         $element = null;
         if (is_numeric($value)) {
-            $element = Service::getElementById('object', $value);
+            $element = Service::getElementById('object', (int)$value);
         }
 
         return $element;
@@ -88,7 +88,7 @@ class DataObject extends Data
     public function getDataForEditMode(mixed $data, array $params = []): string
     {
         if (is_numeric($data)) {
-            $data = Service::getElementById('object', $data);
+            $data = Service::getElementById('object', (int)$data);
         }
         if ($data instanceof AbstractObject) {
             return $data->getRealFullPath();
@@ -100,7 +100,7 @@ class DataObject extends Data
     public function getDataForListfolderGrid(mixed $data, array $params = []): mixed
     {
         if (is_numeric($data)) {
-            $data = \Pimcore\Model\DataObject::getById($data);
+            $data = \Pimcore\Model\DataObject::getById((int)$data);
         }
 
         if ($data instanceof AbstractObject) {

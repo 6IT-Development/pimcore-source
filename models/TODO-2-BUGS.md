@@ -1174,13 +1174,17 @@ in the same process.
 an id and a non-empty string as a path. Any other value (`null` from an emptied cell, `''`, arrays) gives `null`, which
 clears the value, instead of passing it to `getByPath(string)` and throwing a `TypeError`.
 
-## [ ] B-75 – Relation metadata passes string ids to `Element\Service::getElementById` (deprecation on every load)
+## [x] B-75 – Relation metadata passes string ids to `Element\Service::getElementById` (deprecation on every load)
 
 **File:** `MetaData/ClassDefinition/Data/Asset.php:42`, `:91`; `Document.php:42`, `:91`; `DataObject.php:42`, `:91`
 
 - `is_numeric("123")` is true; `getElementById` triggers a deprecation for string ids (`models/Element/Service.php:442-447`).
 
 **Fix direction:** `(int)$value`.
+
+**Done:** `denormalize()`, `getDataForEditMode()` and `getDataForListfolderGrid()` of the asset, document and object
+metadata types cast the numeric value to `int` before `getElementById()` / `getById()`, so ids read from the
+database as strings no longer trigger the string-id deprecation.
 
 ## [ ] B-76 – Inconsistent "empty" values in relation metadata
 
