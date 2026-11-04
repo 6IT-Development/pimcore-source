@@ -1477,7 +1477,7 @@ helper for `hideUnpublished`.
 `resolveDependencies()` no longer leaves `hideUnpublished = false` / `getInheritedValues = false` behind for the rest of
 the process.
 
-## [ ] B-93 – `getFilterRequiredByPath()` joins on `targettype` instead of `sourcetype`: wrong or missing "required by" results
+## [x] B-93 – `getFilterRequiredByPath()` joins on `targettype` instead of `sourcetype`: wrong or missing "required by" results
 
 **File:** `models/Dependency/Dao.php:152`, `:157`, `:162`
 
@@ -1497,6 +1497,10 @@ WHERE d.targettype = '<targetType>' …
 
 **Fix direction:** `AND d.sourcetype = 'object'` / `'document'` / `'asset'` in the three joins. Add a test with mixed
 source types (I-50).
+
+**Done:** Each `UNION` branch of `getFilterRequiredByPath()` restricts `d.sourcetype` to the table it joins, as
+`getRequiredByWithPath()` does, so a filtered "required by" list finds the real sources of every type and no longer
+matches unrelated elements of the target type with the same id. The test with mixed source types stays with I-50.
 
 ## [ ] B-94 – Filter value is an unescaped, case-sensitive regex: uppercase never matches, `.`/`(`/`[` misbehave, empty value errors
 
