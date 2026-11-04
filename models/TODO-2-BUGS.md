@@ -891,13 +891,15 @@ without a DB lookup (the status cache can be disabled).
 **Done:** `loadList()` skips names for which `getByName()` returns `null` and re-indexes the filtered list with
 `array_values()`. The video listing has the same `null` issue; it is handled with B-72.
 
-## [ ] B-55 – `getImageTag()` cannot remove or customise `srcset`
+## [x] B-55 – `getImageTag()` cannot remove or customise `srcset`
 
 **File:** `models/Asset/Image/Thumbnail.php:372-385`
 
 - `srcset` / `data-srcset` is added after `$removeAttributes` and `imgCallback` run.
 
 **Fix direction:** add `srcset` before remove/callback.
+
+**Done:** `srcset` / `data-srcset` is added before `$removeAttributes` and `imgCallback` run. Upgrade note added.
 
 ## [ ] B-56 – Cache buster corrupts data URIs and protocol-relative URLs
 

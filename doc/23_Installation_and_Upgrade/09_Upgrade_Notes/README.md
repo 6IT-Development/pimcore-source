@@ -97,6 +97,10 @@
   `blocked_tags: ['nav']` resulted in `['nav', 'script', ...]` (`a` was no longer blocked) and `blocked_tags: []` kept
   all defaults. To add tags, repeat the defaults (`bin/console config:dump-reference pimcore_glossary`). Tag names are
   lowercased. Existing links and abbreviations are never linked again, whether `a` and `abbr` are in the list or not.
+#### [Thumbnails]
+- `Thumbnail::getImageTag()` adds the `srcset` (or `data-srcset`) attribute before `$removeAttributes` and the
+  `imgCallback` option are applied, so both can now remove or change it. Before, a `srcset` set or removed there was
+  overwritten.
 
 ### Security
 #### [Twig]

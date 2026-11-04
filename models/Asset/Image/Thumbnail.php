@@ -370,19 +370,19 @@ final class Thumbnail implements ThumbnailInterface
             $attributes['loading'] = 'lazy';
         }
 
+        $thumbConfig = $this->getConfig();
+        if ($thumbConfig) {
+            $srcsetAttribute = isset($options['previewDataUri']) ? 'data-srcset' : 'srcset';
+
+            $attributes[$srcsetAttribute] = $this->getSrcset($thumbConfig, $image, $options);
+        }
+
         foreach ($removeAttributes as $attribute) {
             unset($attributes[$attribute]);
         }
 
         if ($callback) {
             $attributes = $callback($attributes);
-        }
-
-        $thumbConfig = $this->getConfig();
-        if ($thumbConfig) {
-            $srcsetAttribute = isset($options['previewDataUri']) ? 'data-srcset' : 'srcset';
-
-            $attributes[$srcsetAttribute] = $this->getSrcset($thumbConfig, $image, $options);
         }
 
         $htmlImgTag = '';
