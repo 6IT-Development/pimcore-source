@@ -2191,7 +2191,7 @@ Symfony translator drop its loaded catalogues (with the merged DB texts and the 
 rebuilt from its compiled resources and the persistent cache on next use. `LoggingTranslator` /
 `DataCollectorTranslator` forward the call through `__call()`.
 
-## [ ] B-125 – Event recursion guard stays set after a listener exception: later saves of the same instance skip events silently
+## [x] B-125 – Event recursion guard stays set after a listener exception: later saves of the same instance skip events silently
 
 **File:** `lib/Event/Traits/RecursionBlockingEventDispatchHelperTrait.php:34-42`; `models/Translation.php:354-373`
 
@@ -2203,6 +2203,12 @@ rebuilt from its compiled resources and the persistent cache on next use. `Loggi
 - The flag is a model property, so it is also stored in the persistent listing cache (B-117).
 
 **Fix direction:** `try { … } finally { unset(...) }` in the trait (shared helper, also affects other models that use it).
+
+**Done:** `dispatchEvent()` clears the flag in a `finally` block, so a throwing listener no longer blocks the event for
+later dispatches on the same instance. The fix is in the shared trait and applies to every model that uses it (Site,
+WebsiteSetting, Notification, Version, User, elements, tags, class / brick / field collection definitions, the
+classification store configs, quantity value units, custom layouts). The flag is only set while a dispatch runs, so it
+can no longer end up in a cached instance either.
 
 ---
 

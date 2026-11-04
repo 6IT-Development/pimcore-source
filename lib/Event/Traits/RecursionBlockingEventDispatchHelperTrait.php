@@ -36,8 +36,13 @@ trait RecursionBlockingEventDispatchHelperTrait
         $eventName ??= get_class($event);
         if (!isset($this->activeDispatchingEvents[$eventName])) {
             $this->activeDispatchingEvents[$eventName] = true;
-            Pimcore::getEventDispatcher()->dispatch($event, $eventName);
-            unset($this->activeDispatchingEvents[$eventName]);
+
+            try {
+                Pimcore::getEventDispatcher()->dispatch($event, $eventName);
+            } finally {
+                // a throwing listener must not block the event for later dispatches on this instance
+                unset($this->activeDispatchingEvents[$eventName]);
+            }
         }
     }
 }
