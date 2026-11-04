@@ -44,33 +44,56 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  */
 class PimcoreCoreBundle extends Bundle
 {
+    /**
+     * Overridden because the extension alias is "pimcore", not the "pimcore_core" that Bundle expects.
+     */
     public function getContainerExtension(): ExtensionInterface
     {
-        return new PimcoreCoreExtension();
+        if (!$this->extension instanceof ExtensionInterface) {
+            $this->extension = new PimcoreCoreExtension();
+        }
+
+        return $this->extension;
     }
 
+    /**
+     * All passes have an explicit type and priority: with the defaults they would depend on the bundle registration
+     * order (FrameworkBundle and MonologBundle are registered before this bundle). In TYPE_BEFORE_OPTIMIZATION,
+     * autoconfiguration (ResolveInstanceofConditionalsPass, AttributeAutoconfigurationPass) runs at 100 and most
+     * FrameworkBundle/MonologBundle passes at 0.
+     */
     public function build(ContainerBuilder $container): void
     {
+        $beforeOptimization = PassConfig::TYPE_BEFORE_OPTIMIZATION;
+
         // before the autoconfiguration passes (100), so the autoloaded bricks are autoconfigured
-        $container->addCompilerPass(new AreabrickAutoloadPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 101);
-        $container->addCompilerPass(new AreabrickPass());
-        $container->addCompilerPass(new ServiceControllersPass());
-        $container->addCompilerPass(new MonologPublicLoggerPass());
-        $container->addCompilerPass(new MonologPsrLogMessageProcessorPass());
-        $container->addCompilerPass(new LongRunningHelperPass());
+        $container->addCompilerPass(new AreabrickAutoloadPass(), $beforeOptimization, 101);
+        // before CachePoolPass (32), see CacheFallbackPass
+        $container->addCompilerPass(new CacheFallbackPass(), $beforeOptimization, 33);
         // before Monolog's LoggerChannelPass and FrameworkBundle's WorkflowGuardListenerPass (both 0): they process the
         // monolog.logger tag of the audit trail listener and the workflow.has_guard_listeners parameter set by this pass
-        $container->addCompilerPass(new WorkflowPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 1);
-        $container->addCompilerPass(new RegisterMaintenanceTaskPass());
-        $container->addCompilerPass(new RoutingLoaderPass());
-        $container->addCompilerPass(new ProfilerAliasPass());
-        // before CachePoolPass (32), see CacheFallbackPass
-        $container->addCompilerPass(new CacheFallbackPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 33);
-        $container->addCompilerPass(new MessageBusPublicPass());
-        $container->addCompilerPass(new HtmlSanitizerPass());
-        $container->addCompilerPass(new TranslationSanitizerPass());
-        $container->addCompilerPass(new SerializerPass());
-        $container->addCompilerPass(new ImageAdapterAliasPass());
+        $container->addCompilerPass(new WorkflowPass(), $beforeOptimization, 1);
+
+        // after autoconfiguration (100), which adds the tags or attributes these passes read
+        $container->addCompilerPass(new AreabrickPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new RegisterMaintenanceTaskPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new SerializerPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new ServiceControllersPass(), $beforeOptimization, 0);
+
+        // after Monolog's LoggerChannelPass (0), which creates the monolog.logger.<channel> services
+        $container->addCompilerPass(new MonologPublicLoggerPass(), $beforeOptimization, -1);
+        // after Monolog's extension, which registers the processor only if a handler uses it
+        $container->addCompilerPass(new MonologPsrLogMessageProcessorPass(), $beforeOptimization, 0);
+        // after Monolog's extension, which defines the monolog.handler.* services
+        $container->addCompilerPass(new LongRunningHelperPass(), $beforeOptimization, 0);
+
+        // services and aliases defined by the extensions; before RemoveUnusedDefinitionsPass (TYPE_REMOVE) drops private ones
+        $container->addCompilerPass(new RoutingLoaderPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new ProfilerAliasPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new MessageBusPublicPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new HtmlSanitizerPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new TranslationSanitizerPass(), $beforeOptimization, 0);
+        $container->addCompilerPass(new ImageAdapterAliasPass(), $beforeOptimization, 0);
     }
 
     public function getPath(): string

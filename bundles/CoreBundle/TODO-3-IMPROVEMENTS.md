@@ -589,7 +589,7 @@ only `id` and `priority`. The empty autoconfigured tag stays (it is appended aft
 
 ## G – PHP 8.4 / code style
 
-### [ ] I-35 – `PimcoreCoreBundle::build()`: make pass ordering explicit and documented
+### [x] I-35 – `PimcoreCoreBundle::build()`: make pass ordering explicit and documented
 
 **File:** `src/PimcoreCoreBundle.php:52-71`
 
@@ -606,6 +606,11 @@ only `id` and `priority`. The empty autoconfigured tag stays (it is appended aft
   because the alias is `pimcore`, not `pimcore_core`.
 - Migrating to `AbstractBundle` (`configure()` / `loadExtension()`) is **not** recommended. It would mean moving the
   2 000-line `Configuration` and gains little.
+
+**Done:** every pass is added with `TYPE_BEFORE_OPTIMIZATION` and an explicit priority, grouped by the Symfony pass
+it depends on (autoconfiguration at 100, `CachePoolPass` 32, Monolog's `LoggerChannelPass` 0 → `MonologPublicLoggerPass`
+at -1). The order relative to FrameworkBundle/MonologBundle is unchanged. `getContainerExtension()` caches the
+extension in `$this->extension`.
 
 ### [ ] I-36 – `PimcoreDataCollector` modernisation
 
