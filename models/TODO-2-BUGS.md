@@ -2957,7 +2957,7 @@ the id, so a copy renders and depends on the new target (`Relation` reloads it l
 `Snippet::frontend()`, `getDataEditmode()` and `resolveDependencies()` call `load()` first, so an instance from the
 persistent cache (where `snippet` is not serialized) renders, shows its path in editmode and records its dependency.
 
-## [ ] B-161 – `Relations` iterator lets unpublished elements through
+## [x] B-161 – `Relations` iterator lets unpublished elements through
 
 **File:** `models/Document/Editable/Relations.php:50-63`, `:248-262`
 
@@ -2966,6 +2966,12 @@ persistent cache (where `snippet` is not serialized) renders, shows its path in 
 - `setElements()` re-queries on every call when all targets are missing (`empty()` check).
 
 **Fix direction:** loop until a published element or the end; use a `null` "not loaded" sentinel.
+
+**Done:** `valid()` advances past every unpublished element in a row (while unpublished elements are hidden), so the
+frontend iterator never returns one. `setElements()` loads once per data change, tracked by a private `elementsLoaded`
+flag instead of `empty($this->elements)`, so an editable whose targets are all missing no longer re-queries on every
+call. `setDataFromEditmode()` / `setDataFromResource()` and `rewriteIds()` reset the flag; it is not serialized, so an
+instance from the cache loads its elements again.
 
 ## [ ] B-162 – Image editable: hotspot / marker element links never become dependencies or cache tags
 

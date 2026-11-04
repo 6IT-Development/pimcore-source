@@ -42,6 +42,11 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
      */
     protected array $elementIds = [];
 
+    /**
+     * Whether $elements was loaded from $elementIds; an empty list is a valid result when all targets are missing
+     */
+    private bool $elementsLoaded = false;
+
     public function getType(): string
     {
         return 'relations';
@@ -49,7 +54,8 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
 
     public function setElements(): static
     {
-        if (empty($this->elements)) {
+        if (!$this->elementsLoaded) {
+            $this->elementsLoaded = true;
             $this->elements = [];
             foreach ($this->elementIds as $elementId) {
                 $el = Element\Service::getElementById($elementId['type'], $elementId['id']);
@@ -126,6 +132,7 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
         if (is_array($data)) {
             $this->elementIds = $data;
             $this->elements = [];
+            $this->elementsLoaded = false;
         }
 
         return $this;
@@ -184,6 +191,7 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
     {
         // reset existing elements store
         $this->elements = [];
+        $this->elementsLoaded = false;
 
         foreach ($this->elementIds as &$elementId) {
             $type = $elementId['type'];
@@ -201,7 +209,7 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
     {
         $finalVars = [];
         $parentVars = parent::__sleep();
-        $blockedVars = ['elements'];
+        $blockedVars = ['elements', 'elementsLoaded'];
         foreach ($parentVars as $key) {
             if (!in_array($key, $blockedVars)) {
                 $finalVars[] = $key;
@@ -249,9 +257,9 @@ class Relations extends Model\Document\Editable implements Iterator, IdRewriterI
     {
         $this->setElements();
 
-        $el = $this->current();
-        if (
-            $el instanceof Element\ElementInterface &&
+        // skip every unpublished element in a row, not only the first one
+        while (
+            ($el = $this->current()) instanceof Element\ElementInterface &&
             Element\Service::doHideUnpublished($el) &&
             !Element\Service::isPublished($el)
         ) {
