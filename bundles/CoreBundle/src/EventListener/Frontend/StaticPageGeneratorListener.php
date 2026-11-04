@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\EventListener\Frontend;
 
+use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
 use Pimcore\Bundle\CoreBundle\EventListener\ListenerPriority;
@@ -127,14 +128,18 @@ final class StaticPageGeneratorListener implements EventSubscriberInterface
 
             if ($storage->fileExists($filename)) {
                 $content = $storage->read($filename);
-                $date = date(DateTimeInterface::ATOM, $storage->lastModified($filename));
+                $lastModified = new DateTimeImmutable('@' . $storage->lastModified($filename));
 
                 $response = new Response(
                     $content, Response::HTTP_OK, [
                         'Content-Type' => 'text/html',
-                        'X-Pimcore-Static-Page-Last-Modified' => $date,
+                        'X-Pimcore-Static-Page-Last-Modified' => $lastModified->format(DateTimeInterface::ATOM),
                     ]
                 );
+                $response->setLastModified($lastModified);
+                $response->setEtag(hash('xxh128', $content));
+                // answers conditional requests (If-None-Match / If-Modified-Since) with an empty 304
+                $response->isNotModified($request);
 
                 $event->setResponse($response);
             }

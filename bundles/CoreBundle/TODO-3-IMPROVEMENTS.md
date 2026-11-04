@@ -1030,7 +1030,7 @@ was already reset (B-126). `kernel.reset` is not used, because these are static 
 `DumpTranslationEntriesListener` also saves after `WorkerMessageHandledEvent` and `WorkerMessageFailedEvent`. Test
 added in `LongRunningProcessStateTest`.
 
-### [ ] I-53 – Response headers
+### [x] I-53 – Response headers
 
 - `PimcoreHeaderListener`: `X-Powered-By: pimcore` on every main response reveals the platform. Make it configurable
   (default off) or remove it.
@@ -1039,6 +1039,11 @@ added in `LongRunningProcessStateTest`.
 - `MaintenancePageListener`: add `Retry-After` and `Cache-Control: no-store` to the 503.
 - `StaticPageGeneratorListener`: serve with `Last-Modified` (it already has the timestamp) and an `ETag`, and answer
   `304` via `$response->isNotModified($request)`. Today it uses the custom `X-Pimcore-Static-Page-Last-Modified`.
+
+**Done:** `X-Powered-By` is only sent with the new `pimcore.general.powered_by_header: true` (default `false`).
+`EditmodeListener` appends `frame-ancestors 'self'` to the CSP unless the policy already restricts framing. The 503
+maintenance page has `Retry-After: 300` and `no-store`. Static pages are served with `Last-Modified` and an `ETag` and
+answer `304` through `isNotModified()`. The custom header stays for BC. Upgrade notes updated.
 
 ---
 

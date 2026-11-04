@@ -53,6 +53,14 @@
 - Exceptions are no longer logged a second time by the `ResponseExceptionListener`; Symfony's `ErrorListener` logs
   them (channel `request`).
 - In debug mode, add `?pimcore_show_error_page=1` to a URL to see the configured error page instead of Symfony's.
+#### [HTTP headers]
+- The `X-Powered-By: pimcore` header is no longer sent by default. Set `pimcore.general.powered_by_header: true` to
+  send it again.
+- Editmode responses also get `Content-Security-Policy: frame-ancestors 'self'` (appended to an existing policy that
+  has no `frame-ancestors` directive), next to `X-Frame-Options: SAMEORIGIN`.
+- The maintenance page (`503`) is sent with `Retry-After: 300` and `Cache-Control: no-store`.
+- Pages served by the static page router have `Last-Modified` and `ETag` headers and conditional requests are answered
+  with `304 Not Modified`. `X-Pimcore-Static-Page-Last-Modified` is still sent.
 #### [Full page cache]
 - Whether the current page is cached, its lifetime and the expire header are kept in the new public service
   `Pimcore\Cache\FullPage\FullPageCacheState`. `FullPageCacheListener` is no longer public, so

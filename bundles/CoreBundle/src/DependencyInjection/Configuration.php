@@ -275,6 +275,14 @@ final class Configuration implements ConfigurationInterface
             ->end()
             ->defaultFalse()
             ->end()
+            ->booleanNode('powered_by_header')
+            ->info('Send the "X-Powered-By: pimcore" header with every main response (reveals the platform)')
+            ->beforeNormalization()
+            ->ifString()
+            ->then(fn($v) => self::normalizeBoolString($v))
+            ->end()
+            ->defaultFalse()
+            ->end()
             ->end();
     }
 

@@ -96,8 +96,27 @@ final class EditmodeListener implements EventSubscriberInterface
 
         $this->addEditmodeAssets($document, $response);
 
-        // set sameorigin header for editmode responses
+        // the editmode page is loaded in the admin UI's iframe only, never let other origins frame it
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        $this->addFrameAncestorsPolicy($response);
+    }
+
+    /**
+     * `X-Frame-Options` is legacy, browsers that know CSP use `frame-ancestors` instead. A CSP the application
+     * already set is kept, the directive is only appended when the policy does not restrict framing itself.
+     */
+    private function addFrameAncestorsPolicy(Response $response): void
+    {
+        $policy = trim((string) $response->headers->get('Content-Security-Policy'));
+        if (preg_match('/(^|;)\s*frame-ancestors(\s|;|$)/i', $policy)) {
+            return;
+        }
+
+        $directive = "frame-ancestors 'self'";
+        $response->headers->set(
+            'Content-Security-Policy',
+            $policy === '' ? $directive : rtrim($policy, '; ') . '; ' . $directive
+        );
     }
 
     private function contentTypeMatches(Response $response): bool

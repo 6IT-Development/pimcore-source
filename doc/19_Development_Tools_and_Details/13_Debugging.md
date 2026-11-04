@@ -51,4 +51,5 @@ If response could be delivered from full page cache, but is not:
   `exclude cookie in system-setings matches`, etc. 
 
 One additional header to identify that response is sent by Pimcore. 
-* `X-Powered-By:pimcore`: Added to every request.
+* `X-Powered-By:pimcore`: Added to every main response if `pimcore.general.powered_by_header` is `true` (default
+  `false`).

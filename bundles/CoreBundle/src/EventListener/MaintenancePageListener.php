@@ -39,6 +39,11 @@ final class MaintenancePageListener implements EventSubscriberInterface
     private const string FALLBACK_TEMPLATE_CODE = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maintenance</title></head>'
         . '<body><h1>Temporarily down for maintenance</h1><p>Please try again later.</p></body></html>';
 
+    /**
+     * seconds clients and crawlers are asked to wait before retrying (`Retry-After` of the 503 response)
+     */
+    private const int RETRY_AFTER = 300;
+
     private ?string $templateCode = null;
 
     private bool $defaultTemplateLoaded = false;
@@ -142,7 +147,11 @@ final class MaintenancePageListener implements EventSubscriberInterface
             return;
         }
 
-        $response = new Response($this->getTemplateCode() ?: self::FALLBACK_TEMPLATE_CODE, Response::HTTP_SERVICE_UNAVAILABLE);
+        $response = new Response($this->getTemplateCode() ?: self::FALLBACK_TEMPLATE_CODE, Response::HTTP_SERVICE_UNAVAILABLE, [
+            'Retry-After' => (string) self::RETRY_AFTER,
+        ]);
+        // proxies and browsers must not keep the maintenance page once the maintenance is over
+        $response->headers->addCacheControlDirective('no-store');
         $event->setResponse($response);
     }
 }
