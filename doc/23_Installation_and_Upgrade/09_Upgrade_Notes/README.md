@@ -52,6 +52,12 @@
   etc. were not applied to them. They are now registered by `AreabrickAutoloadPass` before autoconfiguration and tagged
   with `pimcore.area.brick` (service and brick IDs are unchanged). Tagged brick services whose class is a parameter or
   inherited from a parent definition are now supported; a tagged service without a class gives a clear error.
+- The service ID of an auto-loaded brick only drops a trailing `Bundle` from the bundle name: a brick of
+  `BundleManagerBundle` is now `bundle_manager.area.brick.<name>` instead of `manager.area.brick.<name>`.
+#### [Controllers]
+- `pimcore.service_controllers` (used for the controller/action lists of documents) only contains services tagged
+  `controller.service_arguments`. Autoconfiguration adds the tag to `AbstractController` subclasses and
+  `#[AsController]` classes; a public `AbstractController` service without autoconfiguration needs the tag.
 #### [Profiler]
 - The deprecated template `@PimcoreCore/Profiler/key_value_table.html.twig` was removed. Copy it into your project if
   you still include it.

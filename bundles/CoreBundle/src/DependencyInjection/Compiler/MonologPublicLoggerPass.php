@@ -28,9 +28,10 @@ final class MonologPublicLoggerPass implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         $loggerPrefix = 'monolog.logger.';
-        $serviceIds = array_filter($container->getServiceIds(), function (string $id) use ($loggerPrefix) {
-            return str_starts_with($id, $loggerPrefix);
-        });
+        $serviceIds = array_filter(
+            $container->getServiceIds(),
+            static fn (string $id): bool => str_starts_with($id, $loggerPrefix)
+        );
 
         foreach ($serviceIds as $serviceId) {
             $container

@@ -27,6 +27,8 @@ use Symfony\Component\DependencyInjection\Definition;
  * service which is only registered conditionally by the monolog bundle (depending on
  * if a handler using the PSR log message processor is registered). As the application
  * logger fails if the processor service is missing, we register it conditionally here.
+ *
+ * @internal
  */
 final class MonologPsrLogMessageProcessorPass implements CompilerPassInterface
 {
@@ -34,8 +36,6 @@ final class MonologPsrLogMessageProcessorPass implements CompilerPassInterface
     {
         $processorId = 'monolog.processor.psr_log_message';
 
-        // We need to ignore this due to this bug: https://github.com/phpstan/phpstan-symfony/issues/15
-        // @phpstan-ignore-next-line
         if (!$container->has($processorId)) {
             $processor = new Definition(PsrLogMessageProcessor::class);
             $processor->setPublic(false);

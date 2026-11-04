@@ -17,13 +17,16 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\CoreBundle\DependencyInjection\Compiler;
 
+use Monolog\Handler\BufferHandler;
+use Monolog\Handler\FingersCrossedHandler;
 use Pimcore\Helper\LongRunningHelper;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
- * Adds tagged navigation renderers to navigation helper
+ * Registers the buffering Monolog handlers (buffer, fingers crossed) on the LongRunningHelper, which flushes them
+ * in long-running processes.
  *
  * @internal
  */
@@ -34,9 +37,11 @@ final class LongRunningHelperPass implements CompilerPassInterface
         $helperDefinition = $container->getDefinition(LongRunningHelper::class);
         foreach ($container->getDefinitions() as $serviceId => $definition) {
             if (str_starts_with($serviceId, 'monolog.handler.')) {
+                // MonologBundle defines its handlers with a class; a handler without one (e.g. a child definition
+                // inheriting it) is skipped
                 $class = $container->getParameterBag()->resolveValue($definition->getClass());
-                if (is_a($class, 'Monolog\Handler\BufferHandler', true)
-                    || is_a($class, 'Monolog\Handler\FingersCrossedHandler', true)) {
+                if (is_string($class)
+                    && (is_a($class, BufferHandler::class, true) || is_a($class, FingersCrossedHandler::class, true))) {
                     $helperDefinition->addMethodCall('addMonologHandler', [new Reference($serviceId)]);
                 }
             }

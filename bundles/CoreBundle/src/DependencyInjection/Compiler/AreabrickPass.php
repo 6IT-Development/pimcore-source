@@ -70,7 +70,7 @@ final class AreabrickPass implements CompilerPassInterface
                 $areabrickManager->addMethodCall('registerService', [$brickId, $id]);
             }
 
-            // handle bricks implementing ContainerAwareInterface
+            // inject the editable renderer into bricks with a setEditableRenderer() method
             $this->handleEditableRendererCall($definition, $reflector);
         }
 

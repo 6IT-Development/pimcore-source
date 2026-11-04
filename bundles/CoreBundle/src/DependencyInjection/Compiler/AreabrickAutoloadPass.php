@@ -68,9 +68,9 @@ final class AreabrickAutoloadPass implements CompilerPassInterface
         }
 
         $bundles = $container->getParameter('kernel.bundles_metadata');
-        //Find bricks from /src since AppBundle is removed
+        // find bricks in the App namespace (/src), which is not a bundle
         $bundles['App'] = [
-            'path' => PIMCORE_PROJECT_ROOT . '/src',
+            'path' => $container->getParameter('kernel.project_dir') . '/src',
             'namespace' => 'App',
         ];
 
@@ -218,7 +218,7 @@ final class AreabrickAutoloadPass implements CompilerPassInterface
      */
     private function generateServiceId(string $bundleName, string $subNamespace, string $className): string
     {
-        $bundleName = str_replace('Bundle', '', $bundleName);
+        $bundleName = preg_replace('/Bundle$/', '', $bundleName);
         $bundleName = $this->inflector->tableize($bundleName);
 
         if (!empty($subNamespace)) {

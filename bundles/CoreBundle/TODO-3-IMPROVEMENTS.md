@@ -646,7 +646,7 @@ The optional extra data is not added.
 in a `title` and `~` for null (toolbar and panel). The `link` comment is fixed. The inline padding stays, with a
 comment: a collector template cannot add toolbar CSS. `key_value_table.html.twig` is removed (upgrade note).
 
-### [ ] I-38 – Docblock / copy-paste errors and small code-style fixes in compiler passes
+### [x] I-38 – Docblock / copy-paste errors and small code-style fixes in compiler passes
 
 - `LongRunningHelperPass.php:26`: docblock says "Adds tagged navigation renderers" (copied from `NavigationRendererPass`).
 - `LongRunningHelperPass.php:38-39`: string class names. Use `BufferHandler::class` / `FingersCrossedHandler::class`.
@@ -668,6 +668,11 @@ comment: a collector template cannot add toolbar CSS. `key_value_table.html.twig
 - `AreabrickPass.php:202`: `in_array()` without `strict: true`.
 - `AreabrickPass.php:244`: `str_replace('Bundle', '', …)` removes every occurrence (`BundleManagerBundle` → `Manager`).
   Use `preg_replace('/Bundle$/', '', …)`.
+
+**Done:** all items. The project-root, `str_replace('Bundle')` and `in_array()` code had moved to
+`AreabrickAutoloadPass` (B-30/B-31); the first two are fixed there, the `in_array()` no longer exists.
+`LongRunningHelperPass` skips handlers without a string class explicitly. `ServiceControllersPass` keeps only the tag
+loop (upgrade notes).
 
 ---
 
