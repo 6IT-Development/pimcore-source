@@ -24,6 +24,7 @@ use Pimcore\Workflow;
 use Pimcore\Workflow\Notification\NotificationEmailService;
 use Pimcore\Workflow\Transition;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Workflow\Debug\TraceableWorkflow;
 use Symfony\Component\Workflow\Event\Event;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -74,6 +75,10 @@ class NotificationSubscriber implements EventSubscriberInterface
         /** @var Transition $transition */
         $transition = $event->getTransition();
         $workflow = $this->workflowManager->getWorkflowByName($event->getWorkflowName());
+        // in debug mode the workflows are decorated, the notification services expect the workflow itself
+        if ($workflow instanceof TraceableWorkflow) {
+            $workflow = $workflow->getInner();
+        }
 
         $notificationSettings = $transition->getNotificationSettings();
         foreach ($notificationSettings as $notificationSetting) {

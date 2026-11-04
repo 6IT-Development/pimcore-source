@@ -58,6 +58,16 @@
   services exist for workflow `guard` expressions was skipped. Audit trail entries are now logged to the `workflow`
   channel: adjust Monolog handlers that rely on them being in `app` (e.g. `channels: ['!workflow']` now excludes them).
   A `guard` without the SecurityBundle now fails at container build with a clear error.
+- Pimcore workflows are registered like FrameworkBundle workflows: they carry the `workflow` tag and show up in the
+  Workflow profiler panel and in Symfony's `workflow:dump`, and they can be autowired as `WorkflowInterface
+  $<name>Workflow` / `$<name>StateMachine` or with `#[Target('<name>')]`. In debug mode they are decorated with
+  `TraceableWorkflow`, so `$manager->getWorkflowByName()` and the registry return a `WorkflowInterface` that is not a
+  `Workflow` / `StateMachine` instance: type against `WorkflowInterface`, or unwrap with `getInner()`.
+- Places and transitions are validated when the container is built (`WorkflowValidator` / `StateMachineValidator`).
+  Invalid definitions, e.g. a state machine transition with several `to` places, a transition name used twice from the
+  same place, or an unknown place, now fail at `cache:clear` instead of when the workflow is used.
+- The audit trail and guard listeners have hidden service IDs: `.workflow.<name>.listener.audit_trail`,
+  `.state_machine.<name>.listener.guard` etc. (without the leading dot before).
 #### [Lock]
 - Pimcore no longer defines its own `Symfony\Component\Lock\LockFactory` service (DBAL store), which replaced the
   FrameworkBundle autowiring alias and ignored `framework.lock`, while some services used `lock.factory` (FrameworkBundle

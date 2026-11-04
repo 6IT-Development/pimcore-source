@@ -514,7 +514,7 @@ IDs continue from I-30. Line numbers are from commit `7cb7841b76`. Grouped: **F*
 **Done:** the file imports `wdt.php` / `profiler.php` (`type: php`) and is marked deprecated. The upgrade notes show
 the recipe routes that replace it; it stays for now because existing projects import it.
 
-### [ ] I-32 – Register Pimcore workflows like FrameworkBundle 7.4 does
+### [x] I-32 – Register Pimcore workflows like FrameworkBundle 7.4 does
 
 **File:** `src/DependencyInjection/Compiler/WorkflowPass.php:178-191`
 
@@ -531,6 +531,14 @@ leaves out:
   `#[Target('foo')]` autowiring works.
 - Hidden service IDs (`.<id>.listener.audit_trail`, `.<id>.listener.guard`).
 - Pimcore's `pimcore:workflow:dump` (I-19) could then use the same tagged locator.
+
+**Done:** each workflow gets the `workflow` tag (`name`, `metadata`, `definition_validators`, `definition_id`) and
+`workflow.workflow` / `workflow.state_machine`, a `WorkflowInterface` argument alias, and hidden listener IDs. The
+pass runs before the FrameworkBundle passes (priority 1 vs 0), so `WorkflowDebugPass` decorates the workflows in debug.
+`definition_validators` stays empty because `WorkflowValidatorPass` would instantiate the definition (and the autowired
+custom HTML services of its transitions) before autowiring; `WorkflowPass::validateDefinition()` runs the same
+validators on a definition built from the config. `pimcore:workflow:dump` keeps its `pimcore.workflow` locator (it
+lists only Pimcore workflows) and, like `NotificationSubscriber`, unwraps `TraceableWorkflow`.
 
 ### [ ] I-33 – Collector service registration: let autoconfiguration do the work
 

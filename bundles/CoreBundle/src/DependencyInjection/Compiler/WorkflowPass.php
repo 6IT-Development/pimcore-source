@@ -31,6 +31,9 @@ use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Security\Core\Authorization\ExpressionLanguage;
 use Symfony\Component\Workflow;
 use Symfony\Component\Workflow\Exception\LogicException;
+use Symfony\Component\Workflow\Validator\StateMachineValidator;
+use Symfony\Component\Workflow\Validator\WorkflowValidator;
+use Symfony\Component\Workflow\WorkflowInterface;
 
 /**
  * @internal
@@ -116,6 +119,8 @@ final class WorkflowPass implements CompilerPassInterface
                 $workflowManagerDefinition->addMethodCall('addPlaceConfig', [$workflowName, $place, $placeConfig]);
             }
 
+            $this->validateDefinition($workflowName, $type, $places, $workflowConfig);
+
             foreach ($workflowConfig['globalActions'] ?? [] as $action => $actionConfig) {
                 $customHtmlServiceDefinition = null;
                 if (isset($actionConfig['notes']['customHtml'])) {
@@ -187,7 +192,17 @@ final class WorkflowPass implements CompilerPassInterface
                 $workflowDefinition->replaceArgument(1, $markingStoreDefinition);
             }
             $workflowDefinition->setPublic(true);
-            // indexed by name for pimcore:workflow:dump (a separate tag: Symfony's "workflow" tag also enables tracing)
+            // the tags of FrameworkBundle: profiler panel, TraceableWorkflow in debug, Symfony's workflow:dump.
+            // No definition_validators: WorkflowValidatorPass would instantiate the definition before autowiring
+            // (custom HTML services of the transitions), validateDefinition() checks the config instead.
+            $workflowDefinition->addTag('workflow', [
+                'name' => $workflowName,
+                'metadata' => [],
+                'definition_validators' => [],
+                'definition_id' => sprintf('%s.definition', $workflowId),
+            ]);
+            $workflowDefinition->addTag('workflow' === $type ? 'workflow.workflow' : 'workflow.state_machine', ['name' => $workflowName]);
+            // the Pimcore workflows only, indexed by name for pimcore:workflow:dump
             $workflowDefinition->addTag('pimcore.workflow', ['name' => $workflowName]);
             $workflowDefinition->replaceArgument(3, $workflowName);
             $workflowDefinition->replaceArgument(4, $workflowConfig['events_to_dispatch'] ?? null);
@@ -195,6 +210,8 @@ final class WorkflowPass implements CompilerPassInterface
             // Store to container
             $container->setDefinition($workflowId, $workflowDefinition);
             $container->setDefinition(sprintf('%s.definition', $workflowId), $definitionDefinition);
+            // WorkflowInterface $fooWorkflow / $fooStateMachine or #[Target('foo')]
+            $container->registerAliasForArgument($workflowId, WorkflowInterface::class, $workflowName . '.' . $type, $workflowName);
 
             $registryDefinition = $container->getDefinition('workflow.registry');
             // Add workflow to Registry
@@ -243,7 +260,7 @@ final class WorkflowPass implements CompilerPassInterface
                     ['event' => sprintf('workflow.%s.enter', $workflowName), 'method' => 'onEnter']
                 );
                 $listener->addArgument(new Reference('logger'));
-                $container->setDefinition(sprintf('%s.listener.audit_trail', $workflowId), $listener);
+                $container->setDefinition(sprintf('.%s.listener.audit_trail', $workflowId), $listener);
             }
 
             // Add Guard Listener
@@ -282,9 +299,41 @@ final class WorkflowPass implements CompilerPassInterface
                     ]
                 );
 
-                $container->setDefinition(sprintf('%s.listener.guard', $workflowId), $guard);
+                $container->setDefinition(sprintf('.%s.listener.guard', $workflowId), $guard);
                 $container->setParameter('workflow.has_guard_listeners', true);
             }
         }
+    }
+
+    /**
+     * Validates the places and transitions at compile time, like FrameworkBundle does with its definition validators.
+     * The definition is built from the config with plain transitions, so no service needs to be instantiated.
+     *
+     * @param string[] $places
+     *
+     * @throws LogicException if the definition is invalid
+     */
+    private function validateDefinition(string $workflowName, string $type, array $places, array $workflowConfig): void
+    {
+        $transitions = [];
+        foreach ($workflowConfig['transitions'] as $transitionName => $transitionConfig) {
+            if ('state_machine' === $type) {
+                foreach ($transitionConfig['from'] as $from) {
+                    foreach ($transitionConfig['to'] as $to) {
+                        $transitions[] = new Workflow\Transition((string) $transitionName, $from, $to);
+                    }
+                }
+            } else {
+                $transitions[] = new Workflow\Transition((string) $transitionName, $transitionConfig['from'], $transitionConfig['to']);
+            }
+        }
+
+        try {
+            $definition = new Workflow\Definition($places, $transitions, $workflowConfig['initial_markings'] ?? null);
+        } catch (LogicException $e) {
+            throw new LogicException(sprintf('The definition of the workflow "%s" is invalid: %s', $workflowName, $e->getMessage()), 0, $e);
+        }
+
+        ('state_machine' === $type ? new StateMachineValidator() : new WorkflowValidator())->validate($definition, $workflowName);
     }
 }

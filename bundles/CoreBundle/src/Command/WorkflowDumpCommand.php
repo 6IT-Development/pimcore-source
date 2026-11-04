@@ -32,6 +32,7 @@ use Symfony\Component\Workflow\Dumper\DumperInterface;
 use Symfony\Component\Workflow\Dumper\MermaidDumper;
 use Symfony\Component\Workflow\Dumper\PlantUmlDumper;
 use Symfony\Component\Workflow\Marking;
+use Symfony\Component\Workflow\Debug\TraceableWorkflow;
 use Symfony\Component\Workflow\StateMachine;
 use Symfony\Component\Workflow\WorkflowInterface;
 use Symfony\Contracts\Service\ServiceProviderInterface;
@@ -116,6 +117,10 @@ class WorkflowDumpCommand extends AbstractCommand
 
     private function getDumper(WorkflowInterface $workflow, string $format): DumperInterface
     {
+        // in debug mode the workflows are decorated
+        if ($workflow instanceof TraceableWorkflow) {
+            $workflow = $workflow->getInner();
+        }
         $isStateMachine = $workflow instanceof StateMachine;
 
         return match ($format) {
