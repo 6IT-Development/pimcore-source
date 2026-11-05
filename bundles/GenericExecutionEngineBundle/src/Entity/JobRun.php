@@ -42,10 +42,16 @@ use Symfony\Component\Serializer\SerializerInterface;
  */
 #[Entity]
 #[Table(name: 'generic_execution_engine_job_run')]
+#[ORM\Index(name: 'idx_job_name', columns: ['jobName'])]
 #[HasLifecycleCallbacks]
 class JobRun
 {
     public const string DEFAULT_EXECUTION_CONTEXT = 'default';
+
+    /**
+     * Characters of the job name stored for lookups, longer names are cut
+     */
+    public const int JOB_NAME_LENGTH = 255;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -73,6 +79,17 @@ class JobRun
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $serializedJob = null;
+
+    /**
+     * Copy of the job name, so runs can be found by job without searching the serialized job
+     */
+    #[ORM\Column(
+        type: 'string',
+        length: self::JOB_NAME_LENGTH,
+        nullable: true,
+        options: ['collation' => 'utf8mb4_bin']
+    )]
+    private ?string $jobName = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $context = null;
@@ -189,8 +206,10 @@ class JobRun
     {
         if ($this->getJob() !== null) {
             $this->serializedJob = $this->getSerializer()->serialize($this->getJob(), 'json');
+            $this->jobName = self::truncateJobName($this->getJob()->getName());
         } else {
             $this->serializedJob = null;
+            $this->jobName = null;
         }
     }
 
@@ -200,6 +219,14 @@ class JobRun
         if ($this->serializedJob) {
             $this->setJob($this->getSerializer()->deserialize($this->serializedJob, Job::class, 'json'));
         }
+    }
+
+    /**
+     * The job name as stored in the job name column
+     */
+    public static function truncateJobName(string $name): string
+    {
+        return mb_substr($name, 0, self::JOB_NAME_LENGTH);
     }
 
     public function getJob(): ?Job

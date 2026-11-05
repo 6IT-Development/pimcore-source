@@ -275,12 +275,17 @@ least `LONGTEXT` + size cap.
 last migration; its `down()` is irreversible, a TEXT column would cut longer logs). `updateLog()` cuts a single line to
 16 KB (`mb_strcut()`, marked `[truncated]`), the PSR log keeps the full message. A separate log table stays with I-18.
 
-### [ ] B-20 – `getLastJobRunByName()` matches wrong runs
+### [x] B-20 – `getLastJobRunByName()` matches wrong runs
 **File:** `src/Repository/JobRunRepository.php:204-220`
 `LIKE '%name":"<name>"%'` on the serialized JSON: `%`/`_` in `$name` are not escaped; JSON escaping differs from the raw
 value (`/` → `\/`, non-ASCII → `\uXXXX`, quotes); `"name":"…"` also matches **step names** → returns a run of another
 job whose step has that name; ordering by `modificationDate` instead of creation; full table scan on LONGTEXT.
 **Fix:** persist the job name in its own indexed column.
+
+**Done:** new column `jobName` (`VARCHAR(255)`, `utf8mb4_bin`, index `idx_job_name`), set by `serializeJob()`; the
+installer creates it and migration `Version20261105000300` adds it to existing tables and fills it from `$.name` of the
+serialized job. `getLastJobRunByName()` compares it exactly (case-sensitive, names cut to `JobRun::JOB_NAME_LENGTH` on
+both sides) and orders by `creationDate`, then `id`.
 
 ### [ ] B-21 – `getTotalCount()` ignores the owner filter of `getJobRunsByUserId()`
 **File:** `src/Repository/JobRunRepository.php:164-187`

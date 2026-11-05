@@ -24,7 +24,7 @@ use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
-use Pimcore\Bundle\GenericExecutionEngineBundle\Migrations\Version20261105000200;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Migrations\Version20261105000300;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\PermissionConstants;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\TableConstants;
 use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
@@ -57,7 +57,7 @@ final class Installer extends SettingsStoreAwareInstaller
      */
     public function getLastMigrationVersionClassName(): ?string
     {
-        return Version20261105000200::class;
+        return Version20261105000300::class;
     }
 
     /**
@@ -136,6 +136,11 @@ final class Installer extends SettingsStoreAwareInstaller
                     'length' => 4294967295,
                 ]
             );
+            $jobRunTable->addColumn('jobName', 'string', [
+                'notnull' => false,
+                'length' => JobRun::JOB_NAME_LENGTH,
+                'platformOptions' => ['collation' => 'utf8mb4_bin'],
+            ]);
             $jobRunTable->addColumn('context', 'text', ['notnull' => false, 'length' => 4294967295]);
             $jobRunTable->addColumn('creationDate', 'integer', ['notnull' => false]);
             $jobRunTable->addColumn('modificationDate', 'integer', ['notnull' => false]);
@@ -162,6 +167,7 @@ final class Installer extends SettingsStoreAwareInstaller
             );
 
             $jobRunTable->setPrimaryKey(['id']);
+            $jobRunTable->addIndex(['jobName'], 'idx_job_name');
         }
     }
 

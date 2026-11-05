@@ -312,20 +312,10 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
 
     public function getLastJobRunByName(string $name): ?JobRun
     {
-        $result = $this->pimcoreEntityManager->getRepository(JobRun::class)
-            ->createQueryBuilder('JobRun')
-            ->where('JobRun.serializedJob LIKE :name')
-            ->setParameter('name', '%name":"' . $name . '"%')
-            ->orderBy('JobRun.modificationDate', 'DESC')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getResult();
-
-        if (empty($result)) {
-            return null;
-        }
-
-        return $result[0];
+        return $this->pimcoreEntityManager->getRepository(JobRun::class)->findOneBy(
+            ['jobName' => JobRun::truncateJobName($name)],
+            ['creationDate' => 'DESC', 'id' => 'DESC']
+        );
     }
 
     /**

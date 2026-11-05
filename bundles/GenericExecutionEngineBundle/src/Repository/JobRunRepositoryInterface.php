@@ -135,6 +135,10 @@ interface JobRunRepositoryInterface
         int   $limit = 10,
     ): array;
 
+    /**
+     * Returns the run created last for a job with this name (compared case-sensitively, names are cut to
+     * JobRun::JOB_NAME_LENGTH characters)
+     */
     public function getLastJobRunByName(string $name): ?JobRun;
 
     /**
