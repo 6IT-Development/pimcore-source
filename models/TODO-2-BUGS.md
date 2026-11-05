@@ -4660,7 +4660,7 @@ The DAO decodes the column on load; an unreadable value or a JSON scalar is logg
 `required = true`, so a corrupt row cannot silently turn off a required second factor. Users without 2FA data are
 stored as `NULL` instead of the string `'null'`.
 
-## [ ] B-233 – Permission definitions and lists: `generatePermissionList()` returns `null`, `Definition::create()` reports success after a failed save
+## [x] B-233 – Permission definitions and lists: `generatePermissionList()` returns `null`, `Definition::create()` reports success after a failed save
 
 **Files:** `models/User/UserRole.php:129-195`; `models/User/Permission/Definition.php:75-114`;
 `models/User/Permission/Definition/Dao.php:31-41`; `models/User/Permission/Definition/Listing/Dao.php:48-55`;
@@ -4676,6 +4676,12 @@ stored as `NULL` instead of the string `'null'`.
   rows whose `getById()` fails, so `count(load())` and `getTotalCount()` disagree.
 
 **Fix direction:** initialise `[]`; normalise permission lists like `prepareArray()`; let DB errors propagate (I-118).
+
+**Done:** `generatePermissionList()` starts with `[]`. `setPermissions()` goes through `prepareArray()` and trims,
+drops empty entries and dedupes, so `''` stores `[]`; `setPermission()` / `getPermission()` compare strictly.
+`Definition\Dao::save()` no longer catches DB errors, so `Definition::create()` throws instead of returning an unsaved
+definition, and both listings' `getTotalCount()` let SQL errors propagate instead of returning `0`. The user listing
+still skips a row only when it is gone by the time it is loaded (`getById()` lets every other error through).
 
 ## [ ] B-234 – Workspaces: uninitialised typed properties, `NULL` `cpath` breaks loading, duplicate entries abort the whole user save
 

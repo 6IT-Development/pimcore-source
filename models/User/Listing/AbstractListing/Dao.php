@@ -15,7 +15,6 @@
 
 namespace Pimcore\Model\User\Listing\AbstractListing;
 
-use Exception;
 use Pimcore\Model;
 use Pimcore\Model\User\Listing\AbstractListing;
 
@@ -65,10 +64,6 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
     public function getTotalCount(): int
     {
-        try {
-            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM users ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception) {
-            return 0;
-        }
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM users ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }

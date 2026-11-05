@@ -128,10 +128,10 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
      */
     public function setPermission(string $permissionName, ?bool $value = null): static
     {
-        if (!in_array($permissionName, $this->permissions) && $value) {
+        if (!in_array($permissionName, $this->permissions, true) && $value) {
             $this->permissions[] = $permissionName;
-        } elseif (in_array($permissionName, $this->permissions) && !$value) {
-            $position = array_search($permissionName, $this->permissions);
+        } elseif (in_array($permissionName, $this->permissions, true) && !$value) {
+            $position = array_search($permissionName, $this->permissions, true);
             array_splice($this->permissions, $position, 1);
         }
 
@@ -148,11 +148,7 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
 
     public function getPermission(string $permissionName): bool
     {
-        if (in_array($permissionName, $this->permissions)) {
-            return true;
-        }
-
-        return false;
+        return in_array($permissionName, $this->permissions, true);
     }
 
     /**
@@ -161,12 +157,10 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
      * @return array<string, bool>
      *
      * @internal
-     *
-     * @todo: $permissionInfo should be array, but is declared as null
      */
     public function generatePermissionList(): array
     {
-        $permissionInfo = null;
+        $permissionInfo = [];
 
         $list = new Permission\Definition\Listing();
         $definitions = $list->load();
@@ -185,11 +179,8 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
      */
     public function setPermissions(array|string $permissions): static
     {
-        if (is_string($permissions)) {
-            $this->permissions = explode(',', $permissions);
-        } elseif (is_array($permissions)) {
-            $this->permissions = $permissions;
-        }
+        $permissions = array_map(static fn ($permission) => trim((string)$permission), $this->prepareArray($permissions));
+        $this->permissions = array_values(array_unique(array_filter($permissions, static fn ($permission) => $permission !== '')));
 
         return $this;
     }
