@@ -97,33 +97,28 @@ final readonly class JobRunExtractor implements JobRunExtractorInterface
 
     public function checkCondition(GenericExecutionEngineMessageInterface $message): bool
     {
-        $jobRun = $this->getJobRun($message);
-        $jobRunContext = $jobRun->getContext();
-        $currentStep = $this->getJobStep($message);
-        $currentStepCondition = $currentStep->getCondition();
-        $contentVariables = $this->extractContentVariables($jobRunContext, $this->getEnvironmentData($jobRun));
-
+        $currentStepCondition = $this->getJobStep($message)->getCondition();
         if ($currentStepCondition === '') {
             return true;
         }
 
-        return $this->symfonyExpressionService->evaluate($currentStepCondition, $contentVariables);
+        $jobRun = $this->getJobRun($message);
+
+        return $this->symfonyExpressionService->evaluate(
+            $currentStepCondition,
+            $this->extractContentVariables($jobRun->getContext(), $this->getEnvironmentData($jobRun))
+        );
     }
 
-    private function extractContentVariables(
-        ?array $jobRunContext = null,
-        ?array $environmentData = null
-    ): array
+    /**
+     * Both variables are always defined, so conditions may reference them before the run has a context
+     */
+    private function extractContentVariables(?array $jobRunContext, array $environmentData): array
     {
-        $variables = [];
-        if (!empty($jobRunContext)) {
-            $variables['context'] = $jobRunContext;
-        }
-        if (!empty($environmentData)) {
-            $variables['environmentData'] = $environmentData;
-        }
-
-        return $variables;
+        return [
+            'context' => $jobRunContext ?? [],
+            'environmentData' => $environmentData,
+        ];
     }
 
     public function getElementFromMessage(

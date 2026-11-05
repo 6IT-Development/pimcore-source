@@ -354,13 +354,16 @@ whole list fails. `getState()->value` on a `?JobRunStates` getter. **Fix:** fall
 "Step <id> not found in Job <name> of JobRun with id: <id>" for a missing step. Documented with `@throws` on
 `JobRunExtractorInterface`.
 
-### [ ] B-27 – Step conditions referencing `context` / `environmentData` fail when those are empty
+### [x] B-27 – Step conditions referencing `context` / `environmentData` fail when those are empty
 **File:** `src/Extractor/JobRunExtractor.php:84-113`
 `extractContentVariables()` only defines `context` / `environmentData` when they are non-empty. A condition such as
 `context['imported'] == true` on a fresh run (context `null`) → ExpressionLanguage `SyntaxError: Variable "context" is not
 valid` → exception in the middleware (on dispatch: out of `startJobExecution()` – C-05). Also all variables are built
 before the cheap `'' === condition` check. **Fix:** always pass both variables (default `[]`), check empty condition
 first.
+
+**Done:** `checkCondition()` returns `true` for an empty condition before loading context and environment data; the
+expression always gets `context` and `environmentData`, as `[]` when the run has none.
 
 ### [ ] B-28 – `configurationIsValid()` validates against an unconfigured resolver; `configureStep()` runs per message
 **Files:** `src/Configuration/ValidateStepConfigurationTrait.php:30-52`,
