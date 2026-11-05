@@ -331,10 +331,13 @@ current message becomes empty without any log. **Fix:** `JSON_INVALID_UTF8_SUBST
 failures (e.g. `NAN`/`INF` parameters, too deep nesting) are logged to the `generic_execution_engine` channel, which
 `CurrentMessageProvider` passes to every `TranslationMessage` it creates.
 
-### [ ] B-25 – `JobRunGrid::convertJobRunToArray()` crashes for runs without job
+### [x] B-25 – `JobRunGrid::convertJobRunToArray()` crashes for runs without job
 **File:** `src/Grid/JobRunGrid.php:52`, `:56`
 `trans($jobRun->getJob()?->getName(), …)` passes `null` to `trans(string $id)` → `TypeError`; combined with B-15 the
 whole list fails. `getState()->value` on a `?JobRunStates` getter. **Fix:** fallback name, non-null state getter.
+
+**Done:** runs without job (or with an empty job name) are listed as `gee_job_unknown` ("Unknown Job (Job Run ID …)",
+`admin` domain). `JobRun::getState()` / `setState()` are non-nullable like the property and the column.
 
 ---
 

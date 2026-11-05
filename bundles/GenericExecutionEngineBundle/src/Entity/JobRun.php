@@ -131,12 +131,12 @@ class JobRun
         return $this->ownerId;
     }
 
-    public function getState(): ?JobRunStates
+    public function getState(): JobRunStates
     {
         return $this->state;
     }
 
-    public function setState(?JobRunStates $state): void
+    public function setState(JobRunStates $state): void
     {
         $this->state = $state;
     }

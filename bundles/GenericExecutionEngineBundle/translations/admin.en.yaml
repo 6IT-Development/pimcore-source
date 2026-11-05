@@ -11,3 +11,4 @@ gee_job_started: Job Run %job_run_name% (%job_run_id%) started.
 gee_job_finished: Job Run %job_run_name% (%job_run_id%) completed successfully.
 gee_job_finished_with_errors: Job Run %job_run_name% (%job_run_id%) completed with errors.
 gee_updated_selected_elements: 'Updated selected elements. (Was: %fromCount%, Now: %toCount%)'
+gee_job_unknown: Unknown Job (Job Run ID %job_run_id%)

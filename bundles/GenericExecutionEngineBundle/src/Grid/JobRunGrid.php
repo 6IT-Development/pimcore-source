@@ -49,7 +49,7 @@ final readonly class JobRunGrid implements JobRunGridInterface
 
         return [
             'id' => $jobRun->getId(),
-            'job_name' => $this->translator->trans($jobRun->getJob()?->getName(), [], $domain),
+            'job_name' => $this->getJobName($jobRun, $domain),
             'started_at' => $jobRun->getCreationDate(),
             'last_update_at' => $jobRun->getModificationDate(),
             'owner' => $jobRun->getOwnerId() ? User::getById($jobRun->getOwnerId())?->getName() : null,
@@ -65,5 +65,18 @@ final readonly class JobRunGrid implements JobRunGridInterface
                 $jobRun->getLogs()
             ),
         ];
+    }
+
+    /**
+     * Runs whose job could not be deserialized (removed job class, broken data) have no job name
+     */
+    private function getJobName(JobRun $jobRun, string $domain): string
+    {
+        $jobName = $jobRun->getJob()?->getName();
+        if ($jobName === null || $jobName === '') {
+            return $this->translator->trans('gee_job_unknown', ['%job_run_id%' => $jobRun->getId()], 'admin');
+        }
+
+        return $this->translator->trans($jobName, [], $domain);
     }
 }
