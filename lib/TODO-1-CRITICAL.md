@@ -355,7 +355,7 @@ description in `CustomLayout::getInfoDocBlock()`.
 
 ---
 
-## [ ] C-07 – `SelectOptionsEnumBuilder` escapes only `'`: a trailing backslash in a value or label breaks out of the string (code injection / fatal enum)
+## [x] C-07 – `SelectOptionsEnumBuilder` escapes only `'`: a trailing backslash in a value or label breaks out of the string (code injection / fatal enum)
 
 **File:** `lib/DataObject/ClassBuilder/SelectOptionsEnumBuilder.php:109-142`, `:144-165`, `:182-185`;
 `models/DataObject/SelectOptions/Config.php:240-243`, `:369` (no validation before generation)
@@ -383,6 +383,14 @@ protected function escapeSingleQuote(string $value): string { return str_replace
 **Fix direction:** emit literals with `var_export($value, true)`, which handles both `'` and `\`. Validate values in
 `Config::save()` (non-empty, unique, max length) so errors appear in the editor instead of in the generated file.
 Regression tests with `\`, `\\`, `'`, `\'` (I-45).
+
+**Done:** the escaping was fixed with models C-56 (`b1e631d9a8`): `escapeSingleQuote()` uses `addcslashes($value, "\\'")`,
+duplicate values and the case name `class` are rejected, the dumper refuses an enum that does not parse, and
+`Config\Dao::save()` builds the enum before the configuration is stored, so a rejected definition is not saved. This
+item adds the regression test `tests/Unit/DataObject/ClassBuilder/SelectOptionsEnumBuilderTest.php`: values and
+labels with a trailing `\`, `\\`, `'`, `\'` and a quote-breaking payload are built, evaluated and read back unchanged
+(`->value`, `getLabel()`, `from()`). No extra value length validation: an empty value already fails in the case-name
+generation.
 
 ---
 
