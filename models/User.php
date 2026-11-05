@@ -229,9 +229,13 @@ final class User extends User\UserRole implements UserInterface
      */
     public function setLanguage(string $language): static
     {
-        if ($language) {
-            $this->language = $language;
+        $language = trim($language);
+        // a locale like en, de_AT or zh_Hans that fits the varchar(10) column
+        if (strlen($language) > 10 || !preg_match('/^[a-z]{2,3}(?:[_-][a-z0-9]{2,8})*$/i', $language)) {
+            throw new InvalidArgumentException(sprintf('Invalid user language "%s"', $language));
         }
+
+        $this->language = $language;
 
         return $this;
     }
@@ -282,6 +286,11 @@ final class User extends User\UserRole implements UserInterface
 
     public function isAllowed(string $key, string $type = 'permission'): bool
     {
+        // code acting as a stored user (scheduled tasks, editor checks) must not pass for a deactivated one
+        if (!$this->isActive()) {
+            return false;
+        }
+
         if ($this->isAdmin()) {
             return true;
         }
@@ -327,6 +336,9 @@ final class User extends User\UserRole implements UserInterface
         return false;
     }
 
+    /**
+     * Only the user's own permissions, use isAllowed() for a check that includes the roles
+     */
     public function getPermission(string $permissionName): bool
     {
         if ($this->isAdmin()) {
@@ -587,15 +599,20 @@ final class User extends User\UserRole implements UserInterface
     }
 
     /**
+     * The stored languages that are still valid system languages (all stored ones when none are configured)
+     *
      * @return string[]
      */
     public function getContentLanguages(): array
     {
-        if (is_string($this->contentLanguages) && strlen($this->contentLanguages)) {
-            return explode(',', $this->contentLanguages);
+        if (!is_string($this->contentLanguages) || !strlen($this->contentLanguages)) {
+            return [];
         }
 
-        return [];
+        $languages = explode(',', $this->contentLanguages);
+        $validLanguages = Tool::getValidLanguages();
+
+        return $validLanguages ? array_values(array_intersect($languages, $validLanguages)) : $languages;
     }
 
     /**
@@ -603,8 +620,12 @@ final class User extends User\UserRole implements UserInterface
      */
     public function setContentLanguages(array|string|null $contentLanguages): void
     {
+        if (is_string($contentLanguages)) {
+            $contentLanguages = explode(',', $contentLanguages);
+        }
         if (is_array($contentLanguages)) {
-            $contentLanguages = implode(',', $contentLanguages);
+            $contentLanguages = array_map(static fn ($language) => trim((string)$language), $contentLanguages);
+            $contentLanguages = implode(',', array_unique(array_filter($contentLanguages, static fn ($language) => $language !== '')));
         }
         $this->contentLanguages = $contentLanguages;
     }
@@ -850,7 +871,10 @@ final class User extends User\UserRole implements UserInterface
         return $this->datetimeLocale;
     }
 
-    public function setDatetimeLocale(?string $datetimeLocale): User
+    /**
+     * @return $this
+     */
+    public function setDatetimeLocale(?string $datetimeLocale): static
     {
         $this->datetimeLocale = $datetimeLocale;
 

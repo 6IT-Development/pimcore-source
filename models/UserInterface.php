@@ -70,8 +70,17 @@ interface UserInterface extends UserRoleInterface
 
     /**
      * @return $this
+     *
+     * @throws \InvalidArgumentException for a value that is not a language code
      */
     public function setLanguage(string $language): static;
+
+    public function getDatetimeLocale(): ?string;
+
+    /**
+     * @return $this
+     */
+    public function setDatetimeLocale(?string $datetimeLocale): static;
 
     /**
      * @see getAdmin()

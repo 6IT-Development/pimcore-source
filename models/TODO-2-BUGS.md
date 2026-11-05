@@ -4756,7 +4756,7 @@ throws `UserNotFoundException` for an unknown name. Only a SHA-256 hash of the t
 `users` table no longer holds working login links (tokens issued before this change stop working). The index / expiry
 column stays with I-120.
 
-## [ ] B-237 – User model small defects
+## [x] B-237 – User model small defects
 
 **Files:** `models/User.php:212-219`, `:265-316`, `:318-325`, `:490-508`, `:748-758`; `models/User/AbstractUser/Dao.php:164-168`;
 `models/User/UserRole/Folder.php:44-78`; `models/User/Listing/AbstractListing.php:22-29`
@@ -4774,6 +4774,15 @@ column stays with I-120.
 - `UserRole\Folder::getChildren()` caches the children forever and does not update `hasChildren`; `hasChildren()`
   caches independently, so after `setChildren([])` + `getChildren()` they can disagree.
 - `AbstractListing` documents `@method Model\User|false current()` for role listings too.
+
+**Done:** `isAllowed()` returns `false` for inactive users, admins included. `getPermission()` keeps its semantics
+(own permissions only, I-112) and says so in its docblock. `setLanguage()` trims and throws
+`InvalidArgumentException` for empty values and anything that is not a locale of at most 10 characters.
+`setContentLanguages()` trims, drops empty entries and dedupes; `getContentLanguages()` returns only languages that are
+still valid system languages when any are configured (the setter also runs on hydration, so it does not filter).
+`setDatetimeLocale()` returns `static`, and both datetime-locale methods are on `UserInterface`. `setLastLoginDate()`
+no longer writes to an undefined variable. `UserRole\Folder` sets `hasChildren` when the children are loaded and uses
+loaded children in `hasChildren()`. `AbstractListing` documents `AbstractUser` items.
 
 ---
 

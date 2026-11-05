@@ -44,7 +44,7 @@ class Folder extends Model\User\AbstractUser
     public function hasChildren(): bool
     {
         if ($this->hasChildren === null) {
-            $this->hasChildren = $this->getDao()->hasChildren();
+            $this->hasChildren = $this->children !== null ? count($this->children) > 0 : $this->getDao()->hasChildren();
         }
 
         return $this->hasChildren;
@@ -61,6 +61,7 @@ class Folder extends Model\User\AbstractUser
             } else {
                 $this->children = [];
             }
+            $this->hasChildren = count($this->children) > 0;
         }
 
         return $this->children;
