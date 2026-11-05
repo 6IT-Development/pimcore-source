@@ -4173,7 +4173,7 @@ placeholder); `Video` no longer had one. `VersioningResetter` enables the versio
 outside the core that still pairs `disable()` / `enable()`. `save()` checks the flag before `PRE_SAVE`, and only for
 new versions, so updates of existing versions are kept. `$disabled` stays public for compatibility.
 
-## [ ] B-216 – `Version::loadData()` calls `Pimcore::collectGarbage()` on every load: idle DB connections and Monolog handlers are closed and the runtime cache is cleared mid-request
+## [x] B-216 – `Version::loadData()` calls `Pimcore::collectGarbage()` on every load: idle DB connections and Monolog handlers are closed and the runtime cache is cleared mid-request
 
 **Files:** `models/Version.php:280-283`; `lib/Pimcore.php:142-150`; `lib/Helper/LongRunningHelper.php:37-44`, `:62-105`
 
@@ -4195,6 +4195,11 @@ new versions, so updates of existing versions are kept. `$disabled` stays public
 
 **Fix direction:** remove the call. If the cached originals are a problem, load them without caching (`force`) or
 remove only the affected keys after `unmarshalData()`.
+
+**Done:** the `collectGarbage()` call is removed from `loadData()`. The originals that `__wakeup()` loads are live
+elements and may stay cached. The only dump that could reach the runtime cache was registered by
+`renewInheritedProperties()` (when the original was not cached, e.g. it is deleted); it now removes that entry again
+when it registered an element in dump state.
 
 ## [ ] B-217 – Uninitialised typed properties: a version without `setDate()`, with the system user, a deleted user or `NULL` columns throws `Error`
 

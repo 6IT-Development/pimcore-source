@@ -314,9 +314,9 @@ final class Version extends AbstractModel
         }
 
         if ($this->getSerialized()) {
+            // no Pimcore::collectGarbage(): it closed idle DB connections and log handlers and dropped the elements
+            // loaded earlier in the request from the runtime cache; the dumps no longer register themselves there
             $data = Serialize::unserialize($data);
-            //clear runtime cache to avoid dealing with marshalled data
-            Pimcore::collectGarbage();
             if ($data instanceof __PHP_Incomplete_Class) {
                 Logger::err('Version: cannot read version data from file system because of incompatible class.');
 

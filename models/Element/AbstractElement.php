@@ -848,12 +848,21 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
 
         // add to registry to avoid infinite regresses in the following $this->getDao()->getProperties()
         $cacheKey = self::getCacheKey($this->getId());
+        $registeredDump = false;
         if (!RuntimeCache::isRegistered($cacheKey)) {
             RuntimeCache::set($cacheKey, $this);
+            // a dump (version or recycle bin data) must not be returned by getById() in place of the element
+            $registeredDump = $this->isInDumpState();
         }
 
-        $myProperties = $this->getProperties();
-        $inheritedProperties = $this->getDao()->getProperties(true);
-        $this->setProperties(array_merge($inheritedProperties, $myProperties));
+        try {
+            $myProperties = $this->getProperties();
+            $inheritedProperties = $this->getDao()->getProperties(true);
+            $this->setProperties(array_merge($inheritedProperties, $myProperties));
+        } finally {
+            if ($registeredDump) {
+                RuntimeCache::getInstance()->offsetUnset($cacheKey);
+            }
+        }
     }
 }
