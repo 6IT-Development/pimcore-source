@@ -37,6 +37,8 @@ use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ClassSavedInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\FieldDefinitionEnrichmentInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
+use Symfony\Component\Lock\LockFactory;
+use Throwable;
 
 /**
  * @method Dao getDao()
@@ -227,29 +229,36 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             if (!$class) {
                 throw new Exception('Class in registry is null');
             }
-        } catch (Exception $e) {
-            try {
-                $class = new self();
-                $name = $class->getDao()->getNameById($id);
-                if (!$name) {
-                    throw new Exception('Class definition with name ' . $name . ' or ID ' . $id . ' does not exist');
-                }
-
-                $definitionFile = $class->getDefinitionFile($name);
-                $class = @include $definitionFile;
-
-                if (!$class instanceof self) {
-                    throw new Exception('Class definition with name ' . $name . ' or ID ' . $id . ' does not exist');
-                }
-
-                $class->setId($id);
-
-                RuntimeCache::set($cacheKey, $class);
-            } catch (Exception $e) {
-                Logger::info($e->getMessage());
+        } catch (Exception) {
+            $class = new self();
+            $name = $class->getDao()->getNameById($id);
+            if (!$name) {
+                Logger::info('Class definition with ID ' . $id . ' does not exist');
 
                 return null;
             }
+
+            $definitionFile = $class->getDefinitionFile($name);
+            if (!is_file($definitionFile)) {
+                Logger::warning('Definition file ' . $definitionFile . ' of class ' . $name . ' (ID ' . $id . ') does not exist');
+
+                return null;
+            }
+
+            // a broken definition file is an error, callers treat null as "class deleted"
+            try {
+                $class = include $definitionFile;
+            } catch (Throwable $e) {
+                throw new Exception('Definition file ' . $definitionFile . ' of class ' . $name . ' (ID ' . $id . ') cannot be loaded: ' . $e->getMessage(), 0, $e);
+            }
+
+            if (!$class instanceof self) {
+                throw new Exception('Definition file ' . $definitionFile . ' of class ' . $name . ' (ID ' . $id . ') does not return a class definition');
+            }
+
+            $class->setId($id);
+
+            RuntimeCache::set($cacheKey, $class);
         }
 
         return $class;
@@ -283,11 +292,30 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
      */
     public function rename(string $name): void
     {
-        $this->deletePhpClasses();
+        $oldFiles = [$this->getPhpClassFile(), $this->getPhpListingClassFile(), $this->getDefinitionFile()];
+        $oldName = $this->getName();
+
+        // the files of the old name stay until the class is saved under the new one
+        $this->setName($name);
+
+        try {
+            $this->save();
+        } catch (Throwable $e) {
+            $this->setName($oldName);
+
+            throw $e;
+        }
+
         $this->getDao()->updateClassNameInObjects($name);
 
-        $this->setName($name);
-        $this->save();
+        $newFiles = array_map('strtolower', [$this->getPhpClassFile(), $this->getPhpListingClassFile(), $this->getDefinitionFile()]);
+        foreach ($oldFiles as $oldFile) {
+            // a rename that changes the case only may point to the new file on a case-insensitive file system
+            if (!in_array(strtolower($oldFile), $newFiles, true)) {
+                @unlink($oldFile);
+            }
+        }
+        @rmdir(dirname($oldFiles[1]));
     }
 
     /**
@@ -346,57 +374,66 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
             }
         }
 
+        $idLock = null;
         if (!$this->getId()) {
+            // held until the row of the new class exists, so concurrent creations do not get the same id
+            $idLock = Pimcore::getContainer()->get(LockFactory::class)->createLock('class-definition-create');
+            $idLock->acquire(true);
             $db = Db::get();
             $maxId = $db->fetchOne('SELECT MAX(CAST(id AS SIGNED)) FROM classes;');
             $maxId = $maxId ? $maxId + 1 : 1;
             $this->setId((string)$maxId);
         }
 
-        // the name becomes a PHP class name and file name, the id part of table names and DDL
-        if (!preg_match('/^[a-zA-Z]\w+$/D', $this->getName()) || strlen($this->getName()) > 190
-            || (new ReservedWordsHelper())->isReservedWord($this->getName())) {
-            throw new Exception(sprintf('Invalid name for class definition: %s', $this->getName()));
-        }
+        try {
 
-        if (!preg_match('/^[a-zA-Z0-9]\w*$/D', $this->getId()) || strlen($this->getId()) > 50) {
-            throw new Exception(sprintf('Invalid ID `%s` for class definition %s', $this->getId(), $this->getName()));
-        }
-
-        // composite index keys and columns become identifiers in ALTER TABLE statements
-        foreach ($this->getCompositeIndices() as $compositeIndex) {
-            $indexKey = $compositeIndex['index_key'] ?? null;
-            $indexColumns = $compositeIndex['index_columns'] ?? null;
-            if (!is_string($indexKey) || !preg_match('/^[A-Za-z0-9_]{1,62}$/D', $indexKey)
-                || !in_array($compositeIndex['index_type'] ?? null, ['store', 'query', 'localized_store', 'localized_query'], true)
-                || !is_array($indexColumns) || !$indexColumns
-                || array_filter($indexColumns, fn ($column) => !is_string($column) || !preg_match('/^[A-Za-z0-9_]{1,64}$/D', $column))) {
-                throw new Exception(sprintf('Invalid composite index for class definition %s: %s', $this->getName(), json_encode($compositeIndex)));
+            // the name becomes a PHP class name and file name, the id part of table names and DDL
+            if (!preg_match('/^[a-zA-Z]\w+$/D', $this->getName()) || strlen($this->getName()) > 190
+                || (new ReservedWordsHelper())->isReservedWord($this->getName())) {
+                throw new Exception(sprintf('Invalid name for class definition: %s', $this->getName()));
             }
-        }
 
-        foreach (['parentClass', 'listingParentClass', 'useTraits', 'listingUseTraits'] as $propertyName) {
-            $propertyValue = $this->{'get' . ucfirst($propertyName)}();
-            if ($propertyValue && !preg_match('/^[a-zA-Z_\x7f-\xff\\\][a-zA-Z0-9_\x7f-\xff\\\ ,]*$/', $propertyValue)) {
-                throw new Exception(sprintf('Invalid %s value for class definition: %s', $propertyName,
-                    $this->getParentClass()));
+            if (!preg_match('/^[a-zA-Z0-9]\w*$/D', $this->getId()) || strlen($this->getId()) > 50) {
+                throw new Exception(sprintf('Invalid ID `%s` for class definition %s', $this->getId(), $this->getName()));
             }
+
+            // composite index keys and columns become identifiers in ALTER TABLE statements
+            foreach ($this->getCompositeIndices() as $compositeIndex) {
+                $indexKey = $compositeIndex['index_key'] ?? null;
+                $indexColumns = $compositeIndex['index_columns'] ?? null;
+                if (!is_string($indexKey) || !preg_match('/^[A-Za-z0-9_]{1,62}$/D', $indexKey)
+                    || !in_array($compositeIndex['index_type'] ?? null, ['store', 'query', 'localized_store', 'localized_query'], true)
+                    || !is_array($indexColumns) || !$indexColumns
+                    || array_filter($indexColumns, fn ($column) => !is_string($column) || !preg_match('/^[A-Za-z0-9_]{1,64}$/D', $column))) {
+                    throw new Exception(sprintf('Invalid composite index for class definition %s: %s', $this->getName(), json_encode($compositeIndex)));
+                }
+            }
+
+            foreach (['parentClass', 'listingParentClass', 'useTraits', 'listingUseTraits'] as $propertyName) {
+                $propertyValue = $this->{'get' . ucfirst($propertyName)}();
+                if ($propertyValue && !preg_match('/^[a-zA-Z_\x7f-\xff\\\][a-zA-Z0-9_\x7f-\xff\\\ ,]*$/', $propertyValue)) {
+                    throw new Exception(sprintf('Invalid %s value for class definition: %s', $propertyName,
+                        $this->getParentClass()));
+                }
+            }
+
+            $isUpdate = $this->exists();
+
+            if (!$isUpdate) {
+                $this->dispatchEvent(new ClassDefinitionEvent($this), DataObjectClassDefinitionEvents::PRE_ADD);
+            } else {
+                $this->dispatchEvent(new ClassDefinitionEvent($this), DataObjectClassDefinitionEvents::PRE_UPDATE);
+            }
+
+            // if definition file is not saved, modification date should not be updated
+            if ($saveDefinitionFile) {
+                $this->setModificationDate(time());
+            }
+
+            $this->getDao()->save($isUpdate);
+        } finally {
+            $idLock?->release();
         }
-
-        $isUpdate = $this->exists();
-
-        if (!$isUpdate) {
-            $this->dispatchEvent(new ClassDefinitionEvent($this), DataObjectClassDefinitionEvents::PRE_ADD);
-        } else {
-            $this->dispatchEvent(new ClassDefinitionEvent($this), DataObjectClassDefinitionEvents::PRE_UPDATE);
-        }
-
-        // if definition file is not saved, modification date should not be updated
-        if ($saveDefinitionFile) {
-            $this->setModificationDate(time());
-        }
-
-        $this->getDao()->save($isUpdate);
 
         $this->generateClassFiles($saveDefinitionFile);
 
@@ -507,13 +544,23 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
         }
         $this->dispatchEvent(new ClassDefinitionEvent($this), DataObjectClassDefinitionEvents::PRE_DELETE);
 
-        // delete all objects using this class
+        // delete all objects using this class, in batches to keep the memory bounded
         $list = new Listing();
-        $list->setCondition('classId = ?', $this->getId());
-        $list->load();
+        $list->setUnpublished(true);
+        $list->setCondition('classId = ?', [$this->getId()]);
+        $list->setOrderKey('id');
+        $list->setLimit(100);
+        $previousIds = null;
+        while ($ids = $list->loadIdList()) {
+            if ($ids === $previousIds) {
+                throw new Exception('Objects of class ' . $this->getName() . ' could not be deleted: ' . implode(', ', $ids));
+            }
+            $previousIds = $ids;
 
-        foreach ($list->getObjects() as $o) {
-            $o->delete();
+            foreach ($ids as $objectId) {
+                // may already be gone as a child of an object deleted before
+                DataObject::getById((int)$objectId, ['force' => true])?->delete();
+            }
         }
 
         $this->deletePhpClasses();

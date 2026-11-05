@@ -3407,7 +3407,7 @@ live value keeps it; on unserialize it gets the field's owner and real field nam
 decryption errors throw an exception that keeps the cause (Symfony's cache adapters turn it into a miss). Payloads in
 the old format (versions, caches) are still read; they carry no delegate.
 
-## [ ] B-185 – Class definition lifecycle: destructive order and swallowed errors
+## [x] B-185 – Class definition lifecycle: destructive order and swallowed errors
 
 **Files:** `models/DataObject/ClassDefinition.php:217-247`, `:283-291`, `:348-352`, `:488-550`
 
@@ -3420,6 +3420,14 @@ the old format (versions, caches) are still read; they carry no delegate.
 
 **Fix direction:** regenerate / rename files after a successful save; distinguish "missing" from "broken"; lock or use
 the DB for id generation; batch deletion.
+
+**Done:** `rename()` saves the class under the new name first and only then updates the class name of the objects and
+deletes the files of the old name (not when they are the new files, as on a case-only rename on a case-insensitive file
+system); a failing save restores the old name and leaves the old files in place. `getById()` returns `null` only when
+the class is not in the DB or its definition file does not exist (logged as warning); a definition file that cannot be
+included or does not return a definition throws. A new id is computed under a lock that is held until the `classes` row
+is written. `delete()` deletes the objects of the class in batches of 100 ids, including unpublished ones, reloads each
+object (it may have gone as a child of an earlier one) and stops with an exception if a batch could not be deleted.
 
 ## [ ] B-186 – InheritanceHelper: missing rows and a static runtime cache
 
