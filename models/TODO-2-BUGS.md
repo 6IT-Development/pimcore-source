@@ -3636,7 +3636,7 @@ title, an empty message without a payload (payload-only notifications are accept
 recipient. Deleting a user deletes the user's notifications and clears the sender of the ones they sent.
 `setCreationDate()` / `setModificationDate()` accept `null`. Open: foreign keys in the schema (I-90).
 
-## [ ] B-194 – `NotificationService::format()` timestamps are shifted by the PHP timezone offset
+## [x] B-194 – `NotificationService::format()` timestamps are shifted by the PHP timezone offset
 
 **Files:** `models/Notification/Dao.php:62`; `models/Notification/Service/NotificationService.php:231-255`, `:257-268`;
 `bundles/InstallBundle/dump/install.sql:810-811`
@@ -3651,6 +3651,11 @@ recipient. Deleting a user deletes the user's notifications and clears the sende
 
 **Fix direction:** store UTC explicitly (`DateTimeImmutable` in UTC, `DATETIME` column, I-90) and format with the same
 timezone that was used for writing.
+
+**Done:** `format()` parses `creationDate` in the PHP default timezone, the one `Dao::save()` writes and
+`findLastUnread()` converts with, so `timestamp` matches `date` and can be passed back as `lastUpdate`. Open: storing
+UTC in a `DATETIME` column (I-90), which is what removes the DST fall-back ambiguity and the dependency on the MySQL
+session timezone.
 
 ## [ ] B-195 – `findAll()` filters: unquoted keys, conditions without parentheses, colliding keys, ignored offset, swallowed count errors
 

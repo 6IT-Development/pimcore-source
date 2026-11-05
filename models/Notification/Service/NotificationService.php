@@ -244,7 +244,8 @@ class NotificationService
 
     public function format(Notification $notification): array
     {
-        $carbonTs = new Carbon($notification->getCreationDate(), 'UTC');
+        // Dao::save() writes the PHP-local wall clock, and findLastUnread() converts back with it
+        $carbonTs = new Carbon($notification->getCreationDate(), date_default_timezone_get());
         $data = [
             'id' => $notification->getId(),
             'type' => $notification->getType(),
