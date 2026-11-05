@@ -97,7 +97,7 @@ class Service extends Model\AbstractModel
         $path = '';
         $elementType = self::getElementType($element);
         $parentId = $element->getParentId();
-        $parentElement = self::getElementById($elementType, $parentId);
+        $parentElement = $elementType && $parentId ? self::getElementById($elementType, $parentId) : null;
 
         if ($parentElement) {
             $path = self::getTypePath($parentElement);
@@ -122,7 +122,7 @@ class Service extends Model\AbstractModel
         $path = '';
         $elementType = self::getElementType($element);
         $parentId = $element->getParentId();
-        $parentElement = self::getElementById($elementType, $parentId);
+        $parentElement = $elementType && $parentId ? self::getElementById($elementType, $parentId) : null;
 
         if ($parentElement) {
             $path = self::getSortIndexPath($parentElement);
@@ -403,7 +403,7 @@ class Service extends Model\AbstractModel
             $fileExtension = '';
             if ($type === 'asset' && $fileExtension = pathinfo($sourceKey, PATHINFO_EXTENSION)) {
                 // temporary remove file extension from sourceKey
-                $sourceKey = preg_replace('/\.' . $fileExtension . '$/i', '', $sourceKey);
+                $sourceKey = substr($sourceKey, 0, -strlen($fileExtension) - 1);
             }
             if (preg_match('/_copy(|_\d*)$/', $sourceKey) === 1) {
                 // If key already ends with _copy or copy_N, append a digit to avoid _copy_copy_copy naming
@@ -1437,11 +1437,15 @@ class Service extends Model\AbstractModel
      */
     public static function escapeCsvRecord(array $rowData): array
     {
-        if (self::$formatter === null) {
-            self::$formatter = new EscapeFormula("'", ['=', '-', '+', '@']);
+        $formatter = self::getCsvFormatter();
+        foreach ($rowData as $key => $value) {
+            // numbers like -5 or +1.5 cannot start a formula, keep them as they are
+            if (!is_string($value) || !preg_match('/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/', $value)) {
+                $rowData[$key] = $formatter->escapeRecord([$value])[0];
+            }
         }
 
-        return self::$formatter->escapeRecord($rowData);
+        return $rowData;
     }
 
     /**
@@ -1449,11 +1453,16 @@ class Service extends Model\AbstractModel
      */
     public static function unEscapeCsvRecord(array $rowData): array
     {
-        if (self::$formatter === null) {
-            self::$formatter = new EscapeFormula("'", ['=', '-', '+', '@']);
-        }
+        return self::getCsvFormatter()->unescapeRecord($rowData);
+    }
 
-        return self::$formatter->unescapeRecord($rowData);
+    /**
+     * Escapes the League defaults (`=`, `-`, `+`, `@`, tab, carriage return) and the escape character itself, so a
+     * value that already starts with `'` gets a second one and unEscapeCsvRecord() returns it unchanged.
+     */
+    private static function getCsvFormatter(): EscapeFormula
+    {
+        return self::$formatter ??= new EscapeFormula("'", ["'"]);
     }
 
     /**

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Tests\Unit\Helper;
 
 use League\Csv\EscapeFormula;
+use Pimcore\Model\Element\Service;
 use Pimcore\Tests\Support\Test\TestCase;
 
 class CsvFormulaTest extends TestCase
@@ -56,5 +57,17 @@ class CsvFormulaTest extends TestCase
         $escapedRow = $formatter->escapeRecord([$testString]);
         $this->assertEquals($testString, $escapedRow[0]);
         $this->assertEquals($testString, $formatter->unescapeRecord($escapedRow)[0]);
+    }
+
+    public function testServiceCsvRecordRoundTrip(): void
+    {
+        $row = ['=1+1', '@SUM(A1)', "\tcmd", "\rcmd", "'=quoted", "'text", '-5', '+1.5', '-1+1', 'test', '', null, 3];
+
+        $escaped = Service::escapeCsvRecord($row);
+        $this->assertSame(
+            ["'=1+1", "'@SUM(A1)", "'\tcmd", "'\rcmd", "''=quoted", "''text", '-5', '+1.5', "'-1+1", 'test', '', null, 3],
+            $escaped
+        );
+        $this->assertSame($row, Service::unEscapeCsvRecord($escaped));
     }
 }

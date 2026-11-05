@@ -3202,7 +3202,7 @@ select the columns the details read (`w.cpath`, `u.type`, `u.name`; the parent q
 tables). `getUserPermissions()` skips roles that no longer exist. `collectParentIds()` stops at an id it has already
 collected and runs once per call, and the role ids are built once per user instead of once per column.
 
-## [ ] B-174 – `Element\Service` small defects
+## [x] B-174 – `Element\Service` small defects
 
 **File:** `models/Element/Service.php:94-134`, `:394-428`, `:1392-1411`
 
@@ -3212,6 +3212,12 @@ collected and runs once per call, and the role ids are built once per user inste
   `unEscapeCsvRecord()` strips a leading `'` from legitimate values (lossy round trip).
 
 **Fix direction:** null checks, `preg_quote()`, League defaults and a reversible escaping scheme.
+
+**Done:** `getTypePath()` / `getSortIndexPath()` look up the parent only when the element has a parent id.
+`getSafeCopyName()` cuts the extension off with `substr()` instead of an unquoted regex. The CSV helpers share one
+`EscapeFormula` that escapes the League defaults (which already include tab and carriage return) plus the escape
+character `'` itself, so a value starting with `'` gets a second one and `unEscapeCsvRecord()` restores it unchanged.
+`escapeCsvRecord()` leaves plain numbers such as `-5` or `+1.5` alone. `CsvFormulaTest` covers the round trip.
 
 ## DataObject (Scope 6)
 
