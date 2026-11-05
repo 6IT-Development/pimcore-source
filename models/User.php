@@ -39,6 +39,13 @@ final class User extends User\UserRole implements UserInterface
 
     private const int MAX_IMAGE_SIZE = 1000;
 
+    private const array TWO_FACTOR_AUTHENTICATION_DEFAULTS = [
+        'required' => false,
+        'enabled' => false,
+        'secret' => '',
+        'type' => '',
+    ];
+
     private const string TRANSPARENT_PIXEL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
     protected string $type = 'user';
@@ -778,12 +785,7 @@ final class User extends User\UserRole implements UserInterface
     {
         if ($this->twoFactorAuthentication === null) {
             // set defaults if no data is present
-            $this->twoFactorAuthentication = [
-                'required' => false,
-                'enabled' => false,
-                'secret' => '',
-                'type' => '',
-            ];
+            $this->twoFactorAuthentication = self::TWO_FACTOR_AUTHENTICATION_DEFAULTS;
         }
 
         if ($key) {
@@ -794,21 +796,27 @@ final class User extends User\UserRole implements UserInterface
     }
 
     /**
-     * You can either pass an array for setting the entire 2fa settings, or a key and a value as the second argument
+     * You can either pass an array for setting the entire 2fa settings, or a key and a value as the second argument.
+     * Missing entries of an array are filled with the defaults; `($key, null)` sets that entry to null.
      *
      * @param array<string, mixed>|string $key
      */
     public function setTwoFactorAuthentication(array|string $key, mixed $value = null): void
     {
-        if (is_string($key) && $value === null && strlen($key) > 3) {
-            $this->twoFactorAuthentication = json_decode($key, true);
-        } elseif (is_array($key)) {
-            $this->twoFactorAuthentication = $key;
-        } else {
-            if ($this->twoFactorAuthentication === null) {
-                // load defaults
-                $this->getTwoFactorAuthentication();
+        if (is_string($key) && $value === null && str_starts_with(ltrim($key), '{')) {
+            trigger_deprecation('pimcore/pimcore', '11.5', 'Passing a JSON string to %s::%s() is deprecated, pass an array instead.', self::class, __FUNCTION__);
+
+            $key = json_decode($key, true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($key)) {
+                throw new InvalidArgumentException('The two factor authentication settings must be a JSON object');
             }
+        }
+
+        if (is_array($key)) {
+            $this->twoFactorAuthentication = array_merge(self::TWO_FACTOR_AUTHENTICATION_DEFAULTS, $key);
+        } else {
+            // load defaults
+            $this->getTwoFactorAuthentication();
 
             $this->twoFactorAuthentication[$key] = $value;
         }

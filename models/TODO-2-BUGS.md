@@ -4630,7 +4630,7 @@ original that cannot be loaded is logged as a warning (no negative cache), and t
 `setImage()` requires a saved user, checks that the file is a readable `image/*` (Symfony Mime) and writes it over the
 current original before the thumbnails are removed, so a failing upload keeps the existing avatar.
 
-## [ ] B-232 – `setTwoFactorAuthentication('<key>', null)` wipes the whole 2FA configuration, including `required`
+## [x] B-232 – `setTwoFactorAuthentication('<key>', null)` wipes the whole 2FA configuration, including `required`
 
 **Files:** `models/User.php:685-702`, `:709-723`; `models/User/AbstractUser/Dao.php:140-142`;
 `lib/Security/User/User.php:93-131`
@@ -4653,6 +4653,12 @@ if (is_string($key) && $value === null && strlen($key) > 3) {
 
 **Fix direction:** split the API (`setTwoFactorAuthenticationConfig(array)` / `setTwoFactorAuthenticationValue(string,
 mixed)`), decode JSON only in the DAO with `JSON_THROW_ON_ERROR`, and always merge onto the defaults (I-117).
+
+**Done:** `setTwoFactorAuthentication('<key>', null)` now sets that entry to `null`; only a string starting with `{` is
+still decoded as JSON (deprecated, `JSON_THROW_ON_ERROR`, a non-object throws). An array is merged onto the defaults.
+The DAO decodes the column on load; an unreadable value or a JSON scalar is logged as an error and loaded as
+`required = true`, so a corrupt row cannot silently turn off a required second factor. Users without 2FA data are
+stored as `NULL` instead of the string `'null'`.
 
 ## [ ] B-233 – Permission definitions and lists: `generatePermissionList()` returns `null`, `Definition::create()` reports success after a failed save
 

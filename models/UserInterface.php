@@ -204,7 +204,8 @@ interface UserInterface extends UserRoleInterface
     public function getTwoFactorAuthentication(?string $key = null): mixed;
 
     /**
-     * You can either pass an array for setting the entire 2fa settings, or a key and a value as the second argument
+     * You can either pass an array for setting the entire 2fa settings, or a key and a value as the second argument.
+     * Missing entries of an array are filled with the defaults; `($key, null)` sets that entry to null.
      *
      * @param array<string, mixed>|string $key
      */

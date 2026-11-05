@@ -17,6 +17,7 @@ namespace Pimcore\Model\User\AbstractUser;
 
 use DateTime;
 use Exception;
+use JsonException;
 use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\User\AbstractUser;
@@ -89,7 +90,37 @@ class Dao extends Model\Dao\AbstractDao
         $data['memorizeTabs'] = (bool)$data['memorizeTabs'];
         $data['allowDirtyClose'] = (bool)$data['allowDirtyClose'];
 
+        if (array_key_exists('twoFactorAuthentication', $data)) {
+            $data['twoFactorAuthentication'] = $this->decodeTwoFactorAuthentication($data['twoFactorAuthentication'], (int)$data['id']);
+        }
+
         return $data;
+    }
+
+    /**
+     * Unreadable settings require 2FA, so a corrupt row does not silently turn off a required second factor
+     *
+     * @return array<string, mixed>|null
+     */
+    private function decodeTwoFactorAuthentication(?string $json, int $userId): ?array
+    {
+        if ($json === null || $json === '') {
+            return null;
+        }
+
+        try {
+            $settings = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $settings = false;
+        }
+
+        if ($settings === null || is_array($settings)) {
+            return $settings;
+        }
+
+        Logger::error(sprintf('Invalid two factor authentication settings of user %d, 2FA is required until it is set up again', $userId));
+
+        return ['required' => true];
     }
 
     /**
@@ -144,7 +175,7 @@ class Dao extends Model\Dao\AbstractDao
                         $value = implode(',', $value);
                     }
                 } elseif ($key == 'twoFactorAuthentication') {
-                    $value = json_encode($value);
+                    $value = $value === null ? null : json_encode($value, JSON_THROW_ON_ERROR);
                 }
                 $data[$key] = $value;
             }
