@@ -17,8 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Property;
 
-use Exception;
-use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model;
 
 /**
@@ -68,24 +66,14 @@ final class Predefined extends Model\AbstractModel
 
     public static function getByKey(string $key): ?Predefined
     {
-        $cacheKey = 'property_predefined_' . $key;
-
         try {
-            $property = RuntimeCache::get($cacheKey);
-            if (!$property) {
-                throw new Exception('Predefined property in registry is null');
-            }
-        } catch (Exception) {
-            try {
-                $property = new self();
-                $property->getDao()->getByKey($key);
-                RuntimeCache::set($cacheKey, $property);
-            } catch (Model\Exception\NotFoundException) {
-                return null;
-            }
-        }
+            $property = new self();
+            $property->getDao()->getByKey($key);
 
-        return $property;
+            return $property;
+        } catch (Model\Exception\NotFoundException) {
+            return null;
+        }
     }
 
     public static function create(): Predefined

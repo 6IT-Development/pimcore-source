@@ -3953,7 +3953,7 @@ setters / getters.
 `null` like their getters return it, so a definition without `ctype` (or any other optional field) loads and its
 fields can be reset. Required fields are validated on save (B-209).
 
-## [ ] B-208 – `Predefined::getByKey()`: stale cache, uncached misses, duplicate keys win by listing order
+## [x] B-208 – `Predefined::getByKey()`: stale cache, uncached misses, duplicate keys win by listing order
 
 **Files:** `models/Property/Predefined.php:69-89`; `models/Property/Predefined/Dao.php:76-98`, `:103-133`;
 `models/Element/Service.php:548-557`
@@ -3971,6 +3971,12 @@ fields can be reset. Required fields are validated on save (B-209).
 
 **Fix direction:** one key index built per listing load (and reset with the config cache); cache misses too;
 invalidate on save / delete; reject duplicate keys on save; `===` (I-96).
+
+**Done:** `Predefined\Dao` builds a key index (`array<string, Predefined>`, first definition per key in listing order) once
+per `RuntimeCache` and resets it on `save()` / `delete()`; `getByKey()` looks the key up there exactly (array key, no
+`==`), so a property without a definition costs one array lookup. `Predefined::getByKey()` no longer keeps its own
+per-key cache entry and returns a fresh instance on every call. `save()` rejects a key that another definition already
+has. The static config cache of `getById()` is invalidated by `saveData()` / `deleteData()` already.
 
 ## [ ] B-209 – `Predefined::save()` / `create()` / `getById()` defects (mirror of B-191 / B-192)
 

@@ -16,6 +16,7 @@
 namespace Pimcore\Model\Property\Predefined;
 
 use Exception;
+use Pimcore\Cache\RuntimeCache;
 use Pimcore\Config;
 use Pimcore\Model;
 use Pimcore\Model\Property\Predefined;
@@ -29,6 +30,8 @@ use Symfony\Component\Uid\Uuid as Uid;
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
     private const string CONFIG_KEY = 'predefined_properties';
+
+    private const string KEY_INDEX_CACHE_KEY = 'property_predefined_key_index';
 
     public function configure(): void
     {
@@ -75,20 +78,15 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function getByKey(?string $key = null): void
     {
-        if ($key != null) {
+        if ($key !== null) {
             $this->model->setKey($key);
         }
         $key = $this->model->getKey();
 
-        $list = new Listing();
-        /** @var Predefined[] $properties */
-        $properties = array_values(array_filter($list->getProperties(), function ($item) use ($key) {
-            return $item->getKey() == $key;
-        }
-        ));
+        $property = $key !== null ? (self::getKeyIndex()[$key] ?? null) : null;
 
-        if (count($properties) && $properties[0]->getId()) {
-            $this->assignVariablesToModel($properties[0]->getObjectVars());
+        if ($property && $property->getId()) {
+            $this->assignVariablesToModel($property->getObjectVars());
         } else {
             throw new Model\Exception\NotFoundException(sprintf(
                 'Predefined property with key "%s" does not exist.',
@@ -98,10 +96,40 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     }
 
     /**
+     * The definitions by key, built once per runtime cache and reset on save / delete, so that lookups (also those
+     * without a definition) do not load the whole listing
+     *
+     * @return array<string, Predefined>
+     */
+    private static function getKeyIndex(): array
+    {
+        $index = RuntimeCache::isRegistered(self::KEY_INDEX_CACHE_KEY) ? RuntimeCache::get(self::KEY_INDEX_CACHE_KEY) : null;
+        if (!is_array($index)) {
+            $index = [];
+            foreach ((new Listing())->getProperties() as $property) {
+                $key = $property->getKey();
+                // keys saved before duplicates were rejected: the first in listing order wins
+                if ($key !== null && !isset($index[$key])) {
+                    $index[$key] = $property;
+                }
+            }
+            RuntimeCache::set(self::KEY_INDEX_CACHE_KEY, $index);
+        }
+
+        return $index;
+    }
+
+    /**
      * @throws Exception
      */
     public function save(): void
     {
+        $key = $this->model->getKey();
+        $existing = $key !== null ? (self::getKeyIndex()[$key] ?? null) : null;
+        if ($existing && $existing->getId() !== $this->model->getId()) {
+            throw new \InvalidArgumentException(sprintf('There is already a predefined property with key "%s".', $key));
+        }
+
         if (!$this->model->getId()) {
             $this->model->setId((string)Uid::v4());
         }
@@ -122,6 +150,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
             }
         }
         $this->saveData($this->model->getId(), $data);
+        RuntimeCache::set(self::KEY_INDEX_CACHE_KEY, null);
     }
 
     /**
@@ -130,6 +159,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     public function delete(): void
     {
         $this->deleteData($this->model->getId());
+        RuntimeCache::set(self::KEY_INDEX_CACHE_KEY, null);
     }
 
     protected function prepareDataStructureForYaml(string $id, mixed $data): array
