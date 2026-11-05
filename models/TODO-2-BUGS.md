@@ -5121,7 +5121,7 @@ same. `setLocalizedKeyValue()` activates the group only when it stores a value. 
 as changed on every call) and keeps the resource-form comparison for the other types. The raw hydration for
 `Dao::load()` is left to I-130; load still resets the dirty map at the end.
 
-## [ ] B-249 – Classification store: `null` key configurations, stores without object and uninitialised state end in `Error`s
+## [x] B-249 – Classification store: `null` key configurations, stores without object and uninitialised state end in `Error`s
 
 **Files:** `models/DataObject/Classificationstore.php:48`, `:59`, `:124-127`, `:178-180`, `:339-347`, `:357-393`,
 `:452-463`; `models/DataObject/Classificationstore/DefinitionCache.php:27`;
@@ -5147,6 +5147,16 @@ as changed on every call) and keeps the resource-form comparison for the other t
 **Fix direction:** return `null` (and log) for unknown keys / empty definitions; validate the group-key relation in the
 setter; guard the inheritance paths; give `$fieldname` a default or require it in the constructor; narrow `$object` to
 `?Concrete`.
+
+**Done:** `getLocalizedKeyValue()` logs a warning and returns `null` for an unknown key or a key without definition.
+`setLocalizedKeyValue()` throws for both, and for a key that is not related to the group (checked with
+`KeyGroupRelation::getByGroupAndKeyId()`, positive results cached per request). `Dao::load()` now fills the items
+directly from the stored rows instead of going through the setter, so loading needs no relation lookups and no longer
+runs the dirty check per row (the raw-hydration part of B-248 / I-130). The inheritance branch of the getter runs only
+with an object and a field name, and compares the parent store through `getObject()`. `getAllDataFromField()` skips
+parents whose getter does not return a store. `$fieldname` defaults to `''`. `$object` keeps admitting
+`ElementDescriptor`, which the deep-copy marshalling puts there; `getObject()` returns `null` for it instead of
+throwing a `TypeError`.
 
 ## [ ] B-250 – `DataObject\Listing`: the object-type filter is ANDed to an unparenthesised condition – folders and variants leak through `OR` conditions
 

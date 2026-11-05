@@ -234,6 +234,7 @@ class Dao extends Model\Dao\AbstractDao
         $data = $this->db->fetchAllAssociative($query);
 
         $groupCollectionMapping = [];
+        $items = [];
 
         foreach ($data as $item) {
             if (!isset($list[$item['groupId']])) {
@@ -277,10 +278,11 @@ class Dao extends Model\Dao\AbstractDao
                 ]);
             }
 
-            $language = $item['language'];
-            $classificationStore->setLocalizedKeyValue($groupId, $keyId, $value, $language);
+            // stored rows are taken as they are, without the setter's checks and dirty detection
+            $items[$groupId][$keyId][$item['language']] = $value;
         }
 
+        $classificationStore->setItems($items);
         $classificationStore->setActiveGroups($list);
         $classificationStore->setGroupCollectionMappings($groupCollectionMapping);
         $classificationStore->resetDirtyMap();

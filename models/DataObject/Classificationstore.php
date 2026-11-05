@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Model\DataObject;
 
 use Exception;
+use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject\ClassDefinition\Data\PreGetDataInterface;
 use Pimcore\Model\DataObject\Classificationstore\Dao;
@@ -56,7 +57,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
      * @internal
      *
      */
-    protected string $fieldname;
+    protected string $fieldname = '';
 
     /**
      * @internal
@@ -73,6 +74,13 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
     protected array $groupCollectionMapping = [];
 
     private static bool $getFallbackValues = true;
+
+    /**
+     * Key-group relations found by setLocalizedKeyValue(), as [groupId][keyId] => true
+     *
+     * @var array<int, array<int, true>>
+     */
+    private static array $knownKeyGroupRelations = [];
 
     public function __construct(?array $items = null)
     {
@@ -125,7 +133,8 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
 
     public function getObject(): ?Concrete
     {
-        return $this->object;
+        // deep copies put an ElementDescriptor here while the store is marshalled
+        return $this->object instanceof Concrete ? $this->object : null;
     }
 
     public function setClass(?ClassDefinition $class): static
@@ -178,13 +187,27 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         // @TODO Find a better solution for using isEmpty() in all ClassDefintion DataTypes
 
         $keyConfig = Model\DataObject\Classificationstore\DefinitionCache::get($keyId);
+        if (!$keyConfig) {
+            throw new Exception(sprintf('Classification store key with ID %d does not exist', $keyId));
+        }
+
         // calculated values are computed on read and not stored
-        if ($keyConfig?->getType() === 'calculatedValue') {
+        if ($keyConfig->getType() === 'calculatedValue') {
             return $this;
         }
 
-        /** @var Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface $dataDefinition */
+        /** @var Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface|null $dataDefinition */
         $dataDefinition = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
+        if (!$dataDefinition) {
+            throw new Exception(sprintf('Classification store key with ID %d has no definition', $keyId));
+        }
+
+        if (!isset(self::$knownKeyGroupRelations[$groupId][$keyId])) {
+            if (!Model\DataObject\Classificationstore\KeyGroupRelation::getByGroupAndKeyId($groupId, $keyId)) {
+                throw new Exception(sprintf('Classification store key with ID %d is not part of the group with ID %d', $keyId, $groupId));
+            }
+            self::$knownKeyGroupRelations[$groupId][$keyId] = true;
+        }
 
         // hash here and not only in the dirty check below, which is skipped once the store is dirty or has no object
         if ($dataDefinition instanceof Model\DataObject\ClassDefinition\Data\Password) {
@@ -358,6 +381,13 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         $language = $this->getLanguage($language);
 
         $keyConfig = Model\DataObject\Classificationstore\DefinitionCache::get($keyId);
+        if (!$keyConfig) {
+            // e.g. a key deleted while objects still have values for it
+            Logger::warning('Could not resolve classification store key with ID: ' . $keyId);
+
+            return null;
+        }
+
         if ($keyConfig->getType() == 'calculatedValue') {
             // computed like the getters of calculated fields of objects, bricks and localized fields, not as admin string
             if (!$this->getObject()) {
@@ -372,6 +402,12 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         }
 
         $fieldDefinition = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
+        if (!$fieldDefinition) {
+            Logger::warning('Classification store key with ID ' . $keyId . ' has no definition');
+
+            return null;
+        }
+
         $data = null;
 
         if (array_key_exists($groupId, $this->items) && array_key_exists($keyId, $this->items[$groupId])
@@ -391,8 +427,8 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
 
         // check for inherited value
         $doGetInheritedValues = Model\DataObject::doGetInheritedValues();
-        if ($fieldDefinition->isEmpty($data) && $doGetInheritedValues) {
-            $object = $this->getObject();
+        $object = $this->getObject();
+        if ($fieldDefinition->isEmpty($data) && $doGetInheritedValues && $object && $this->fieldname !== '') {
             $class = $object->getClass();
             $allowInherit = $class->getAllowInherit();
 
@@ -409,7 +445,7 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
                             $getter = 'get' . ucfirst($this->fieldname);
                             $classificationStore = $parent->$getter();
                             if ($classificationStore instanceof Classificationstore) {
-                                if ($classificationStore->object->getId() != $this->object->getId()) {
+                                if ($classificationStore->getObject()?->getId() != $object->getId()) {
                                     $data = $classificationStore->getLocalizedKeyValue($groupId, $keyId, $language);
                                 }
                             }
@@ -498,9 +534,13 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
     private function getAllDataFromField(callable $mergeFunction): array
     {
         $fieldsArray = $mergeFunction($this, []);
-        $object = $this->getObject();
+        $object = $this->fieldname !== '' ? $this->getObject() : null;
         while (!is_null($object) && ($parent = Service::hasInheritableParentObject($object)) !== null) {
-            $fieldsArray = $mergeFunction($parent->{'get' . ucfirst($this->getFieldname())}(), $fieldsArray);
+            // a parent getter may return null (preGetValue() hook, field missing in the parent's class version)
+            $parentStore = $parent->{'get' . ucfirst($this->getFieldname())}();
+            if ($parentStore instanceof self) {
+                $fieldsArray = $mergeFunction($parentStore, $fieldsArray);
+            }
 
             $object = $parent;
         }
