@@ -380,11 +380,15 @@ and calls `configureStep()` once per instance (again only after it threw, with a
 `configurationIsValid()` and `getCurrentJobStepConfig()` both resolve through it. `configureStep()` keeps defining the
 options on `$this->stepConfiguration`.
 
-### [ ] B-29 – `job_env()` replacement drops surrounding text and ignores additional placeholders
+### [x] B-29 – `job_env()` replacement drops surrounding text and ignores additional placeholders
 **File:** `src/Messenger/Handler/AbstractAutomationActionHandler.php:166-183`
 `"prefix-job_env('a')-suffix"` returns only the value of `a`; `"job_env('a')/job_env('b')"` returns only `a`. The docs
 (`04_Step_Configuration.md`) describe placeholders inside configuration values. **Fix:** return the raw value only when
 the whole string is a single placeholder, otherwise `preg_replace_callback()` all occurrences.
+
+**Done:** a value that is exactly one placeholder still returns the raw variable (any type); otherwise every placeholder
+is replaced with the string form of its variable, a non-scalar variable inside a string throws
+`InvalidStepConfigurationException`, a missing one `NotFoundException` as before. Described in `04_Step_Configuration.md`.
 
 ### [ ] B-30 – `abortAction()` uses the non-existent translation domain `'default'`
 **File:** `src/Messenger/Handler/AbstractAutomationActionHandler.php:104-114`

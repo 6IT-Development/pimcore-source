@@ -29,6 +29,7 @@ use Pimcore\Bundle\GenericExecutionEngineBundle\Repository\JobRunRepositoryInter
 use Pimcore\Model\Element\AbstractElement;
 use Pimcore\Model\Exception\NotFoundException;
 use Psr\Log\LoggerInterface;
+use Stringable;
 use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Contracts\Service\Attribute\Required;
@@ -162,23 +163,51 @@ abstract class AbstractAutomationActionHandler
         return $job === null ? [] : $job->getEnvironmentData();
     }
 
+    /**
+     * A value that is a single job_env('<name>') placeholder becomes the raw environment value (any type); placeholders
+     * inside a longer string are replaced with the string form of their values.
+     *
+     * @throws NotFoundException when a referenced environment variable is missing
+     */
     protected function replaceConfigValueWithEnvVariable(
         string $value,
         array  $variables
     ): mixed
     {
-        if (!preg_match_all("/job_env\('([^']*)'\)/", $value, $matches)) {
-            return $value;
-        }
-        if (empty($matches[1])) {
-            return $value;
-        }
-        $envVariableKey = $matches[1][0];
-        if (!array_key_exists($envVariableKey, $variables)) {
-            throw new NotFoundException("Missing environment variable $envVariableKey");
+        $placeholder = "job_env\\('([^']*)'\\)";
+
+        if (preg_match("/^$placeholder\$/D", $value, $match)) {
+            return $this->getEnvVariable($match[1], $variables);
         }
 
-        return $variables[$envVariableKey];
+        return preg_replace_callback(
+            "/$placeholder/",
+            fn(array $match): string => $this->stringifyEnvVariable(
+                $match[1],
+                $this->getEnvVariable($match[1], $variables)
+            ),
+            $value
+        );
+    }
+
+    private function getEnvVariable(string $key, array $variables): mixed
+    {
+        if (!array_key_exists($key, $variables)) {
+            throw new NotFoundException("Missing environment variable $key");
+        }
+
+        return $variables[$key];
+    }
+
+    private function stringifyEnvVariable(string $key, mixed $value): string
+    {
+        if (is_scalar($value) || $value === null || $value instanceof Stringable) {
+            return (string) $value;
+        }
+
+        throw new InvalidStepConfigurationException(
+            "Environment variable $key is no scalar value and cannot be used inside a configuration string"
+        );
     }
 
     protected function extractConfigFieldFromJobStepConfig(
