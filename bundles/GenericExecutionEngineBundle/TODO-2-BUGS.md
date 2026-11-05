@@ -153,12 +153,15 @@ are off the message step, so the agent path did not hit `null` any more.)
 
 ## DI / configuration
 
-### [ ] B-11 – Execution context names are key-normalised (`-` → `_`)
+### [x] B-11 – Execution context names are key-normalised (`-` → `_`)
 **File:** `src/DependencyInjection/Configuration.php:39-41`
 `execution_context` is a prototyped array without `->normalizeKeys(false)` / `useAttributeAsKey()`; Symfony's config
 normaliser converts dashes in keys to underscores → a context configured as `my-context` is stored as `my_context` and
 `startJobExecution($job, null, 'my-context')` later fails with `ExecutionContextNotDefinedException`.
 **Fix:** `->useAttributeAsKey('name')->normalizeKeys(false)`.
+
+**Done:** `execution_context` uses `useAttributeAsKey('name')` and `normalizeKeys(false)`; a context `my-context` keeps
+its name, and contexts from several config files still merge by name.
 
 ### [ ] B-12 – Unknown / removed execution context breaks logging and the job run grid
 **Files:** `src/Configuration/ExecutionContext.php:33-54`, `src/Repository/JobRunRepository.php:104`,

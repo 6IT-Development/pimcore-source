@@ -37,6 +37,9 @@ class Configuration implements ConfigurationInterface
             ->defaultValue(ErrorHandlingMode::CONTINUE_ON_ERROR->value)
             ->end()
             ->arrayNode('execution_context')
+            // context names are passed verbatim to startJobExecution(), so "my-context" must not become "my_context"
+            ->useAttributeAsKey('name')
+            ->normalizeKeys(false)
             ->prototype('array')
             ->children()
             ->scalarNode('translations_domain')
