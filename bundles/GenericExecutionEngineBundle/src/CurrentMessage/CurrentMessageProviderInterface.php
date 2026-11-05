@@ -32,7 +32,7 @@ interface CurrentMessageProviderInterface
 
     /**
      * If string is a valid json translation object it will be converted to TranslationMessage
-     * otherwise it will be converted to PlainMessage
+     * otherwise it will be converted to PlainMessage, also when it is other valid JSON
      */
     public function getMessageFromSerializedString(string $message): MessageInterface;
 }

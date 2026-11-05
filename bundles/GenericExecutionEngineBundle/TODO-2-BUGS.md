@@ -301,13 +301,18 @@ unless the user may see all runs), `getTotalCountForUser(UserInterface)` with th
 
 ## Current message / grid
 
-### [ ] B-22 – Valid-JSON plain messages crash `getMessageFromSerializedString()`
+### [x] B-22 – Valid-JSON plain messages crash `getMessageFromSerializedString()`
 **File:** `src/CurrentMessage/CurrentMessageProvider.php:45-60`
 Raw exception messages are stored as plain `currentMessage` (B-07). If such a message is valid JSON but not a
 translation object (`"404"`, `"true"`, `"null"`, `{"error":"…"}` from an HTTP API, `[1,2]`), `json_decode` succeeds,
 the `isset` check fails and `InvalidJsonMessageException` is thrown (only `JsonException` is caught) → job run grid
 `500`. Scalars also fail `isset()` on non-arrays. **Fix:** return `PlainMessage` for anything that is not a translation
 object; store messages with a type discriminator instead of guessing.
+
+**Done:** `getMessageFromSerializedString()` returns a `TranslationMessage` only for a JSON object with exactly the keys
+`key` (string), `params` (array) and `domain` (string), anything else – also other valid JSON – becomes a
+`PlainMessage`. The unused `InvalidJsonMessageException` is removed. No type discriminator: stored current messages of
+existing runs have none, and the exact shape is unlikely for a raw exception text.
 
 ### [ ] B-23 – `null` domain is accepted by the interface but rejected by `TranslationMessage`
 **Files:** `src/CurrentMessage/CurrentMessageProviderInterface.php:25-29`, `src/CurrentMessage/TranslationMessage.php:28-33`

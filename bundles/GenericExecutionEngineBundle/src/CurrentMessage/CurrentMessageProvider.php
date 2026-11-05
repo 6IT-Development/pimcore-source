@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\CurrentMessage;
 
 use JsonException;
-use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\InvalidJsonMessageException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -45,17 +44,30 @@ final readonly class CurrentMessageProvider implements CurrentMessageProviderInt
     public function getMessageFromSerializedString(string $message): MessageInterface
     {
         try {
-            $message = json_decode($message, true, 512, JSON_THROW_ON_ERROR);
-            if (!isset($message['key'], $message['domain'], $message['params']) || !is_array($message['params'])) {
-                throw new InvalidJsonMessageException(
-                    'Message is not a valid json translation object. Missing key, parameters or domain.'
-                );
-            }
-
-            return new TranslationMessage($message['key'], $message['params'], $message['domain'], $this->translator);
-
+            $decoded = json_decode($message, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             return new PlainMessage($message);
         }
+
+        // plain messages (e.g. raw exception texts) may be valid JSON as well: only the exact shape written by
+        // TranslationMessage::getSerializedString() is a translation object
+        if (!$this->isTranslationObject($decoded)) {
+            return new PlainMessage($message);
+        }
+
+        return new TranslationMessage($decoded['key'], $decoded['params'], $decoded['domain'], $this->translator);
+    }
+
+    private function isTranslationObject(mixed $decoded): bool
+    {
+        if (!is_array($decoded) || count($decoded) !== 3
+            || !array_key_exists('key', $decoded)
+            || !array_key_exists('params', $decoded)
+            || !array_key_exists('domain', $decoded)
+        ) {
+            return false;
+        }
+
+        return is_string($decoded['key']) && is_array($decoded['params']) && is_string($decoded['domain']);
     }
 }
