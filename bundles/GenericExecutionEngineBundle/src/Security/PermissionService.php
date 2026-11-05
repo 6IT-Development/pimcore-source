@@ -20,18 +20,21 @@ namespace Pimcore\Bundle\GenericExecutionEngineBundle\Security;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\PermissionConstants;
 use Pimcore\Model\UserInterface;
+use Pimcore\Security\User\TokenStorageUserResolver;
 use Pimcore\Tool\Authentication;
 
 /**
+ * Checks the permissions of the user of the current request. The user is resolved on every call and never kept,
+ * so long-running processes (worker runtimes, messenger workers) do not evaluate one request with the user of another.
+ *
  * @internal
  */
-final class PermissionService implements PermissionServiceInterface
+final readonly class PermissionService implements PermissionServiceInterface
 {
-    private ?UserInterface $user;
-
-    public function __construct()
+    public function __construct(
+        private TokenStorageUserResolver $userResolver
+    )
     {
-        $this->user = Authentication::authenticateSession();
     }
 
     public function allowedToSeeJobRuns(): void
@@ -52,19 +55,19 @@ final class PermissionService implements PermissionServiceInterface
 
     public function isAllowedToSeeJobRuns(): bool
     {
-        if (!$this->user) {
-            return false;
-        }
-
-        return $this->user->isAllowed(PermissionConstants::GEE_JOB_RUN);
+        return $this->getUser()?->isAllowed(PermissionConstants::GEE_JOB_RUN) ?? false;
     }
 
     public function isAllowedToSeeAllJobRuns(): bool
     {
-        if (!$this->user) {
-            return false;
-        }
+        return $this->getUser()?->isAllowed(PermissionConstants::GEE_SEE_ALL_JOB_RUNS) ?? false;
+    }
 
-        return $this->user->isAllowed(PermissionConstants::GEE_SEE_ALL_JOB_RUNS);
+    /**
+     * The user of the current firewall token, or the Pimcore admin session user when the request has no such token.
+     */
+    private function getUser(): ?UserInterface
+    {
+        return $this->userResolver->getUser() ?? Authentication::authenticateSession();
     }
 }

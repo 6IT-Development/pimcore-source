@@ -200,7 +200,7 @@ middleware).
 
 ---
 
-## [ ] C-06 – `PermissionService` caches the session user for the lifetime of the container
+## [x] C-06 – `PermissionService` caches the session user for the lifetime of the container
 
 **File:** `src/Security/PermissionService.php:30-35`, used by `src/Repository/JobRunRepository.php:141`, `:172`
 
@@ -222,6 +222,11 @@ no `kernel.reset` tag):
 
 **Fix direction:** resolve the user per call (inject `Security` / `TokenStorageInterface`, or call
 `Authentication::authenticateSession()` lazily) and implement `ResetInterface`; better: a voter (I-22).
+
+**Done:** `PermissionService` keeps no user; every check resolves the user of the current firewall token
+(`TokenStorageUserResolver`) and falls back to `Authentication::authenticateSession()` for requests without one.
+Without a request or user the checks return `false`. As the service is stateless now, `ResetInterface` is not needed.
+The voter (I-22) is still open.
 
 ---
 
