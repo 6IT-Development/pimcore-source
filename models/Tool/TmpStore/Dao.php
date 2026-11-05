@@ -16,6 +16,7 @@
 namespace Pimcore\Model\Tool\TmpStore;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Tool\TmpStore;
@@ -27,28 +28,38 @@ use Pimcore\Model\Tool\TmpStore;
  */
 class Dao extends Model\Dao\AbstractDao
 {
+    private const int KEY_MAX_LENGTH = 190;
+
+    /**
+     * Always returns true, a failed write throws
+     *
+     * @throws InvalidArgumentException for an id or tag longer than the column
+     * @throws Exception
+     */
     public function add(string $id, mixed $data, ?string $tag = null, ?int $lifetime = null): bool
     {
-        try {
-            $serialized = false;
-            if (is_object($data) || is_array($data)) {
-                $serialized = true;
-                $data = serialize($data);
+        foreach (['id' => $id, 'tag' => (string)$tag] as $column => $value) {
+            if (mb_strlen($value) > self::KEY_MAX_LENGTH) {
+                throw new InvalidArgumentException(sprintf('The tmp store %s must not be longer than %d characters', $column, self::KEY_MAX_LENGTH));
             }
-
-            Helper::upsert($this->db, 'tmp_store', [
-                'id' => $id,
-                'data' => $data,
-                'tag' => $tag,
-                'date' => time(),
-                'expiryDate' => (time() + $lifetime),
-                'serialized' => (int)$serialized,
-            ], $this->getPrimaryKey('tmp_store'));
-
-            return true;
-        } catch (Exception) {
-            return false;
         }
+
+        $serialized = false;
+        if (is_object($data) || is_array($data)) {
+            $serialized = true;
+            $data = serialize($data);
+        }
+
+        Helper::upsert($this->db, 'tmp_store', [
+            'id' => $id,
+            'data' => $data,
+            'tag' => $tag,
+            'date' => time(),
+            'expiryDate' => (time() + $lifetime),
+            'serialized' => (int)$serialized,
+        ], $this->getPrimaryKey('tmp_store'));
+
+        return true;
     }
 
     public function delete(string $id): void

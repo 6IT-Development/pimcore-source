@@ -16,6 +16,7 @@
 namespace Pimcore\Model\Tool\SettingsStore;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Tool\SettingsStore;
@@ -29,20 +30,30 @@ class Dao extends Model\Dao\AbstractDao
 {
     public const string TABLE_NAME = 'settings_store';
 
+    private const int KEY_MAX_LENGTH = 190;
+
+    /**
+     * Always returns true, a failed write throws
+     *
+     * @throws InvalidArgumentException for an id or scope longer than the column
+     * @throws Exception
+     */
     public function set(string $id, float|bool|int|string $data, string $type = SettingsStore::TYPE_STRING, ?string $scope = null): bool
     {
-        try {
-            Helper::upsert($this->db, self::TABLE_NAME, [
-                'id' => $id,
-                'data' => $data,
-                'scope' => (string)$scope,
-                'type' => $type,
-            ], $this->getPrimaryKey(self::TABLE_NAME));
-
-            return true;
-        } catch (Exception) {
-            return false;
+        foreach (['id' => $id, 'scope' => (string)$scope] as $column => $value) {
+            if (mb_strlen($value) > self::KEY_MAX_LENGTH) {
+                throw new InvalidArgumentException(sprintf('The settings store %s must not be longer than %d characters', $column, self::KEY_MAX_LENGTH));
+            }
         }
+
+        Helper::upsert($this->db, self::TABLE_NAME, [
+            'id' => $id,
+            'data' => $data,
+            'scope' => (string)$scope,
+            'type' => $type,
+        ], $this->getPrimaryKey(self::TABLE_NAME));
+
+        return true;
     }
 
     public function delete(string $id, ?string $scope = null): int|string

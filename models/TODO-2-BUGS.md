@@ -4788,7 +4788,7 @@ loaded children in `hasChildren()`. `AbstractListing` documents `AbstractUser` i
 
 ## Tool (Scope 11)
 
-## [ ] B-238 – `SettingsStore::set()` and `TmpStore` writes swallow every DB error: configs, installer state and admin session data are lost silently
+## [x] B-238 – `SettingsStore::set()` and `TmpStore` writes swallow every DB error: configs, installer state and admin session data are lost silently
 
 **Files:** `models/Tool/SettingsStore/Dao.php:32-46`; `models/Tool/TmpStore/Dao.php:30-52`;
 `lib/Config/LocationAwareConfigRepository.php:186-189`; `lib/Extension/Bundle/Installer/SettingsStoreAwareInstaller.php:98`,
@@ -4808,6 +4808,11 @@ loaded children in `hasChildren()`. `AbstractListing` documents `AbstractUser` i
 
 **Fix direction:** let the exception propagate (or log it and throw a domain exception); validate id / scope / tag
 length up front; change the return type to `void` (I-123).
+
+**Done:** `SettingsStore\Dao::set()` and `TmpStore\Dao::add()` no longer catch DB errors, so `saveConfig()`, the
+installer markers and the editor session store fail loudly instead of reporting success. Both check `id` and `scope` /
+`tag` against the 190-character columns first and throw `InvalidArgumentException`. The `bool` return type stays
+(always `true`) until I-123.
 
 ## [ ] B-239 – `TmpStore`: scalar types are lost, `add()` is not atomic, `unserialize()` failures become `false`, expired ids are returned
 
