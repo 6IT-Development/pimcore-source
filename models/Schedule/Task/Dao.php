@@ -69,7 +69,8 @@ class Dao extends Model\Dao\AbstractDao
             }
         }
 
-        if (!$this->model->getId()) {
+        // a task carried over with the id of a row that is gone would update nothing
+        if (!$this->model->getId() || !$this->db->fetchOne('SELECT id FROM schedule_tasks WHERE id = ?', [$this->model->getId()])) {
             $this->create();
         }
 
@@ -81,8 +82,10 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function create(): void
     {
-        $this->db->insert('schedule_tasks', []);
-        $this->model->setId((int)$this->db->lastInsertId());
+        $this->db->insert('schedule_tasks', $this->model->getId() ? ['id' => $this->model->getId()] : []);
+        if (!$this->model->getId()) {
+            $this->model->setId((int)$this->db->lastInsertId());
+        }
     }
 
     /**

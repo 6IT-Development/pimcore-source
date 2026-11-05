@@ -80,6 +80,14 @@ class Item extends Model\AbstractModel
     protected array $sites = [];
 
     /**
+     * Scheduled tasks of the element and its children, by element type and ID. They are not part of the dump and are
+     * deleted with the element, so they are kept here to restore them.
+     *
+     * @var array<string, array<int, array<array<string, mixed>>>>
+     */
+    protected array $scheduledTasks = [];
+
+    /**
      * The elements {@see loadChildren()} put into dump state, to reset them once they are serialized.
      *
      * @var Element\ElementDumpStateInterface[]
@@ -126,6 +134,7 @@ class Item extends Model\AbstractModel
 
         $this->tags = $this->loadTags();
         $this->sites = $this->loadSites();
+        $this->scheduledTasks = $this->loadScheduledTasks();
 
         $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
 
@@ -248,6 +257,10 @@ class Item extends Model\AbstractModel
             if ($this->sites) {
                 $storage->write($this->getStorageFileSites(), json_encode($this->sites, JSON_THROW_ON_ERROR));
             }
+
+            if ($this->scheduledTasks) {
+                $storage->write($this->getStorageFileScheduledTasks(), json_encode($this->scheduledTasks, JSON_THROW_ON_ERROR));
+            }
         } catch (Throwable $e) {
             // no row without its files
             try {
@@ -303,9 +316,19 @@ class Item extends Model\AbstractModel
 
         // for all
         $element->getProperties();
-        $element->getScheduledTasks();
 
         $elementType = Element\Service::getElementType($element);
+        $tasks = array_map(fn (Model\Schedule\Task $task) => [
+            'date' => $task->getDate(),
+            'action' => $task->getAction(),
+            'version' => $task->getVersion(),
+            'active' => $task->getActive(),
+            'userId' => $task->getUserId(),
+        ], $element->getScheduledTasks());
+        if ($tasks) {
+            $this->scheduledTasks[$elementType][$element->getId()] = $tasks;
+        }
+
         $tagIds = array_map(fn (Element\Tag $tag) => $tag->getId(), Element\Tag::getTagsForElement($elementType, $element->getId()));
         if ($tagIds) {
             $this->tags[$elementType][$element->getId()] = $tagIds;
@@ -412,6 +435,50 @@ class Item extends Model\AbstractModel
     }
 
     /**
+     * @return array<string, array<int, array<array<string, mixed>>>>
+     */
+    private function loadScheduledTasks(): array
+    {
+        $storage = Storage::get('recycle_bin');
+        $file = $this->getStorageFileScheduledTasks();
+
+        // items created before the scheduled tasks were stored don't have this file
+        if (!$storage->fileExists($file)) {
+            return [];
+        }
+
+        $tasks = json_decode($storage->read($file), true);
+
+        return is_array($tasks) ? $tasks : [];
+    }
+
+    private function restoreScheduledTasks(Element\ElementInterface $element): void
+    {
+        $elementType = Element\Service::getElementType($element);
+        $taskData = $this->scheduledTasks[$elementType][$element->getId()] ?? [];
+        if (!$taskData || !method_exists($element, 'setScheduledTasks')) {
+            return;
+        }
+
+        // the tasks are created again with new ids, the element was saved without them
+        $tasks = $element->getScheduledTasks();
+        foreach ($taskData as $data) {
+            $task = new Model\Schedule\Task($data);
+            $task->setCid($element->getId());
+            $task->setCtype($elementType);
+
+            // the element is restored anyway, a task that cannot be saved (e.g. its version is gone) is only logged
+            try {
+                $task->save();
+                $tasks[] = $task;
+            } catch (Exception $e) {
+                Logger::error(sprintf('Unable to restore a scheduled task of %s %s: %s', $elementType, $element->getId(), $e));
+            }
+        }
+        $element->setScheduledTasks($tasks);
+    }
+
+    /**
      * @throws Exception
      */
     protected function doRecursiveRestore(Element\ElementInterface $element): void
@@ -440,6 +507,7 @@ class Item extends Model\AbstractModel
         $element->save(['isRecycleBinRestore' => true]);
         $this->restoreTags($element);
         $this->restoreSite($element);
+        $this->restoreScheduledTasks($element);
 
         if (method_exists($element, 'getChildren')) {
             if ($element instanceof DataObject\AbstractObject) {
@@ -553,6 +621,11 @@ class Item extends Model\AbstractModel
     private function getStorageFileSites(): string
     {
         return $this->getStorageDirectory() . '/sites.json';
+    }
+
+    private function getStorageFileScheduledTasks(): string
+    {
+        return $this->getStorageDirectory() . '/scheduled-tasks.json';
     }
 
     protected function getStorageFileBinary(Element\ElementInterface $element): string

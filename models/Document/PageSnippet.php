@@ -246,9 +246,6 @@ abstract class PageSnippet extends Model\Document
             new VersionDeleteMessage(Service::getElementType($this), $this->getId())
         ));
 
-        // remove all tasks
-        $this->getDao()->deleteAllTasks();
-
         parent::doDelete();
     }
 

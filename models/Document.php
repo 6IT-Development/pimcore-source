@@ -642,6 +642,9 @@ class Document extends Element\AbstractElement
         // remove all properties
         $this->getDao()->deleteAllProperties();
 
+        // remove all tasks, links and hardlinks have them too
+        $this->getDao()->deleteAllTasks();
+
         // remove dependencies
         $d = $this->getDependencies();
         $d->cleanAllForElement($this);

@@ -4062,7 +4062,7 @@ task user), unless the element no longer exists. The three per-type branches are
 rejects an active task with an unknown action, `publish` / `unpublish` on an asset, or `publish-version` without a
 version; inactive tasks (history) are saved as they are. Open: the `TaskAction` enum (I-93).
 
-## [ ] B-212 – Scheduled tasks are lost on recycle-bin restore and orphaned when links / hardlinks are deleted
+## [x] B-212 – Scheduled tasks are lost on recycle-bin restore and orphaned when links / hardlinks are deleted
 
 **Files:** `models/Document.php:97-107`, `:621-646`; `models/DataObject/AbstractObject.php:131-145`;
 `models/Asset.php:177-190`, `:1015`; `models/Document/PageSnippet.php:220-231`; `models/DataObject/Concrete.php:216-223`;
@@ -4082,6 +4082,13 @@ version; inactive tasks (history) are saved as they are. Open: the `TaskAction` 
 
 **Fix direction:** store tasks explicitly in the dump and re-create them with `id = null` on restore; delete tasks in
 `Document::doDelete()` for every type; `save()` should insert when the update affects no row (or throw).
+
+**Done:** `Recyclebin\Item::loadChildren()` keeps the tasks of the element and its children (date, action, version,
+active, user) and stores them as `scheduled-tasks.json` next to `tags.json` / `sites.json`. On restore they are
+created again with new ids after the element is saved; a task that cannot be saved is logged and skipped. They stay
+out of the dump itself, so restoring a version still does not bring back old tasks. `Document::doDelete()` deletes the
+tasks of every document type (moved there from `PageSnippet`), so links and hardlinks no longer leave active rows.
+`Task\Dao::save()` inserts the row with its id when the id is set but the row is gone.
 
 ## [ ] B-213 – `Task\Listing` returns `null` entries and cached tasks; `getTotalCount()` hides errors
 
