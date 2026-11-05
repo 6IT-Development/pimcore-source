@@ -310,7 +310,7 @@ class Dao extends Model\Element\Dao
         }
 
         if ($objectTypes) {
-            $sql .= " AND `type` IN ('" . implode("','", $objectTypes) . "')";
+            $sql .= ' AND `type` IN (' . $this->quoteObjectTypes($objectTypes) . ')';
         }
 
         $sql .= ' LIMIT 1';
@@ -351,7 +351,7 @@ class Dao extends Model\Element\Dao
         }
 
         if ($objectTypes) {
-            $sql .= " AND `type` IN ('" . implode("','", $objectTypes) . "')";
+            $sql .= ' AND `type` IN (' . $this->quoteObjectTypes($objectTypes) . ')';
         }
 
         $sql .= ' LIMIT 1';
@@ -380,7 +380,7 @@ class Dao extends Model\Element\Dao
         $query = 'SELECT COUNT(*) AS count FROM objects o WHERE parentId = ?';
 
         if ($objectTypes) {
-            $query .= sprintf(' AND `type` IN (\'%s\')', implode("','", $objectTypes));
+            $query .= ' AND `type` IN (' . $this->quoteObjectTypes($objectTypes) . ')';
         }
 
         if ($user && !$user->isAdmin()) {
@@ -637,5 +637,13 @@ class Dao extends Model\Element\Dao
         return $data
             && $data['modificationDate'] == $this->model->__getDataVersionTimestamp()
             && $data['versionCount'] == $this->model->getVersionCount();
+    }
+
+    /**
+     * The object types are public API input, they are quoted as values
+     */
+    private function quoteObjectTypes(array $objectTypes): string
+    {
+        return implode(',', array_map(fn ($objectType) => $this->db->quote((string)$objectType), $objectTypes));
     }
 }

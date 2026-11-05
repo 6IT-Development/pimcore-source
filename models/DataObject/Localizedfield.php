@@ -725,13 +725,19 @@ final class Localizedfield extends Model\AbstractModel implements
             return;
         }
 
-        if (!is_array($this->dirtyLanguages) && $dirty) {
-            $this->dirtyLanguages = [];
+        // null: no language is dirty, []: all languages are dirty, otherwise the dirty languages as keys
+        if ($dirty) {
+            if ($this->dirtyLanguages !== []) {
+                $this->dirtyLanguages[$language] = true;
+            }
+
+            return;
         }
 
-        if ($dirty) {
-            $this->dirtyLanguages[$language] = true;
+        if ($this->dirtyLanguages === []) {
+            $this->dirtyLanguages = array_fill_keys(Tool::getValidLanguages(), true);
         }
+        unset($this->dirtyLanguages[$language]);
 
         if (!$this->dirtyLanguages) {
             $this->dirtyLanguages = null;

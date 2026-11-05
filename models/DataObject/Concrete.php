@@ -577,8 +577,7 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
                 $listConfig['offset'] = $offset;
             } else {
                 $listConfig = array_merge($listConfig, $limit);
-                $limitCondition = $limit['condition'] ?? '';
-                $listConfig['condition'] = $defaultCondition . $limitCondition;
+                $listConfig['condition'] = static::addCallStaticCondition($defaultCondition, $limit['condition'] ?? '');
             }
 
             $list = static::makeList($listConfig, $objectTypes);

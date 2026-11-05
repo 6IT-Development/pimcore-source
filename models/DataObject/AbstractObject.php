@@ -228,17 +228,26 @@ abstract class AbstractObject extends Model\Element\AbstractElement
 
                     /** @var AbstractObject $object */
                     $object = self::getModelFactory()->build($className);
+                    // registered before loading for references back to the object while it loads
                     RuntimeCache::set($cacheKey, $object);
-                    $object->getDao()->getById($id);
-                    if ($object->getModificationDate() !== null) {
-                        $object->__setDataVersionTimestamp($object->getModificationDate());
-                    }
 
-                    Service::recursiveResetDirtyMap($object);
+                    try {
+                        $object->getDao()->getById($id);
+                        if ($object->getModificationDate() !== null) {
+                            $object->__setDataVersionTimestamp($object->getModificationDate());
+                        }
 
-                    // force loading of relation data
-                    if ($object instanceof Concrete) {
-                        $object->__getRawRelationData();
+                        Service::recursiveResetDirtyMap($object);
+
+                        // force loading of relation data
+                        if ($object instanceof Concrete) {
+                            $object->__getRawRelationData();
+                        }
+                    } catch (Throwable $e) {
+                        // a half loaded object must not be returned by later calls
+                        RuntimeCache::set($cacheKey, null);
+
+                        throw $e;
                     }
 
                     Cache::save($object, $cacheKey);
@@ -1083,8 +1092,7 @@ abstract class AbstractObject extends Model\Element\AbstractElement
                 $listConfig['offset'] = $offset;
             } else {
                 $listConfig = array_merge($listConfig, $limit);
-                $limitCondition = $limit['condition'] ?? '';
-                $listConfig['condition'] = $defaultCondition . $limitCondition;
+                $listConfig['condition'] = static::addCallStaticCondition($defaultCondition, $limit['condition'] ?? '');
             }
 
             $list = static::makeList($listConfig, $objectTypes);
@@ -1102,6 +1110,23 @@ abstract class AbstractObject extends Model\Element\AbstractElement
         Logger::error('Class: DataObject\\AbstractObject => call to undefined static method ' . $method);
 
         throw new Exception('Call to undefined static method ' . $method . ' in class DataObject\\AbstractObject');
+    }
+
+    /**
+     * Combines the condition of a `getBy<Field>()` call with the additional condition passed in its options. A
+     * leading `AND` of the additional condition (the form that used to be required) is accepted.
+     *
+     * @internal
+     */
+    protected static function addCallStaticCondition(string $defaultCondition, string $condition): string
+    {
+        $condition = trim(preg_replace('/^\s*AND\s+/i', '', $condition));
+        if ($condition === '') {
+            return $defaultCondition;
+        }
+
+        // relation fields filter the listing themselves and have no default condition
+        return trim($defaultCondition) === '' ? '(' . $condition . ')' : $defaultCondition . ' AND (' . $condition . ')';
     }
 
     /**

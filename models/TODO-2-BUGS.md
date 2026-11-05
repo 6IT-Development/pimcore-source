@@ -3450,7 +3450,7 @@ stale trees to later saves (it stayed on when `markLanguageAsDirtyByFallback()` 
 static switch stays for BC. `doDelete()` uses the helper's id column and row filter columns instead of the hard-coded
 `id` / `fieldname`; the "NOT FINISHED" note is removed.
 
-## [ ] B-187 – DataObject small defects
+## [x] B-187 – DataObject small defects
 
 **Files:** `models/DataObject/AbstractObject.php:229-231`, `:1034-1076`; `models/DataObject/AbstractObject/Dao.php:324-326`,
 `:365-367`, `:394-396`; `models/DataObject/Localizedfield.php:709-726`
@@ -3464,6 +3464,14 @@ static switch stays for BC. `doDelete()` uses the helper's id column and row fil
   resets the map to `null`, i.e. "nothing dirty".
 
 **Fix direction:** cache after a successful load; bound parameters; fix the dirty map logic.
+
+**Done:** `getById()` still registers the object in the RuntimeCache before loading (for references back to it while it
+loads) but resets the entry when the load fails, so later calls load again instead of getting the half-initialised
+object. The additional `condition` of `getBy<Field>()` (AbstractObject and Concrete) is appended as `AND (…)`; a leading
+`AND` is accepted for BC, and relation fields without a default condition get the parenthesised condition alone. The
+`IN (…)` lists of `hasChildren()` / `hasSiblings()` / `getChildAmount()` quote each type. `markLanguageAsDirty($lang,
+false)` removes the language (from the full list of valid languages when all were dirty) and `markLanguageAsDirty($lang)`
+no longer narrows "all languages dirty" to the one language.
 
 ---
 
