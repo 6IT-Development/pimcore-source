@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\Version;
 
+use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Db\Helper;
 use Pimcore\Logger;
@@ -44,7 +45,9 @@ class Dao extends Model\Dao\AbstractDao
         $data['public'] = (bool)$data['public'];
         $data['serialized'] = (bool)$data['serialized'];
         $data['autoSave'] = (bool)$data['autoSave'];
-        $this->assignVariablesToModel($data);
+        $data['note'] = (string)$data['note'];
+        // not assignVariablesToModel(): it skips NULL and 0, the system user (userId 0) would be lost
+        $this->model->setValues($data);
     }
 
     /**
@@ -55,6 +58,11 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function save(): int
     {
+        // the storage files are named by the element
+        if (!$this->model->getCid() || !$this->model->getCtype()) {
+            throw new InvalidArgumentException('A version needs the id and the type of its element');
+        }
+
         $version = $this->model->getObjectVars();
         $data = [];
 

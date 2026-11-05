@@ -4201,7 +4201,7 @@ elements and may stay cached. The only dump that could reach the runtime cache w
 `renewInheritedProperties()` (when the original was not cached, e.g. it is deleted); it now removes that entry again
 when it registered an element in dump state.
 
-## [ ] B-217 – Uninitialised typed properties: a version without `setDate()`, with the system user, a deleted user or `NULL` columns throws `Error`
+## [x] B-217 – Uninitialised typed properties: a version without `setDate()`, with the system user, a deleted user or `NULL` columns throws `Error`
 
 **Files:** `models/Version.php:48-60`, `:139-141`, `:323-346`, `:391-399`, `:435-438`; `models/Version/Dao.php:36-48`;
 `lib/Model/AbstractModel.php:175-190`; `bundles/InstallBundle/dump/install.sql:578-583`
@@ -4221,6 +4221,13 @@ when it registered an element in dump state.
 **Fix direction:** `?int` / `?string` with `null` defaults (or required constructor arguments for new versions);
 `setUserId()` stores the id unconditionally and `getUser()` loads lazily; `NOT NULL` columns where the model requires
 values (I-108).
+
+**Done:** `cid`, `ctype`, `userId` and `date` are nullable with `null` defaults, getters and setters included, so
+`save()` defaults the date and unset values read as `null` instead of throwing. `setUserId()` stores the id
+unconditionally (also `0` for the system user and ids of deleted users); `getUser()` loads the user on first use, so
+hydrating a listing no longer does one user lookup per version. `Dao::getById()` hydrates with `setValues()` without
+skipping empty values, which kept `userId = 0` out before. `Dao::save()` rejects a version without `cid` / `ctype`,
+since the storage files are named by them. Open: `NOT NULL` columns (I-108).
 
 ## [ ] B-218 – `getData()` / `loadData()`: failures reload on every call, errors return `null`, and a missing asset binary is silently replaced by the current file
 

@@ -48,17 +48,20 @@ final class Version extends AbstractModel
 
     protected ?int $id = null;
 
-    protected int $cid;
+    protected ?int $cid = null;
 
-    protected string $ctype;
+    protected ?string $ctype = null;
 
-    protected int $userId;
+    /**
+     * 0 is the system user
+     */
+    protected ?int $userId = null;
 
     protected ?User $user = null;
 
     protected string $note = '';
 
-    protected int $date;
+    protected ?int $date = null;
 
     protected mixed $data = null;
 
@@ -356,12 +359,12 @@ final class Version extends AbstractModel
         return $this->storageAdapter->getBinaryFileStream($this);
     }
 
-    public function getCid(): int
+    public function getCid(): ?int
     {
         return $this->cid;
     }
 
-    public function getDate(): int
+    public function getDate(): ?int
     {
         return $this->date;
     }
@@ -376,7 +379,7 @@ final class Version extends AbstractModel
         return $this->note;
     }
 
-    public function getUserId(): int
+    public function getUserId(): ?int
     {
         return $this->userId;
     }
@@ -384,7 +387,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setCid(int $cid): Version
+    public function setCid(?int $cid): Version
     {
         $this->cid = $cid;
 
@@ -394,7 +397,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setDate(int $date): Version
+    public function setDate(?int $date): Version
     {
         $this->date = $date;
 
@@ -424,12 +427,13 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setUserId(int $userId): Version
+    public function setUserId(?int $userId): Version
     {
-        if ($user = User::getById($userId)) {
-            $this->userId = $userId;
-            $this->setUser($user);
+        // kept for the system user and deleted users too, the user is loaded by getUser()
+        if ($userId !== $this->userId) {
+            $this->user = null;
         }
+        $this->userId = $userId;
 
         return $this;
     }
@@ -468,7 +472,7 @@ final class Version extends AbstractModel
         return $this;
     }
 
-    public function getCtype(): string
+    public function getCtype(): ?string
     {
         return $this->ctype;
     }
@@ -476,7 +480,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setCtype(string $ctype): Version
+    public function setCtype(?string $ctype): Version
     {
         $this->ctype = $ctype;
 
@@ -485,6 +489,10 @@ final class Version extends AbstractModel
 
     public function getUser(): ?User
     {
+        if (!$this->user && $this->userId) {
+            $this->user = User::getById($this->userId);
+        }
+
         return $this->user;
     }
 
