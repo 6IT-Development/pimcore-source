@@ -19,6 +19,7 @@ use Carbon\Carbon;
 use Closure;
 use Exception;
 use JsonSerializable;
+use Pimcore\DataObject\ClassBuilder\DocCommentHelper;
 use Pimcore\Db;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
@@ -499,7 +500,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '()' . $typeDeclaration . "\n";
@@ -548,7 +549,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Set ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Set ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @param ' . $this->getPhpdocInputType() . ' $' . $key . "\n";
         $code .= '* @return $this' . "\n";
         $code .= '*/' . "\n";
@@ -629,7 +630,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '()' . $typeDeclaration . "\n";
@@ -675,7 +676,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Set ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Set ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @param ' . $this->getPhpdocInputType() . ' $' . $key . "\n";
         $code .= '* @return $this' . "\n";
         $code .= '*/' . "\n";
@@ -759,7 +760,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '()' . $typeDeclaration . "\n";
@@ -798,7 +799,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Set ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Set ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @param ' . $this->getPhpdocInputType() . ' $' . $key . "\n";
         $code .= '* @return $this' . "\n";
         $code .= '*/' . "\n";
@@ -871,7 +872,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '(?string $language = null)' . $typeDeclaration . "\n";
@@ -916,7 +917,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         }
 
         $code = '/**' . "\n";
-        $code .= '* Set ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Set ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @param ' . $this->getPhpdocInputType() . ' $' . $key . "\n";
         $code .= '* @return $this' . "\n";
         $code .= '*/' . "\n";
@@ -982,7 +983,7 @@ abstract class Data implements DataObject\ClassDefinition\Data\TypeDeclarationSu
         $key = $this->getName();
 
         $code = '/**' . "\n";
-        $code .= '* Filter by ' . str_replace(['/**', '*/', '//'], '', $key) . ' (' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . ")\n";
+        $code .= '* Filter by ' . DocCommentHelper::escapeText((string) $key, '* ') . ' (' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . ")\n";
 
         $dataParamDoc = 'mixed $data';
         $reflectionMethod = new ReflectionMethod($this, 'addListingFilter');

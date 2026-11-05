@@ -20,6 +20,7 @@ namespace Pimcore\Model\DataObject\ClassDefinition;
 use Exception;
 use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\DataObject\ClassBuilder\DocCommentHelper;
 use Pimcore\Event\DataObjectCustomLayoutEvents;
 use Pimcore\Event\Model\DataObject\CustomLayoutEvent;
 use Pimcore\Event\Traits\RecursionBlockingEventDispatchHelperTrait;
@@ -194,10 +195,7 @@ class CustomLayout extends Model\AbstractModel
         $cd = '/**' . "\n";
 
         if ($this->getDescription()) {
-            $description = str_replace(['/**', '*/', '//'], '', $this->getDescription());
-            $description = str_replace("\n", "\n* ", $description);
-
-            $cd .= '* ' . $description . "\n";
+            $cd .= '* ' . DocCommentHelper::escapeText($this->getDescription(), '* ') . "\n";
         }
         $cd .= '*/';
 

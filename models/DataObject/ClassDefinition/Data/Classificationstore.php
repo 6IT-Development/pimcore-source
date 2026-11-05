@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
 use Exception;
+use Pimcore\DataObject\ClassBuilder\DocCommentHelper;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -1108,7 +1109,7 @@ class Classificationstore extends Data implements CustomResourcePersistingInterf
         }
 
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '()' . $typeDeclaration . "\n";

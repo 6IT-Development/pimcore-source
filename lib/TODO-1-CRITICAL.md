@@ -349,9 +349,9 @@ generate the doc block with a code generator that escapes comments (I-38). Add a
 `ClassDefinition::getInfoDocBlock()` for the description and the (previously not sanitized at all) title in the header
 of `var/classes/definition_<Class>.php`. Unit test `tests/Unit/DataObject/ClassBuilder/DocCommentHelperTest.php`
 tokenizes a generated header with `**//` + payload, `*/*/`, `/***/` and multi-line terminators: one doc comment,
-nothing injected. Not covered here (same stripping pattern, no TODO item yet): field titles in the getter / setter /
-filter doc blocks of `models/DataObject/ClassDefinition/Data.php` and its subclasses, and the custom-layout
-description in `CustomLayout::getInfoDocBlock()`.
+nothing injected. The same stripping pattern in field titles (getter / setter / filter doc blocks of
+`models/DataObject/ClassDefinition/Data.php` and subclasses) and the custom-layout description is
+[models C-61](../models/TODO-1-CRITICAL.md) (fixed with the same helper).
 
 ---
 

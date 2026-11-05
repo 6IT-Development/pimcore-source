@@ -2506,3 +2506,46 @@ structure in I-199; tests in I-204.
 >   `Listing/Dao.php` is not (I-73). Nothing in the two files can lose data or open a security hole on its own:
 >   **no critical item**. Nothing was executed.
 > - Critical items: none. Bugs: B-351–B-352. Improvements: I-205–I-207.
+
+---
+
+# Follow-up – generated doc comments (found while fixing lib C-06)
+
+> Notes
+> - Found while fixing [lib C-06](../lib/TODO-1-CRITICAL.md) (class description in the generated class doc block). The
+>   same stripping sanitizer is used for field titles and the custom-layout description; lib C-06 covers only the class
+>   description and title, so these sites are recorded here.
+> - Checked with PHP 8.4 `token_get_all(…, TOKEN_PARSE)` on a copy of the getter doc block: a title `**// } …` leaves
+>   the comment. Nothing was executed against a real installation.
+> - Critical items: C-61.
+
+## [x] C-61 – Field titles and custom-layout descriptions break out of generated doc blocks: PHP code injection into `var/classes/**`
+
+**Files:** `models/DataObject/ClassDefinition/Data.php:502`, `:551`, `:632`, `:678`, `:762`, `:801`, `:874`, `:919`, `:985`;
+`Data/Table.php:519`, `:565`, `:608`, `:644`; `Data/CalculatedValue.php:208`, `:234`, `:286`, `:310`;
+`Data/Classificationstore.php:1111`; `ClassDefinition/CustomLayout.php:192-205` (`getInfoDocBlock()`)
+
+```php
+$code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+```
+
+- `str_replace()` with arrays runs one pass per search string, and the `*/` pass can create the `//`-free terminator
+  from the remaining characters: `"**//"` → `"*/"`. The getter / setter / filter doc blocks are written into the
+  generated `var/classes/DataObject/<Class>.php`, `<Class>/Listing.php`, field-collection and object-brick classes, so a
+  field title such as `**// } system($_GET['c']); /*` closes the doc block and puts code into the class file. It runs
+  whenever the class is autoloaded (every load of an object of that class), or every class load fatals (DoS) when the
+  payload does not compile.
+- Field titles are free text (no validation; C-32 validates field names, not titles). Who can do it: every user with
+  the `classes` / `objectbricks` / `fieldcollections` permission and every definition import.
+- `CustomLayout::getInfoDocBlock()` writes the custom-layout description with the same sanitizer into the header of
+  `var/classes/customlayouts/custom_definition_<id>.php`, which is included on load.
+
+**Fix direction:** use `DocCommentHelper::escapeText()` from lib C-06 (escapes every `*/` in one pass and keeps line
+breaks inside the comment) at every site, for names too (harmless for valid names). Regression test with `**//`,
+`*/*/`, `/***/` in a getter doc block.
+
+**Done:** all 19 sites use `DocCommentHelper::escapeText(…, '* ')` instead of the stripping `str_replace()`, so neither
+title, field name, filter key nor custom-layout description can close the comment; `/**` and `//` are no longer removed
+(they are harmless inside a doc comment). `DocCommentHelperTest::testFieldTitleStaysInsideGetterDocComment` tokenizes a
+generated getter doc block with the breakout payloads. Existing generated files are rewritten by the next
+`pimcore:deployment:classes-rebuild` / class save.

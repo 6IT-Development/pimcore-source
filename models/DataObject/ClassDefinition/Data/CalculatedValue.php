@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\DataObject\ClassDefinition\Data;
 
+use Pimcore\DataObject\ClassBuilder\DocCommentHelper;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
@@ -205,7 +206,7 @@ class CalculatedValue extends Data implements QueryResourcePersistenceAwareInter
         $key = $this->getName();
 
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '(): ' . $this->getReturnTypeDeclaration() . "\n";
@@ -231,7 +232,7 @@ class CalculatedValue extends Data implements QueryResourcePersistenceAwareInter
     {
         $key = $this->getName();
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '(?string $language = null): ' . $this->getReturnTypeDeclaration() . "\n";
@@ -283,7 +284,7 @@ class CalculatedValue extends Data implements QueryResourcePersistenceAwareInter
     {
         $key = $this->getName();
         $code = '/**' . "\n";
-        $code .= '* Set ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Set ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '(?string $language = null): ' . $this->getReturnTypeDeclaration() . "\n";
@@ -307,7 +308,7 @@ class CalculatedValue extends Data implements QueryResourcePersistenceAwareInter
         $key = $this->getName();
 
         $code = '/**' . "\n";
-        $code .= '* Get ' . str_replace(['/**', '*/', '//'], '', $this->getName()) . ' - ' . str_replace(['/**', '*/', '//'], '', $this->getTitle()) . "\n";
+        $code .= '* Get ' . DocCommentHelper::escapeText((string) $this->getName(), '* ') . ' - ' . DocCommentHelper::escapeText((string) $this->getTitle(), '* ') . "\n";
         $code .= '* @return ' . $this->getPhpdocReturnType() . "\n";
         $code .= '*/' . "\n";
         $code .= 'public function get' . ucfirst($key) . '(): ' . $this->getReturnTypeDeclaration() . "\n";

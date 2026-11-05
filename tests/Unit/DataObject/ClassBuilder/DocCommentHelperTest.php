@@ -54,9 +54,30 @@ class DocCommentHelperTest extends TestCase
         ];
     }
 
+    /**
+     * models C-61: field titles in the generated getter / setter / filter doc blocks of a class.
+     *
+     * @dataProvider provideCommentBreakouts
+     */
+    public function testFieldTitleStaysInsideGetterDocComment(string $title): void
+    {
+        $code = "<?php\nclass X {\n/**\n* Get name - " . DocCommentHelper::escapeText($title, '* ') . "\n* @return string\n*/\npublic function getName() {}\n}\n";
+
+        $tokens = array_values(array_filter(
+            token_get_all($code),
+            static fn ($token) => !is_array($token) || !in_array($token[0], [T_OPEN_TAG, T_WHITESPACE], true)
+        ));
+
+        // class, X, {, doc comment, public, function, getName, (, ), {, }, } - nothing injected
+        $this->assertCount(12, $tokens);
+        $this->assertSame(T_DOC_COMMENT, $tokens[3][0]);
+        $this->assertSame(T_PUBLIC, $tokens[4][0]);
+    }
+
     public function testLinesAreContinued(): void
     {
         $this->assertSame("a\n * b\n * c", DocCommentHelper::escapeText("a\r\nb\nc"));
         $this->assertSame('a *\/ b', DocCommentHelper::escapeText('a */ b'));
+        $this->assertSame("a\n* b", DocCommentHelper::escapeText("a\nb", '* '));
     }
 }
