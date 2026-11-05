@@ -390,11 +390,14 @@ the whole string is a single placeholder, otherwise `preg_replace_callback()` al
 is replaced with the string form of its variable, a non-scalar variable inside a string throws
 `InvalidStepConfigurationException`, a missing one `NotFoundException` as before. Described in `04_Step_Configuration.md`.
 
-### [ ] B-30 – `abortAction()` uses the non-existent translation domain `'default'`
+### [x] B-30 – `abortAction()` uses the non-existent translation domain `'default'`
 **File:** `src/Messenger/Handler/AbstractAutomationActionHandler.php:104-114`
 Default `$translationDomain = 'default'` → never translated (Pimcore uses `admin` / `messages`). Return type `void`
 although it always throws; `$exceptionClassName` is not validated (non-`Throwable` class → `Error`). **Fix:** default to
 the run's execution-context domain (or `'admin'`), `: never`, `is_a($exceptionClassName, Throwable::class, true)`.
+
+**Done:** default domain `admin` (the method gets no message, so the run's context domain is not known – handlers pass
+it explicitly), return type `never`, a class that is not `Throwable` throws `InvalidArgumentException`.
 
 ### [ ] B-31 – `StepConditionMiddleware::logToJobRun()` null-safe chain is broken
 **File:** `src/Messenger/Middleware/StepConditionMiddleware.php:65-82`

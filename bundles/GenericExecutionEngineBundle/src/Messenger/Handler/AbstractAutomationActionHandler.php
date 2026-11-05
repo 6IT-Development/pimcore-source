@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Handler;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Agent\JobExecutionAgentInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Configuration\ValidateStepConfigurationTrait;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
@@ -96,19 +97,26 @@ abstract class AbstractAutomationActionHandler
     }
 
     /**
-     * @template exceptionClassName of Exception
+     * Throws an exception with the translated message; the default domain is `admin`, where the GEE translations are
+     *
+     * @template exceptionClassName of Throwable
      *
      * @param class-string<exceptionClassName> $exceptionClassName
      *
      * @throws exceptionClassName
+     * @throws InvalidArgumentException when $exceptionClassName is no throwable class
      */
     public function abortAction(
         string $translationKey,
         array  $translationParams = [],
-        string $translationDomain = 'default',
+        string $translationDomain = 'admin',
         string $exceptionClassName = Exception::class
-    ): void
+    ): never
     {
+        if (!is_a($exceptionClassName, Throwable::class, true)) {
+            throw new InvalidArgumentException("$exceptionClassName is no throwable class.");
+        }
+
         $errorMessage = $this->translator->trans($translationKey, $translationParams, $translationDomain);
 
         throw new $exceptionClassName($errorMessage);
