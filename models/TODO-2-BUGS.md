@@ -4384,7 +4384,7 @@ when a re-saved version changes storage). FS `delete()` removes empty directorie
 The double probe stream was already fixed with C-39. The documentation describes switching adapters and the hardlink
 trade-off. Open: a registry of adapters by unique name and an orphan cleanup command (I-106).
 
-## [ ] B-223 – `VersionsCleanupTask`: one failing delete stalls the cleanup for good; unbounded `NOT IN` lists and `days` result; auto-save cleanup crashes on `null`
+## [x] B-223 – `VersionsCleanupTask`: one failing delete stalls the cleanup for good; unbounded `NOT IN` lists and `days` result; auto-save cleanup crashes on `null`
 
 **Files:** `lib/Maintenance/Tasks/VersionsCleanupTask.php:46-62` (`:59-60`), `:98-173` (`:99`, `:105-106`, `:157`, `:165`);
 `models/Version/Dao.php:118-169` (`:120-123`, `:132-136`, `:139-158`)
@@ -4406,6 +4406,15 @@ trade-off. Open: a registry of adapters by unique name and an orphan cleanup com
 **Fix direction:** catch `\Throwable` per version, log it and skip the version; null-check; iterate with an id cursor
 (`id > :lastId ORDER BY id LIMIT n`) instead of a growing `NOT IN`; bound the `days` query; check public / scheduler
 state in SQL instead of loading every version (I-107).
+
+**Done:** each version is checked and deleted in its own `try` / `catch (\Throwable)`; a failure is logged and the
+version skipped. Versions are read in batches of 1000 after the last id (`days`) or the last element id (`steps`), so
+kept or failing versions are not returned again and the growing `NOT IN` list is gone; auto-save versions are excluded
+with `autoSave = 0` in SQL. `maintenanceGetOutdatedVersions()` is replaced by three cursor queries in the DAO. The
+auto-save cleanup skips versions that no longer exist and catches per version. The per-element / per-version log lines
+are replaced by one `info` summary per element type (deleted / kept / failed). The `steps + 1` semantics are kept
+unchanged (the setting label is defined in the admin bundle, not here). Open: checking the scheduler / element state in
+SQL (I-107).
 
 ## [ ] B-224 – `Version\Listing` returns `null` entries and hides SQL errors; deleting an element leaves its auto-save versions
 

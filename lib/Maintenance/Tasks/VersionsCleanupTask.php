@@ -27,12 +27,15 @@ use Pimcore\Model\Element;
 use Pimcore\Model\Version;
 use Pimcore\SystemSettingsConfig;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 /**
  * @internal
  */
 readonly class VersionsCleanupTask implements TaskInterface
 {
+    private const int BATCH_SIZE = 1000;
+
     public function __construct(private LoggerInterface $logger, private SystemSettingsConfig $config)
     {
     }
@@ -55,9 +58,12 @@ readonly class VersionsCleanupTask implements TaskInterface
 
         $this->logger->debug('Auto-save versions to delete: ' . count($ids));
         foreach ($ids as $id) {
-            $this->logger->debug('Deleting auto-save version: ' . $id);
-            $version = Version::getById($id);
-            $version->delete();
+            try {
+                // deleted in between, e.g. together with its element
+                Version::getById((int)$id)?->delete();
+            } catch (Throwable $e) {
+                $this->logger->error('Unable to delete auto-save version ' . $id . ': ' . $e);
+            }
         }
     }
 
@@ -70,10 +76,10 @@ readonly class VersionsCleanupTask implements TaskInterface
             'object' => $systemSettingsConfig['objects']['versions'] ?? null,
         ];
 
-        $elementTypes = [];
+        // Not very pretty and should be solved using a repository....
+        $dao = (new Version())->getDao();
 
         foreach ($conf as $elementType => $tConf) {
-            $versioningType = 'steps';
             //skip cleanup if element is null
             if (is_null($tConf)) {
                 continue;
@@ -82,94 +88,82 @@ readonly class VersionsCleanupTask implements TaskInterface
             if (is_null($tConf['steps']) && is_null($tConf['days'])) {
                 continue;
             }
-            $value = $tConf['steps'] ?? 10;
 
+            $results = ['deleted' => 0, 'kept' => 0, 'failed' => 0];
+
+            // the batches continue after the last id, so versions that are kept or cannot be deleted are not
+            // returned again
             if (isset($tConf['days'])) {
-                $versioningType = 'days';
-                $value = (int)$tConf['days'];
-            }
-
-            $elementTypes[] = [
-                'elementType' => $elementType,
-                $versioningType => $value,
-            ];
-        }
-
-        $list = new Version\Listing();
-        $ignoredIds = $list->setLoadAutoSave(true)->setCondition(' autoSave = 1 ')->loadIdList();
-
-        // Not very pretty and should be solved using a repository....
-        $dao = new Version();
-        $dao = $dao->getDao();
-
-        while (true) {
-            $versions = $dao->maintenanceGetOutdatedVersions($elementTypes, $ignoredIds);
-
-            if (count($versions) === 0) {
-                break;
-            }
-
-            $counter = 0;
-
-            $this->logger->debug('versions to check: ' . count($versions));
-
-            $totalCount = count($versions);
-            foreach ($versions as $index => $id) {
-                if (!$version = Version::getById($id)) {
-                    $ignoredIds[] = $id;
-                    $this->logger->debug('Version with ' . $id . " not found\n");
-
-                    continue;
-                }
-
-                $counter++;
-
-                // do not delete public versions
-                if ($version->getPublic()) {
-                    $ignoredIds[] = $version->getId();
-
-                    continue;
-                }
-
-                // do not delete versions referenced in the scheduler
-                if ($dao->isVersionUsedInScheduler($version)) {
-                    $ignoredIds[] = $version->getId();
-
-                    continue;
-                }
-
-                $element = null;
-
-                if ($version->getCtype() === 'document') {
-                    $element = Document::getById($version->getCid());
-                } elseif ($version->getCtype() === 'asset') {
-                    $element = Asset::getById($version->getCid());
-                } elseif ($version->getCtype() === 'object') {
-                    $element = DataObject::getById($version->getCid());
-                }
-
-                if ($element instanceof Element\ElementInterface) {
-                    $this->logger->debug('currently checking Element-ID: ' . $element->getId() . ' Element-Type: ' . Element\Service::getElementType($element) . ' in cycle: ' . $counter . '/' . $totalCount);
-
-                    if ($element->getModificationDate() >= $version->getDate()) {
-                        // delete version if it is outdated
-                        $this->logger->debug('delete version: ' . $version->getId() . ' because it is outdated');
-                        $version->delete();
-                    } else {
-                        $ignoredIds[] = $version->getId();
-                        $this->logger->debug('do not delete version (' . $version->getId() . ") because version's date is newer than the actual modification date of the element. Element-ID: " . $element->getId() . ' Element-Type: ' . Element\Service::getElementType($element));
+                $deadline = time() - ((int)$tConf['days'] * 86400);
+                $lastId = 0;
+                while ($ids = $dao->maintenanceGetVersionIdsOlderThan($elementType, $deadline, $lastId, self::BATCH_SIZE)) {
+                    foreach ($ids as $id) {
+                        $results[$this->cleanupVersion($id, $dao)]++;
                     }
-                } else {
-                    // delete version if the corresponding element doesn't exist anymore
-                    $this->logger->debug('delete version (' . $version->getId() . ") because the corresponding element doesn't exist anymore");
-                    $version->delete();
+                    $lastId = end($ids);
+                    $this->collectGarbage();
                 }
-
-                // call the garbage collector if memory consumption is > 100MB
-                if (memory_get_usage() > 100000000) {
-                    Pimcore::collectGarbage();
+            } else {
+                // keeps steps + 1 versions per element, as it always did
+                $keep = (int)($tConf['steps'] ?? 10) + 1;
+                $lastCid = 0;
+                while ($cids = $dao->maintenanceGetElementIdsWithMoreVersionsThan($elementType, $keep, $lastCid, self::BATCH_SIZE)) {
+                    foreach ($cids as $cid) {
+                        foreach ($dao->maintenanceGetVersionIdsBeyond($elementType, $cid, $keep) as $id) {
+                            $results[$this->cleanupVersion($id, $dao)]++;
+                        }
+                        $this->collectGarbage();
+                    }
+                    $lastCid = end($cids);
                 }
             }
+
+            $this->logger->info(sprintf('Versions cleanup (%s): %d deleted, %d kept, %d failed', $elementType, $results['deleted'], $results['kept'], $results['failed']));
+        }
+    }
+
+    /**
+     * Failures are logged and skipped: one version that cannot be deleted must not stop the cleanup
+     *
+     * @return 'deleted'|'kept'|'failed'
+     */
+    private function cleanupVersion(int $id, Version\Dao $dao): string
+    {
+        try {
+            $version = Version::getById($id);
+
+            // deleted in between, public, or referenced in the scheduler
+            if (!$version || $version->isPublic() || $dao->isVersionUsedInScheduler($version)) {
+                return 'kept';
+            }
+
+            $element = match ($version->getCtype()) {
+                'document' => Document::getById($version->getCid()),
+                'asset' => Asset::getById($version->getCid()),
+                'object' => DataObject::getById($version->getCid()),
+                default => null,
+            };
+
+            // keep a version that is newer than the element; versions of deleted elements are removed
+            if ($element instanceof Element\ElementInterface && $element->getModificationDate() < $version->getDate()) {
+                return 'kept';
+            }
+
+            $version->delete();
+
+            return 'deleted';
+        } catch (Throwable $e) {
+            $this->logger->error('Unable to delete version ' . $id . ': ' . $e);
+
+            return 'failed';
+        }
+    }
+
+    private function collectGarbage(): void
+    {
+        // call the garbage collector if memory consumption is > 100MB
+        if (memory_get_usage() > 100000000) {
+            Pimcore::collectGarbage();
         }
     }
 }

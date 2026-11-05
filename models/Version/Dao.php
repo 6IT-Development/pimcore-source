@@ -16,9 +16,7 @@
 namespace Pimcore\Model\Version;
 
 use InvalidArgumentException;
-use Pimcore;
 use Pimcore\Db\Helper;
-use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Version;
@@ -146,61 +144,47 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
-     * @param list<array{elementType: string, days?: int, steps?: int}> $elementTypes
-     * @param int[] $ignoreIds
+     * Non-public, non-auto-save versions older than the deadline, in batches after $lastId
      *
      * @return int[]
      */
-    public function maintenanceGetOutdatedVersions(array $elementTypes, array $ignoreIds = []): array
+    public function maintenanceGetVersionIdsOlderThan(string $elementType, int $deadline, int $lastId, int $limit): array
     {
-        $ignoreIdsList = implode(',', $ignoreIds);
-        if (!$ignoreIdsList) {
-            $ignoreIdsList = '0'; // set a default to avoid SQL errors (there's no version with ID 0)
-        }
-        $versionIds = [];
+        $ids = $this->db->fetchFirstColumn(
+            'SELECT id FROM versions WHERE ctype = ? AND date < ? AND public = 0 AND autoSave = 0 AND id > ? ORDER BY id LIMIT ' . $limit,
+            [$elementType, $deadline, $lastId]
+        );
 
-        Logger::debug("ignore ID's: " . $ignoreIdsList);
+        return array_map('intval', $ids);
+    }
 
-        if (!empty($elementTypes)) {
-            $count = 0;
-            $stop = false;
-            foreach ($elementTypes as $elementType) {
-                if (isset($elementType['days'])) {
-                    // by days
-                    $deadline = time() - ($elementType['days'] * 86400);
-                    $tmpVersionIds = $this->db->fetchFirstColumn('SELECT id FROM versions as a WHERE ctype = ? AND date < ? AND public=0 AND id NOT IN (' . $ignoreIdsList . ')', [$elementType['elementType'], $deadline]);
-                    $versionIds = array_merge($versionIds, $tmpVersionIds);
-                } else {
-                    // by steps
-                    $versionData = $this->db->executeQuery('SELECT cid FROM versions WHERE ctype = ? AND public=0 AND id NOT IN (' . $ignoreIdsList . ') GROUP BY cid HAVING COUNT(*) > ? LIMIT 1000', [$elementType['elementType'], $elementType['steps'] + 1]);
-                    while ($versionInfo = $versionData->fetchAssociative()) {
-                        $count++;
-                        $elementVersions = $this->db->fetchFirstColumn('SELECT id FROM versions WHERE cid=? AND ctype = ? AND public=0 AND id NOT IN (' . $ignoreIdsList . ') ORDER BY id DESC LIMIT ' . ($elementType['steps'] + 1) . ', ' . PHP_INT_MAX, [$versionInfo['cid'], $elementType['elementType']]);
+    /**
+     * Elements with more than $keep non-public, non-auto-save versions, in batches after $lastCid
+     *
+     * @return int[]
+     */
+    public function maintenanceGetElementIdsWithMoreVersionsThan(string $elementType, int $keep, int $lastCid, int $limit): array
+    {
+        $cids = $this->db->fetchFirstColumn(
+            'SELECT cid FROM versions WHERE ctype = ? AND public = 0 AND autoSave = 0 AND cid > ? GROUP BY cid HAVING COUNT(*) > ? ORDER BY cid LIMIT ' . $limit,
+            [$elementType, $lastCid, $keep]
+        );
 
-                        $versionIds = array_merge($versionIds, $elementVersions);
+        return array_map('intval', $cids);
+    }
 
-                        Logger::info($versionInfo['cid'] . '(object ' . $count . ') Vcount ' . count($versionIds));
+    /**
+     * The non-public, non-auto-save versions of an element except the newest $keep
+     *
+     * @return int[]
+     */
+    public function maintenanceGetVersionIdsBeyond(string $elementType, int $cid, int $keep): array
+    {
+        $ids = $this->db->fetchFirstColumn(
+            'SELECT id FROM versions WHERE cid = ? AND ctype = ? AND public = 0 AND autoSave = 0 ORDER BY id DESC LIMIT ' . $keep . ', ' . PHP_INT_MAX,
+            [$cid, $elementType]
+        );
 
-                        // call the garbage collector if memory consumption is > 100MB
-                        if (memory_get_usage() > 100000000 && ($count % 100 == 0)) {
-                            Pimcore::collectGarbage();
-                        }
-
-                        if (count($versionIds) > 1000) {
-                            $stop = true;
-
-                            break;
-                        }
-                    }
-
-                    if ($stop) {
-                        break;
-                    }
-                }
-            }
-        }
-        Logger::info('return ' . count($versionIds) . " ids\n");
-
-        return array_map('intval', $versionIds);
+        return array_map('intval', $ids);
     }
 }
