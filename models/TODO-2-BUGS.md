@@ -4438,7 +4438,7 @@ SQL (I-107).
 `getTotalCount()` lets SQL errors propagate. `VersionDeleteHandler` loads the auto-save versions too and catches
 `\Throwable` per version. `getLatestVersion()` casts the fetched id before `Version::getById(int)`.
 
-## [ ] B-225 – `VersionTest` cannot run on PHPUnit 10 / 11 and never loads, deletes or re-saves a version
+## [x] B-225 – `VersionTest` cannot run on PHPUnit 10 / 11 and never loads, deletes or re-saves a version
 
 **Files:** `tests/Service/Element/VersionTest.php:38-79`, `:294-300`, `:324-333`; `composer.json:154`
 
@@ -4451,6 +4451,13 @@ SQL (I-107).
 - `tearDown()` drops `versionsData` unconditionally; SQL is built by string concatenation (`:70-74`, `:90`, `:327`).
 
 **Fix direction:** `onlyMethods([])` or plain instances; add the missing cases (I-109).
+
+**Done:** the tests use plain adapter instances instead of `setMethods()` mocks. New cases, for FS and DB through a data
+provider: loading object versions, loading an asset version with its own binary (not the current file), deleting two
+versions that share a binary (the binary stays until the last one is deleted), re-saving a version with a note and the
+public flag without losing its data; plus `withoutVersioning()` restoring the state after an exception and the
+Delegate adapter rejecting two adapters of one type (B-222). The SQL is parameterised, `tearDown()` resets the adapter
+and the versioning flag and uses `DROP TABLE IF EXISTS`. Not run locally (`vendor/` is not installed).
 
 ---
 

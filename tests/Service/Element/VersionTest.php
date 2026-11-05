@@ -18,13 +18,17 @@ declare(strict_types=1);
 namespace Pimcore\Tests\Service\Element;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore;
 use Pimcore\Db;
+use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Model\Version;
 use Pimcore\Model\Version\Adapter\DatabaseVersionStorageAdapter;
+use Pimcore\Model\Version\Adapter\DelegateVersionStorageAdapter;
 use Pimcore\Model\Version\Adapter\FileSystemVersionStorageAdapter;
 use Pimcore\Model\Version\Adapter\VersionStorageAdapterInterface;
+use RuntimeException;
 use Pimcore\Tests\Support\Test\TestCase;
 use Pimcore\Tests\Support\Util\TestHelper;
 
@@ -36,27 +40,38 @@ use Pimcore\Tests\Support\Util\TestHelper;
  */
 class VersionTest extends TestCase
 {
-    protected function mockFileSystemStorageAdapter(): mixed
+    protected function createFileSystemStorageAdapter(): FileSystemVersionStorageAdapter
     {
-        return $this->getMockBuilder(FileSystemVersionStorageAdapter::class)
-            ->setMethods(null)
-            ->getMock();
+        return new FileSystemVersionStorageAdapter();
     }
 
-    protected function mockDbStorageAdapter(): mixed
+    protected function createDbStorageAdapter(): DatabaseVersionStorageAdapter
     {
-        return $this->getMockBuilder(DatabaseVersionStorageAdapter::class)
-            ->setMethods(null)
-            ->setConstructorArgs([Db::get()])
-            ->getMock();
+        return new DatabaseVersionStorageAdapter(Db::get());
     }
 
-    protected function mockDelegateStorageAdapter(int $byteThreshold = 1000): mixed
+    protected function createDelegateStorageAdapter(int $byteThreshold = 1000): DelegateVersionStorageAdapter
     {
-        return $this->getMockBuilder(Version\Adapter\DelegateVersionStorageAdapter::class)
-            ->setMethods(null)
-            ->setConstructorArgs([$byteThreshold, $this->mockDbStorageAdapter(), $this->mockFileSystemStorageAdapter()])
-            ->getMock();
+        return new DelegateVersionStorageAdapter($byteThreshold, $this->createDbStorageAdapter(), $this->createFileSystemStorageAdapter());
+    }
+
+    protected function createStorageAdapter(string $storageType): VersionStorageAdapterInterface
+    {
+        return match ($storageType) {
+            'fs' => $this->createFileSystemStorageAdapter(),
+            'db' => $this->createDbStorageAdapter(),
+        };
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function storageTypeProvider(): array
+    {
+        return [
+            'fs' => ['fs'],
+            'db' => ['db'],
+        ];
     }
 
     protected function setStorageAdapter(VersionStorageAdapterInterface $adapter): void
@@ -67,15 +82,15 @@ class VersionTest extends TestCase
 
     protected function getVersionDataFromDb(int $id, string $cType, int $versionCount): array|bool
     {
-        $query = "select v.id, v.binaryFileId, v.binaryFileHash, v.storageType, vd.metaData, vd.binaryData from versions v
+        $query = 'select v.id, v.binaryFileId, v.binaryFileHash, v.storageType, vd.metaData, vd.binaryData from versions v
         left join
         versionsData vd on
         v.id = vd.id and v.cid = vd.cid and v.ctype = vd.ctype
-        where v.cid = $id and v.ctype = '$cType' and v.versionCount = $versionCount";
+        where v.cid = ? and v.ctype = ? and v.versionCount = ?';
 
         $db = Db::get();
 
-        return $db->fetchAssociative($query);
+        return $db->fetchAssociative($query, [$id, $cType, $versionCount]);
     }
 
     /**
@@ -83,30 +98,30 @@ class VersionTest extends TestCase
      */
     public function testDisable(): void
     {
-        $this->setStorageAdapter($this->mockFileSystemStorageAdapter());
+        $this->setStorageAdapter($this->createFileSystemStorageAdapter());
         $savedObject = TestHelper::createEmptyObject();
         $objectId = $savedObject->getId();
 
-        $query = 'select count(*) from versions where cid = ' . $objectId . " and ctype='object'";
+        $query = "select count(*) from versions where cid = ? and ctype='object'";
         $db = Db::get();
 
-        $initialCount = $db->fetchOne($query);
+        $initialCount = $db->fetchOne($query, [$objectId]);
         $this->assertEquals(1, $initialCount, 'initial count must be 1');
 
         $savedObject->save();
-        $countAfterSave = $db->fetchOne($query);
+        $countAfterSave = $db->fetchOne($query, [$objectId]);
         $this->assertEquals(2, $countAfterSave, 'expected a new version');
 
         // disable versioning, version count should remain the same
         Version::disable();
         $savedObject->save();
-        $countAfterSave = $db->fetchOne($query);
+        $countAfterSave = $db->fetchOne($query, [$objectId]);
         $this->assertEquals(2, $countAfterSave, "seems that Version::disable doesn't work");
 
         // enable versioning again
         Version::enable();
         $savedObject->save();
-        $countAfterSave = $db->fetchOne($query);
+        $countAfterSave = $db->fetchOne($query, [$objectId]);
         $this->assertEquals(3, $countAfterSave, "seems that Version::enable doesn't work");
     }
 
@@ -115,7 +130,7 @@ class VersionTest extends TestCase
      */
     public function testCondense(): void
     {
-        $this->setStorageAdapter($this->mockFileSystemStorageAdapter());
+        $this->setStorageAdapter($this->createFileSystemStorageAdapter());
         /** @var Unittest $savedObject */
 
         // create target object
@@ -152,7 +167,7 @@ class VersionTest extends TestCase
     // Save a new object and check if the storagetype is set to fs
     public function testStorageAdapterTypeFS(): void
     {
-        $this->setStorageAdapter($this->mockFileSystemStorageAdapter());
+        $this->setStorageAdapter($this->createFileSystemStorageAdapter());
         $object = TestHelper::createEmptyObject();
 
         $result = $this->getVersionDataFromDb($object->getId(), 'object', 1);
@@ -166,7 +181,7 @@ class VersionTest extends TestCase
     // Save a new object and check if the storagetype is set to db
     public function testStorageAdapterDB(): void
     {
-        $this->setStorageAdapter($this->mockDbStorageAdapter());
+        $this->setStorageAdapter($this->createDbStorageAdapter());
         $object = TestHelper::createEmptyObject();
 
         $result = $this->getVersionDataFromDb($object->getId(), 'object', 1);
@@ -180,7 +195,7 @@ class VersionTest extends TestCase
     // Size of metadata exceeds "byteThreshold". Therefore, the fallback adapter (fs) should be used.
     public function testStorageAdapterDelegate(): void
     {
-        $this->setStorageAdapter($this->mockDelegateStorageAdapter(10));
+        $this->setStorageAdapter($this->createDelegateStorageAdapter(10));
         $randomText = TestHelper::generateRandomString(100);
         $object = TestHelper::createEmptyObject();
         $object->setLastname($randomText);
@@ -196,7 +211,7 @@ class VersionTest extends TestCase
 
     public function testStorageAdapterFSWithBinaryFile(): void
     {
-        $this->setStorageAdapter($this->mockFileSystemStorageAdapter());
+        $this->setStorageAdapter($this->createFileSystemStorageAdapter());
         $randomText = TestHelper::generateRandomString(100);
         $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText);
         $cid = $asset->getId();
@@ -227,7 +242,7 @@ class VersionTest extends TestCase
 
     public function testStorageAdapterDBWithBinaryFile(): void
     {
-        $this->setStorageAdapter($this->mockDbStorageAdapter());
+        $this->setStorageAdapter($this->createDbStorageAdapter());
         $randomText = TestHelper::generateRandomString(100);
         $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText);
         $cid = $asset->getId();
@@ -267,7 +282,7 @@ class VersionTest extends TestCase
     // Size of binary file exceeds "byteThreshold". Therefore, the fallback adapter (fs) should be used.
     public function testStorageAdapterDelegateWithBinaryFile(): void
     {
-        $this->setStorageAdapter($this->mockDelegateStorageAdapter(10));
+        $this->setStorageAdapter($this->createDelegateStorageAdapter(10));
         $randomText = TestHelper::generateRandomString(100);
         $asset = TestHelper::createImageAsset('test_binary_file_id', $randomText);
         $cid = $asset->getId();
@@ -282,6 +297,115 @@ class VersionTest extends TestCase
         $this->assertNotEmpty($id, 'id must not be empty');
     }
 
+    /**
+     * @dataProvider storageTypeProvider
+     */
+    public function testLoadObjectVersion(string $storageType): void
+    {
+        $this->setStorageAdapter($this->createStorageAdapter($storageType));
+        $object = TestHelper::createEmptyObject();
+        $object->setLastname('first');
+        $object->save();
+        $object->setLastname('second');
+        $object->save();
+
+        $data = $this->getVersion($object->getId(), 'object', 2)->getData();
+        $this->assertInstanceOf(Unittest::class, $data);
+        $this->assertSame('first', $data->getLastname());
+
+        $data = $this->getVersion($object->getId(), 'object', 3)->getData();
+        $this->assertInstanceOf(Unittest::class, $data);
+        $this->assertSame('second', $data->getLastname());
+    }
+
+    /**
+     * @dataProvider storageTypeProvider
+     */
+    public function testLoadAssetVersion(string $storageType): void
+    {
+        $this->setStorageAdapter($this->createStorageAdapter($storageType));
+        $first = TestHelper::generateRandomString(100);
+        $asset = TestHelper::createImageAsset('test_load_version', $first);
+        $asset->setData(TestHelper::generateRandomString(100));
+        $asset->save();
+
+        $data = $this->getVersion($asset->getId(), 'asset', 1)->getData();
+        $this->assertInstanceOf(Asset::class, $data);
+        $this->assertSame($first, $data->getData(), 'the version must return its own binary, not the current file');
+    }
+
+    /**
+     * @dataProvider storageTypeProvider
+     */
+    public function testDeleteVersionsSharingABinary(string $storageType): void
+    {
+        $adapter = $this->createStorageAdapter($storageType);
+        $this->setStorageAdapter($adapter);
+        $content = TestHelper::generateRandomString(100);
+        $asset = TestHelper::createImageAsset('test_shared_binary', $content);
+        $asset->save();
+
+        $version1 = $this->getVersion($asset->getId(), 'asset', 1);
+        $version2 = $this->getVersion($asset->getId(), 'asset', 2);
+        $this->assertSame($version1->getId(), $version2->getBinaryFileId(), 'version 2 must reuse the binary of version 1');
+
+        $version1->delete();
+        $this->assertNull(Version::getById($version1->getId()));
+
+        $data = Version::getById($version2->getId())->getData();
+        $this->assertInstanceOf(Asset::class, $data);
+        $this->assertSame($content, $data->getData(), 'the shared binary must be kept while a version uses it');
+
+        $version2->delete();
+        $this->assertNull($adapter->loadBinaryData($version2), 'the binary must be deleted with its last version');
+        $this->assertNull($adapter->loadMetaData($version2));
+    }
+
+    /**
+     * @dataProvider storageTypeProvider
+     */
+    public function testResaveVersionKeepsItsData(string $storageType): void
+    {
+        $this->setStorageAdapter($this->createStorageAdapter($storageType));
+        $object = TestHelper::createEmptyObject();
+        $object->setLastname('kept');
+        $object->save();
+
+        $version = $this->getVersion($object->getId(), 'object', 2);
+        $version->setNote('a note');
+        $version->setPublic(true);
+        $version->save();
+
+        $reloaded = Version::getById($version->getId());
+        $this->assertSame('a note', $reloaded->getNote());
+        $this->assertTrue($reloaded->isPublic());
+        $data = $reloaded->getData();
+        $this->assertInstanceOf(Unittest::class, $data);
+        $this->assertSame('kept', $data->getLastname());
+    }
+
+    public function testWithoutVersioningRestoresTheStateAfterAnException(): void
+    {
+        try {
+            Version::withoutVersioning(static function (): void {
+                throw new RuntimeException('failed import');
+            });
+            $this->fail('the exception must be rethrown');
+        } catch (RuntimeException) {
+        }
+        $this->assertTrue(Version::isEnabled(), 'versioning must be enabled again after the callback threw');
+
+        Version::disable();
+        Version::withoutVersioning(static fn () => null);
+        $this->assertFalse(Version::isEnabled(), 'a disabled state of the caller must be kept');
+    }
+
+    public function testDelegateAdapterRejectsAdaptersOfTheSameType(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new DelegateVersionStorageAdapter(1000, $this->createDbStorageAdapter(), $this->createDbStorageAdapter());
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -293,10 +417,14 @@ class VersionTest extends TestCase
 
     public function tearDown(): void
     {
+        // the storage adapter and the versioning flag are process-wide
+        $this->setStorageAdapter($this->createFileSystemStorageAdapter());
+        Version::enable();
+
         parent::tearDown();
 
         $db = Db::get();
-        $db->executeStatement('DROP TABLE versionsData');
+        $db->executeStatement('DROP TABLE IF EXISTS versionsData');
     }
 
     protected function needsDb(): bool
@@ -311,7 +439,7 @@ class VersionTest extends TestCase
     {
         //Create versionsData table. Needed for tests with DatabaseVersionStorageAdapter
         $db = Db::get();
-        $db->executeStatement("CREATE TABLE `versionsData` (
+        $db->executeStatement("CREATE TABLE IF NOT EXISTS `versionsData` (
                                   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                                   `cid` int(11) unsigned DEFAULT NULL,
                                   `ctype` enum('document','asset','object') DEFAULT NULL,
@@ -324,11 +452,23 @@ class VersionTest extends TestCase
     protected function getNewestVersion(int $id): Version
     {
         $list = new Version\Listing();
-        $list->setCondition("ctype = 'object' and cid = " . $id);
+        $list->setCondition("ctype = 'object' and cid = ?", [$id]);
         $list->setLimit(1);
         $list->setOrderKey('id');
         $list->setOrder('DESC');
         $list = $list->load();
+
         return $list[0];
+    }
+
+    protected function getVersion(int $cid, string $cType, int $versionCount): Version
+    {
+        $row = $this->getVersionDataFromDb($cid, $cType, $versionCount);
+        $this->assertIsArray($row, 'expected version ' . $versionCount . ' of ' . $cType . ' ' . $cid);
+
+        $version = Version::getById((int)$row['id']);
+        $this->assertInstanceOf(Version::class, $version);
+
+        return $version;
     }
 }
