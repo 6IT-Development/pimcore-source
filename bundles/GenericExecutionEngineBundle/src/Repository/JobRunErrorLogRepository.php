@@ -66,7 +66,7 @@ final readonly class JobRunErrorLogRepository implements JobRunErrorLogRepositor
     {
         $criteria = ['jobRunId' => $jobRunId];
         if ($step !== null && $step >= 0) {
-            $criteria['step'] = $step;
+            $criteria['stepNumber'] = $step;
         }
 
         return $this->getLogRepository()->findBy(
@@ -82,9 +82,14 @@ final readonly class JobRunErrorLogRepository implements JobRunErrorLogRepositor
         return $this->getLogRepository()->count();
     }
 
-    public function getTotalCountByJobRunId(int $jobRunId): int
+    public function getTotalCountByJobRunId(int $jobRunId, ?int $step = null): int
     {
-        return $this->getLogRepository()->count(['jobRunId' => $jobRunId]);
+        $criteria = ['jobRunId' => $jobRunId];
+        if ($step !== null) {
+            $criteria['stepNumber'] = $step;
+        }
+
+        return $this->getLogRepository()->count($criteria);
     }
 
     private function getLogRepository(): EntityRepository

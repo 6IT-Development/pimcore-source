@@ -241,7 +241,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         }
 
         if ($isLastStep) {
-            $this->setCompletionState($jobRun);
+            $this->setCompletionState($jobRun, $finishedStep);
             $this->jobRunRepository->update($jobRun);
 
             $this->genericExecutionEngineLogger->info("[JobRun {$jobRun->getId()}]: Job '{$job->getName()}' finished.");
@@ -437,31 +437,30 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     }
 
     /**
+     * Failed when every message of the last step failed, finished with errors when any message of the run failed.
+     * Elements that failed in an earlier step are still dispatched to the following steps (continue on error),
+     * so only the last step tells whether the run produced anything.
+     *
      * @throws Exception
      */
-    private function setCompletionState(JobRun $jobRun): void
+    private function setCompletionState(JobRun $jobRun, int $lastStep): void
     {
-        $message = '';
+        $jobRunId = $jobRun->getId();
+        $failedMessages = $this->jobRunErrorLogRepository->getTotalCountByJobRunId($jobRunId, $lastStep);
+        $dispatchedMessages = $this->getSelectionProcessingModeFromJobRun($jobRun, $lastStep) ===
+            SelectionProcessingMode::ONCE ? 1 : max(1, $jobRun->getTotalElements());
 
-        $logs = $this->jobRunErrorLogRepository->getLogsByJobRunId(
-            $jobRun->getId(),
-            $jobRun->getCurrentStep()
-        );
+        [$state, $message] = match (true) {
+            $failedMessages >= $dispatchedMessages => [JobRunStates::FAILED, 'gee_job_failed'],
+            $failedMessages > 0,
+            $this->jobRunErrorLogRepository->getTotalCountByJobRunId($jobRunId) > 0 => [
+                JobRunStates::FINISHED_WITH_ERRORS,
+                'gee_job_finished_with_errors',
+            ],
+            default => [JobRunStates::FINISHED, 'gee_job_finished'],
+        };
 
-        if (count($logs) === $jobRun->getTotalElements()) {
-            $jobRun->setState(JobRunStates::FAILED);
-            $message = 'gee_job_failed';
-        } elseif (count($logs) > 0) {
-            $jobRun->setState(JobRunStates::FINISHED_WITH_ERRORS);
-            $message = 'gee_job_finished_with_errors';
-        }
-
-        if (empty($logs)) {
-            $jobRun->setCurrentMessage(null);
-            $jobRun->setState(JobRunStates::FINISHED);
-            $message = 'gee_job_finished';
-        }
-
+        $jobRun->setState($state);
         $this->jobRunRepository->updateLogLocalizedWithDomain(
             $jobRun,
             $message,

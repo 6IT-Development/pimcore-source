@@ -16,7 +16,7 @@ lost data or misleading logs. IDs are stable – refer to them as `B-xx` in late
 
 ## Job execution agent (`src/Agent/JobExecutionAgent.php`)
 
-### [ ] B-01 – Completion state is computed from the wrong error-log set
+### [x] B-01 – Completion state is computed from the wrong error-log set
 **Files:** `src/Agent/JobExecutionAgent.php:213-216`, `:418-446`, `src/Repository/JobRunErrorLogRepository.php:59-78`
 - `setCurrentStep(null)` (`:214`) is executed **before** `setCompletionState()`, which then passes
   `$jobRun->getCurrentStep()` (= `null`) → error logs of **all** steps are fetched, but compared with the element
@@ -32,6 +32,13 @@ lost data or misleading logs. IDs are stable – refer to them as `B-xx` in late
 
 **Fix:** count in SQL (`COUNT(DISTINCT elementId)` per step via `getTotalCountByJobRunId()`-like method), evaluate the
 state per step before resetting `currentStep`, fix the `stepNumber` criteria key, use `match (true)` for the state.
+
+**Done:** the agent passes the finished last step to `setCompletionState()`, which counts error logs in SQL with
+`getTotalCountByJobRunId($jobRunId, $step)` (new optional step argument). The run is `failed` when every message of the
+last step failed (one message for `ONCE` steps and empty selections), `finished_with_errors` when any message of the run
+failed, otherwise `finished`. One failed message writes one log, so `COUNT(*)` per step is used instead of
+`COUNT(DISTINCT elementId)` (the log stores no element type, ids of different types would collapse).
+`getLogsByJobRunId()` filters by `stepNumber`.
 
 ### [ ] B-02 – Wrong placeholder for `gee_error_no_job_definition` in `dispatchStepMessage()`
 **File:** `src/Agent/JobExecutionAgent.php:371-375`, `translations/admin.en.yaml:3`

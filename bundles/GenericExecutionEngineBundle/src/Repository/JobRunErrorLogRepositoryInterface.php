@@ -43,5 +43,8 @@ interface JobRunErrorLogRepositoryInterface
 
     public function getTotalCount(): int;
 
-    public function getTotalCountByJobRunId(int $jobRunId): int;
+    /**
+     * Number of error logs of the job run, restricted to one step when given. A failed message writes one log.
+     */
+    public function getTotalCountByJobRunId(int $jobRunId, ?int $step = null): int;
 }
