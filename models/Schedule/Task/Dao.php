@@ -42,6 +42,20 @@ class Dao extends Model\Dao\AbstractDao
 
     public function save(): void
     {
+        // a pending task the maintenance cannot execute would be deactivated without running
+        if ($this->model->getActive()) {
+            $action = $this->model->getAction();
+            if (!in_array($action, ['publish', 'unpublish', 'delete', 'publish-version'], true)) {
+                throw new InvalidArgumentException(sprintf('Unknown action "%s" of scheduled task', (string)$action));
+            }
+            if ($this->model->getCtype() === 'asset' && ($action === 'publish' || $action === 'unpublish')) {
+                throw new InvalidArgumentException('Assets cannot be published or unpublished by a scheduled task');
+            }
+            if ($action === 'publish-version' && !$this->model->getVersion()) {
+                throw new InvalidArgumentException('A scheduled "publish-version" task needs a version');
+            }
+        }
+
         if ($this->model->getVersion()) {
             // a version of another element would be published in place of the task's element
             $version = $this->db->fetchAssociative('SELECT cid, ctype FROM versions WHERE id = ?', [$this->model->getVersion()]);

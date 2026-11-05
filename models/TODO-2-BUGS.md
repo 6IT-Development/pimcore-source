@@ -4038,7 +4038,7 @@ claim and the end of the action (process killed) leaves the task inactive instea
 around claim and action was not chosen, because the element saves and deletes dispatch messages and write storage
 inside it.
 
-## [ ] B-211 – Tasks that did nothing are reported as done
+## [x] B-211 – Tasks that did nothing are reported as done
 
 **Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:53-129`; `models/Schedule/Task.php:41`, `:158-163`;
 `bundles/InstallBundle/dump/install.sql:331`
@@ -4054,6 +4054,13 @@ inside it.
 
 **Fix direction:** log every skip with the reason and add an element note; validate `action` per `ctype` and require
 `version` for `publish-version` when saving the task (I-93 enum).
+
+**Done:** `ScheduledTasksTask::executeAction()` returns the reason when a task does nothing (element missing, object
+folder, no version, version missing or of another element, not restorable, asset publish / unpublish, permission
+denied, unknown action). `reportSkippedTask()` logs it as a warning and adds a `notice` note to the element (as the
+task user), unless the element no longer exists. The three per-type branches are merged into one. `Task\Dao::save()`
+rejects an active task with an unknown action, `publish` / `unpublish` on an asset, or `publish-version` without a
+version; inactive tasks (history) are saved as they are. Open: the `TaskAction` enum (I-93).
 
 ## [ ] B-212 – Scheduled tasks are lost on recycle-bin restore and orphaned when links / hardlinks are deleted
 

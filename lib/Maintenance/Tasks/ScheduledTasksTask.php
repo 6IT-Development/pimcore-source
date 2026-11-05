@@ -22,6 +22,7 @@ use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
+use Pimcore\Model\Element\Note;
 use Pimcore\Model\Element\Recyclebin;
 use Pimcore\Model\Schedule\Task;
 use Pimcore\Model\Schedule\Task\Listing;
@@ -36,6 +37,8 @@ use Throwable;
  */
 class ScheduledTasksTask implements TaskInterface
 {
+    private const string SKIP_ELEMENT_MISSING = 'the element does not exist';
+
     private LoggerInterface $logger;
 
     private LockFactory $lockFactory;
@@ -108,7 +111,7 @@ class ScheduledTasksTask implements TaskInterface
         }
 
         try {
-            $this->executeAction($task, $taskUser);
+            $skipReason = $this->executeAction($task, $taskUser);
         } catch (Throwable $e) {
             // retried in the next run, as before
             $task->setActive(true);
@@ -116,83 +119,120 @@ class ScheduledTasksTask implements TaskInterface
 
             throw $e;
         }
+
+        if ($skipReason !== null) {
+            $this->reportSkippedTask($task, $skipReason);
+        }
     }
 
     /**
+     * @return string|null why the task did nothing, null when the action ran
+     *
      * @throws Throwable
      */
-    private function executeAction(Task $task, ?User $taskUser): void
+    private function executeAction(Task $task, ?User $taskUser): ?string
     {
-        if ($task->getCtype() === 'document') {
-            $document = Document::getById($task->getCid());
-            if ($document instanceof Document) {
-                if ($task->getAction() === 'publish-version' && $task->getVersion() && $document->isAllowed('publish', $taskUser) && $document->isAllowed('versions', $taskUser)) {
-                    if ($version = $this->getVersionOfTask($task)) {
-                        $document = $version->getData();
-                        if ($document instanceof Document) {
-                            $document->setPublished(true);
-                            $document->save();
-                        } else {
-                            $this->logger->error('Schedule\\Task\\Executor: Could not restore document from version data.');
-                        }
-                    } else {
-                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist or does not belong to the element of the task.');
-                    }
-                } elseif ($task->getAction() === 'publish' && $document->isAllowed('publish', $taskUser)) {
-                    $document->setPublished(true);
-                    $document->save();
-                } elseif ($task->getAction() === 'unpublish' && $document->isAllowed('unpublish', $taskUser)) {
-                    $document->setPublished(false);
-                    $document->save();
-                } elseif ($task->getAction() === 'delete' && $document->isAllowed('delete', $taskUser)) {
-                    $this->deleteElement($document, $taskUser);
-                }
-            }
-        } elseif ($task->getCtype() === 'asset') {
-            $asset = Asset::getById($task->getCid());
+        $cid = (int)$task->getCid();
+        [$element, $class] = match ($task->getCtype()) {
+            'document' => [Document::getById($cid), Document::class],
+            'asset' => [Asset::getById($cid), Asset::class],
+            'object' => [DataObject::getById($cid), DataObject\Concrete::class],
+            default => [null, null],
+        };
 
-            if ($asset instanceof Asset) {
-                if ($task->getAction() === 'publish-version' && $task->getVersion() && $asset->isAllowed('publish', $taskUser) && $asset->isAllowed('versions', $taskUser)) {
-                    if ($version = $this->getVersionOfTask($task)) {
-                        $asset = $version->getData();
-                        if ($asset instanceof Asset) {
-                            $asset->save();
-                        } else {
-                            $this->logger->error('Schedule\\Task\\Executor: Could not restore asset from version data.');
-                        }
-                    } else {
-                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist or does not belong to the element of the task.');
-                    }
-                } elseif ($task->getAction() === 'delete' && $asset->isAllowed('delete', $taskUser)) {
-                    $this->deleteElement($asset, $taskUser);
-                }
-            }
-        } elseif ($task->getCtype() === 'object') {
-            $object = DataObject::getById($task->getCid());
+        if (!$element instanceof ElementInterface) {
+            return self::SKIP_ELEMENT_MISSING;
+        }
+        if (!$element instanceof $class) {
+            return 'only data objects, not folders, can be scheduled';
+        }
 
-            if ($object instanceof DataObject\Concrete) {
-                if ($task->getAction() === 'publish-version' && $task->getVersion() && $object->isAllowed('publish', $taskUser) && $object->isAllowed('versions', $taskUser)) {
-                    if ($version = $this->getVersionOfTask($task)) {
-                        $object = $version->getData();
-                        if ($object instanceof DataObject\Concrete) {
-                            $object->setPublished(true);
-                            $object->save();
-                        } else {
-                            $this->logger->error('Schedule\\Task\\Executor: Could not restore object from version data.');
-                        }
-                    } else {
-                        $this->logger->error('Schedule\\Task\\Executor: Version [ ' . $task->getVersion() . ' ] does not exist or does not belong to the element of the task.');
-                    }
-                } elseif ($task->getAction() === 'publish' && $object->isAllowed('publish', $taskUser)) {
-                    $object->setPublished(true);
-                    $object->save();
-                } elseif ($task->getAction() === 'unpublish' && $object->isAllowed('unpublish', $taskUser)) {
-                    $object->setPublished(false);
-                    $object->save();
-                } elseif ($task->getAction() === 'delete' && $object->isAllowed('delete', $taskUser)) {
-                    $this->deleteElement($object, $taskUser);
+        // assets have no published state
+        $publishable = $element instanceof Document || $element instanceof DataObject\Concrete;
+
+        switch ($task->getAction()) {
+            case 'publish-version':
+                if (!$task->getVersion()) {
+                    return 'the task has no version';
                 }
+                if (!$element->isAllowed('publish', $taskUser) || !$element->isAllowed('versions', $taskUser)) {
+                    return 'the user is not allowed to publish versions';
+                }
+                $version = $this->getVersionOfTask($task);
+                if (!$version) {
+                    return 'version ' . $task->getVersion() . ' does not exist or does not belong to the element';
+                }
+                $element = $version->getData();
+                if (!$element instanceof $class) {
+                    return 'the element could not be restored from version ' . $task->getVersion();
+                }
+                if ($publishable) {
+                    $element->setPublished(true);
+                }
+                $element->save();
+
+                return null;
+            case 'publish':
+            case 'unpublish':
+                if (!$publishable) {
+                    return 'assets cannot be published or unpublished';
+                }
+                if (!$element->isAllowed($task->getAction(), $taskUser)) {
+                    return 'the user is not allowed to ' . $task->getAction();
+                }
+                $element->setPublished($task->getAction() === 'publish');
+                $element->save();
+
+                return null;
+            case 'delete':
+                if (!$element->isAllowed('delete', $taskUser)) {
+                    return 'the user is not allowed to delete';
+                }
+                $this->deleteElement($element, $taskUser);
+
+                return null;
+            default:
+                return 'unknown action "' . $task->getAction() . '"';
+        }
+    }
+
+    /**
+     * Without this, a skipped task disappears from the pending tasks as if it had run
+     */
+    private function reportSkippedTask(Task $task, string $reason): void
+    {
+        $this->logger->warning(sprintf(
+            'Scheduled task ID %d (%s %s %d) did nothing: %s',
+            $task->getId(),
+            (string)$task->getAction(),
+            (string)$task->getCtype(),
+            (int)$task->getCid(),
+            $reason
+        ));
+
+        if ($reason === self::SKIP_ELEMENT_MISSING) {
+            return;
+        }
+
+        try {
+            $note = new Note();
+            $note->setCid((int)$task->getCid());
+            $note->setCtype((string)$task->getCtype());
+            $note->setType('notice');
+            $note->setTitle('Scheduled task not executed');
+            $note->setDate(time());
+            $note->setDescription(sprintf(
+                'The "%s" scheduled for %s was skipped: %s',
+                (string)$task->getAction(),
+                date('Y-m-d H:i', (int)$task->getDate()),
+                $reason
+            ));
+            if ($task->getUserId()) {
+                $note->setUser($task->getUserId());
             }
+            $note->save();
+        } catch (Throwable $e) {
+            $this->logger->error('Could not add a note about skipped scheduled task ID ' . $task->getId() . ': ' . $e->getMessage());
         }
     }
 
