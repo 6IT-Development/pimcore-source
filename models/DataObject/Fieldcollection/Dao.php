@@ -15,7 +15,7 @@
 
 namespace Pimcore\Model\DataObject\Fieldcollection;
 
-use Exception;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Pimcore;
 use Pimcore\Db\Helper;
 use Pimcore\Logger;
@@ -58,7 +58,8 @@ class Dao extends Model\Dao\AbstractDao
 
             try {
                 $results = $this->db->fetchAllAssociative('SELECT * FROM ' . $tableName . ' WHERE id = ? AND fieldname = ? ORDER BY `index` ASC', [$object->getId(), $this->model->getFieldname()]);
-            } catch (Exception) {
+            } catch (TableNotFoundException) {
+                // the table is created on the first save of an item of this type
                 $results = [];
             }
 
@@ -162,14 +163,14 @@ class Dao extends Model\Dao\AbstractDao
             $tableName = $definition->getTableName($object->getClass());
 
             try {
-                $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $tableName . "` WHERE `id` = '" . $object->getId() . "' AND `fieldname` = '" . $this->model->getFieldname() . "' LIMIT 1");
+                $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $tableName . '` WHERE `id` = ? AND `fieldname` = ? LIMIT 1', [$object->getId(), $this->model->getFieldname()]);
                 if ($dataExists) {
                     $this->db->delete($tableName, [
                         'id' => $object->getId(),
                         'fieldname' => $this->model->getFieldname(),
                     ]);
                 }
-            } catch (Exception) {
+            } catch (TableNotFoundException) {
                 // create definition if it does not exist
                 $definition->createUpdateTable($object->getClass());
             }
@@ -178,16 +179,16 @@ class Dao extends Model\Dao\AbstractDao
                 $tableName = $definition->getLocalizedTableName($object->getClass());
 
                 try {
-                    $dataExists = $this->db->fetchOne('SELECT `ooo_id` FROM `' . $tableName . "` WHERE
-         `ooo_id` = '" . $object->getId() . "' AND `fieldname` = '" . $this->model->getFieldname() . "' LIMIT 1 ");
+                    $dataExists = $this->db->fetchOne('SELECT `ooo_id` FROM `' . $tableName . '` WHERE `ooo_id` = ? AND `fieldname` = ? LIMIT 1', [$object->getId(), $this->model->getFieldname()]);
                     if ($dataExists) {
                         $this->db->delete($tableName, [
                             'ooo_id' => $object->getId(),
                             'fieldname' => $this->model->getFieldname(),
                         ]);
                     }
-                } catch (Exception $e) {
-                    Logger::error((string)$e);
+                } catch (TableNotFoundException $e) {
+                    // nothing to delete, the localized table is created with the first localized item
+                    Logger::info((string)$e);
                 }
             }
 
@@ -236,8 +237,8 @@ class Dao extends Model\Dao\AbstractDao
         }
 
         $whereLocalizedFields = "(ownertype = 'localizedfield' AND "
-            . Helper::quoteInto($this->db, 'ownername LIKE ?', '/fieldcollection~'
-                . $this->model->getFieldname() . '/%')
+            . Helper::quoteInto($this->db, 'ownername LIKE ?', Helper::escapeLike('/fieldcollection~'
+                . $this->model->getFieldname() . '/') . '%')
             . ' AND ' . Helper::quoteInto($this->db, 'src_id = ?', $object->getId()) . ')';
 
         if ($saveMode) {

@@ -3325,7 +3325,7 @@ admin UI), so the creation on save stays for the standalone case. `delete()` cat
 during an update it goes through the same helper, when the object is deleted a missing table is logged and skipped;
 every other error propagates. The fieldcollection `ownername LIKE` prefix is escaped with `Helper::escapeLike()`.
 
-## [ ] B-180 – Field collections: a read error loads an empty collection that the next save persists; DDL inside the save transaction
+## [x] B-180 – Field collections: a read error loads an empty collection that the next save persists; DDL inside the save transaction
 
 **File:** `models/DataObject/Fieldcollection/Dao.php:44-60`, `:129-160`
 
@@ -3336,6 +3336,11 @@ every other error propagates. The fieldcollection `ownername LIKE` prefix is esc
 - Ids and field names are concatenated into the SELECTs.
 
 **Fix direction:** catch `TableNotFoundException` only; create tables in definition save; bound parameters.
+
+**Done:** `load()` treats only a `TableNotFoundException` as "no items"; any other read error propagates, so the save
+can no longer wipe the stored items. `delete()` creates the collection table only on a `TableNotFoundException` (the
+definition save creates the tables for the regular case) and skips a missing localized table; other errors propagate.
+The `SELECT`s use bound parameters, and the `ownername LIKE` prefix is escaped with `Helper::escapeLike()`.
 
 ## [ ] B-181 – Classification store save: `Error`s for empty groups and deleted keys
 
