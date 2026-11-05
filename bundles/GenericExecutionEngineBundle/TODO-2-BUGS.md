@@ -72,10 +72,14 @@ with it. `rerunJobRun()` reloads the run, throws `JobNotFoundException` without 
 `running` run, and starts the copy with the execution context of the original run. The stored selection doubles the
 size of `serializedJob` for jobs whose steps change the selection (column size: B-19). Docs updated in `02_JobRun.md`.
 
-### [ ] B-05 – `cancelJobRun()` overwrites terminal states
+### [x] B-05 – `cancelJobRun()` overwrites terminal states
 **File:** `src/Agent/JobExecutionAgent.php:127-137`
 A `finished`, `failed` or already `cancelled` run is set to `cancelled` again and logs "cancelled". **Fix:** only
 transition `running`/`not_started` → `cancelled` (see I-11).
+
+**Done:** `cancelJobRun()` changes only `running` and `not_started` runs; for any other state it logs to the GEE channel and
+returns without touching state or run log. Interface doc and `02_JobRun.md` say so. The state transition helper is
+still I-11.
 
 ### [ ] B-06 – `isInteractionAllowed()` ignores "see all" permission and owner-less runs
 **File:** `src/Agent/JobExecutionAgent.php:117-122`

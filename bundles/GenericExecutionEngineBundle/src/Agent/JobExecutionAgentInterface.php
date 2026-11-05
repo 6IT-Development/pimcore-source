@@ -50,7 +50,7 @@ interface JobExecutionAgentInterface
     public function isInteractionAllowed(int $jobRunId, int $ownerId): bool;
 
     /**
-     * Cancel given job run
+     * Cancel given job run, only a running or not started job run is changed
      *
      * @throws PermissionException when called in a request whose user may not interact with the job run
      */

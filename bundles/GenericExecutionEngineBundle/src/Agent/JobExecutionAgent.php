@@ -138,6 +138,16 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     {
         $jobRun = $this->jobRunRepository->getJobRunById($jobRunId, true);
         $this->denyInteractionUnlessAllowed($jobRun);
+
+        // finished, failed and cancelled runs keep their state
+        if (!in_array($jobRun->getState(), [JobRunStates::RUNNING, JobRunStates::NOT_STARTED], true)) {
+            $this->genericExecutionEngineLogger->info(
+                "[JobRun {$jobRun->getId()}]: Not cancelled, the JobRun is already {$jobRun->getState()?->value}."
+            );
+
+            return;
+        }
+
         $this->genericExecutionEngineLogger->info("[JobRun {$jobRun->getId()}]: JobRun cancelled.");
         $jobRun->setState(JobRunStates::CANCELLED);
         $this->jobRunRepository->updateLogLocalizedWithDomain(
