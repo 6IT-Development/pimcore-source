@@ -3477,7 +3477,7 @@ no longer narrows "all languages dirty" to the one language.
 
 ## Metadata (Scope 7)
 
-## [ ] B-188 – Predefined metadata listing can contain `null`s → `Error` in every lookup (id list from all stores, data from the read target only)
+## [x] B-188 – Predefined metadata listing can contain `null`s → `Error` in every lookup (id list from all stores, data from the read target only)
 
 **Files:** `models/Metadata/Predefined/Listing/Dao.php:35-51`; `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:54-79`;
 `lib/Config/LocationAwareConfigRepository.php:70-96`, `:263-269`; `models/Metadata/Predefined/Listing.php:74-124`;
@@ -3496,6 +3496,10 @@ no longer narrows "all languages dirty" to the one language.
 - `loadIdListByReadTargets()` exists for this case and is unused here.
 
 **Fix direction:** use `loadIdListByReadTargets()`, skip `null` results (log them), and return `list<Predefined>`.
+
+**Done:** `loadList()` takes the ids from `loadIdListByReadTargets()`, so ids of the store that is not read are no longer
+listed, and skips (with a warning) definitions that still do not load. The list holds `Predefined` objects only and is
+re-indexed after the filter callback; `getByTargetType()` returns a list too.
 
 ## [ ] B-189 – `Predefined::minimize()` / `expand()` are not idempotent and crash on a missing type
 

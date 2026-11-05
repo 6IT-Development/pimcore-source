@@ -84,7 +84,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
         }
 
         if (is_array($subTypes)) {
-            return array_filter($list->load(), function ($item) use ($subTypes) {
+            return array_values(array_filter($list->load(), function ($item) use ($subTypes) {
                 if (empty($item->getTargetSubtype())) {
                     return true;
                 }
@@ -94,7 +94,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
                 }
 
                 return false;
-            });
+            }));
         }
 
         return $list->load();
