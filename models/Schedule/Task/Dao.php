@@ -94,6 +94,21 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
+     * Deactivates the task unless another run already did, so that concurrent runs execute it only once
+     *
+     * @return bool whether this call deactivated the task
+     */
+    public function claim(): bool
+    {
+        $claimed = $this->db->executeStatement('UPDATE schedule_tasks SET active = 0 WHERE id = ? AND active = 1', [$this->model->getId()]) === 1;
+        if ($claimed) {
+            $this->model->setActive(false);
+        }
+
+        return $claimed;
+    }
+
+    /**
      * Deletes object from database
      */
     public function delete(): void

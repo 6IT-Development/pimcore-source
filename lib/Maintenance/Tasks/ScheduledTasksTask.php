@@ -28,6 +28,7 @@ use Pimcore\Model\Schedule\Task\Listing;
 use Pimcore\Model\User;
 use Pimcore\Model\Version;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Lock\LockFactory;
 use Throwable;
 
 /**
@@ -37,27 +38,43 @@ class ScheduledTasksTask implements TaskInterface
 {
     private LoggerInterface $logger;
 
-    public function __construct(LoggerInterface $logger)
+    private LockFactory $lockFactory;
+
+    public function __construct(LoggerInterface $logger, LockFactory $lockFactory)
     {
         $this->logger = $logger;
+        $this->lockFactory = $lockFactory;
     }
 
     public function execute(): void
     {
-        $list = new Listing();
-        $list->setCondition('active = 1 AND date < ?', time());
-        $list->setOrderKey(['date', 'id']);
-        $list->setOrder('ASC');
-        $tasks = $list->load();
+        // runs must not overlap: the due tasks of an element have to run in date order
+        $lock = $this->lockFactory->createLock(self::class, 3600);
+        if (!$lock->acquire()) {
+            $this->logger->info('Scheduled tasks are skipped, another run is still executing them');
 
-        foreach ($tasks as $task) {
-            // every error is caught per task, so one broken task cannot block all tasks behind it
-            try {
-                $this->executeTask($task);
-            } catch (Throwable $e) {
-                $this->logger->error('There was a problem with the scheduled task ID: ' . $task->getId());
-                $this->logger->error((string)$e);
+            return;
+        }
+
+        try {
+            $list = new Listing();
+            $list->setCondition('active = 1 AND date < ?', time());
+            $list->setOrderKey(['date', 'id']);
+            $list->setOrder('ASC');
+            $tasks = $list->load();
+
+            foreach ($tasks as $task) {
+                $lock->refresh();
+                // every error is caught per task, so one broken task cannot block all tasks behind it
+                try {
+                    $this->executeTask($task);
+                } catch (Throwable $e) {
+                    $this->logger->error('There was a problem with the scheduled task ID: ' . $task->getId());
+                    $this->logger->error((string)$e);
+                }
             }
+        } finally {
+            $lock->release();
         }
     }
 
@@ -85,6 +102,27 @@ class ScheduledTasksTask implements TaskInterface
             }
         }
 
+        // deactivate before the action: a task that was already claimed by another run is not executed twice
+        if (!$task->claim()) {
+            return;
+        }
+
+        try {
+            $this->executeAction($task, $taskUser);
+        } catch (Throwable $e) {
+            // retried in the next run, as before
+            $task->setActive(true);
+            $task->save();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @throws Throwable
+     */
+    private function executeAction(Task $task, ?User $taskUser): void
+    {
         if ($task->getCtype() === 'document') {
             $document = Document::getById($task->getCid());
             if ($document instanceof Document) {
@@ -156,9 +194,6 @@ class ScheduledTasksTask implements TaskInterface
                 }
             }
         }
-
-        $task->setActive(false);
-        $task->save();
     }
 
     /**

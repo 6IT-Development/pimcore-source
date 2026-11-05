@@ -4009,7 +4009,7 @@ by the listing since B-206.
 
 ## Schedule (Scope 8)
 
-## [ ] B-210 – Due tasks run in id order (publish / unpublish swapped) and concurrent runs execute tasks twice
+## [x] B-210 – Due tasks run in id order (publish / unpublish swapped) and concurrent runs execute tasks twice
 
 **Files:** `lib/Maintenance/Tasks/ScheduledTasksTask.php:43-135` (`:45-47`, `:128-129`);
 `lib/Maintenance/Executor.php:72-98`; `bundles/CoreBundle/config/pimcore/default.yaml:50`
@@ -4028,6 +4028,15 @@ by the listing since B-206.
 **Fix direction:** `ORDER BY date, id`; claim each task atomically (`UPDATE … SET active = 0 WHERE id = ? AND active = 1`
 and check the affected rows) or use a `LockFactory` lock like `LowQualityImagePreviewTask`; deactivate in the same
 transaction as the action.
+
+**Done:** the listing was already ordered by `date, id`. `ScheduledTasksTask::execute()` now holds a `LockFactory` lock
+(1 h TTL, refreshed per task), so a second run returns at once instead of loading the same due tasks. Each task is also
+claimed with `Task::claim()` (`UPDATE … SET active = 0 WHERE id = ? AND active = 1`, affected rows checked) **before**
+its action, and set active again when the action throws, so it is retried in the next run as before. A crash between
+claim and the end of the action (process killed) leaves the task inactive instead of repeating it: a duplicate
+`publish-version` or `delete` is worse than a missed one, which the editor can see in the element. One transaction
+around claim and action was not chosen, because the element saves and deletes dispatch messages and write storage
+inside it.
 
 ## [ ] B-211 – Tasks that did nothing are reported as done
 

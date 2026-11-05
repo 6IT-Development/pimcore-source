@@ -27,6 +27,7 @@ use Pimcore\Model\Schedule\Task\Dao;
  *
  * @method Dao getDao()
  * @method void save()
+ * @method bool claim()
  */
 class Task extends Model\AbstractModel
 {
