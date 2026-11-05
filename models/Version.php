@@ -608,7 +608,7 @@ final class Version extends AbstractModel
 
     public function getPublic(): bool
     {
-        return $this->public;
+        return $this->isPublic();
     }
 
     public function isPublic(): bool
@@ -628,7 +628,7 @@ final class Version extends AbstractModel
 
     public function getVersionCount(): int
     {
-        return $this->versionCount ?: 0;
+        return $this->versionCount;
     }
 
     public function setVersionCount(int $versionCount): void

@@ -699,7 +699,12 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         if ($isAutoSave) {
             $list = new Model\Version\Listing();
             $list->setLoadAutoSave(true);
-            $list->setCondition('autoSave = 1 AND cid = ? AND cType = ? AND userId = ? ', [$this->getId(), Service::getElementType($this), $this->getUserModification()]);
+            // "userId = NULL" never matches, saves without a user would create a new auto-save version every time
+            $userModification = $this->getUserModification();
+            $list->setCondition(
+                'autoSave = 1 AND cid = ? AND cType = ? AND ' . ($userModification === null ? 'userId IS NULL' : 'userId = ?'),
+                array_merge([$this->getId(), Service::getElementType($this)], $userModification === null ? [] : [$userModification])
+            );
             $version = $list->current();
         }
 

@@ -22,6 +22,7 @@ use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Version;
+use RuntimeException;
 
 /**
  * @internal
@@ -52,9 +53,6 @@ class Dao extends Model\Dao\AbstractDao
 
     /**
      * Save object to database
-     *
-     *
-     * @todo: $data could be undefined
      */
     public function save(): int
     {
@@ -78,9 +76,12 @@ class Dao extends Model\Dao\AbstractDao
 
         Helper::upsert($this->db, 'versions', $data, $this->getPrimaryKey('versions'));
 
-        $lastInsertId = $this->db->lastInsertId();
-        if (!$this->model->getId() && $lastInsertId) {
-            $this->model->setId((int)$lastInsertId);
+        if (!$this->model->getId()) {
+            $lastInsertId = (int)$this->db->lastInsertId();
+            if (!$lastInsertId) {
+                throw new RuntimeException('The id of the new version could not be determined');
+            }
+            $this->model->setId($lastInsertId);
         }
 
         return $this->model->getId();
@@ -122,8 +123,14 @@ class Dao extends Model\Dao\AbstractDao
 
     public function isBinaryHashInUse(?string $hash): bool
     {
-        $count = $this->db->fetchOne('SELECT count(*) FROM versions WHERE binaryFileHash = ? AND cid = ?', [$hash, $this->model->getCid()]);
-        return ($count > 1);
+        // versions without a binary (folders, documents, objects) share nothing
+        if ($hash === null) {
+            return false;
+        }
+
+        $count = (int)$this->db->fetchOne('SELECT count(*) FROM versions WHERE binaryFileHash = ? AND cid = ?', [$hash, $this->model->getCid()]);
+
+        return $count > 1;
     }
 
     /**

@@ -4320,7 +4320,7 @@ the stored binary all come from that stream, so a new upload is no longer stored
 stack trace is built from `debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)` in the format of `getTraceAsString()`. The
 redundant `setId()` after `Dao::save()` is removed. Open: skipping the hash for an unchanged binary (I-104).
 
-## [ ] B-221 – Version small defects
+## [x] B-221 – Version small defects
 
 **Files:** `models/Version/Dao.php:56-79`, `:106-110`; `models/Element/AbstractElement.php:577-582`;
 `models/Version.php:465-473`, `:485-488`
@@ -4335,6 +4335,12 @@ redundant `setId()` after `Dao::save()` is removed. Open: skipping the hash for 
   non-nullable `int`.
 
 **Fix direction:** see I-102 / I-105.
+
+**Done:** `Dao::save()` throws when a new version gets no insert id instead of returning `null` through an `int`
+return type; the stale `@todo` is removed. The auto-save lookup in `doSaveVersion()` matches `userId IS NULL` for saves
+without a user, so they reuse their auto-save version. `isBinaryHashInUse()` returns `false` for a `null` hash without
+a query and compares an `int`. `getPublic()` delegates to `isPublic()` (both kept for compatibility), and
+`getVersionCount()` returns the property as it is.
 
 ---
 
