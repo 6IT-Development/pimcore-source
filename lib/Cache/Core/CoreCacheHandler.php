@@ -673,11 +673,17 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
             return $result;
         }
 
+        // shutdown tags (e.g. output) were moved to the shutdown list - the clear is scheduled, not failed
+        if (array_intersect($originalTags, $this->tagsClearedOnShutdown) !== []) {
+            return true;
+        }
+
         $this->logger->warning(
-            'Could not clear tags as tag list is empty after normalization',
+            'Could not clear tags as tag list is empty after normalization (tags ignored on clear)',
             [
                 'tags' => $tags,
                 'originalTags' => $originalTags,
+                'tagsIgnoredOnClear' => $this->tagsIgnoredOnClear,
             ]
         );
 

@@ -257,7 +257,7 @@ are queued and written with their value.
 
 ---
 
-## [ ] B-06 – `clearTags(['output'])` returns `false` and logs a warning although the tag was scheduled
+## [x] B-06 – `clearTags(['output'])` returns `false` and logs a warning although the tag was scheduled
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:590-618`, `:646-669`
 
@@ -270,6 +270,11 @@ are queued and written with their value.
 
 **Fix direction:** return `true` when at least one tag was moved to the shutdown list; log the warning only for
 tags removed by `tagsIgnoredOnClear`.
+
+**Done:** when no tag is left after normalization, `clearTags()` returns `true` without a warning if one of the given
+tags is on the shutdown list; the warning (now with `tagsIgnoredOnClear` in the context) and `false` remain for the
+case where all tags were ignored. Tests: clearing only `output` succeeds without warning, clearing only ignored tags
+fails with the warning.
 
 ---
 

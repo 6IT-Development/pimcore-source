@@ -902,6 +902,23 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertTrue($this->cacheHasItem('itemA'));
     }
 
+    public function testClearingOnlyAShutdownTagIsScheduledAndSucceeds(): void
+    {
+        static::$logHandlers['test']->clear();
+        $this->assertTrue($this->handler->clearTag('output'));
+        $this->assertEquals(['output'], $this->getHandlerPropertyValue('tagsClearedOnShutdown'));
+        $this->assertFalse(static::$logHandlers['test']->hasWarningThatContains('Could not clear tags'));
+    }
+
+    public function testClearingOnlyIgnoredTagsFails(): void
+    {
+        static::$logHandlers['test']->clear();
+        $this->handler->addTagIgnoredOnClear('tag_a');
+
+        $this->assertFalse($this->handler->clearTag('tag_a'));
+        $this->assertTrue(static::$logHandlers['test']->hasWarningThatContains('Could not clear tags'));
+    }
+
     public static function falsyValues(): array
     {
         return [
