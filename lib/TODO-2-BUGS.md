@@ -108,7 +108,7 @@ Grouped by area, roughly ordered by impact inside each group: **Core cache handl
 
 ## Core cache handler / write lock
 
-## [ ] B-01 – Write-lock ownership by second-resolution timestamp: a process adopts and later deletes another process's lock
+## [x] B-01 – Write-lock ownership by second-resolution timestamp: a process adopts and later deletes another process's lock
 
 **File:** `lib/Cache/Core/WriteLock.php:73-89`, `:96-120`, `:162-197`, `:153-156`
 
@@ -129,6 +129,16 @@ Grouped by area, roughly ordered by impact inside each group: **Core cache handl
 **Fix direction:** use a random token per process (`bin2hex(random_bytes(8))`) as the lock value and delete only
 when the stored token is ours; never adopt a foreign lock as our own; check expiry in `hasLock()`. Preferably the
 Symfony Lock component with a shared store (I-04).
+
+**Done:** the stored lock value is now a map of per-process tokens (`bin2hex(random_bytes(8))`) to the time each
+process acquired or renewed its entry. `lock()` never adopts a foreign lock: it adds its own entry (dropping expired
+and malformed ones) and renews it once half of the lifetime has passed or with `force`. `removeLock()` removes only
+the own entry and deletes the storage item only when no other process holds the lock. `hasLock()` counts the own lock
+only until its lifetime has passed and otherwise reads the storage; values that are not a token map (corrupted
+entries, other writers) are ignored instead of throwing `TypeError`, a plain timestamp of older versions counts as a
+lock of an unknown process. The read-modify-write is still not atomic (two processes locking in the same moment can
+lose one entry) and the lock still lives in the data pool – both remain for I-04. Tests: two processes holding the lock
+at once, removal without an own lock, a corrupted lock value and an expired own lock.
 
 ---
 

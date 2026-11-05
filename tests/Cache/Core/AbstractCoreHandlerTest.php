@@ -768,6 +768,58 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertTrue($otherWriteLock->hasLock());
     }
 
+    public function testWriteLockOfOtherProcessIsNotAdoptedAndNotRemoved(): void
+    {
+        $otherWriteLock = $this->createWriteLock();
+        $otherWriteLock->lock();
+
+        // this process locks while the other one holds the lock, both have their own entry
+        $this->writeLock->lock();
+
+        $otherWriteLock->removeLock();
+        $this->assertTrue($otherWriteLock->hasLock(), 'the lock of this process must survive the removal by the other one');
+
+        $this->writeLock->removeLock();
+        $this->assertFalse($this->writeLock->hasLock());
+        $this->assertFalse($otherWriteLock->hasLock());
+        $this->assertFalse($this->cacheHasItem('system_cache_write_lock'));
+    }
+
+    public function testRemoveLockWithoutOwnLockKeepsTheForeignLock(): void
+    {
+        $otherWriteLock = $this->createWriteLock();
+        $otherWriteLock->lock();
+
+        $this->writeLock->hasLock();
+        $this->writeLock->removeLock();
+
+        $this->assertTrue($otherWriteLock->hasLock());
+        $this->assertTrue($this->writeLock->hasLock());
+    }
+
+    public function testCorruptedWriteLockValueIsIgnored(): void
+    {
+        $item = $this->cache->getItem('system_cache_write_lock');
+        $item->set('not a lock');
+        $this->cache->save($item);
+
+        $this->assertFalse($this->writeLock->hasLock());
+        $this->assertTrue($this->writeLock->lock());
+        $this->assertTrue($this->writeLock->hasLock());
+    }
+
+    public function testExpiredOwnWriteLockIsNotActive(): void
+    {
+        $this->writeLock->lock();
+        $this->cache->deleteItem('system_cache_write_lock');
+
+        // the lock of this process was acquired longer ago than its lifetime
+        $reflector = new ReflectionClass($this->writeLock);
+        $reflector->getProperty('timestamp')->setValue($this->writeLock, time() - 3600);
+
+        $this->assertFalse($this->writeLock->hasLock());
+    }
+
     /**
      * Data provider for invalid keys.
      *
