@@ -68,6 +68,8 @@ final readonly class CurrentMessageProvider implements CurrentMessageProviderInt
             return false;
         }
 
-        return is_string($decoded['key']) && is_array($decoded['params']) && is_string($decoded['domain']);
+        return is_string($decoded['key'])
+            && is_array($decoded['params'])
+            && (is_string($decoded['domain']) || $decoded['domain'] === null);
     }
 }

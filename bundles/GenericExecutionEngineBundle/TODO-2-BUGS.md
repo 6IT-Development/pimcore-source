@@ -314,10 +314,13 @@ object; store messages with a type discriminator instead of guessing.
 `PlainMessage`. The unused `InvalidJsonMessageException` is removed. No type discriminator: stored current messages of
 existing runs have none, and the exact shape is unlikely for a raw exception text.
 
-### [ ] B-23 – `null` domain is accepted by the interface but rejected by `TranslationMessage`
+### [x] B-23 – `null` domain is accepted by the interface but rejected by `TranslationMessage`
 **Files:** `src/CurrentMessage/CurrentMessageProviderInterface.php:25-29`, `src/CurrentMessage/TranslationMessage.php:28-33`
 `getTranslationMessages(…, ?string $domain = null)` → `new TranslationMessage(…, string $domain, …)` → `TypeError`
 when called with the default. **Fix:** make `$domain` `?string` in `TranslationMessage` (translator accepts `null`).
+
+**Done:** `TranslationMessage` takes a `?string` domain (`null` = the translator's default domain); it is serialized as
+`"domain":null` and `getMessageFromSerializedString()` reads such objects back as translation messages.
 
 ### [ ] B-24 – `TranslationMessage::getSerializedString()` silently returns `''`
 **File:** `src/CurrentMessage/TranslationMessage.php:37-44`

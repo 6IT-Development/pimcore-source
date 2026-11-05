@@ -28,7 +28,7 @@ final readonly class TranslationMessage implements MessageInterface
     public function __construct(
         private string              $key,
         private array               $params,
-        private string              $domain,
+        private ?string             $domain,
         private TranslatorInterface $translator
     )
     {
