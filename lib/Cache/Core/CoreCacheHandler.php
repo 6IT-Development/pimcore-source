@@ -314,10 +314,12 @@ class CoreCacheHandler implements LoggerAwareInterface
                 return false;
             }
 
-            // add cache tags to item
-            $tags = $this->prepareCacheTags($key, $data, $tags);
-            if (null === $tags) {
-                return false;
+            // add cache tags to item - tags of elements are computed in storeCacheData() from the stored copy
+            if (!$data instanceof ElementInterface) {
+                $tags = $this->prepareCacheTags($key, $data, $tags);
+                if (null === $tags) {
+                    return false;
+                }
             }
 
             return $this->storeCacheData($key, $data, $tags, $lifetime, $force);
@@ -440,6 +442,15 @@ class CoreCacheHandler implements LoggerAwareInterface
         return $tags;
     }
 
+    /**
+     * Store data in the cache pool
+     *
+     * For non-element data $tags must already be prepared via prepareCacheTags(). An element is replaced by a fresh
+     * copy from the database, and its tags are computed from that copy (merged with the given $tags), so the entry is
+     * tagged with the dependencies of the data that is actually stored, not of the caller's (possibly modified) instance.
+     *
+     * @param string[] $tags
+     */
     protected function storeCacheData(string $key, mixed $data, array $tags = [], DateInterval|int|null $lifetime = null, bool $force = false): bool
     {
         if ($this->writeInProgress) {
@@ -479,6 +490,14 @@ class CoreCacheHandler implements LoggerAwareInterface
                     ]
                 );
 
+                $this->writeInProgress = false;
+
+                return false;
+            }
+
+            // compute the tags from the copy that is stored, not from the caller's instance
+            $tags = $this->prepareCacheTags($key, $data, $tags);
+            if (null === $tags) {
                 $this->writeInProgress = false;
 
                 return false;
@@ -811,7 +830,10 @@ class CoreCacheHandler implements LoggerAwareInterface
                 continue;
             }
 
-            $tags = $this->prepareCacheTags($queueItem->getKey(), $queueItem->getData(), $queueItem->getTags());
+            // tags of elements are computed in storeCacheData() from the stored copy
+            $tags = $queueItem->getData() instanceof ElementInterface
+                ? $queueItem->getTags()
+                : $this->prepareCacheTags($queueItem->getKey(), $queueItem->getData(), $queueItem->getTags());
             if (null === $tags) {
                 $result = false;
                 // item shouldn't go to the cache (either because it's tags are ignored or were cleared within this process) -> see $this->prepareCacheTags();

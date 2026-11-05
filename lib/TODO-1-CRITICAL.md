@@ -141,7 +141,7 @@ lock does not write its save queue. The ownership issues of `initializeLock()` /
 
 ---
 
-## [ ] C-02 – Element cache tags are computed from the caller's instance, but a different (fresh) instance is stored
+## [x] C-02 – Element cache tags are computed from the caller's instance, but a different (fresh) instance is stored
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:814`, `:819`, `:461-511`; `:310-323`
 
@@ -162,6 +162,12 @@ lock does not write its save queue. The ownership issues of `initializeLock()` /
 **Fix direction:** compute the tags inside `storeCacheData()` from the fresh copy (after `:466`) and run the
 `clearedTags` / `tagsIgnoredOnSave` checks there. Keep `prepareCacheTags()` before the store only for non-element
 data. Add a test (I-12).
+
+**Done:** `save()` (immediate path) and `writeSaveQueue()` call `prepareCacheTags()` only for non-element data. For an
+element, `storeCacheData()` computes the tags from the fresh copy right after the re-fetch (merged with the tags passed
+to `save()`) and runs the `clearedTags` / `tagsIgnoredOnSave` checks on them; an aborted store resets
+`writeInProgress`. The entry is therefore tagged with the dependencies of the stored data. No element test added: the
+`tests/Cache/Core` suites use scalar data only (I-12).
 
 ---
 
