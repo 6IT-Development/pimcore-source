@@ -77,12 +77,13 @@ class NotificationServiceFilterParser
         $filter = $this->request->request->get(self::KEY_FILTER, '[]');
         $items = json_decode($filter, true);
 
-        foreach ($items as $item) {
+        foreach (array_values($items) as $index => $item) {
             $type = $item[self::KEY_TYPE];
 
+            // the index keeps keys and placeholders of several filters on the same property and operator apart
             switch ($type) {
                 case self::TYPE_STRING:
-                    [$key, $condition, $conditionVariables] = $this->parseString($item);
+                    [$key, $condition, $conditionVariables] = $this->parseString($item, $index);
                     $result[$key] = [
                         'condition' => $condition,
                         'conditionVariables' => $conditionVariables,
@@ -90,7 +91,7 @@ class NotificationServiceFilterParser
 
                     break;
                 case self::TYPE_DATE:
-                    [$key, $condition, $conditionVariables] = $this->parseDate($item);
+                    [$key, $condition, $conditionVariables] = $this->parseDate($item, $index);
                     $result[$key] = [
                         'condition' => $condition,
                         'conditionVariables' => $conditionVariables,
@@ -108,14 +109,14 @@ class NotificationServiceFilterParser
      *
      * @throws Exception
      */
-    private function parseString(array $item): array
+    private function parseString(array $item, int $index): array
     {
         $result = null;
         $property = $this->getDbProperty($item);
         $value = $item[self::KEY_VALUE] ?? '';
 
         if ($item[self::KEY_OPERATOR] == self::OPERATOR_LIKE) {
-            $key = $property . '_like';
+            $key = $property . '_like_' . $index;
             $result = [
                 $key,
                 "`$property` LIKE :$key",
@@ -135,7 +136,7 @@ class NotificationServiceFilterParser
      *
      * @throws Exception
      */
-    private function parseDate(array $item): array
+    private function parseDate(array $item, int $index): array
     {
         $result = null;
         $property = $this->getDbProperty($item);
@@ -143,7 +144,7 @@ class NotificationServiceFilterParser
 
         switch ($item[self::KEY_OPERATOR]) {
             case self::OPERATOR_EQ:
-                $key = $property . '_eq';
+                $key = $property . '_eq_' . $index;
                 $result = [
                     $key,
                     "`$property` BETWEEN :{$key}_start AND :{$key}_end",
@@ -155,7 +156,7 @@ class NotificationServiceFilterParser
 
                 break;
             case self::OPERATOR_GT:
-                $key = $property . '_gt';
+                $key = $property . '_gt_' . $index;
                 $result = [
                     $key,
                     "`$property` > :$key",
@@ -164,7 +165,7 @@ class NotificationServiceFilterParser
 
                 break;
             case self::OPERATOR_LT:
-                $key = $property . '_lt';
+                $key = $property . '_lt_' . $index;
                 $result = [
                     $key,
                     "`$property` < :$key",

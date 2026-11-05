@@ -3657,7 +3657,7 @@ timezone that was used for writing.
 UTC in a `DATETIME` column (I-90), which is what removes the DST fall-back ambiguity and the dependency on the MySQL
 session timezone.
 
-## [ ] B-195 – `findAll()` filters: unquoted keys, conditions without parentheses, colliding keys, ignored offset, swallowed count errors
+## [x] B-195 – `findAll()` filters: unquoted keys, conditions without parentheses, colliding keys, ignored offset, swallowed count errors
 
 **Files:** `models/Notification/Service/NotificationService.php:181-226`;
 `models/Notification/Service/NotificationServiceFilterParser.php:66-96`; `models/Notification/Listing/Dao.php:32-48`;
@@ -3674,6 +3674,11 @@ session timezone.
   throws, or shows data with a total of `0`.
 
 **Fix direction:** typed filter object (I-88); quote identifiers; parenthesise each condition; let `count()` throw.
+
+**Done:** keys are quoted and caller conditions parenthesised in `findAll()` (already with C-35). The filter parser
+suffixes keys and placeholders with the filter's index, so several filters on the same property and operator are
+all applied. The notification listing applies an offset without a limit and ignores negative offsets and limits.
+`Listing\Dao::count()` no longer swallows errors. Open: the typed filter object (I-88).
 
 ## [ ] B-196 – Filter parser crashes on malformed input (500 instead of 400) and the date operators overlap
 

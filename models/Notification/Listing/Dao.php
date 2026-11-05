@@ -31,17 +31,15 @@ class Dao extends AbstractDao
 {
     public const string DB_TABLE_NAME = 'notifications';
 
+    /**
+     * @throws Exception
+     */
     public function count(): int
     {
         $sql = sprintf('SELECT COUNT(*) AS num FROM `%s`%s', static::DB_TABLE_NAME, $this->getCondition());
 
-        try {
-            $count = (int)$this->db->fetchOne($sql, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (\Exception) {
-            $count = 0;
-        }
-
-        return $count;
+        // errors are not swallowed: a total of 0 next to failing (or existing) items is misleading
+        return (int)$this->db->fetchOne($sql, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 
     public function getTotalCount(): int
@@ -83,5 +81,25 @@ class Dao extends AbstractDao
         $this->model->setNotifications($notifications);
 
         return $notifications;
+    }
+
+    /**
+     * Unlike the generic implementation, an offset is also applied without a limit, and negative values are ignored
+     */
+    protected function getOffsetLimit(): string
+    {
+        $limit = $this->model->getLimit();
+        $offset = max(0, (int)$this->model->getOffset());
+
+        if ($limit !== null && $limit > 0) {
+            return ' LIMIT ' . $offset . ',' . $limit;
+        }
+
+        if ($offset > 0) {
+            // MySQL has no OFFSET without LIMIT, this is the documented way to skip rows only
+            return ' LIMIT ' . $offset . ',18446744073709551615';
+        }
+
+        return '';
     }
 }
