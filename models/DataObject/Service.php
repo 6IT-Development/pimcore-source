@@ -43,6 +43,7 @@ use Pimcore\Model\Element;
 use Pimcore\Model\Element\Dao;
 use Pimcore\Model\Element\DirtyIndicatorInterface;
 use Pimcore\Model\Element\ElementInterface;
+use Pimcore\Model\Schedule\Task;
 use Pimcore\Tool;
 use Pimcore\Tool\Admin as AdminTool;
 use Pimcore\Tool\Session;
@@ -277,13 +278,40 @@ class Service extends Model\Element\Service
         $new->setPath($target->getRealPath());
         $new->setKey($target->getKey());
         $new->setParentId($target->getParentId());
-        $new->setScheduledTasks($source->getScheduledTasks());
+        $new->setScheduledTasks(self::copyScheduledTasks($source->getScheduledTasks()));
         $new->setProperties(self::cloneProperties($source->getProperties()));
         $new->setUserModification($this->_user ? $this->_user->getId() : 0);
 
         $new->save();
 
         return Concrete::getById($new->getId());
+    }
+
+    /**
+     * Returns new tasks with the same schedule, so saving them does not move the source's tasks to the target.
+     * Tasks publishing a version are left out, as the version belongs to the source.
+     *
+     * @param Task[] $tasks
+     *
+     * @return Task[]
+     */
+    private static function copyScheduledTasks(array $tasks): array
+    {
+        $copies = [];
+        foreach ($tasks as $task) {
+            if ($task->getVersion()) {
+                continue;
+            }
+
+            $copies[] = new Task([
+                'date' => $task->getDate(),
+                'action' => $task->getAction(),
+                'active' => $task->getActive(),
+                'userId' => $task->getUserId(),
+            ]);
+        }
+
+        return $copies;
     }
 
     /**

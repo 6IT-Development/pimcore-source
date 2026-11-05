@@ -1161,6 +1161,8 @@ class Service extends Model\AbstractModel
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('dao'));
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('resource'));
         $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('writeResource'));
+        // the task objects keep their ids, so saving the copy would move them away from the source element
+        $deepCopy->addFilter(new SetNullFilter(), new PropertyNameMatcher('scheduledTasks'));
         $deepCopy->addFilter(new DoctrineCollectionFilter(), new PropertyTypeMatcher(
             Collection::class
         ));

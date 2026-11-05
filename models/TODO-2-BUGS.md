@@ -3360,7 +3360,7 @@ whose key config still exists and skips deleted groups and groups without (exist
 filters both tables by `fieldname`; deleting the object still removes every field through the `ON DELETE CASCADE` foreign
 keys. The two existence checks use bound parameters.
 
-## [ ] B-182 – `DataObject\Service::copyContents()` moves the source's scheduled tasks to the target
+## [x] B-182 – `DataObject\Service::copyContents()` moves the source's scheduled tasks to the target
 
 **Files:** `models/DataObject/Service.php:252-288` (`:279`); `models/Element/Traits/ScheduledTasksTrait.php:52-67`;
 `models/Schedule/Task/Dao.php:42-49`
@@ -3371,6 +3371,11 @@ keys. The two existence checks use bound parameters.
   read in the same request).
 
 **Fix direction:** clone tasks with `id = null`.
+
+**Done:** `copyContents()` gives the target new `Task` objects (no id) with the date, action, state and user of the
+source's tasks, so saving the target no longer moves the source's tasks. Tasks that publish a version are left out: the
+version belongs to the source and the task DAO rejects it for another element. `Element\Service::cloneMe()` sets
+`scheduledTasks` to `null` in the copy, so a copy loads its own (none yet) instead of taking over loaded task objects.
 
 ## [ ] B-183 – `getObjectsReferencingUser()` combines user fields with `AND`
 
