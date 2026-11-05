@@ -35,6 +35,7 @@ use Pimcore\Model\Element\ElementDescriptor;
 use Pimcore\Model\User;
 use Pimcore\Translation\Translator;
 use Psr\Log\LoggerInterface;
+use ReflectionClass;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\SentStamp;
@@ -437,10 +438,20 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             " Starting job step {$jobRun->getCurrentStep()} of Job '{$job->getName()}'."
         );
 
-        $jobStep = $job->getSteps()[$jobRun->getCurrentStep()];
+        $jobStep = $job->getSteps()[$jobRun->getCurrentStep()] ?? null;
+        if ($jobStep === null) {
+            $this->setJobRunError(
+                $jobRun,
+                'gee_error_no_steps',
+                $this->getLogParams($jobRun)
+            );
+
+            return;
+        }
+
         $messageString = $jobStep->getMessageFQCN();
 
-        if (!class_exists($messageString)) {
+        if (!$this->isStepMessageClass($messageString)) {
             $this->setJobRunError(
                 $jobRun,
                 'gee_error_missing_message_implementation',
@@ -461,6 +472,21 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             $this->getSelectionProcessingModeFromJobRun($jobRun),
             $job->getSelectedElements()
         );
+    }
+
+    /**
+     * Step messages are created as new $class($jobRunId, $step, $element) in dispatchSelectedElements().
+     */
+    private function isStepMessageClass(string $class): bool
+    {
+        if (!is_subclass_of($class, GenericExecutionEngineMessageInterface::class)) {
+            return false;
+        }
+
+        $reflection = new ReflectionClass($class);
+
+        return $reflection->isInstantiable()
+            && ($reflection->getConstructor()?->getNumberOfRequiredParameters() ?? 0) <= 3;
     }
 
     private function getLogParams(JobRun $jobRun): array

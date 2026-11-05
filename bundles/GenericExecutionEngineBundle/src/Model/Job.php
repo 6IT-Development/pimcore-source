@@ -23,6 +23,11 @@ use Pimcore\Model\Element\ElementDescriptor;
 final class Job
 {
     /**
+     * @var JobStep[] list, the agent addresses steps by their position
+     */
+    private readonly array $steps;
+
+    /**
      * The selection the job was created with, steps may replace $selectedElements while the job runs.
      *
      * @var ElementDescriptor[]
@@ -37,15 +42,26 @@ final class Job
      */
     public function __construct(
         private readonly string $name,
-        private readonly array  $steps,
+        array                   $steps,
         private array           $selectedElements = [],
         private readonly array  $environmentData = [],
         ?array                  $initialSelectedElements = null
     )
     {
-        if (empty($this->steps)) {
+        if (empty($steps)) {
             throw new InvalidArgumentException('Job must have at least one step');
         }
+
+        foreach ($steps as $key => $step) {
+            if (!$step instanceof JobStepInterface) {
+                throw new InvalidArgumentException(
+                    "Step $key of job $name must implement " . JobStepInterface::class . ', got ' .
+                    get_debug_type($step) . '.'
+                );
+            }
+        }
+
+        $this->steps = array_values($steps);
 
         $this->initialSelectedElements = $initialSelectedElements ?? $selectedElements;
     }

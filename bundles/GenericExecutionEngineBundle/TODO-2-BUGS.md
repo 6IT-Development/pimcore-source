@@ -106,7 +106,7 @@ or the current message. `setJobRunError()` lost its unused state argument, alway
 branch (`stop_on_first_error`) writes the raw error only to the log; the caller sets `gee_job_failed` as current
 message.
 
-### [ ] B-08 – Step messages are instantiated without type check; non-list `steps` break dispatch
+### [x] B-08 – Step messages are instantiated without type check; non-list `steps` break dispatch
 **File:** `src/Agent/JobExecutionAgent.php:385-396`, `:460-475`, `src/Model/Job.php:29-39`
 - Only `class_exists()` is checked; a class that does not implement `GenericExecutionEngineMessageInterface` or has a
   different constructor signature is instantiated (`new $messageString($jobRunId, $stepId, $element)`) → `TypeError` /
@@ -118,6 +118,12 @@ message.
 - Translation `gee_error_no_steps` exists but is never used.
 **Fix:** `is_subclass_of($messageString, GenericExecutionEngineMessageInterface::class)`, `array_values()` + type
 validation of steps in `Job::__construct()`.
+
+**Done:** `Job::__construct()` rejects steps that do not implement `JobStepInterface` and stores the steps as list
+(`array_values()`), also after the JSON round trip. `dispatchStepMessage()` fails the run with `gee_error_no_steps` when
+the current step does not exist and with `gee_error_missing_message_implementation` (text extended) unless the message
+class implements `GenericExecutionEngineMessageInterface`, is instantiable and needs at most the three constructor
+arguments the agent passes.
 
 ### [ ] B-09 – Global `error_handling` setting is ignored for the `default` execution context
 **Files:** `config/pimcore/default.yaml:1-6`, `src/Agent/JobExecutionAgent.php:269-284`,

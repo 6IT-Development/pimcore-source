@@ -1,7 +1,7 @@
 gee_job_run_permission: Job Run Overview
 gee_see_all_job_runs_permission: See all Job Runs
 gee_error_no_job_definition: No Job definition found for Job Run ID %job_run_id%.
-gee_error_missing_message_implementation: Step message implementation %message% of Job %job_run_name% not found.
+gee_error_missing_message_implementation: Step message implementation %message% of Job %job_run_name% not found or not usable as job step message.
 gee_error_no_steps: Job definition %job_run_name% has no steps defined.
 gee_job_cancelled: Job Run %job_run_name% (%job_run_id%) cancelled
 gee_job_failed: Job Run %job_run_name% (%job_run_id%) failed.
