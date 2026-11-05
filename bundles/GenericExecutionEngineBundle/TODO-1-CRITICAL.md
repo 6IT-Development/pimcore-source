@@ -113,7 +113,7 @@ agent passes the run and step on instead of reloading them per helper. The per-s
 
 ---
 
-## [ ] C-03 – `totalElements` is not updated when a step changes the selection → hang or premature step switch
+## [x] C-03 – `totalElements` is not updated when a step changes the selection → hang or premature step switch
 
 **Files:** `src/Repository/JobRunRepository.php:225-242`, `src/Messenger/Handler/AbstractAutomationActionHandler.php:269-272`,
 `src/Agent/JobExecutionAgent.php:77`, `:171-179`, `:398-404`
@@ -132,6 +132,13 @@ dispatches one message per **new** element while the completion check still comp
 number of messages actually dispatched: `1` for `ONCE`/empty, `count($selectedElements)` otherwise) and compare against
 that instead of `totalElements`; keep `totalElements` only as informational value (or update it together with the
 selection). Combine with C-02.
+
+**Done:** `dispatchStepMessage()` sets `totalElements` to the size of the selection it dispatches (no schema change), so
+it always describes the current step; `startJobExecution()` no longer sets it separately. A `FOR_EACH` step is complete
+at `processed >= max(1, totalElements)`, which covers the single message of an empty selection; `ONCE` steps still
+complete with their one message. Selection changes made by a step's handlers are committed before their message is
+counted, so the next step is dispatched with the new selection. The completion state comparison with `totalElements`
+is unchanged (see B-items).
 
 ---
 

@@ -74,7 +74,6 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         $jobRun->setExecutionContext($executionContext);
         $jobRun->setState(JobRunStates::RUNNING);
         $jobRun->setCurrentStep(0);
-        $jobRun->setTotalElements(count($job->getSelectedElements()));
 
         $this->jobRunRepository->updateLogLocalizedWithDomain(
             $jobRun,
@@ -177,13 +176,15 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
 
     /**
      * Continues with the next step once the handled message was the last one of its step.
+     * totalElements is the size of the selection the step was dispatched with (see dispatchStepMessage()),
+     * an empty selection is dispatched as one message.
      *
      * @throws Exception
      */
     private function handleNextMessage(JobRun $jobRun, int $step, int $processedElements): void
     {
         if ($this->getSelectionProcessingModeFromJobRun($jobRun, $step) === SelectionProcessingMode::ONCE ||
-            $processedElements >= $jobRun->getTotalElements()) {
+            $processedElements >= max(1, $jobRun->getTotalElements())) {
             $this->continueJobStepExecution($jobRun, $step);
         }
     }
@@ -399,6 +400,10 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
 
             return;
         }
+
+        // a previous step may have changed the selection, the step is complete after one message per element
+        $jobRun->setTotalElements(count($job->getSelectedElements()));
+        $this->jobRunRepository->update($jobRun);
 
         $this->dispatchSelectedElements(
             $jobRun->getId(),
