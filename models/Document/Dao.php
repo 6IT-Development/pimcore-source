@@ -273,6 +273,10 @@ class Dao extends Model\Element\Dao
         foreach ($propertiesRaw as $propertyRaw) {
             try {
                 $id = $this->model->getId();
+                // the type column is nullable, a NULL or unknown type cannot be loaded
+                if (!in_array($propertyRaw['type'], Model\Property::TYPES, true)) {
+                    throw new \UnexpectedValueException(sprintf('unsupported type "%s"', $propertyRaw['type']));
+                }
                 $property = new Model\Property();
                 $property->setType($propertyRaw['type']);
                 if ($id !== null) {
@@ -295,9 +299,9 @@ class Dao extends Model\Element\Dao
                 }
 
                 $properties[$propertyRaw['name']] = $property;
-            } catch (Exception) {
+            } catch (\Throwable $e) {
                 Logger::error(
-                    "can't add property " . $propertyRaw['name'] . ' to document ' . $this->model->getRealFullPath()
+                    "can't add property " . $propertyRaw['name'] . ' to document ' . $this->model->getRealFullPath() . ': ' . $e->getMessage()
                 );
             }
         }

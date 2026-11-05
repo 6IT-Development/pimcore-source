@@ -3809,7 +3809,7 @@ have it. The unserialize branch is removed from `setDataFromResource()`, and `Pr
 and the serialized data. `null` and `''` (rows broken earlier) are still saved as they are; B-202 deals with them.
 Open: the `PropertyType` enum (I-93).
 
-## [ ] B-202 – One property row with `type` (or `name`) `NULL` makes the element and all its descendants unloadable
+## [x] B-202 – One property row with `type` (or `name`) `NULL` makes the element and all its descendants unloadable
 
 **Files:** `models/Asset/Dao.php:234-286`; `models/DataObject/AbstractObject/Dao.php:222-273`;
 `models/Document/Dao.php:256-315`; `models/Property.php:184-202`; `models/Property/Dao.php:33-68`;
@@ -3826,6 +3826,12 @@ Open: the `PropertyType` enum (I-93).
 
 **Fix direction:** validate `name`, `type` (allowed list), `ctype` and `cid` in `Property::save()` / `Dao::save()`;
 catch `\Throwable` per row and skip it with a log entry; `type` `NOT NULL` by migration (I-99).
+
+**Done:** the three `getProperties()` hydrators skip a row whose `type` is not one of `Property::TYPES` (`NULL`, `''`)
+and catch `\Throwable` per row (a `NULL` name), logging the reason. A skipped row of the element itself is removed by
+its next property save (delete-all and re-insert), which is the only way to clean it up without SQL.
+`Property\Dao::save()` rejects a missing name, a type outside `Property::TYPES` (now also `null` / `''`) and a property
+without `ctype` (`document` / `asset` / `object`) or `cid`. Open: `type` `NOT NULL` by migration (I-99).
 
 ## [ ] B-203 – Array / object values are serialized on save but returned as the serialized string on load
 
