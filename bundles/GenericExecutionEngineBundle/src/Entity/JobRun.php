@@ -36,6 +36,10 @@ use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Serializer\SerializerInterface;
 
+/**
+ * The mapping follows the schema of the installer and the bundle migrations. The foreign key of `ownerId` to the
+ * `users` table cannot be mapped, because users are no Doctrine entities.
+ */
 #[Entity]
 #[Table(name: 'generic_execution_engine_job_run')]
 #[HasLifecycleCallbacks]
@@ -45,32 +49,32 @@ class JobRun
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(options: ['unsigned' => true])]
     private int $id;
 
-    #[ORM\Column(nullable: true)]
+    #[ORM\Column(nullable: true, options: ['unsigned' => true])]
     private ?int $ownerId;
 
-    #[ORM\Column(type: 'string', length: 10, enumType: JobRunStates::class)]
+    #[ORM\Column(type: 'string', length: 100, enumType: JobRunStates::class)]
     private JobRunStates $state = JobRunStates::NOT_STARTED;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
+    #[ORM\Column(type: 'integer', nullable: true, options: ['unsigned' => true])]
     private ?int $currentStep = null;
 
-    #[ORM\Column(length: 300, nullable: true)]
+    #[ORM\Column(type: 'text', length: 65535, nullable: true)]
     private ?string $currentMessage = null;
 
-    #[ORM\Column(type: 'text', nullable: true)]
+    #[ORM\Column(type: 'text', length: 65535, nullable: true)]
     private ?string $log = null;
 
     private ?SerializerInterface $serializer = null;
 
     private ?Job $job = null;
 
-    #[ORM\Column(type: 'text')]
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $serializedJob = null;
 
-    #[ORM\Column(type: 'json')]
+    #[ORM\Column(type: 'json', nullable: true)]
     private ?array $context = null;
 
     #[ORM\Column(nullable: true)]
@@ -79,13 +83,13 @@ class JobRun
     #[ORM\Column(nullable: true)]
     private ?int $modificationDate = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(type: 'string', length: 255, options: ['default' => self::DEFAULT_EXECUTION_CONTEXT])]
     private string $executionContext;
 
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $totalElements = 0;
 
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $processedElementsForStep = 0;
 
     public function __construct(?int $ownerId = null)

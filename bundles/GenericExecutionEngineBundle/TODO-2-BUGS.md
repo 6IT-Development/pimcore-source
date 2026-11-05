@@ -213,7 +213,7 @@ with an empty `serializedJob` `$job` stays uninitialised → every `getJob()?->�
 **Done:** the five properties default to `null` (Doctrine instantiates without constructor, defaults still apply), so a
 new run or a run with an empty `serializedJob` returns `null` from `getJob()`; `getModificationDate()` drops the `?? null`.
 
-### [ ] B-16 – Entity mapping and installer schema disagree
+### [x] B-16 – Entity mapping and installer schema disagree
 **Files:** `src/Entity/JobRun.php:51-89`, `src/Entity/JobRunErrorLog.php:33-48`, `src/Installer.php:101-188`
 
 | Column | Entity | Installer |
@@ -230,6 +230,14 @@ new run or a run with an empty `serializedJob` returns `null` from `getJob()`; `
 Any `doctrine:schema:update` / `doctrine:migrations:diff --em=pimcore` will try to shrink `state` to `VARCHAR(10)` →
 truncation / failure for 2 of 6 states; `doctrine:schema:validate` always fails. **Fix:** align the mapping with the
 installer (length 20+, `Types::TEXT`, nullable flags, `#[ORM\JoinColumn]`/indexes) and move schema to migrations (I-16).
+
+**Done:** the mapping follows the installer: `state` `string(100)`, `currentMessage`/`log`/`errorMessage` `TEXT`
+(`length: 65535`), `serializedJob` and `context` nullable, `executionContext` with default `'default'`, ids and counters
+unsigned, index `fk_generic_job_execution_log_jobs` on `jobRunId`. Where the entity was right, the database follows:
+`executionContext` is `NOT NULL` in the installer and in the first bundle migration `Version20261105000100` (`NULL`
+values become `'default'`); the installer reports it as last migration. Not mappable without changing the entity API:
+the foreign keys (`users` is no Doctrine entity, `jobRunId` is no association) and `context` (`json` is a `JSON` column on
+MySQL, the installer creates `LONGTEXT` holding the same JSON) – left to I-05/I-16.
 
 ### [ ] B-17 – Updated selection is only persisted by accident
 **File:** `src/Repository/JobRunRepository.php:225-242`, `src/Entity/JobRun.php:182-199`

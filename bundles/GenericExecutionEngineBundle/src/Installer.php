@@ -24,6 +24,7 @@ use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Migrations\Version20261105000100;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\PermissionConstants;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\TableConstants;
 use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
@@ -50,6 +51,14 @@ final class Installer extends SettingsStoreAwareInstaller
         PermissionConstants::GEE_JOB_RUN,
         PermissionConstants::GEE_SEE_ALL_JOB_RUNS,
     ];
+
+    /**
+     * installBundle() creates the final schema, so installing marks all bundle migrations up to this one as executed.
+     */
+    public function getLastMigrationVersionClassName(): ?string
+    {
+        return Version20261105000100::class;
+    }
 
     /**
      * @throws SchemaException|Exception
@@ -131,7 +140,7 @@ final class Installer extends SettingsStoreAwareInstaller
             $jobRunTable->addColumn('creationDate', 'integer', ['notnull' => false]);
             $jobRunTable->addColumn('modificationDate', 'integer', ['notnull' => false]);
             $jobRunTable->addColumn('executionContext', 'string', [
-                'notnull' => false,
+                'notnull' => true,
                 'length' => 255,
                 'default' => JobRun::DEFAULT_EXECUTION_CONTEXT,
             ]);

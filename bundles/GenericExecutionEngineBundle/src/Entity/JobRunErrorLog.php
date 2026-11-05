@@ -23,28 +23,32 @@ use Doctrine\ORM\Mapping\HasLifecycleCallbacks;
 use Doctrine\ORM\Mapping\Table;
 
 /**
+ * The mapping follows the schema of the installer. `jobRunId` is a plain column, so its foreign key to the job run table
+ * (cascading deletes) is not mapped, only the index MySQL creates for it.
+ *
  * @internal
  */
 #[Entity]
 #[Table(name: 'generic_execution_engine_error_log')]
+#[ORM\Index(name: 'fk_generic_job_execution_log_jobs', columns: ['jobRunId'])]
 #[HasLifecycleCallbacks]
 class JobRunErrorLog
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(options: ['unsigned' => true])]
     private int $id;
 
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $jobRunId;
 
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $stepNumber;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
+    #[ORM\Column(type: 'integer', nullable: true, options: ['unsigned' => true])]
     private ?int $elementId;
 
-    #[ORM\Column(type: 'text', nullable: true)]
+    #[ORM\Column(type: 'text', length: 65535, nullable: true)]
     private ?string $errorMessage;
 
     public function __construct(
