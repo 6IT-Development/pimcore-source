@@ -267,10 +267,12 @@ abstract class AbstractObject extends Model\Element\AbstractElement
             return null;
         }
 
-        Pimcore::getEventDispatcher()->dispatch(
-            new DataObjectEvent($object, ['params' => $params]),
-            DataObjectEvents::POST_LOAD
-        );
+        if ($params['post_load_event']) {
+            Pimcore::getEventDispatcher()->dispatch(
+                new DataObjectEvent($object, ['params' => $params]),
+                DataObjectEvents::POST_LOAD
+            );
+        }
 
         return $object;
     }

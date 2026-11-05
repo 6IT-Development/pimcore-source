@@ -461,6 +461,11 @@ class Service extends Model\AbstractModel
     }
 
     /**
+     * Options of getById():
+     * - force: load from the database, bypassing the runtime cache and the data cache
+     * - post_load_event (internal): false skips the POST_LOAD event, used when the core cache handler loads a fresh
+     *   copy of an element to store it in the cache
+     *
      * @internal
      */
     public static function prepareGetByIdParams(array $params): array
@@ -468,9 +473,11 @@ class Service extends Model\AbstractModel
         $resolver = new OptionsResolver();
         $resolver->setDefaults([
             'force' => false,
+            'post_load_event' => true,
         ]);
 
         $resolver->setAllowedTypes('force', 'bool');
+        $resolver->setAllowedTypes('post_load_event', 'bool');
 
         return $resolver->resolve($params);
     }

@@ -327,10 +327,12 @@ class Asset extends Element\AbstractElement
         }
 
         if ($asset && static::typeMatch($asset)) {
-            Pimcore::getEventDispatcher()->dispatch(
-                new AssetEvent($asset, ['params' => $params]),
-                AssetEvents::POST_LOAD
-            );
+            if ($params['post_load_event']) {
+                Pimcore::getEventDispatcher()->dispatch(
+                    new AssetEvent($asset, ['params' => $params]),
+                    AssetEvents::POST_LOAD
+                );
+            }
         } else {
             $asset = null;
         }

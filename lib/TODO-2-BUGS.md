@@ -205,7 +205,7 @@ mode under a foreign lock.
 
 ---
 
-## [ ] B-04 – Storing an element replaces the caller's instance in `RuntimeCache` and dispatches `POST_LOAD`
+## [x] B-04 – Storing an element replaces the caller's instance in `RuntimeCache` and dispatches `POST_LOAD`
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:461-511`; `models/Document.php:211-256` (same in `Asset::getById()`,
 `AbstractObject::getById()`)
@@ -225,6 +225,14 @@ mode under a foreign lock.
 **Fix direction:** load the fresh copy without the runtime cache and without events (DAO-level load, or a
 `getById()` param that skips `RuntimeCache::set()` / `POST_LOAD`), or store the caller's instance again when
 `__isBasedOnLatestData()` is true and re-fetch only otherwise.
+
+**Done:** `writeCacheData()` loads the fresh copy through the new private `loadDetachedElement()`: it calls
+`getElementById()` with `force` and the new internal `getById()` option `post_load_event => false`
+(`Element\Service::prepareGetByIdParams()`; `Document`, `Asset` and `AbstractObject::getById()` skip `POST_LOAD` with
+it), and restores the runtime-cache entry afterwards (the previous instance, or none), also when the load throws. The
+copy is still loaded through `getById()` so the back-reference registration while an object loads keeps working. The
+always-true `__isBasedOnLatestData()` check is left for I-02. Test: storing an asset folder keeps the caller's instance
+in the runtime cache and dispatches no `POST_LOAD`.
 
 ---
 

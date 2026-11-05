@@ -22,6 +22,7 @@ use DateInterval;
 use DeepCopy\Matcher\PropertyMatcher;
 use DeepCopy\TypeFilter\ReplaceFilter;
 use DeepCopy\TypeMatcher\TypeMatcher;
+use Pimcore\Cache\RuntimeCache;
 use Pimcore\Db;
 use Pimcore\Event\CoreCacheEvents;
 use Pimcore\Model\Document\Hardlink\Wrapper\WrapperInterface;
@@ -504,7 +505,7 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
             $type = Service::getElementType($data);
             $id = $data->getId();
 
-            $data = Service::getElementById($type, $id, ['force' => true]);
+            $data = $this->loadDetachedElement($type, $id);
 
             if ($data === null || !$data->__isBasedOnLatestData()) {
                 $reason = $data === null
@@ -584,6 +585,28 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
         }
 
         return $result;
+    }
+
+    /**
+     * Loads a fresh copy of an element from the database without side effects on the running process: the instance
+     * registered in the runtime cache (usually the one the caller holds) stays registered and no POST_LOAD event is
+     * dispatched - otherwise a later getById() would return the copy and the caller's changes would be invisible
+     */
+    private function loadDetachedElement(string $type, int $id): ?ElementInterface
+    {
+        $runtimeCacheKey = Service::getElementCacheTag($type, $id);
+        $wasRegistered = RuntimeCache::isRegistered($runtimeCacheKey);
+        $registered = $wasRegistered ? RuntimeCache::get($runtimeCacheKey) : null;
+
+        try {
+            return Service::getElementById($type, $id, ['force' => true, 'post_load_event' => false]);
+        } finally {
+            if ($wasRegistered) {
+                RuntimeCache::set($runtimeCacheKey, $registered);
+            } elseif (RuntimeCache::isRegistered($runtimeCacheKey)) {
+                RuntimeCache::getInstance()->offsetUnset($runtimeCacheKey);
+            }
+        }
     }
 
     /**

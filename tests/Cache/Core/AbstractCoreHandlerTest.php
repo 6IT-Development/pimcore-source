@@ -28,7 +28,11 @@ use Monolog\Logger;
 use PHPUnit_Framework_MockObject_MockObject;
 use Pimcore\Cache\Core\CoreCacheHandler;
 use Pimcore\Cache\Core\WriteLock;
+use Pimcore\Cache\RuntimeCache;
+use Pimcore\Event\AssetEvents;
+use Pimcore\Model\Asset;
 use Pimcore\Tests\Support\Helper\Pimcore;
+use Pimcore\Tests\Support\Util\TestHelper;
 use ReflectionClass;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\CacheItem;
@@ -896,6 +900,33 @@ abstract class AbstractCoreHandlerTest extends Unit
 
         $handler->shutdown();
         $this->assertTrue($this->cacheHasItem('itemA'));
+    }
+
+    public function testStoringAnElementKeepsTheCallersInstanceAndDispatchesNoEvent(): void
+    {
+        $folder = TestHelper::createAssetFolder('cache-handler-');
+        $cacheKey = 'asset_' . $folder->getId();
+
+        $postLoadEvents = 0;
+        $listener = function () use (&$postLoadEvents): void {
+            $postLoadEvents++;
+        };
+        \Pimcore::getEventDispatcher()->addListener(AssetEvents::POST_LOAD, $listener);
+
+        try {
+            $instance = Asset::getById($folder->getId(), ['force' => true]);
+            $postLoadEvents = 0;
+
+            $this->assertTrue($this->handler->save($cacheKey, $instance, [], null, 0, true));
+            $this->assertTrue($this->cacheHasItem($cacheKey));
+
+            $this->assertSame($instance, RuntimeCache::get($cacheKey));
+            $this->assertSame($instance, Asset::getById($folder->getId()));
+            $this->assertSame(0, $postLoadEvents, 'storing the element must not dispatch POST_LOAD');
+        } finally {
+            \Pimcore::getEventDispatcher()->removeListener(AssetEvents::POST_LOAD, $listener);
+            $folder->delete();
+        }
     }
 
     /**
