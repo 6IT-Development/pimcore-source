@@ -59,8 +59,7 @@ class Dao extends Model\Dao\AbstractDao
         $dataTable = $this->getDataTableName();
         $fieldname = $this->model->getFieldname();
 
-        $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $dataTable . "` WHERE
-         `id` = '" . $objectId . "' AND `fieldname` = '" . $fieldname . "' LIMIT 1");
+        $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $dataTable . '` WHERE `id` = ? AND `fieldname` = ? LIMIT 1', [$objectId, $fieldname]);
         if ($dataExists) {
             $this->db->delete($dataTable, ['id' => $objectId, 'fieldname' => $fieldname]);
         }
@@ -82,8 +81,7 @@ class Dao extends Model\Dao\AbstractDao
 
         $groupsTable = $this->getGroupsTableName();
 
-        $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $groupsTable . "` WHERE
-         `id` = '" . $objectId . "' AND `fieldname` = '" . $fieldname . "' LIMIT 1");
+        $dataExists = $this->db->fetchOne('SELECT `id` FROM `' . $groupsTable . '` WHERE `id` = ? AND `fieldname` = ? LIMIT 1', [$objectId, $fieldname]);
         if ($dataExists) {
             $this->db->delete($groupsTable, ['id' => $objectId, 'fieldname' => $fieldname]);
         }
@@ -108,6 +106,11 @@ class Dao extends Model\Dao\AbstractDao
                     continue;
                 }
                 $keyConfig = DefinitionCache::get($keyId);
+                if (!$keyConfig) {
+                    Logger::warning('Classification store key ' . $keyId . ' no longer exists, its value in field ' . $fieldname . ' of object ' . $objectId . ' is not saved');
+
+                    continue;
+                }
                 $fd = Service::getFieldDefinitionFromKeyConfig($keyConfig);
 
                 foreach ($keyData as $language => $value) {
@@ -157,19 +160,29 @@ class Dao extends Model\Dao\AbstractDao
         foreach ($collectionToAdd as $groupId => $collectionId) {
             // Ignore the groups that are already saved and those without any collection id
             if ($collectionId && !in_array($groupId, $alreadySavedGroups)) {
-                $group = GroupConfig::getById($groupId);
-                $groupKeys = $group->getRelations();
+                $groupKeyIds = array_map(
+                    static fn (KeyGroupRelation $relation) => $relation->getKeyId(),
+                    GroupConfig::getById($groupId)?->getRelations() ?? []
+                );
                 // make sure that any of the group keys are not among those already saved
                 // if so, skip as there no need for a placeholder
-                if (!in_array(array_keys($groupKeys), $alreadySavedKeyIds)) {
-                    $firstKey = reset($groupKeys);
-                    $keyId = $firstKey->getKeyId();
-                    $keyConfig = DefinitionCache::get($keyId);
+                if (!array_intersect($groupKeyIds, $alreadySavedKeyIds)) {
+                    $keyConfig = null;
+                    foreach ($groupKeyIds as $keyId) {
+                        if ($keyConfig = DefinitionCache::get($keyId)) {
+                            break;
+                        }
+                    }
+                    if (!$keyConfig) {
+                        Logger::warning('Classification store group ' . $groupId . ' has no keys, collection ' . $collectionId . ' of field ' . $fieldname . ' of object ' . $objectId . ' is not saved');
+
+                        continue;
+                    }
                     $data = [
                         'id' => $objectId,
                         'collectionId' => $collectionId,
                         'groupId' => $groupId,
-                        'keyId' => $keyId,
+                        'keyId' => $keyConfig->getId(),
                         'fieldname' => $fieldname,
                         'language' => 'default',
                         'type' => $keyConfig->getType(),
@@ -190,8 +203,9 @@ class Dao extends Model\Dao\AbstractDao
         $groupsTable = $this->getGroupsTableName();
 
         // remove relations
-        $this->db->delete($dataTable, ['id' => $objectId]);
-        $this->db->delete($groupsTable, ['id' => $objectId]);
+        $fieldname = $this->model->getFieldname();
+        $this->db->delete($dataTable, ['id' => $objectId, 'fieldname' => $fieldname]);
+        $this->db->delete($groupsTable, ['id' => $objectId, 'fieldname' => $fieldname]);
     }
 
     /**

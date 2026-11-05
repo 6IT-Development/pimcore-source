@@ -3342,7 +3342,7 @@ can no longer wipe the stored items. `delete()` creates the collection table onl
 definition save creates the tables for the regular case) and skips a missing localized table; other errors propagate.
 The `SELECT`s use bound parameters, and the `ownername LIKE` prefix is escaped with `Helper::escapeLike()`.
 
-## [ ] B-181 – Classification store save: `Error`s for empty groups and deleted keys
+## [x] B-181 – Classification store save: `Error`s for empty groups and deleted keys
 
 **File:** `models/DataObject/Classificationstore/Dao.php:52-183`, `:185-197`
 
@@ -3353,6 +3353,12 @@ The `SELECT`s use bound parameters, and the `ownername LIKE` prefix is escaped w
 - `delete()` ignores `fieldname` (removes the data of every classification store field of the object).
 
 **Fix direction:** skip empty groups / unknown keys with a warning; `array_intersect()`; filter by field name.
+
+**Done:** `save()` skips values of keys whose config no longer exists with a warning. The collection placeholder
+compares the key ids of the group's relations with the saved key ids via `array_intersect()`, uses the first relation
+whose key config still exists and skips deleted groups and groups without (existing) keys with a warning. `delete()`
+filters both tables by `fieldname`; deleting the object still removes every field through the `ON DELETE CASCADE` foreign
+keys. The two existence checks use bound parameters.
 
 ## [ ] B-182 – `DataObject\Service::copyContents()` moves the source's scheduled tasks to the target
 
