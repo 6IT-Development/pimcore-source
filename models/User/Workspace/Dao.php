@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\User\Workspace;
 
+use LogicException;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\User\Workspace;
@@ -28,13 +29,14 @@ class Dao extends Model\Dao\AbstractDao
 {
     public function save(): void
     {
-        $tableName = '';
         if ($this->model instanceof Workspace\Asset) {
             $tableName = 'users_workspaces_asset';
         } elseif ($this->model instanceof Workspace\Document) {
             $tableName = 'users_workspaces_document';
         } elseif ($this->model instanceof Workspace\DataObject) {
             $tableName = 'users_workspaces_object';
+        } else {
+            throw new LogicException(sprintf('No workspace table for %s', $this->model::class));
         }
 
         $data = [];
@@ -45,6 +47,9 @@ class Dao extends Model\Dao\AbstractDao
             if (in_array($key, $this->getValidTableColumns($tableName))) {
                 if (is_bool($value)) {
                     $value = (int)$value;
+                } elseif ($key === 'cpath' && $value === '') {
+                    // NULL does not collide with the unique path index of the user
+                    $value = null;
                 }
 
                 $data[$key] = $value;

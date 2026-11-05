@@ -31,19 +31,19 @@ abstract class AbstractWorkspace extends Model\AbstractModel
      * @internal
      *
      */
-    protected int $userId;
+    protected ?int $userId = null;
 
     /**
      * @internal
      *
      */
-    protected int $cid;
+    protected ?int $cid = null;
 
     /**
      * @internal
      *
      */
-    protected string $cpath;
+    protected string $cpath = '';
 
     /**
      * @internal
@@ -244,7 +244,7 @@ abstract class AbstractWorkspace extends Model\AbstractModel
         return $this;
     }
 
-    public function getCid(): int
+    public function getCid(): ?int
     {
         return $this->cid;
     }
@@ -259,7 +259,7 @@ abstract class AbstractWorkspace extends Model\AbstractModel
         return $this;
     }
 
-    public function getUserId(): int
+    public function getUserId(): ?int
     {
         return $this->userId;
     }

@@ -4683,7 +4683,7 @@ drops empty entries and dedupes, so `''` stores `[]`; `setPermission()` / `getPe
 definition, and both listings' `getTotalCount()` let SQL errors propagate instead of returning `0`. The user listing
 still skips a row only when it is gone by the time it is loaded (`getById()` lets every other error through).
 
-## [ ] B-234 – Workspaces: uninitialised typed properties, `NULL` `cpath` breaks loading, duplicate entries abort the whole user save
+## [x] B-234 – Workspaces: uninitialised typed properties, `NULL` `cpath` breaks loading, duplicate entries abort the whole user save
 
 **Files:** `models/User/Workspace/AbstractWorkspace.php:34-46`, `:240-280`; `models/User/Workspace/Dao.php:29-54`;
 `models/User/UserRole/Dao.php:55-85`; `models/User/UserRole.php:92-111`; `bundles/InstallBundle/dump/install.sql:503-572`
@@ -4701,6 +4701,12 @@ still skips a row only when it is gone by the time it is loaded (`getById()` let
 
 **Fix direction:** defaults / nullable types; dedupe by `cid` before insert (or upsert); a table name per workspace class
 (I-119); `cpath NOT NULL` (I-120).
+
+**Done:** `userId` / `cid` default to `null` (getters return `?int`) and `cpath` to `''`, so new workspaces and rows
+with `cpath IS NULL` no longer throw on access; an empty path is written back as `NULL`. `UserRole::update()` keeps the
+last workspace per element id and per path before inserting, so duplicate entries no longer abort the user save.
+`Workspace\Dao::save()` throws a `LogicException` naming the class for unknown workspace subclasses. The schema change
+stays with I-120.
 
 ## [ ] B-235 – `getById()` / `getByName()` / listings return different instances; stale or partially hydrated user objects
 

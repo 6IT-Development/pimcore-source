@@ -96,18 +96,39 @@ abstract class UserRole extends AbstractUser implements UserRoleInterface
         // save all workspaces
         $this->getDao()->emptyWorkspaces();
 
-        foreach ($this->getWorkspacesAsset() as $workspace) {
-            $workspace->setUserId($this->getId());
-            $workspace->save();
+        foreach ([$this->getWorkspacesAsset(), $this->getWorkspacesDocument(), $this->getWorkspacesObject()] as $workspaces) {
+            foreach ($this->getUniqueWorkspaces($workspaces) as $workspace) {
+                $workspace->setUserId($this->getId());
+                $workspace->save();
+            }
         }
-        foreach ($this->getWorkspacesDocument() as $workspace) {
-            $workspace->setUserId($this->getId());
-            $workspace->save();
+    }
+
+    /**
+     * Keeps the last workspace per element id and per path, both are unique per user in the workspace tables
+     *
+     * @param Workspace\AbstractWorkspace[] $workspaces
+     *
+     * @return Workspace\AbstractWorkspace[]
+     */
+    private function getUniqueWorkspaces(array $workspaces): array
+    {
+        $byCid = [];
+        foreach ($workspaces as $workspace) {
+            $byCid[(string)$workspace->getCid()] = $workspace;
         }
-        foreach ($this->getWorkspacesObject() as $workspace) {
-            $workspace->setUserId($this->getId());
-            $workspace->save();
+
+        $unique = [];
+        foreach ($byCid as $workspace) {
+            $path = $workspace->getCpath();
+            if ($path === '') {
+                $unique[] = $workspace;
+            } else {
+                $unique[$path] = $workspace;
+            }
         }
+
+        return array_values($unique);
     }
 
     /**
