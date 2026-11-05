@@ -90,6 +90,25 @@ class CodeInjectorTest extends TestCase
     }
 
     /**
+     * C-09: injecting into a custom selector must not decode the entities of the rest of the page.
+     *
+     * @group dom
+     */
+    public function testInjectDOMKeepsEscapedContentEscaped(): void
+    {
+        $escaped = '<p>&lt;script&gt;alert(1)&lt;/script&gt; a &amp;amp; b</p>';
+        $html = '<html><body>' . $escaped . '<div id="target">x</div></body></html>';
+
+        foreach ([CodeInjector::POSITION_BEGINNING, CodeInjector::POSITION_END, CodeInjector::REPLACE] as $position) {
+            $result = $this->injector->injectIntoHtml($html, '<script>ok("&amp;")</script>', '#target', $position);
+
+            $this->assertStringContainsString($escaped, $result);
+            $this->assertStringNotContainsString('<script>alert(1)', $result);
+            $this->assertStringContainsString('<script>ok("&amp;")</script>', $result);
+        }
+    }
+
+    /**
      * @dataProvider invalidTypeProvider
      */
     public function testInvalidPosition(string $position): void

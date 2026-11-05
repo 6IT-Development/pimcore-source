@@ -125,20 +125,33 @@ class CodeInjector
     {
         $dom = new DomCrawler($html);
         $element = $dom->filter($selector)->eq(0);
-        if ($element->count() && $node = $element->getNode(0)) {
-            if (self::REPLACE === $position) {
-                $node->textContent = $code;
-            } elseif (self::POSITION_BEGINNING === $position) {
-                $node->textContent = $code . $element->html();
-            } elseif (self::POSITION_END === $position) {
-                $node->textContent = $element->html() . $code;
-            }
+        if (!$element->count() || !($node = $element->getNode(0))) {
+            $dom->clear();
+
+            return $html;
         }
 
-        $html = html_entity_decode($dom->outerHtml());
+        // the DOM only locates the target: a placeholder text node marks the position and is replaced with the code
+        // in the serialized page, so the code is inserted unchanged and the rest of the page keeps its escaping
+        // (decoding entities of the whole page would turn escaped content into live HTML)
+        $injectTpl = sprintf('----%s----', str_replace('.', '', uniqid('INJECT', true)));
+        $placeholder = $node->ownerDocument->createTextNode($injectTpl);
+
+        if (self::REPLACE === $position) {
+            while ($node->firstChild) {
+                $node->removeChild($node->firstChild);
+            }
+            $node->appendChild($placeholder);
+        } elseif (self::POSITION_BEGINNING === $position) {
+            $node->insertBefore($placeholder, $node->firstChild);
+        } elseif (self::POSITION_END === $position) {
+            $node->appendChild($placeholder);
+        }
+
+        $html = $dom->outerHtml();
         $dom->clear();
         unset($dom);
 
-        return trim($html);
+        return trim(str_replace($injectTpl, $code, $html));
     }
 }

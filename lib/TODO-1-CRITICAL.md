@@ -485,7 +485,7 @@ local-path behaviour of `TemporaryFileHelperTrait` by C-08 (not repeated).
 
 ## Http
 
-## [ ] C-09 – `CodeInjector::injectIntoDomSelector()` runs `html_entity_decode()` over the whole page: escaped content becomes live HTML
+## [x] C-09 – `CodeInjector::injectIntoDomSelector()` runs `html_entity_decode()` over the whole page: escaped content becomes live HTML
 
 **File:** `lib/Http/Response/CodeInjector.php:124-143` (`:130-138`)
 
@@ -502,6 +502,14 @@ local-path behaviour of `TemporaryFileHelperTrait` by C-08 (not repeated).
 **Fix direction:** never decode the whole document. Parse the code as a fragment (`DOMDocument::createDocumentFragment()`
 + `appendXML()` / HTML5 parser) and insert the nodes before / after / instead of the target's children, then serialize
 without entity decoding.
+
+**Done:** `injectIntoDomSelector()` uses the DOM only to find the target: it inserts a unique placeholder text node at the
+beginning / end of the target (or as its only child for `replace`), serializes the document without
+`html_entity_decode()` and replaces the placeholder with the code. Escaped content elsewhere stays escaped, `&amp;`
+stays intact, and the code is inserted unchanged. A selector that matches nothing returns the HTML untouched (no DOM
+round trip). The output formatting of the DOM round trip is unchanged (same as before with the HTML5 parser), `$charset`
+is still unused. Test `testInjectDOMKeepsEscapedContentEscaped` in `tests/Unit/HttpKernel/Response/CodeInjectorTest.php`
+(fails with the old implementation).
 
 No further critical findings in the rest of Scope 15 (`ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`,
 `ResponseStack`, `Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Request/Resolver/*`). See
