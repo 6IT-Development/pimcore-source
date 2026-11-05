@@ -322,10 +322,14 @@ when called with the default. **Fix:** make `$domain` `?string` in `TranslationM
 **Done:** `TranslationMessage` takes a `?string` domain (`null` = the translator's default domain); it is serialized as
 `"domain":null` and `getMessageFromSerializedString()` reads such objects back as translation messages.
 
-### [ ] B-24 – `TranslationMessage::getSerializedString()` silently returns `''`
+### [x] B-24 – `TranslationMessage::getSerializedString()` silently returns `''`
 **File:** `src/CurrentMessage/TranslationMessage.php:37-44`
 Parameters with invalid UTF-8 (element keys/paths from legacy data, binary exception text) make `json_encode` fail → the
 current message becomes empty without any log. **Fix:** `JSON_INVALID_UTF8_SUBSTITUTE`, log on failure.
+
+**Done:** `getSerializedString()` encodes with `JSON_INVALID_UTF8_SUBSTITUTE` (invalid bytes become U+FFFD); remaining
+failures (e.g. `NAN`/`INF` parameters, too deep nesting) are logged to the `generic_execution_engine` channel, which
+`CurrentMessageProvider` passes to every `TranslationMessage` it creates.
 
 ### [ ] B-25 – `JobRunGrid::convertJobRunToArray()` crashes for runs without job
 **File:** `src/Grid/JobRunGrid.php:52`, `:56`

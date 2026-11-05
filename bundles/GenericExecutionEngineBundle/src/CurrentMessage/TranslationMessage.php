@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\CurrentMessage;
 
 use JsonException;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -29,7 +30,8 @@ final readonly class TranslationMessage implements MessageInterface
         private string              $key,
         private array               $params,
         private ?string             $domain,
-        private TranslatorInterface $translator
+        private TranslatorInterface $translator,
+        private ?LoggerInterface    $logger = null
     )
     {
     }
@@ -37,8 +39,18 @@ final readonly class TranslationMessage implements MessageInterface
     public function getSerializedString(): string
     {
         try {
-            return json_encode($this->buildMessageArray(), JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
+            // invalid UTF-8 in parameters (legacy element keys, binary exception texts) must not empty the message
+            return json_encode(
+                $this->buildMessageArray(),
+                JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE
+            );
+        } catch (JsonException $exception) {
+            $this->logger?->error('Could not serialize the translation message {key}: {error}', [
+                'key' => $this->key,
+                'error' => $exception->getMessage(),
+                'exception' => $exception,
+            ]);
+
             return '';
         }
     }

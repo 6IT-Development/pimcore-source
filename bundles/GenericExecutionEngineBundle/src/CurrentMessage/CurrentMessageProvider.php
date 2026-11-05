@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\CurrentMessage;
 
 use JsonException;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -26,14 +27,21 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final readonly class CurrentMessageProvider implements CurrentMessageProviderInterface
 {
     public function __construct(
-        private TranslatorInterface $translator
+        private TranslatorInterface $translator,
+        private LoggerInterface     $genericExecutionEngineLogger
     )
     {
     }
 
     public function getTranslationMessages(string $key, array $parameters = [], ?string $domain = null): MessageInterface
     {
-        return new TranslationMessage($key, $parameters, $domain, $this->translator);
+        return new TranslationMessage(
+            $key,
+            $parameters,
+            $domain,
+            $this->translator,
+            $this->genericExecutionEngineLogger
+        );
     }
 
     public function getPlainMessage(string $message): MessageInterface
@@ -55,7 +63,13 @@ final readonly class CurrentMessageProvider implements CurrentMessageProviderInt
             return new PlainMessage($message);
         }
 
-        return new TranslationMessage($decoded['key'], $decoded['params'], $decoded['domain'], $this->translator);
+        return new TranslationMessage(
+            $decoded['key'],
+            $decoded['params'],
+            $decoded['domain'],
+            $this->translator,
+            $this->genericExecutionEngineLogger
+        );
     }
 
     private function isTranslationObject(mixed $decoded): bool
