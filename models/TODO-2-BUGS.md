@@ -3553,7 +3553,7 @@ definition. `Listing::getByKeyAndLanguage()` (the duplicate check of the admin) 
 language-neutral and compares the subtype strictly. `Asset\Service::expandMetadataForEditmode()` takes the config of
 the definition of the item's language, falling back to the language-neutral one.
 
-## [ ] B-191 – `Predefined::save()` ignores writeability, validates nothing and accepts any id
+## [x] B-191 – `Predefined::save()` ignores writeability, validates nothing and accepts any id
 
 **Files:** `models/Metadata/Predefined/Dao.php:99-129`; `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:27`, `:100-142`;
 `lib/Config/LocationAwareConfigRepository.php:124-140`, `:177-193`, `:236-261`
@@ -3576,6 +3576,13 @@ the definition of the item's language, falling back to the language-neutral one.
 **Fix direction:** check `isWriteable()` in `save()` and throw; a `validate()` step (name, type, subtype, id pattern
 `^[A-Za-z0-9_-]+$`); throw from `delete()` when there is nothing to delete; reset the static cache via `kernel.reset`
 (I-87).
+
+**Done:** `save()` throws when `isWriteable()` is `false` (Symfony config without debug, `disabled`, a definition from
+another store) instead of writing a file that is not loaded or nothing at all, and validates before writing: the id
+(if set) must match `^[A-Za-z0-9_-]+$` (generated UUIDs do), the name must not be empty, the type must be a registered
+metadata type and a target subtype must be an asset type. `delete()` throws a `NotFoundException` for a definition that
+was not loaded. Open: the process-wide static cache of `PimcoreLocationAwareConfigDao` is still not reset in other
+workers (`kernel.reset`, I-87); the repository-side path check stays with C-09.
 
 ## [ ] B-192 – Predefined metadata small defects
 

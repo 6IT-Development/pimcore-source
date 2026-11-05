@@ -16,8 +16,11 @@
 namespace Pimcore\Model\Metadata\Predefined;
 
 use Exception;
+use InvalidArgumentException;
+use Pimcore;
 use Pimcore\Config;
 use Pimcore\Model;
+use Pimcore\Model\Asset;
 use Pimcore\Model\Metadata\Predefined;
 use Symfony\Component\Uid\Uuid as Uid;
 
@@ -94,6 +97,13 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function save(): void
     {
+        // otherwise the YAML file is written without being loaded, or nothing is written at all
+        if (!$this->isWriteable()) {
+            throw new Exception('Predefined asset metadata ' . $this->model->getId() . ' is not writeable.');
+        }
+
+        $this->validate();
+
         if (!$this->model->getId()) {
             $this->model->setId((string)Uid::v4());
         }
@@ -117,10 +127,44 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     }
 
     /**
+     * @throws Exception
+     */
+    private function validate(): void
+    {
+        $id = $this->model->getId();
+        // the id becomes the YAML file name and the settings store key
+        if ($id !== null && !preg_match('/^[A-Za-z0-9_-]+$/D', $id)) {
+            throw new InvalidArgumentException(sprintf('Invalid id "%s" for predefined asset metadata.', $id));
+        }
+
+        if ((string)$this->model->getName() === '') {
+            throw new InvalidArgumentException('Predefined asset metadata needs a name.');
+        }
+
+        $type = (string)$this->model->getType();
+        if ($type === '' || !Pimcore::getContainer()->get('pimcore.implementation_loader.asset.metadata.data')->supports($type)) {
+            throw new InvalidArgumentException(sprintf('Unknown type "%s" for predefined asset metadata %s.', $type, $this->model->getName()));
+        }
+
+        $targetSubtype = (string)$this->model->getTargetSubtype();
+        $assetTypes = Asset::getTypes();
+        if ($targetSubtype !== '' && $assetTypes && !in_array($targetSubtype, $assetTypes, true)) {
+            throw new InvalidArgumentException(sprintf('Unknown asset type "%s" for predefined asset metadata %s.', $targetSubtype, $this->model->getName()));
+        }
+    }
+
+    /**
      * Deletes object from database
+     *
+     * @throws Exception
      */
     public function delete(): void
     {
+        // the store of a definition is only known once it was loaded
+        if ($this->dataSource === null) {
+            throw new Model\Exception\NotFoundException('Predefined asset metadata ' . $this->model->getId() . ' was not loaded or does not exist.');
+        }
+
         $this->deleteData($this->model->getId());
     }
 
