@@ -22,6 +22,7 @@ use Pimcore\Config\LocationAwareConfigRepository;
 use Pimcore\File;
 use Pimcore\Helper\TemporaryFileHelperTrait;
 use Pimcore\Image;
+use Pimcore\Logger;
 use Pimcore\Model\User\Role;
 use Pimcore\Tool;
 
@@ -271,9 +272,7 @@ final class User extends User\UserRole implements UserInterface
         if ($type == 'permission') {
             if (!$this->getPermission($key)) {
                 // check roles
-                foreach ($this->getRoles() as $roleId) {
-                    /** @var Role $role */
-                    $role = User\Role::getById($roleId);
+                foreach ($this->getRoleObjects() as $role) {
                     if ($role->getPermission($key)) {
                         return true;
                     }
@@ -283,9 +282,7 @@ final class User extends User\UserRole implements UserInterface
             return $this->getPermission($key);
         } elseif ($type == 'class') {
             $classes = $this->getClasses();
-            foreach ($this->getRoles() as $roleId) {
-                /** @var Role $role */
-                $role = User\Role::getById($roleId);
+            foreach ($this->getRoleObjects() as $role) {
                 $classes = array_merge($classes, $role->getClasses());
             }
 
@@ -296,9 +293,7 @@ final class User extends User\UserRole implements UserInterface
             }
         } elseif ($type == 'docType') {
             $docTypes = $this->getDocTypes();
-            foreach ($this->getRoles() as $roleId) {
-                /** @var Role $role */
-                $role = User\Role::getById($roleId);
+            foreach ($this->getRoleObjects() as $role) {
                 $docTypes = array_merge($docTypes, $role->getDocTypes());
             }
 
@@ -331,15 +326,36 @@ final class User extends User\UserRole implements UserInterface
      */
     public function setRoles(array|string $roles): static
     {
-        if (is_string($roles) && $roles !== '') {
-            $this->roles = array_map('intval', explode(',', $roles));
-        } elseif (is_array($roles)) {
-            $this->roles = array_map('intval', $roles);
-        } else {
-            $this->roles = [];
+        if (is_string($roles)) {
+            $roles = explode(',', $roles);
         }
 
+        // empty entries ('1,,2', a trailing comma) would become 0, the system user
+        $roles = array_filter(array_map('intval', $roles), static fn (int $id): bool => $id > 0);
+        $this->roles = array_values(array_unique($roles));
+
         return $this;
+    }
+
+    /**
+     * The roles of the user; ids that are not (or no longer) a role, e.g. a deleted role or a role folder, are
+     * skipped with a warning instead of failing every permission check
+     *
+     * @return Role[]
+     */
+    private function getRoleObjects(): array
+    {
+        $roles = [];
+        foreach ($this->getRoles() as $roleId) {
+            $role = Role::getById($roleId);
+            if ($role instanceof Role) {
+                $roles[] = $role;
+            } else {
+                Logger::warning(sprintf('User %s (%s) has the unknown role id %d', $this->getId(), $this->getName(), $roleId));
+            }
+        }
+
+        return $roles;
     }
 
     /**
@@ -530,9 +546,7 @@ final class User extends User\UserRole implements UserInterface
     {
         if (null === $this->mergedPerspectives) {
             $this->mergedPerspectives = $this->getPerspectives();
-            foreach ($this->getRoles() as $role) {
-                /** @var User\Role $userRole */
-                $userRole = User\Role::getById($role);
+            foreach ($this->getRoleObjects() as $userRole) {
                 $this->mergedPerspectives = array_merge($this->mergedPerspectives, $userRole->getPerspectives());
             }
             $this->mergedPerspectives = array_values($this->mergedPerspectives);
@@ -587,9 +601,7 @@ final class User extends User\UserRole implements UserInterface
     {
         if (null === $this->mergedWebsiteTranslationLanguagesEdit) {
             $this->mergedWebsiteTranslationLanguagesEdit = $this->getWebsiteTranslationLanguagesEdit();
-            foreach ($this->getRoles() as $role) {
-                /** @var User\Role $userRole */
-                $userRole = User\Role::getById($role);
+            foreach ($this->getRoleObjects() as $userRole) {
                 $this->mergedWebsiteTranslationLanguagesEdit = array_merge($this->mergedWebsiteTranslationLanguagesEdit, $userRole->getWebsiteTranslationLanguagesEdit());
             }
             $this->mergedWebsiteTranslationLanguagesEdit = array_values(array_unique($this->mergedWebsiteTranslationLanguagesEdit));
@@ -628,9 +640,7 @@ final class User extends User\UserRole implements UserInterface
     {
         if (null === $this->mergedWebsiteTranslationLanguagesView) {
             $this->mergedWebsiteTranslationLanguagesView = $this->getWebsiteTranslationLanguagesView();
-            foreach ($this->getRoles() as $role) {
-                /** @var User\Role $userRole */
-                $userRole = User\Role::getById($role);
+            foreach ($this->getRoleObjects() as $userRole) {
                 $this->mergedWebsiteTranslationLanguagesView = array_merge($this->mergedWebsiteTranslationLanguagesView, $userRole->getWebsiteTranslationLanguagesView());
             }
 

@@ -4463,7 +4463,7 @@ and the versioning flag and uses `DROP TABLE IF EXISTS`. Not run locally (`vendo
 
 ## User (Scope 10)
 
-## [ ] B-226 – A stale role id in `users.roles` crashes `isAllowed()`, the merged-perspective / translation-language helpers and `PermissionChecker`
+## [x] B-226 – A stale role id in `users.roles` crashes `isAllowed()`, the merged-perspective / translation-language helpers and `PermissionChecker`
 
 **Files:** `models/User.php:265-316`, `:332-343`, `:529-546`, `:586-599`, `:627-641`; `models/User/AbstractUser.php:203-265`;
 `models/Element/PermissionChecker.php:200-210`
@@ -4483,6 +4483,12 @@ and the versioning flag and uses `DROP TABLE IF EXISTS`. Not run locally (`vendo
 
 **Fix direction:** skip unknown roles (log a warning) in all lookups; filter `setRoles()` input (`> 0`, unique, only ids
 of type `role`); load all roles once per user with one `Role\Listing` query (I-112).
+
+**Done:** all role lookups in `User` (`isAllowed()` for permissions, classes and doc types, the merged perspectives and
+website translation languages) go through the new private `getRoleObjects()`, which skips ids that are no role (deleted
+role, role folder, user id) with a warning naming the user and the id. `setRoles()` drops ids `<= 0` (empty entries of
+`'1,,2'` or a trailing comma) and duplicates. `PermissionChecker` was already null-safe (`$role?->`). Open: checking the
+type of the ids in `setRoles()` and loading all roles with one query (I-112).
 
 ## [ ] B-227 – Merged role data is cached on the user object and never invalidated; the perspective helpers return undefined, duplicate or no longer allowed perspectives
 
