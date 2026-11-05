@@ -64,6 +64,9 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
 
     public function update(JobRun $jobRun): JobRun
     {
+        // the job is no mapped field: changing it (e.g. the selection) alone would not trigger PreUpdate, which
+        // serializes it, so the flush would skip the run
+        $jobRun->serializeJob();
 
         $this->pimcoreEntityManager->persist($jobRun);
         $this->pimcoreEntityManager->flush();

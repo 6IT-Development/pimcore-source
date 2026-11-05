@@ -239,7 +239,7 @@ values become `'default'`); the installer reports it as last migration. Not mapp
 the foreign keys (`users` is no Doctrine entity, `jobRunId` is no association) and `context` (`json` is a `JSON` column on
 MySQL, the installer creates `LONGTEXT` holding the same JSON) – left to I-05/I-16.
 
-### [ ] B-17 – Updated selection is only persisted by accident
+### [x] B-17 – Updated selection is only persisted by accident
 **File:** `src/Repository/JobRunRepository.php:225-242`, `src/Entity/JobRun.php:182-199`
 `Job` is not a mapped field; `serializedJob` is only recomputed in `PrePersist`/`PreUpdate`, and `preUpdate` fires only
 when a **mapped** field changed. `update($jobRun)` after `setSelectedElements()` is therefore a no-op; the selection is
@@ -247,6 +247,9 @@ persisted only because the following `updateLogLocalizedWithDomain()` changes `c
 identical to the current one (same from/to counts as the previous call) nothing is flushed and the subsequent
 `refresh()` (`updateLog()`) **reverts** the job to the DB state → selection silently lost.
 **Fix:** serialize explicitly (`$jobRun->serializeJob()` before flush) or use a custom Doctrine type (I-06).
+
+**Done:** `JobRunRepository::update()` calls `$jobRun->serializeJob()` before the flush, so a changed job changes the
+mapped `serializedJob` and is written even when no other field changed. A custom Doctrine type stays with I-06.
 
 ### [ ] B-18 – `updateLog()` refreshes the entity and discards pending changes
 **File:** `src/Repository/JobRunRepository.php:119-135`
