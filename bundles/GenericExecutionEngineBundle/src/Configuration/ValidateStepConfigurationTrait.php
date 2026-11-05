@@ -27,6 +27,8 @@ trait ValidateStepConfigurationTrait
 {
     protected OptionsResolver $stepConfiguration;
 
+    private bool $stepConfigurationConfigured = false;
+
     public function configurationIsValid(array $config): bool
     {
         try {
@@ -38,9 +40,37 @@ trait ValidateStepConfigurationTrait
         return true;
     }
 
+    /**
+     * Defines the options of the step on $this->stepConfiguration; called once per instance, so options, normalizers
+     * and allowed values/types do not pile up in long-running workers
+     */
     protected function configureStep(): void
     {
         // not configured should be configured in the usage.
+    }
+
+    /**
+     * The resolver of the step configuration, configured by configureStep() on first use
+     */
+    protected function getStepConfigurationResolver(): OptionsResolver
+    {
+        if ($this->stepConfigurationConfigured) {
+            return $this->stepConfiguration;
+        }
+
+        $this->stepConfiguration ??= new OptionsResolver();
+
+        try {
+            $this->configureStep();
+        } catch (Exception $exception) {
+            // do not keep a half-configured resolver, the next call configures it again
+            $this->stepConfiguration = new OptionsResolver();
+
+            throw $exception;
+        }
+        $this->stepConfigurationConfigured = true;
+
+        return $this->stepConfiguration;
     }
 
     /**
@@ -48,6 +78,6 @@ trait ValidateStepConfigurationTrait
      */
     private function resolveStepConfiguration(array $config): array
     {
-        return $this->stepConfiguration->resolve($config);
+        return $this->getStepConfigurationResolver()->resolve($config);
     }
 }

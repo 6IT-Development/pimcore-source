@@ -144,7 +144,6 @@ abstract class AbstractAutomationActionHandler
         $config = $jobStep->getConfig();
 
         try {
-            $this->configureStep();
             $config = $this->resolveStepConfiguration($config);
         } catch (Exception $e) {
             throw new InvalidStepConfigurationException($e->getMessage());

@@ -365,7 +365,7 @@ first.
 **Done:** `checkCondition()` returns `true` for an empty condition before loading context and environment data; the
 expression always gets `context` and `environmentData`, as `[]` when the run has none.
 
-### [ ] B-28 – `configurationIsValid()` validates against an unconfigured resolver; `configureStep()` runs per message
+### [x] B-28 – `configurationIsValid()` validates against an unconfigured resolver; `configureStep()` runs per message
 **Files:** `src/Configuration/ValidateStepConfigurationTrait.php:30-52`,
 `src/Messenger/Handler/AbstractAutomationActionHandler.php:140-154`
 - `configurationIsValid()` never calls `configureStep()` → the resolver has no defined options → every non-empty config
@@ -374,6 +374,11 @@ expression always gets `context` and `environmentData`, as `[]` when the run has
   long-running worker → `addAllowedValues()` / `addNormalizer()` / `addAllowedTypes()` accumulate and normalizers run
   multiple times.
 **Fix:** configure the resolver once (lazy `getStepConfigurationResolver()`), use it in both methods.
+
+**Done:** `ValidateStepConfigurationTrait::getStepConfigurationResolver()` creates the resolver when the class did not
+and calls `configureStep()` once per instance (again only after it threw, with a fresh resolver);
+`configurationIsValid()` and `getCurrentJobStepConfig()` both resolve through it. `configureStep()` keeps defining the
+options on `$this->stepConfiguration`.
 
 ### [ ] B-29 – `job_env()` replacement drops surrounding text and ignores additional placeholders
 **File:** `src/Messenger/Handler/AbstractAutomationActionHandler.php:166-183`
