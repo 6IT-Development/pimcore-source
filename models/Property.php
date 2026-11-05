@@ -106,7 +106,12 @@ final class Property extends AbstractModel
     {
         $this->getDao()->save();
 
-        Cache::remove($this->getCtype() . '_properties_' . $this->getCid());
+        if ($this->getInheritable()) {
+            // descendants cache the inherited property under their own keys
+            Cache::clearTag($this->getCtype() . '_properties');
+        } else {
+            Cache::remove($this->getCtype() . '_properties_' . $this->getCid());
+        }
     }
 
     public function getCid(): ?int
@@ -189,7 +194,11 @@ final class Property extends AbstractModel
     public function setData(mixed $data): Property
     {
         if ($data instanceof ElementInterface) {
-            $this->setType(Service::getElementType($data));
+            $elementType = Service::getElementType($data);
+            if (in_array($this->type, ['document', 'asset', 'object'], true) && $this->type !== $elementType) {
+                throw new \InvalidArgumentException(sprintf('Property "%s" of type "%s" cannot hold %s %s', $this->name, $this->type, $elementType === 'asset' ? 'an' : 'a', $elementType));
+            }
+            $this->setType($elementType);
             $data = $data->getId();
         }
 

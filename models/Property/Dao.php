@@ -36,6 +36,10 @@ class Dao extends Model\Dao\AbstractDao
         if ($name === null || $name === '') {
             throw new InvalidArgumentException('Cannot save a property without a name');
         }
+        if (mb_strlen($name) > 190) {
+            // longer names would be truncated by the VARCHAR(190) column and collide on the primary key
+            throw new InvalidArgumentException(sprintf('The name of property "%s" is longer than 190 characters', $name));
+        }
 
         // the column is an enum: an unknown type (e.g. "date") would be stored as '' and its data lost,
         // a missing one as NULL, which makes the element and its descendants unloadable
@@ -59,12 +63,14 @@ class Dao extends Model\Dao\AbstractDao
             }
         }
 
+        // getProperties() orders by cpath: without it, an inherited property of the same name would win
         $cpath = $this->model->getCpath();
-        if (empty($cpath)) {
+        if ($cpath === null || $cpath === '') {
             $element = Model\Element\Service::getElementById($this->model->getCtype(), $this->model->getCid());
-            if ($element instanceof Model\Element\ElementInterface) {
-                $element->getRealFullPath();
+            if (!$element instanceof Model\Element\ElementInterface) {
+                throw new InvalidArgumentException(sprintf('Property "%s" belongs to %s %d, which does not exist', $name, $this->model->getCtype(), $this->model->getCid()));
             }
+            $this->model->setCpath($element->getRealFullPath());
         }
 
         $saveData = [

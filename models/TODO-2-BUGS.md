@@ -3875,7 +3875,7 @@ save. `setDataFromEditmode()` throws an `InvalidArgumentException` for a non-emp
 path still clears the property). `rewriteIds()` works on the stored id and keeps the old target when the mapped element
 does not exist. An unsaved target (id `null`) still stores `NULL`; there is no id to keep.
 
-## [ ] B-205 – Property small defects
+## [x] B-205 – Property small defects
 
 **Files:** `models/Property.php:100-105`, `:166-179`; `models/Property/Dao.php:49-55`, `:67`;
 `models/Asset/Dao.php:249-251`; `models/Document/Dao.php:278-280`; `bundles/InstallBundle/dump/install.sql:300-310`
@@ -3899,6 +3899,13 @@ does not exist. An unsaved target (id `null`) still stores `NULL`; there is no i
 
 **Fix direction:** set `cpath` from the element in `Dao::save()` (or require it); clear the `<ctype>_properties` tag on
 direct saves; validate the name length, the type / data pair and `ctype`; align the defaults (I-99).
+
+**Done:** `Property\Dao::save()` sets `cpath` from the element when it is empty (and throws when the element does not
+exist) and rejects names longer than 190 characters. `Property::save()` clears the `<ctype>_properties` tag for an
+inheritable property and removes only the element's key otherwise. `setData(ElementInterface)` throws when the
+property already has a different relation type; for no type or a non-relation type it still takes the element's type.
+`strcmp()` in `Asset/Dao.php` / `Document/Dao.php` casts `cpath` to string. `ctype` is validated since B-202.
+Open (I-99, migration): `cpath` as `utf8mb4` and the `inheritable` default.
 
 ---
 
