@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericExecutionEngineBundle\Security;
 
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
+use Pimcore\Model\UserInterface;
 
 /**
  * @internal
@@ -45,4 +46,10 @@ interface PermissionServiceInterface
      * everything is allowed; inside a request without Pimcore user nothing is.
      */
     public function isAllowedToInteractWithJobRun(JobRun $jobRun): bool;
+
+    /**
+     * Whether the given user may cancel or rerun the job run: it needs the job run permission and must own the run or
+     * be allowed to see all job runs (admins always are). Runs without owner are only open to the latter.
+     */
+    public function isUserAllowedToInteractWithJobRun(UserInterface $user, JobRun $jobRun): bool;
 }

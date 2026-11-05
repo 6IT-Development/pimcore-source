@@ -32,6 +32,7 @@ use Pimcore\Bundle\GenericExecutionEngineBundle\Security\PermissionServiceInterf
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\ErrorHandlingMode;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\SelectionProcessingMode;
 use Pimcore\Model\Element\ElementDescriptor;
+use Pimcore\Model\User;
 use Pimcore\Translation\Translator;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Envelope;
@@ -127,8 +128,11 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     public function isInteractionAllowed(int $jobRunId, int $ownerId): bool
     {
         $jobRun = $this->jobRunRepository->getJobRunById($jobRunId, true);
+        $user = User::getById($ownerId);
 
-        return $ownerId === $jobRun->getOwnerId();
+        return $user instanceof User
+            && $user->isActive()
+            && $this->permissionService->isUserAllowedToInteractWithJobRun($user, $jobRun);
     }
 
     /**

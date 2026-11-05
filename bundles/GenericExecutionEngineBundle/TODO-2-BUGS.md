@@ -81,11 +81,17 @@ transition `running`/`not_started` → `cancelled` (see I-11).
 returns without touching state or run log. Interface doc and `02_JobRun.md` say so. The state transition helper is
 still I-11.
 
-### [ ] B-06 – `isInteractionAllowed()` ignores "see all" permission and owner-less runs
+### [x] B-06 – `isInteractionAllowed()` ignores "see all" permission and owner-less runs
 **File:** `src/Agent/JobExecutionAgent.php:117-122`
 Only the owner may interact; administrators with `gee_see_all_job_runs_permission` (who can see the run) cannot cancel
 or rerun it, and runs started without owner (`ownerId = null`, CLI) cannot be cancelled by anybody. **Fix:** voter
 (I-22) that combines owner, "see all" and admin.
+
+**Done:** `PermissionService::isUserAllowedToInteractWithJobRun()` holds the rule (job run permission and owner or "see all";
+admins pass `isAllowed()`), `isAllowedToInteractWithJobRun()` applies it to the current user. `isInteractionAllowed()`
+loads the user by id and applies the same rule to active users only, so it now answers what `cancelJobRun()` /
+`rerunJobRun()` enforce: owner-less runs are open to users who may see all runs, an owner without the job run
+permission is denied. The voter is still I-22.
 
 ### [ ] B-07 – Continue-on-error path logs "Job execution failed" and overwrites the current message with raw text
 **File:** `src/Agent/JobExecutionAgent.php:289-304`, `:354-361`

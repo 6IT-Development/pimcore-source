@@ -45,7 +45,8 @@ interface JobExecutionAgentInterface
     ): void;
 
     /**
-     * checks if interaction with job run is allowed by given user
+     * Checks if the active user with the given id may cancel or rerun the job run: it needs the job run permission and
+     * must own the run or be allowed to see all job runs
      */
     public function isInteractionAllowed(int $jobRunId, int $ownerId): bool;
 

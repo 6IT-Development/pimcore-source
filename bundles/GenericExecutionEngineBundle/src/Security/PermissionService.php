@@ -73,7 +73,13 @@ final readonly class PermissionService implements PermissionServiceInterface
         }
 
         $user = $this->getUser();
-        if (!$user?->isAllowed(PermissionConstants::GEE_JOB_RUN)) {
+
+        return $user !== null && $this->isUserAllowedToInteractWithJobRun($user, $jobRun);
+    }
+
+    public function isUserAllowedToInteractWithJobRun(UserInterface $user, JobRun $jobRun): bool
+    {
+        if (!$user->isAllowed(PermissionConstants::GEE_JOB_RUN)) {
             return false;
         }
 
