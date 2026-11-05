@@ -85,6 +85,7 @@ abstract class Concrete extends Model\DataObject\Listing
     public function setLocale(?string $locale): static
     {
         $this->setData(null);
+        $this->getDao()->resetTableName();
 
         $this->locale = $locale;
 
@@ -99,6 +100,7 @@ abstract class Concrete extends Model\DataObject\Listing
     public function setIgnoreLocalizedFields(bool $ignoreLocalizedFields): static
     {
         $this->setData(null);
+        $this->getDao()->resetTableName();
 
         $this->ignoreLocalizedFields = $ignoreLocalizedFields;
 

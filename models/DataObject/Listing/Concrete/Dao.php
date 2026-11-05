@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\DataObject\Listing\Concrete;
 
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Doctrine\DBAL\Query\QueryBuilder as DoctrineQueryBuilder;
 use Exception;
 use Pimcore;
@@ -52,6 +53,22 @@ class Dao extends Model\DataObject\Listing\Dao
     }
 
     /**
+     * @throws Exception
+     */
+    public function getTotalCount(): int
+    {
+        try {
+            return parent::getTotalCount();
+        } catch (Exception $e) {
+            if ($this->createMissingLocalizedTables($e)) {
+                return parent::getTotalCount();
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
      *
      * @return int[]
      *
@@ -59,21 +76,39 @@ class Dao extends Model\DataObject\Listing\Dao
      */
     protected function exceptionHandler(Exception $e): array
     {
-        // create view if it doesn't exist already // HACK
-        $pdoMySQL = str_contains($e->getMessage(), 'Base table or view not found');
-        $Mysqli = preg_match("/Table (.*) doesn't exist/", $e->getMessage());
-
-        if (($Mysqli || $pdoMySQL) && $this->firstException) {
-            $this->firstException = false;
-
-            $localizedFields = new DataObject\Localizedfield();
-            $localizedFields->setClass(DataObject\ClassDefinition::getById($this->model->getClassId()));
-            $localizedFields->createUpdateTable();
-
+        if ($this->createMissingLocalizedTables($e)) {
             return $this->loadIdList();
         }
 
         throw $e;
+    }
+
+    /**
+     * Creates the localized tables and views once, when the table of the listing is missing (e.g. for a language
+     * added after the class was saved).
+     */
+    private function createMissingLocalizedTables(Exception $e): bool
+    {
+        if (!$e instanceof TableNotFoundException || !$this->firstException) {
+            return false;
+        }
+        $this->firstException = false;
+
+        $localizedFields = new DataObject\Localizedfield();
+        $localizedFields->setClass(DataObject\ClassDefinition::getById($this->model->getClassId()));
+        $localizedFields->createUpdateTable();
+
+        return true;
+    }
+
+    /**
+     * Forgets the table resolved from the locale, so it is resolved again for the next query.
+     *
+     * @internal
+     */
+    public function resetTableName(): void
+    {
+        $this->tableName = null;
     }
 
     /**

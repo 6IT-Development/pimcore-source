@@ -3285,7 +3285,7 @@ alone. `__unserialize()` restores `items`, `context` and `objectId` and also rea
 **Done:** `Concrete\Dao::getData()` reads the store row with a plain `SELECT`. The saves keep their own locks (the
 `versionCount` row in `AbstractObject\Dao::update()` and the parent query rows read for inheritance).
 
-## [ ] B-178 – Listing locale changes after the first query are ignored
+## [x] B-178 – Listing locale changes after the first query are ignored
 
 **Files:** `models/DataObject/Listing/Concrete.php:85-106`; `models/DataObject/Listing/Concrete/Dao.php:60-81`,
 `:113-158`
@@ -3296,6 +3296,11 @@ alone. `__unserialize()` restores `items`, `context` and `objectId` and also rea
 - `exceptionHandler()` string-matches driver messages to create missing tables, and only for `loadIdList()`.
 
 **Fix direction:** reset the DAO table name in both setters; create tables in class/language management.
+
+**Done:** `setLocale()` and `setIgnoreLocalizedFields()` call the new `Dao::resetTableName()`, so the next query resolves
+the table for the new locale. The on-demand creation of missing localized tables stays as a fallback for languages added
+after the class was saved, but it reacts only to a DBAL `TableNotFoundException` (no driver message matching) and also
+covers `getTotalCount()`.
 
 ## [ ] B-179 – Localized fields: deferred table creation rolls back the caller's transaction; `delete()` swallows errors
 
