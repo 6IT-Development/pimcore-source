@@ -3527,7 +3527,7 @@ save after `expand()`) no longer wipes the reference. `Date::normalize()` alread
 `minimize()` / `expand()` leave the data unchanged with a warning when the definition has no type, instead of the
 `TypeError` from the loader; validating the type on save is part of B-191.
 
-## [ ] B-190 – Name / language lookups: names with `~` are never found, `''` language matches any language
+## [x] B-190 – Name / language lookups: names with `~` are never found, `''` language matches any language
 
 **Files:** `models/Metadata/Predefined.php:75-86`, `:111-116`; `models/Metadata/Predefined/Dao.php:73-94`;
 `models/Metadata/Predefined/Listing.php:103-124`; `models/Asset/Service.php:308-311`
@@ -3544,6 +3544,14 @@ save after `expand()`) no longer wipes the reference. `Date::normalize()` alread
 
 **Fix direction:** normalise the name before comparing; treat `''` / `null` language as "language-neutral" and match it
 exactly (with an explicit "any language" option where needed); strict comparisons; one shared lookup (I-87).
+
+**Done:** the lookups share `Predefined::matchesNameAndLanguage()`: the name is normalised like `setName()` does (so
+`a~b` finds the stored `a---b`) and compared strictly; a `null` language matches any language, `''` only a
+language-neutral definition, any other language strictly. `getByName()` defaults to `null` ("any language", as the
+callers that pass no language expect). `getByNameAndLanguage(null, …)` finds nothing instead of an arbitrary
+definition. `Listing::getByKeyAndLanguage()` (the duplicate check of the admin) treats `null` and `''` as
+language-neutral and compares the subtype strictly. `Asset\Service::expandMetadataForEditmode()` takes the config of
+the definition of the item's language, falling back to the language-neutral one.
 
 ## [ ] B-191 – `Predefined::save()` ignores writeability, validates nothing and accepts any id
 

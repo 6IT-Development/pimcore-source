@@ -341,8 +341,12 @@ class Service extends Model\Element\Service
             }
 
             $item['data'] = $transformedData;
-            //get the config from an predefined property-set (eg. select)
-            $predefined = Model\Metadata\Predefined::getByName($item['name']);
+            //get the config from an predefined property-set (eg. select), of the item's language or language-neutral
+            $language = (string)($item['language'] ?? '');
+            $predefined = Model\Metadata\Predefined::getByName($item['name'], $language);
+            if (!$predefined && $language !== '') {
+                $predefined = Model\Metadata\Predefined::getByName($item['name'], '');
+            }
             if ($predefined && $predefined->getType() == $item['type'] && $predefined->getConfig()) {
                 $item['config'] = $predefined->getConfig();
             }

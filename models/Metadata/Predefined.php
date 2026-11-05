@@ -70,9 +70,11 @@ final class Predefined extends Model\AbstractModel
     }
 
     /**
+     * @param string|null $language null matches a definition of any language, '' only a language-neutral one
+     *
      * @throws Exception
      */
-    public static function getByName(string $name, string $language = ''): ?Predefined
+    public static function getByName(string $name, ?string $language = null): ?Predefined
     {
         try {
             $metadata = new self();
@@ -110,9 +112,29 @@ final class Predefined extends Model\AbstractModel
      */
     public function setName(string $name): Predefined
     {
-        $this->name = str_replace('~', '---', $name);
+        $this->name = self::normalizeName($name);
 
         return $this;
+    }
+
+    /**
+     * Whether the definition has the given name (normalized like setName() does) and language: a null language
+     * matches any language, '' only a language-neutral definition
+     *
+     * @internal
+     */
+    public function matchesNameAndLanguage(string $name, ?string $language): bool
+    {
+        if ($this->name !== self::normalizeName($name)) {
+            return false;
+        }
+
+        return $language === null || (string)$this->language === $language;
+    }
+
+    private static function normalizeName(string $name): string
+    {
+        return str_replace('~', '---', $name);
     }
 
     /**

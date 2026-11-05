@@ -67,24 +67,20 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     }
 
     /**
+     * @param string|null $language null matches a definition of any language, '' only a language-neutral one
      *
      * @throws Exception
      */
     public function getByNameAndLanguage(?string $name = null, ?string $language = null): void
     {
-        $list = new Listing();
-        /** @var Predefined[] $definitions */
-        $definitions = array_values(array_filter($list->getDefinitions(), function ($item) use ($name, $language) {
-            $return = true;
-            if ($name && $item->getName() != $name) {
-                $return = false;
-            }
-            if ($language && $item->getLanguage() != $language) {
-                $return = false;
-            }
-
-            return $return;
-        }));
+        $definitions = [];
+        if ($name !== null) {
+            $list = new Listing();
+            $definitions = array_values(array_filter(
+                $list->getDefinitions(),
+                fn (Predefined $item) => $item->matchesNameAndLanguage($name, $language)
+            ));
+        }
 
         if (count($definitions) && $definitions[0]->getId()) {
             $this->assignVariablesToModel($definitions[0]->getObjectVars());

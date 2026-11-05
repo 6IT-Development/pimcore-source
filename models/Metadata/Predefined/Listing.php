@@ -105,15 +105,12 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
         $list = new self();
 
         foreach ($list->load() as $item) {
-            if ($item->getName() != $key) {
+            // null and '' both stand for a language-neutral definition here
+            if (!$item->matchesNameAndLanguage($key, (string)$language)) {
                 continue;
             }
 
-            if ($language && $language != $item->getLanguage()) {
-                continue;
-            }
-
-            if ($targetSubtype && $targetSubtype != $item->getTargetSubtype()) {
+            if ($targetSubtype && $targetSubtype !== $item->getTargetSubtype()) {
                 continue;
             }
 
