@@ -3703,7 +3703,7 @@ are not objects, a missing or unknown type or operator, a non-scalar value and a
 days without overlap: `eq` → `>= day 00:00 AND < next day 00:00`, `gt` → `>= next day 00:00`, `lt` → `< day 00:00`.
 `like` escapes `\`, `%` and `_`, so the search text is matched literally.
 
-## [ ] B-197 – `findAndMarkAsRead()` / `delete()`: inconsistent authorization contracts
+## [x] B-197 – `findAndMarkAsRead()` / `delete()`: inconsistent authorization contracts
 
 **File:** `models/Notification/Service/NotificationService.php:155-171`, `:303-314`
 
@@ -3715,6 +3715,11 @@ days without overlap: `eq` → `>= day 00:00 AND < next day 00:00`, `gt` → `>=
 
 **Fix direction:** make `$recipientId` required (or a separate admin method without the check); throw the same domain
 exception from both methods; skip the save when nothing changed.
+
+**Done:** both methods check the recipient the same way (`findForRecipient()`): a foreign or `null` recipient throws
+`AccessDeniedHttpException`, so `delete()` no longer reports success for a notification it did not delete. The
+parameter keeps its signature (callers that pass it are unaffected) and `null` is documented as always denied. An
+already read notification is not saved again. Open: a domain exception instead of the HTTP one (I-88).
 
 ## [ ] B-198 – Deleted notifications stay loadable and can be resurrected; events fire before commit
 

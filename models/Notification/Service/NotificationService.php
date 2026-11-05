@@ -144,20 +144,18 @@ class NotificationService
     }
 
     /**
-     *
+     * @param int|null $recipientId the notification must belong to this user, null is always denied
      *
      * @throws UnexpectedValueException
+     * @throws AccessDeniedHttpException
      * @throws Exception
      */
     public function findAndMarkAsRead(int $id, ?int $recipientId = null): Notification
     {
-        $notification = $this->find($id);
+        $notification = $this->findForRecipient($id, $recipientId);
 
-        if ($notification->getRecipient()?->getId() !== $recipientId) {
-            throw new AccessDeniedHttpException();
-        }
-
-        if ($recipientId && $recipientId === $notification->getRecipient()?->getId()) {
+        // nothing changes for a notification that is already read (no new modification date, no save events)
+        if (!$notification->isRead()) {
             $notification->setRead(true);
             $notification->save();
         }
@@ -287,15 +285,32 @@ class NotificationService
     }
 
     /**
+     * @param int|null $recipientId the notification must belong to this user, null is always denied
+     *
+     * @throws UnexpectedValueException
+     * @throws AccessDeniedHttpException
      * @throws Exception
      */
     public function delete(int $id, ?int $recipientId = null): void
     {
+        $this->findForRecipient($id, $recipientId)->delete();
+    }
+
+    /**
+     * Same contract for reading and deleting: a foreign (or no) recipient is denied instead of silently ignored
+     *
+     * @throws UnexpectedValueException
+     * @throws AccessDeniedHttpException
+     */
+    private function findForRecipient(int $id, ?int $recipientId): Notification
+    {
         $notification = $this->find($id);
 
-        if ($recipientId && $recipientId === $notification->getRecipient()?->getId()) {
-            $notification->delete();
+        if ($recipientId === null || $notification->getRecipient()?->getId() !== $recipientId) {
+            throw new AccessDeniedHttpException();
         }
+
+        return $notification;
     }
 
     /**
