@@ -35,8 +35,6 @@ class EncryptedField implements OwnerAwareFieldInterface
 
     protected mixed $plain = null;
 
-    protected mixed $encrypted = null;
-
     /**
      * The stored ciphertext if it could not be decrypted on load (non-strict mode), see getUndecryptableValue()
      */
@@ -92,68 +90,97 @@ class EncryptedField implements OwnerAwareFieldInterface
     }
 
     /**
+     * The plain value is serialized encrypted only, together with the delegate and the owner.
      *
      * @throws Exception
      */
-    public function __sleep(): array
+    public function __serialize(): array
     {
+        $data = [
+            'delegate' => $this->delegate,
+            '_owner' => $this->_owner,
+            '_fieldname' => $this->_fieldname,
+            '_language' => $this->_language,
+        ];
+
         if ($this->undecryptableValue !== null) {
             // already encrypted, keep it so a cached object still writes it back
-            return ['undecryptableValue', '_owner'];
+            $data['undecryptableValue'] = $this->undecryptableValue;
+        } elseif ($this->plain !== null) {
+            $data['encrypted'] = $this->encrypt($this->plain);
         }
 
-        if ($this->plain) {
-            try {
-                $key = Pimcore::getContainer()->getParameter('pimcore.encryption.secret');
-                $key = Key::loadFromAsciiSafeString($key);
-                $data = $this->plain;
-                //clear owner to avoid recursion
-                if ($data instanceof OwnerAwareFieldInterface) {
-                    $data->_setOwner(null);
-                    $data->_setOwnerFieldname('');
-                }
-                $data = Serialize::serialize($data);
+        return $data;
+    }
 
-                $data = Crypto::encrypt($data, $key, true);
-                $this->encrypted = $data;
-            } catch (Exception $e) {
-                Logger::error((string)$e);
-
-                throw new Exception('could not load key');
+    /**
+     * @throws Exception when the value cannot be decrypted, so a cache read is treated as a miss
+     */
+    public function __unserialize(array $data): void
+    {
+        // payloads written by the former __sleep() (e.g. in versions) carry the mangled names of protected properties
+        foreach ($data as $name => $value) {
+            if (str_starts_with($name, "\0*\0")) {
+                $data[substr($name, 3)] = $value;
             }
-
-            return ['encrypted', '_owner'];
         }
 
-        return [];
+        // missing in payloads written by the former __sleep()
+        if (isset($data['delegate'])) {
+            $this->delegate = $data['delegate'];
+        }
+        $this->_owner = $data['_owner'] ?? null;
+        $this->_fieldname = $data['_fieldname'] ?? null;
+        $this->_language = $data['_language'] ?? null;
+        $this->undecryptableValue = $data['undecryptableValue'] ?? null;
+
+        if (isset($data['encrypted'])) {
+            $plain = $this->decrypt($data['encrypted']);
+            if ($plain instanceof OwnerAwareFieldInterface) {
+                $plain->_setOwner($this->_owner);
+                $plain->_setOwnerFieldname($this->_fieldname);
+            }
+            $this->plain = $plain;
+        }
     }
 
     /**
      * @throws Exception
      */
-    public function __wakeup(): void
+    private function encrypt(mixed $plain): string
     {
-        if ($this->encrypted) {
-            try {
-                $key = Pimcore::getContainer()->getParameter('pimcore.encryption.secret');
-                $key = Key::loadFromAsciiSafeString($key);
-
-                $data = Crypto::decrypt($this->encrypted, $key, true);
-
-                $data = Serialize::unserialize($data);
-
-                if ($data instanceof OwnerAwareFieldInterface) {
-                    $data->_setOwner($this->_owner);
-                    $data->_setOwnerFieldname('_owner');
-                }
-
-                $this->plain = $data;
-            } catch (Exception $e) {
-                Logger::error((string)$e);
-
-                throw new Exception('could not load key');
-            }
+        if ($plain instanceof OwnerAwareFieldInterface) {
+            // clear the owner on a copy to avoid recursion, the live value keeps its owner
+            $plain = clone $plain;
+            $plain->_setOwner(null);
+            $plain->_setOwnerFieldname('');
         }
-        unset($this->encrypted);
+
+        try {
+            return Crypto::encrypt(Serialize::serialize($plain), $this->loadKey(), true);
+        } catch (Exception $e) {
+            Logger::error((string)$e);
+
+            throw new Exception('could not encrypt the value of the encrypted field', 0, $e);
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function decrypt(string $encrypted): mixed
+    {
+        try {
+            return Serialize::unserialize(Crypto::decrypt($encrypted, $this->loadKey(), true));
+        } catch (Exception $e) {
+            Logger::error((string)$e);
+
+            throw new Exception('could not decrypt the value of the encrypted field', 0, $e);
+        }
+    }
+
+    private function loadKey(): Key
+    {
+        return Key::loadFromAsciiSafeString((string)Pimcore::getContainer()->getParameter('pimcore.encryption.secret'));
     }
 }

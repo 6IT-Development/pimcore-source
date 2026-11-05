@@ -3389,7 +3389,7 @@ version belongs to the source and the task DAO rejects it for another element. `
 **Done:** the user fields of a class are combined with `OR`, so an object that references the user in any one of them
 is found. The listing also includes unpublished objects (they hold references too) and quotes the field names.
 
-## [ ] B-184 – Encrypted field value object loses falsy values and its delegate in serialization
+## [x] B-184 – Encrypted field value object loses falsy values and its delegate in serialization
 
 **File:** `models/DataObject/Data/EncryptedField.php:58-110`
 
@@ -3399,6 +3399,13 @@ is found. The listing also includes unpublished objects (they hold references to
 - A key problem on wakeup throws "could not load key": a cache read crashes instead of being a miss.
 
 **Fix direction:** `__serialize()` / `__unserialize()` with explicit fields and `!== null` checks.
+
+**Done:** `__sleep()` / `__wakeup()` are replaced by `__serialize()` / `__unserialize()` with explicit fields: the
+delegate, the owner (object, field name, language), and either the undecryptable ciphertext or the encrypted value
+whenever `plain !== null`, so falsy values survive. The owner is cleared on a copy of an owner-aware plain value, the
+live value keeps it; on unserialize it gets the field's owner and real field name (was `'_owner'`). Encryption and
+decryption errors throw an exception that keeps the cause (Symfony's cache adapters turn it into a miss). Payloads in
+the old format (versions, caches) are still read; they carry no delegate.
 
 ## [ ] B-185 – Class definition lifecycle: destructive order and swallowed errors
 
