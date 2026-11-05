@@ -72,6 +72,8 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
      */
     protected array $groupCollectionMapping = [];
 
+    private static bool $getFallbackValues = true;
+
     public function __construct(?array $items = null)
     {
         if ($items) {
@@ -299,29 +301,34 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         $this->activeGroups = $activeGroups;
     }
 
+    /**
+     * Returns the first non-empty value of the fallback languages, breadth-first: the direct fallbacks of $language
+     * first, then their fallbacks. Every language is visited once, so mutual fallbacks (de → en → de) end.
+     */
     private function getFallbackValue(int $groupId, int $keyId, string $language, ClassDefinition\Data $fielddefinition): mixed
     {
-        $fallbackLanguages = Tool::getFallbackLanguagesFor($language);
-        $data = null;
+        $values = $this->items[$groupId][$keyId] ?? [];
+        if (!$values) {
+            return null;
+        }
 
-        foreach ($fallbackLanguages as $l) {
-            if (
-                array_key_exists($groupId, $this->items)
-                && array_key_exists($keyId, $this->items[$groupId])
-                && array_key_exists($l, $this->items[$groupId][$keyId])
-            ) {
-                $data = $this->items[$groupId][$keyId][$l];
-                if (!$fielddefinition->isEmpty($data)) {
-                    return $data;
-                }
+        $visited = [$language => true];
+        $queue = Tool::getFallbackLanguagesFor($language);
+        while ($queue) {
+            $l = array_shift($queue);
+            if (isset($visited[$l])) {
+                continue;
             }
+            $visited[$l] = true;
+
+            if (array_key_exists($l, $values) && !$fielddefinition->isEmpty($values[$l])) {
+                return $values[$l];
+            }
+
+            array_push($queue, ...Tool::getFallbackLanguagesFor($l));
         }
 
-        foreach ($fallbackLanguages as $l) {
-            $data = $this->getFallbackValue($groupId, $keyId, $l, $fielddefinition);
-        }
-
-        return $data;
+        return null;
     }
 
     /**
@@ -408,7 +415,20 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
 
     public static function doGetFallbackValues(): bool
     {
-        return true;
+        return self::$getFallbackValues;
+    }
+
+    /**
+     * Switches the fallback-language lookup of classification stores on (the default) or off
+     */
+    public static function setGetFallbackValues(bool $getFallbackValues): void
+    {
+        self::$getFallbackValues = $getFallbackValues;
+    }
+
+    public static function getGetFallbackValues(): bool
+    {
+        return self::$getFallbackValues;
     }
 
     /**

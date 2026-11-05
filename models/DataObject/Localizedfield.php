@@ -61,6 +61,14 @@ final class Localizedfield extends Model\AbstractModel implements
     private static bool $getFallbackValues = false;
 
     /**
+     * Languages already looked at by the running fallback lookups, per store and field, so mutual fallback languages
+     * (de → en → de) end
+     *
+     * @var array<string, array<string, true>>
+     */
+    private static array $fallbackLanguagesVisited = [];
+
+    /**
      * @internal
      */
     protected array $items = [];
@@ -475,14 +483,28 @@ final class Localizedfield extends Model\AbstractModel implements
 
         // check for fallback value
         if ($fieldDefinition->isEmpty($data) && !$ignoreFallbackLanguage && self::doGetFallbackValues()) {
-            foreach (Tool::getFallbackLanguagesFor($language) as $l) {
-                // fallback-language may not exist yet for lazy-loaded field (relation)
-                if ($this->languageExists($l) || ($fieldDefinition instanceof LazyLoadingSupportInterface && $fieldDefinition->getLazyLoading())) {
-                    $data = $this->getLocalizedValue($name, $l);
+            $lookupKey = spl_object_id($this) . '|' . $name;
+            $outermostLookup = !isset(self::$fallbackLanguagesVisited[$lookupKey]);
+            self::$fallbackLanguagesVisited[$lookupKey][$language] = true;
 
-                    if (!$fieldDefinition->isEmpty($data)) {
-                        break;
+            try {
+                foreach (Tool::getFallbackLanguagesFor($language) as $l) {
+                    if (isset(self::$fallbackLanguagesVisited[$lookupKey][$l])) {
+                        continue;
                     }
+
+                    // fallback-language may not exist yet for lazy-loaded field (relation)
+                    if ($this->languageExists($l) || ($fieldDefinition instanceof LazyLoadingSupportInterface && $fieldDefinition->getLazyLoading())) {
+                        $data = $this->getLocalizedValue($name, $l);
+
+                        if (!$fieldDefinition->isEmpty($data)) {
+                            break;
+                        }
+                    }
+                }
+            } finally {
+                if ($outermostLookup) {
+                    unset(self::$fallbackLanguagesVisited[$lookupKey]);
                 }
             }
         }

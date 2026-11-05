@@ -4999,7 +4999,7 @@ not rewritten: they no longer match a lookup and have to be re-entered.
 
 ## DataObject root files (Scope 12)
 
-## [ ] B-245 – Classification store fallback lookup: unbounded recursion on mutual fallback languages, and the last fallback chain wins
+## [x] B-245 – Classification store fallback lookup: unbounded recursion on mutual fallback languages, and the last fallback chain wins
 
 **Files:** `models/DataObject/Classificationstore.php:299-322`, `:356-359`, `:406-409`; `lib/Tool.php:136-151`
 
@@ -5027,6 +5027,13 @@ return $data;
 revisits; make `doGetFallbackValues()` follow `Localizedfield::doGetFallbackValues()` (or a dedicated flag).
 `Localizedfield::getLocalizedValue()` (`:472-483`) has the same cycle when both languages exist; it is guarded only by
 `languageExists()`, so it should get the same visited set.
+
+**Done:** `Classificationstore::getFallbackValue()` walks the fallback languages breadth-first with a visited set and
+returns the first non-empty value, or `null` (also at once when the key has no values). `doGetFallbackValues()` reads
+a dedicated flag, `setGetFallbackValues()` / `getGetFallbackValues()`, which defaults to `true` so the lookup stays on
+where it was; following `Localizedfield`'s flag (default `false`) would have switched it off outside the frontend.
+`Localizedfield::getLocalizedValue()` keeps its depth-first order but skips languages the running lookup of the same
+store and field already visited (a static set keyed by object and field name, cleared by the outermost call).
 
 ## [ ] B-246 – `Classificationstore::getItems()` with inherited values: parent array values replace the child's own values element by element
 
