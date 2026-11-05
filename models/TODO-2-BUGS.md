@@ -4257,7 +4257,7 @@ reported as unreadable instead of being returned with the current file. Failures
 (`ElementListener`, `DocumentRouteHandler`, `MigrateElementsCommand`, the scheduled `publish-version`) check for it, so
 a `VersionDataNotFoundException` was left for I-103 together with the binary hash check.
 
-## [ ] B-219 – Re-saving an existing version rewrites its whole payload: data reloaded and re-marshalled, stack trace replaced, storage re-chosen
+## [x] B-219 – Re-saving an existing version rewrites its whole payload: data reloaded and re-marshalled, stack trace replaced, storage re-chosen
 
 **Files:** `models/Version.php:129-192`, `:401-408`; `models/Version/Dao.php:56-79`;
 `lib/Messenger/Handler/SanityCheckHandler.php:85-94`; `models/Element/AbstractElement.php:577-611`
@@ -4278,6 +4278,14 @@ a `VersionDataNotFoundException` was left for I-103 together with the binary has
 **Fix direction:** `Version::updateMetadata()` / `Dao::updateMetadata()` for `note`, `public`, `versionCount` without
 touching storage; `save()` only creates. For auto-save reuse, explicitly delete the old payload in the old storage
 type before writing the new one (I-102).
+
+**Done:** `Version::updateMetadata()` / `Dao::updateMetadata()` write `note`, `public` and `versionCount` without
+touching the storage. `save()` on an existing version does only that unless new data was set with `setData()`
+(`dataChanged`; loaded data does not count), so callers that update `public` / `note` through `save()` no longer
+reload, re-marshal and rewrite the payload or replace the stack trace. `SanityCheckHandler` calls `updateMetadata()`.
+The auto-save reuse in `doSaveVersion()` sets new data and still rewrites; when the storage type changes, the old
+payload is deleted from its storage type after the new one is written (a failure there is only logged). `save()`
+throws when there is no data instead of failing in `strlen(null)`.
 
 ## [ ] B-220 – `Version::save()` defects
 

@@ -86,6 +86,15 @@ class Dao extends Model\Dao\AbstractDao
         return $this->model->getId();
     }
 
+    public function updateMetadata(): void
+    {
+        $this->db->update('versions', [
+            'note' => $this->model->getNote(),
+            'public' => (int)$this->model->isPublic(),
+            'versionCount' => $this->model->getVersionCount(),
+        ], ['id' => $this->model->getId()]);
+    }
+
     /**
      * Deletes object from database
      */

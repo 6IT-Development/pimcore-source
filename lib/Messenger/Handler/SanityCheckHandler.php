@@ -90,7 +90,7 @@ class SanityCheckHandler implements BatchHandlerInterface
             $latestNotPublishedVersionCount = $element->getVersionCount() + 1;
             $latestNotPublishedVersion->setVersionCount($latestNotPublishedVersionCount);
             $latestNotPublishedVersion->setNote('Sanity Check');
-            $latestNotPublishedVersion->save();
+            $latestNotPublishedVersion->updateMetadata();
         }
     }
 }

@@ -70,6 +70,11 @@ final class Version extends AbstractModel
      */
     protected bool $dataLoaded = false;
 
+    /**
+     * Whether setData() was called since the version was loaded or saved, only then save() writes the data
+     */
+    protected bool $dataChanged = false;
+
     protected bool $public = false;
 
     protected bool $serialized = false;
@@ -160,14 +165,27 @@ final class Version extends AbstractModel
         }
     }
 
+    /**
+     * Creates the version, or, for an existing version, writes its metadata and - only when new data was set with
+     * setData() - its data again
+     */
     public function save(): void
     {
+        if ($this->getId() && !$this->dataChanged) {
+            $this->updateMetadata();
+
+            return;
+        }
+
         // check if versioning is disabled for this process, it only prevents new versions
         if (self::$disabled && !$this->getId()) {
             return;
         }
 
         $this->dispatchEvent(new VersionEvent($this), VersionEvents::PRE_SAVE);
+
+        // the payload is rewritten, it may move to another storage type
+        $previous = $this->getId() ? clone $this : null;
 
         $isAsset = false;
         if (!$this->date) {
@@ -180,6 +198,9 @@ final class Version extends AbstractModel
         }
 
         $data = $this->getData();
+        if ($data === null) {
+            throw new Exception('The version has no data to save');
+        }
 
         // if necessary convert the data to save it to filesystem
         if (is_object($data) || is_array($data)) {
@@ -231,8 +252,30 @@ final class Version extends AbstractModel
 
             throw $e;
         }
+        $this->dataChanged = false;
+
+        if ($previous && $previous->getStorageType() && $previous->getStorageType() !== $this->getStorageType()) {
+            // the old payload would stay in the storage it was written to
+            try {
+                $this->storageAdapter->delete($previous, $this->getDao()->isBinaryHashInUse($previous->getBinaryFileHash()));
+            } catch (Throwable $e) {
+                Logger::error(sprintf('Version %s: unable to delete the data in storage type %s: %s', $this->getId(), $previous->getStorageType(), $e));
+            }
+        }
 
         $this->dispatchEvent(new VersionEvent($this), VersionEvents::POST_SAVE);
+    }
+
+    /**
+     * Writes note, public flag and version count of an existing version, without loading or rewriting its data
+     */
+    public function updateMetadata(): void
+    {
+        if (!$this->getId()) {
+            throw new Exception('Only the metadata of an existing version can be updated');
+        }
+
+        $this->getDao()->updateMetadata();
     }
 
     private function marshalData(ElementInterface $data): ElementInterface
@@ -318,7 +361,9 @@ final class Version extends AbstractModel
             $data = Element\Service::renewReferences($data);
         }
 
-        $this->setData($data);
+        // not setData(): the loaded data is not written again by save()
+        $this->data = $data;
+        $this->dataLoaded = true;
 
         return $data;
     }
@@ -476,6 +521,7 @@ final class Version extends AbstractModel
     {
         $this->data = $data;
         $this->dataLoaded = true;
+        $this->dataChanged = true;
 
         return $this;
     }
