@@ -122,12 +122,6 @@ class Dao extends Model\Dao\AbstractDao
             ['suppressEnrichment' => true]
         );
 
-        /**
-         * We temporary enable the runtime cache so we don't have to calculate the tree for each language
-         * which is a great performance gain if you have a lot of languages
-         */
-        DataObject\Concrete\Dao\InheritanceHelper::setUseRuntimeCache(true);
-
         $ignoreLocalizedQueryFallback = Config::getSystemConfiguration('objects')['ignore_localized_query_fallback'];
         if (!$ignoreLocalizedQueryFallback) {
             $this->model->markLanguageAsDirtyByFallback();
@@ -410,8 +404,6 @@ class Dao extends Model\Dao\AbstractDao
             if (!$ignoreLocalizedQueryFallback) {
                 Localizedfield::setGetFallbackValues($flag);
             }
-            DataObject\Concrete\Dao\InheritanceHelper::setUseRuntimeCache(false);
-            DataObject\Concrete\Dao\InheritanceHelper::clearRuntimeCache();
         }
     }
 

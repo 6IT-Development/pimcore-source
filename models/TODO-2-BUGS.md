@@ -3429,7 +3429,7 @@ included or does not return a definition throws. A new id is computed under a lo
 is written. `delete()` deletes the objects of the class in batches of 100 ids, including unpublished ones, reloads each
 object (it may have gone as a child of an earlier one) and stops with an exception if a batch could not be deleted.
 
-## [ ] B-186 – InheritanceHelper: missing rows and a static runtime cache
+## [x] B-186 – InheritanceHelper: missing rows and a static runtime cache
 
 **File:** `models/DataObject/Concrete/Dao/InheritanceHelper.php:157-248`, `:255-...`, `:354-430`
 
@@ -3441,6 +3441,14 @@ object (it may have gone as a child of an earlier one) and stops with an excepti
 - `doDelete()` is marked "NOT FINISHED - NEEDS TO BE COMPLETED".
 
 **Fix direction:** null checks; scoped cache; finish or remove `doDelete()`.
+
+**Done:** `doUpdate()` builds the tree from `$oo_id` and treats a missing store row as "no values", so the children are
+still updated. The missing-rows step uses the helper's class id and `$oo_id` instead of loading the object (no `Error`
+for `null`) and skips the copy when the object has no query row itself. `Localizedfield\Dao::save()` no longer turns on
+the static tree cache: the tree query contains the language, so the cache never hit within a save and could only serve
+stale trees to later saves (it stayed on when `markLanguageAsDirtyByFallback()` threw, which ran before the `try`). The
+static switch stays for BC. `doDelete()` uses the helper's id column and row filter columns instead of the hard-coded
+`id` / `fieldname`; the "NOT FINISHED" note is removed.
 
 ## [ ] B-187 – DataObject small defects
 

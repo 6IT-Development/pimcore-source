@@ -193,12 +193,13 @@ class InheritanceHelper
             }
 
             $result = $this->db->fetchAssociative('SELECT ' . $this->idField . ' AS id' . $fields . ' FROM ' . $this->storetable . ' WHERE ' . $this->idField . ' = ?' . $this->getRowFilterCondition(), [$oo_id]);
+            // the store row can be missing (object bricks, localized fields), the children are updated anyway
             $o = [
-                'id' => $result['id'],
-                'values' => $result,
+                'id' => $oo_id,
+                'values' => $result ?: [],
             ];
 
-            $o['children'] = $this->buildTree($result['id'], $fields, null, $params);
+            $o['children'] = $this->buildTree($oo_id, $fields, null, $params);
 
             if (!empty($this->fields)) {
                 foreach ($this->fields as $fieldname) {
@@ -240,14 +241,14 @@ class InheritanceHelper
             // rely on the childFound flag
             // without a tree we have to do the select anyway
             if ($this->childFound || (empty($this->fields) && empty($this->relations))) {
-                $object = DataObject\Concrete::getById($oo_id);
-                $classId = $object->getClassId();
+                // the helper's class is the class of the saved object
+                $classId = $this->classId;
 
                 $query = "
                     WITH RECURSIVE cte(id, classId) as (
                         SELECT c.id AS id, c.classId AS classId
                         FROM objects c
-                        WHERE c.parentid = {$object->getId()}
+                        WHERE c.parentid = {$oo_id}
                         UNION ALL
                         SELECT p.id AS id, p.classId AS classId
                         FROM objects p
@@ -261,12 +262,15 @@ class InheritanceHelper
 
                 $missingIds = $this->db->fetchFirstColumn($query);
 
-                // create entries for children that don't have an entry yet
-                $originalEntry = Helper::quoteDataIdentifiers($this->db, $this->db->fetchAssociative('SELECT * FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' = ?' . $this->getRowFilterCondition(), [$oo_id]));
+                // create entries for children that don't have an entry yet, copied from the object's own entry
+                $originalEntry = $this->db->fetchAssociative('SELECT * FROM ' . $this->querytable . ' WHERE ' . $this->idField . ' = ?' . $this->getRowFilterCondition(), [$oo_id]);
 
-                foreach ($missingIds as $id) {
-                    $originalEntry[$this->db->quoteIdentifier($this->idField)] = $id;
-                    $this->db->insert($this->db->quoteIdentifier($this->querytable), $originalEntry);
+                if ($originalEntry) {
+                    $originalEntry = Helper::quoteDataIdentifiers($this->db, $originalEntry);
+                    foreach ($missingIds as $id) {
+                        $originalEntry[$this->db->quoteIdentifier($this->idField)] = $id;
+                        $this->db->insert($this->db->quoteIdentifier($this->querytable), $originalEntry);
+                    }
                 }
             }
         }
@@ -279,8 +283,6 @@ class InheritanceHelper
      */
     public function doDelete(int $objectId, array $params = []): void
     {
-        // NOT FINISHED - NEEDS TO BE COMPLETED !!!
-
         // as a first step, build an ID list of all child elements that are affected. Stop at the level
         // which has a non-empty value.
 
@@ -324,7 +326,7 @@ class InheritanceHelper
             }
         }
 
-        $systemFields = ['id', 'fieldname'];
+        $systemFields = [$this->idField, ...array_keys($this->rowFilter)];
 
         $toBeRemovedItemIds = [];
 
@@ -351,8 +353,8 @@ class InheritanceHelper
                     }
                 }
                 if ($toBeRemoved) {
-                    if (!in_array($queryItem['id'], $objectsWithBrickIds)) {
-                        $toBeRemovedItemIds[] = $queryItem['id'];
+                    if (!in_array($queryItem[$this->idField], $objectsWithBrickIds)) {
+                        $toBeRemovedItemIds[] = $queryItem[$this->idField];
                     }
                 }
             }
