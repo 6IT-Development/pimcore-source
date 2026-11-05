@@ -65,6 +65,11 @@ final class Version extends AbstractModel
 
     protected mixed $data = null;
 
+    /**
+     * Whether $data was set or loaded, also when loading failed: a failed load is not repeated on every getData()
+     */
+    protected bool $dataLoaded = false;
+
     protected bool $public = false;
 
     protected bool $serialized = false;
@@ -301,17 +306,30 @@ final class Version extends AbstractModel
     }
 
     /**
-     *
+     * Returns null when the data cannot be read; the failure is logged once and not retried by getData()
      *
      * @internal
      */
     public function loadData(bool $renewReferences = true): mixed
     {
+        $data = $this->readData();
+
+        if ($data !== null && $renewReferences) {
+            $data = Element\Service::renewReferences($data);
+        }
+
+        $this->setData($data);
+
+        return $data;
+    }
+
+    private function readData(): mixed
+    {
         $data = $this->storageAdapter->loadMetaData($this);
 
-        if (!$data) {
-            $msg = 'Version: cannot read version data with storage type: ' . $this->getStorageType();
-            Logger::err($msg);
+        // '' and '0' are valid unserialized data
+        if ($data === null || ($this->getSerialized() && $data === '')) {
+            Logger::err(sprintf('Version %s: cannot read version data with storage type: %s', $this->getId(), $this->getStorageType()));
 
             return null;
         }
@@ -321,7 +339,12 @@ final class Version extends AbstractModel
             // loaded earlier in the request from the runtime cache; the dumps no longer register themselves there
             $data = Serialize::unserialize($data);
             if ($data instanceof __PHP_Incomplete_Class) {
-                Logger::err('Version: cannot read version data from file system because of incompatible class.');
+                Logger::err(sprintf('Version %s: cannot read version data from file system because of incompatible class.', $this->getId()));
+
+                return null;
+            }
+            if (!$data instanceof ElementInterface) {
+                Logger::err(sprintf('Version %s: the version data is not an element.', $this->getId()));
 
                 return null;
             }
@@ -337,14 +360,13 @@ final class Version extends AbstractModel
             $binaryStream = $this->storageAdapter->loadBinaryData($this);
             if ($binaryStream) {
                 $data->setStream($binaryStream);
+            } elseif ($this->getBinaryFileHash()) {
+                // without a stream the asset would return its current file, and a restore would store it as this version
+                Logger::err(sprintf('Version %s: the binary data of the asset is missing.', $this->getId()));
+
+                return null;
             }
         }
-
-        if ($renewReferences) {
-            $data = Element\Service::renewReferences($data);
-        }
-
-        $this->setData($data);
 
         return $data;
     }
@@ -440,7 +462,7 @@ final class Version extends AbstractModel
 
     public function getData(): mixed
     {
-        if (!$this->data) {
+        if (!$this->dataLoaded) {
             $this->loadData();
         }
 
@@ -453,6 +475,7 @@ final class Version extends AbstractModel
     public function setData(mixed $data): Version
     {
         $this->data = $data;
+        $this->dataLoaded = true;
 
         return $this;
     }

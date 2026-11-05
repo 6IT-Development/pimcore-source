@@ -4229,7 +4229,7 @@ hydrating a listing no longer does one user lookup per version. `Dao::getById()`
 skipping empty values, which kept `userId = 0` out before. `Dao::save()` rejects a version without `cid` / `ctype`,
 since the storage files are named by them. Open: `NOT NULL` columns (I-108).
 
-## [ ] B-218 – `getData()` / `loadData()`: failures reload on every call, errors return `null`, and a missing asset binary is silently replaced by the current file
+## [x] B-218 – `getData()` / `loadData()`: failures reload on every call, errors return `null`, and a missing asset binary is silently replaced by the current file
 
 **Files:** `models/Version.php:269-311`, `:401-408`
 
@@ -4248,6 +4248,14 @@ since the storage files are named by them. Open: `NOT NULL` columns (I-108).
 
 **Fix direction:** track "loaded" in a separate flag; throw a dedicated `VersionDataNotFoundException` (also when
 `binaryFileHash` is set but the binary is missing); compare the restored binary with `binaryFileHash` (I-103).
+
+**Done:** `getData()` loads only once: a `dataLoaded` flag is set by `setData()` and by every load, also a failed one,
+so a failure is logged once and falsy payloads are not reloaded. Only missing metadata (and an empty serialized
+payload) counts as unreadable, not `'0'`. A payload that is not an element is reported like an incompatible class
+instead of failing in `unmarshalData()`. An asset version with a `binaryFileHash` whose binary cannot be loaded is
+reported as unreadable instead of being returned with the current file. Failures still return `null`: all core callers
+(`ElementListener`, `DocumentRouteHandler`, `MigrateElementsCommand`, the scheduled `publish-version`) check for it, so
+a `VersionDataNotFoundException` was left for I-103 together with the binary hash check.
 
 ## [ ] B-219 – Re-saving an existing version rewrites its whole payload: data reloaded and re-marshalled, stack trace replaced, storage re-chosen
 
