@@ -3721,7 +3721,7 @@ exception from both methods; skip the save when nothing changed.
 parameter keeps its signature (callers that pass it are unaffected) and `null` is documented as always denied. An
 already read notification is not saved again. Open: a domain exception instead of the HTTP one (I-88).
 
-## [ ] B-198 – Deleted notifications stay loadable and can be resurrected; events fire before commit
+## [x] B-198 – Deleted notifications stay loadable and can be resurrected; events fire before commit
 
 **Files:** `models/Notification.php:107-124`, `:324-339`; `models/Notification/Dao.php:60-78`; `lib/Db/Helper.php:38-53`
 
@@ -3734,6 +3734,12 @@ already read notification is not saved again. Open: a domain exception instead o
 
 **Fix direction:** remove the runtime-cache entry in `delete()`; `update()` with an affected-rows check for existing
 ids; dispatch post events after commit.
+
+**Done:** `delete()` replaces the runtime-cache entry with `null`, so `getById()` returns `null` afterwards.
+`Dao::save()` inserts new notifications and updates existing ones; when the row is gone it throws `NotFoundException`
+instead of inserting it again. `deleteAll()` no longer wraps the deletions in a transaction (each is a single statement,
+see C-34), so `POST_DELETE` fires after the row is deleted for good. Open: a transaction opened by a caller around
+`save()` / `delete()` still delays the commit past the post events (I-88).
 
 ## [ ] B-199 – Notification small defects
 

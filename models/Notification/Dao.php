@@ -65,15 +65,19 @@ class Dao extends AbstractDao
             $this->model->setCreationDate($this->model->getModificationDate());
         }
 
-        Helper::upsert(
-            $this->db,
-            self::DB_TABLE_NAME,
-            $this->getData($this->model),
-            $this->getPrimaryKey(self::DB_TABLE_NAME)
-        );
+        $data = $this->getData($this->model);
 
         if ($this->model->getId() === null) {
+            $this->db->insert(self::DB_TABLE_NAME, Helper::quoteDataIdentifiers($this->db, $data));
             $this->model->setId((int)$this->db->lastInsertId());
+
+            return;
+        }
+
+        // an upsert would resurrect a notification that was deleted meanwhile (e.g. mark as read racing "delete all")
+        $affected = $this->db->update(self::DB_TABLE_NAME, Helper::quoteDataIdentifiers($this->db, $data), ['id' => $this->model->getId()]);
+        if ($affected === 0 && $this->db->fetchOne(sprintf('SELECT id FROM `%s` WHERE id = ?', self::DB_TABLE_NAME), [$this->model->getId()]) === false) {
+            throw new NotFoundException(sprintf('Notification with id %d not found', $this->model->getId()));
         }
     }
 

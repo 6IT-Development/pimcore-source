@@ -359,6 +359,10 @@ class Notification extends AbstractModel
     {
         $this->dispatchEvent(new NotificationEvent($this), NotificationEvents::PRE_DELETE);
         $this->getDao()->delete();
+        // otherwise getById() keeps returning the deleted notification in this process
+        if ($this->id !== null) {
+            RuntimeCache::set(sprintf('notification_%d', $this->id), null);
+        }
         $this->dispatchEvent(new NotificationEvent($this), NotificationEvents::POST_DELETE);
     }
 }
