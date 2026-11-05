@@ -125,7 +125,7 @@ the current step does not exist and with `gee_error_missing_message_implementati
 class implements `GenericExecutionEngineMessageInterface`, is instantiable and needs at most the three constructor
 arguments the agent passes.
 
-### [ ] B-09 – Global `error_handling` setting is ignored for the `default` execution context
+### [x] B-09 – Global `error_handling` setting is ignored for the `default` execution context
 **Files:** `config/pimcore/default.yaml:1-6`, `src/Agent/JobExecutionAgent.php:269-284`,
 `src/DependencyInjection/Configuration.php:46-57`
 `default.yaml` sets `execution_context.default.error_handling: continue_on_error`; the context value has precedence over
@@ -133,6 +133,10 @@ the global value (`:278-281`) → `pimcore_generic_execution_engine.error_handli
 config has **no effect** for jobs started with the default context (the documented override chain is inverted).
 **Fix:** remove `error_handling` from the `default` context in `default.yaml` (and the duplicated top-level default –
 Configuration already defines it).
+
+**Done:** `config/pimcore/default.yaml` defines only the translation domain of the `default` context; the global
+`error_handling` default comes from `Configuration`, so a project value now applies to jobs of the default context.
+The configuration docs already describe this chain.
 
 ### [ ] B-10 – Error log creation crashes when `currentStep` is `null`
 **Files:** `src/Repository/JobRunErrorLogRepository.php:39-44`, `src/Entity/JobRunErrorLog.php:50-55`
