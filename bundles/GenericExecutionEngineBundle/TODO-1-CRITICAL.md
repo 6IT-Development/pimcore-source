@@ -25,7 +25,7 @@ IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are f
 
 ---
 
-## [ ] C-01 – `JobRunStatusChangeSubscriber` throws `TypeError` on every state change → job runs cannot change state
+## [x] C-01 – `JobRunStatusChangeSubscriber` throws `TypeError` on every state change → job runs cannot change state
 
 **Files:** `src/EventSubscriber/JobRunStatusChangeSubscriber.php:49-63`, `src/Event/JobRunStateChangedEvent.php:24-30`,
 `src/Entity/JobRun.php:54-55`, `config/services.yaml:55-61`
@@ -68,6 +68,12 @@ the listener is actually attached to the `pimcore` EM in the project setup; if i
 string getters for BC – I-21), make `jobRunOwnerId` `?int` and `jobName` `?string`, use `$entity` instead of reloading,
 collect the change in `preUpdate`/`onFlush` and dispatch the event in `postFlush` (after commit). Register via
 `#[AsEntityListener(event: Events::preUpdate, entity: JobRun::class)]` (I-03).
+
+**Done:** the subscriber passes the enum `->value` strings, takes job name and owner from the updated entity instead of
+reloading it, and `JobRunStateChangedEvent` accepts a `null` job name and owner. State changes are collected in
+`preUpdate` and dispatched in `postFlush` (list reset in `preFlush`, so changes of a failed flush are dropped);
+listeners may use the entity manager. The docs describe when the event fires and which values can be `null`. The
+`#[AsEntityListener]` registration (I-03) and a functional test (I-26) are still open.
 
 ---
 

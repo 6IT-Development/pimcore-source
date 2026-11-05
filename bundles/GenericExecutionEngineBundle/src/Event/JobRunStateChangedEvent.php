@@ -22,11 +22,11 @@ use Symfony\Contracts\EventDispatcher\Event;
 final class JobRunStateChangedEvent extends Event
 {
     public function __construct(
-        private readonly int    $jobRunId,
-        private readonly string $jobName,
-        private readonly int    $jobRunOwnerId,
-        private readonly string $oldState,
-        private readonly string $newState
+        private readonly int     $jobRunId,
+        private readonly ?string $jobName,
+        private readonly ?int    $jobRunOwnerId,
+        private readonly string  $oldState,
+        private readonly string  $newState
     )
     {
 
@@ -37,12 +37,18 @@ final class JobRunStateChangedEvent extends Event
         return $this->jobRunId;
     }
 
-    public function getJobName(): string
+    /**
+     * Null when the job definition of the run cannot be loaded.
+     */
+    public function getJobName(): ?string
     {
         return $this->jobName;
     }
 
-    public function getJobRunOwnerId(): int
+    /**
+     * Null for job runs started without owner (CLI, cron, system code).
+     */
+    public function getJobRunOwnerId(): ?int
     {
         return $this->jobRunOwnerId;
     }

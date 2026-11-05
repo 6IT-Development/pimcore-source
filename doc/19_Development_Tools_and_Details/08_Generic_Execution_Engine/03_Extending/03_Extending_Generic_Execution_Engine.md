@@ -7,7 +7,10 @@ Currently, it is possible to use the following event to extend the Generic Execu
 * `Pimcore\Bundle\GenericExecutionEngineBundle\Event\JobRunStateChangedEvent`
 
 With this event it is possible to react to changes in the state of a job run.
-The event is dispatched whenever the state of a job run changes. The event object contains the job run ID, the previous state and the new state.
+The event is dispatched whenever the state of a job run changes, after the change has been written to the database.
+The event object contains the job run ID, the job name, the owner ID, the previous state and the new state (as the
+string values of `JobRunStates`). The job name is `null` when the job definition cannot be loaded, and the owner ID is
+`null` for job runs started without owner (e.g. from CLI or cron).
 
 ### Example
 

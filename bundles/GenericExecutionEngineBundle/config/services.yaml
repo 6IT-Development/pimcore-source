@@ -54,11 +54,9 @@ services:
 
     Pimcore\Bundle\GenericExecutionEngineBundle\EventSubscriber\JobRunStatusChangeSubscriber:
         tags:
-            -
-                name: 'doctrine.event_listener'
-                event: 'preUpdate'
-                priority: 500
-                connection: 'default'
+            - { name: 'doctrine.event_listener', event: 'preFlush', priority: 500, connection: 'default' }
+            - { name: 'doctrine.event_listener', event: 'preUpdate', priority: 500, connection: 'default' }
+            - { name: 'doctrine.event_listener', event: 'postFlush', priority: 500, connection: 'default' }
 
     Pimcore\Bundle\GenericExecutionEngineBundle\Extractor\JobRunExtractorInterface:
         class: Pimcore\Bundle\GenericExecutionEngineBundle\Extractor\JobRunExtractor
