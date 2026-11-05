@@ -28,7 +28,7 @@ class ServiceTest extends TestCase
     {
         // create object with property
         $object = TestHelper::createEmptyObject('', false);
-        $object->setProperty('propertyA', 'input', 'valueA');
+        $object->setProperty('propertyA', 'text', 'valueA');
         $object->save();
 
         // copy object in the same folder

@@ -21,7 +21,6 @@ use Pimcore\Cache;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Property\Dao;
-use Pimcore\Tool\Serialize;
 
 /**
  * @method Dao getDao()
@@ -29,6 +28,11 @@ use Pimcore\Tool\Serialize;
  */
 final class Property extends AbstractModel
 {
+    /**
+     * The values of the `properties.type` column
+     */
+    public const array TYPES = ['text', 'document', 'asset', 'object', 'bool', 'select'];
+
     protected ?string $name = null;
 
     protected mixed $data = null;
@@ -82,9 +86,7 @@ final class Property extends AbstractModel
     {
         // IMPORTANT: if you use this method be sure that the type of the property is already set
         // do not set data for object, asset and document here, this is loaded dynamically when calling $this->getData();
-        if ($this->type == 'date') {
-            $this->data = Serialize::unserialize($data);
-        } elseif ($this->type == 'bool') {
+        if ($this->type == 'bool') {
             $this->data = false;
             if (!empty($data)) {
                 $this->data = true;

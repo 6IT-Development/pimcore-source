@@ -15,6 +15,7 @@
 
 namespace Pimcore\Model\Property;
 
+use InvalidArgumentException;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Property;
@@ -32,6 +33,12 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function save(): void
     {
+        // the column is an enum: an unknown type (e.g. "date") would be stored as '' and its data lost
+        $type = $this->model->getType();
+        if ($type !== null && $type !== '' && !in_array($type, Property::TYPES, true)) {
+            throw new InvalidArgumentException(sprintf('Unsupported type "%s" of property "%s", supported are: %s', $type, $this->model->getName(), implode(', ', Property::TYPES)));
+        }
+
         $data = $this->model->getData();
 
         if ($this->model->getType() == 'object' || $this->model->getType() == 'asset' || $this->model->getType() == 'document') {

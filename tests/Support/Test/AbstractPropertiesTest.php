@@ -50,8 +50,8 @@ abstract class AbstractPropertiesTest extends ModelTestCase
         // create and read
         $this->createElement();
         $expectedData = 'sometext' . uniqid();
-        $this->testElement->setProperty('textproperty1', 'input', $expectedData . '_1');
-        $this->testElement->setProperty('textproperty2', 'input', $expectedData . '_2');
+        $this->testElement->setProperty('textproperty1', 'text', $expectedData . '_1');
+        $this->testElement->setProperty('textproperty2', 'text', $expectedData . '_2');
         $this->testElement->save();
 
         $this->reloadElement();
@@ -66,14 +66,14 @@ abstract class AbstractPropertiesTest extends ModelTestCase
 
         // update
         $expectedData = 'sometext' . uniqid() . '_new';
-        $this->testElement->setProperty('textproperty1', 'input', $expectedData);
+        $this->testElement->setProperty('textproperty1', 'text', $expectedData);
         $this->testElement->save();
         $this->reloadElement();
         $actual = $this->testElement->getProperty('textproperty1');
         $this->assertEquals($expectedData, $actual);
 
         // delete
-        $this->testElement->setProperty('textproperty1', 'input', null);
+        $this->testElement->setProperty('textproperty1', 'text', null);
         $this->testElement->save();
 
         $this->reloadElement();
@@ -94,7 +94,7 @@ abstract class AbstractPropertiesTest extends ModelTestCase
         $this->testElement = $parentElement;
 
         $expectedData = 'sometext' . uniqid();
-        $this->testElement->setProperty('textproperty3', 'input', $expectedData . '_3', false, true);
+        $this->testElement->setProperty('textproperty3', 'text', $expectedData . '_3', false, true);
         $this->testElement->save();
 
         $childElement = Service::getElementById(Service::getElementType($childElement), $childElement->getId(), ['force' => true]);

@@ -3785,7 +3785,7 @@ Open: the remaining I-92 test cases.
 
 ## Property (Scope 8)
 
-## [ ] B-201 – Properties of type `date` cannot be stored: the `properties.type` enum has no `date`
+## [x] B-201 – Properties of type `date` cannot be stored: the `properties.type` enum has no `date`
 
 **Files:** `models/Property.php:81-98` (`:85-86`); `models/Property/Dao.php:33-68`;
 `bundles/InstallBundle/dump/install.sql:305`; `bundles/CoreBundle/config/pimcore/default.yaml:148`
@@ -3802,6 +3802,12 @@ Open: the remaining I-92 test cases.
 **Fix direction:** decide whether `date` is supported. If it is, add it to the enum by migration and store a
 timestamp or ISO string instead of a serialized object. If not, remove the branch and reject the type in the
 model (I-93 enum).
+
+**Done:** `date` is not supported: neither the column nor the admin property editor knows it, so no stored row can
+have it. The unserialize branch is removed from `setDataFromResource()`, and `Property\Dao::save()` throws an
+`InvalidArgumentException` for a type outside `Property::TYPES` (the enum values) instead of letting MySQL store `''`
+and the serialized data. `null` and `''` (rows broken earlier) are still saved as they are; B-202 deals with them.
+Open: the `PropertyType` enum (I-93).
 
 ## [ ] B-202 – One property row with `type` (or `name`) `NULL` makes the element and all its descendants unloadable
 
