@@ -119,7 +119,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setKey(string $key): Predefined
+    public function setKey(?string $key): Predefined
     {
         $this->key = $key;
 
@@ -129,7 +129,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setName(string $name): Predefined
+    public function setName(?string $name): Predefined
     {
         $this->name = $name;
 
@@ -139,7 +139,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setType(string $type): Predefined
+    public function setType(?string $type): Predefined
     {
         $this->type = $type;
 
@@ -179,14 +179,14 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setConfig(string $config): Predefined
+    public function setConfig(?string $config): Predefined
     {
         $this->config = $config;
 
         return $this;
     }
 
-    public function getCtype(): string
+    public function getCtype(): ?string
     {
         return $this->ctype;
     }
@@ -194,7 +194,7 @@ final class Predefined extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setCtype(string $ctype): Predefined
+    public function setCtype(?string $ctype): Predefined
     {
         $this->ctype = $ctype;
 

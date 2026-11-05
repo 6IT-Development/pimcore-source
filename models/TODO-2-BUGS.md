@@ -3934,7 +3934,7 @@ fix with B-188.
 does not load with a warning, and re-indexes the list after the user filter, so it is a `list<Predefined>` without
 `null`s and `getTotalCount()` counts only loaded definitions.
 
-## [ ] B-207 – `Predefined::getCtype(): string` throws for definitions without `ctype`
+## [x] B-207 – `Predefined::getCtype(): string` throws for definitions without `ctype`
 
 **Files:** `models/Property/Predefined.php:49`, `:189-192`, `:174-187`, `:91-97`;
 `bundles/CoreBundle/src/DependencyInjection/Configuration.php:1852-1870`
@@ -3948,6 +3948,10 @@ does not load with a warning, and re-indexes the list after the user filter, so 
 
 **Fix direction:** `getCtype(): ?string` (or default `''` and validate on save); consistent nullability for all
 setters / getters.
+
+**Done:** `getCtype()` returns `?string`, and `setKey()`, `setName()`, `setType()`, `setConfig()` and `setCtype()` accept
+`null` like their getters return it, so a definition without `ctype` (or any other optional field) loads and its
+fields can be reset. Required fields are validated on save (B-209).
 
 ## [ ] B-208 – `Predefined::getByKey()`: stale cache, uncached misses, duplicate keys win by listing order
 
