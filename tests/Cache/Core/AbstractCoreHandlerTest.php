@@ -702,6 +702,39 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertFalse($this->writeLock->hasLock());
     }
 
+    public function testWriteLockOfOtherProcessIsSeen(): void
+    {
+        // a second process sharing the same storage, with its own write lock instance
+        $otherWriteLock = $this->createWriteLock();
+
+        $this->assertFalse($otherWriteLock->hasLock());
+
+        $this->handler->clearTags(['foo']);
+
+        $this->assertTrue($otherWriteLock->hasLock());
+
+        // the other process does not remove a lock it did not set
+        $otherWriteLock->removeLock();
+        $this->assertTrue($this->writeLock->hasLock());
+        $this->assertTrue($otherWriteLock->hasLock());
+
+        $this->handler->shutdown();
+
+        $this->assertFalse($otherWriteLock->hasLock());
+    }
+
+    public function testSaveQueueIsNotWrittenWhileOtherProcessHoldsWriteLock(): void
+    {
+        $otherWriteLock = $this->createWriteLock();
+        $otherWriteLock->lock();
+
+        $this->handler->save('itemA', 'test');
+        $this->handler->shutdown();
+
+        $this->assertFalse($this->cacheHasItem('itemA'));
+        $this->assertTrue($otherWriteLock->hasLock());
+    }
+
     /**
      * Data provider for invalid keys.
      *

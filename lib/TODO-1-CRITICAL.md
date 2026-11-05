@@ -102,7 +102,7 @@ Grouped by area: **Core cache handler / write lock** C-01–C-03, **Composer** �
 
 ## Core cache handler / write lock
 
-## [ ] C-01 – The cross-process write lock is never read: `hasLock()` only returns `true` for the process that set it
+## [x] C-01 – The cross-process write lock is never read: `hasLock()` only returns `true` for the process that set it
 
 **File:** `lib/Cache/Core/WriteLock.php:126-151`, `:73-89`; `lib/Cache/Core/CoreCacheHandler.php:790-799`
 
@@ -131,6 +131,13 @@ public function hasLock(): bool
 **Fix direction:** in `hasLock()` call `initializeLock()` (or read the item) instead of returning early; re-read the
 storage item on every `hasLock()` call (it is called once per shutdown). Better: replace with the Symfony Lock
 component (I-04). Add a two-handler test (I-12). Fix together with B-01.
+
+**Done:** `hasLock()` no longer depends on `lockInitialized`: when this process holds no lock of its own it reads the
+storage item on every call and reports a valid (integer, not expired) foreign lock. The foreign timestamp is not copied
+into `$this->timestamp`, so a reading process never takes over the lock and its `removeLock()` (still a no-op without
+`lock()`) cannot delete it. A non-integer lock value no longer throws a `TypeError`. Two tests use a second `WriteLock`
+on the same storage: it sees the lock of the handler, does not remove it, and a handler whose storage holds a foreign
+lock does not write its save queue. The ownership issues of `initializeLock()` / `removeLock()` remain B-01.
 
 ---
 

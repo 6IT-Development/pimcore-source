@@ -120,12 +120,15 @@ class WriteLock implements LoggerAwareInterface
     }
 
     /**
-     * Check if a write lock is active
+     * Check if a write lock is active - either set by this process or by any other process sharing the storage
      *
+     * The storage is read on every call (it is called once per shutdown), so a lock set by another process after
+     * this one started is seen. A foreign lock is not adopted as this process' own lock, so removeLock() of this
+     * process never deletes it.
      */
     public function hasLock(): bool
     {
-        if (!$this->enabled || !$this->lockInitialized) {
+        if (!$this->enabled) {
             return false;
         }
 
@@ -137,15 +140,10 @@ class WriteLock implements LoggerAwareInterface
         if ($item->isHit()) {
             $lock = $item->get();
 
-            if ($this->isLockValid($lock)) {
-                $this->timestamp = $lock;
-
+            if (is_int($lock) && $this->isLockValid($lock)) {
                 return true;
             }
         }
-
-        // normalize timestamp
-        $this->timestamp = null;
 
         return false;
     }
