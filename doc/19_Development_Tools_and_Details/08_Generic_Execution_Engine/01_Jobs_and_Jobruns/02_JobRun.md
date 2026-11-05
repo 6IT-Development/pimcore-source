@@ -68,7 +68,9 @@ To rerun a job run, you can use the `rerunJobRun` method of the `JobExecutionAge
 $jobExecutionAgent->rerunJobRun($jobRun->getId(), $ownerId);
 ```
 
-The state of the job run will be set to `running` and the job run will be restarted.
+A new job run is started with the job, the execution context and the selection the original job run was started with
+(selection changes made by its steps are not taken over). The original job run is not changed. A job run that is still
+`running` cannot be rerun, `rerunJobRun()` throws a `LogicException` then.
 
 ## Cancel single steps of a Job Run
 

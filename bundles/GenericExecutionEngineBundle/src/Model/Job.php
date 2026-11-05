@@ -23,19 +23,31 @@ use Pimcore\Model\Element\ElementDescriptor;
 final class Job
 {
     /**
+     * The selection the job was created with, steps may replace $selectedElements while the job runs.
+     *
+     * @var ElementDescriptor[]
+     */
+    private readonly array $initialSelectedElements;
+
+    /**
      * @param JobStep[] $steps
      * @param ElementDescriptor[] $selectedElements
+     * @param ElementDescriptor[]|null $initialSelectedElements only set when the job is restored from a job run,
+     *                                                          defaults to $selectedElements
      */
     public function __construct(
         private readonly string $name,
         private readonly array  $steps,
         private array           $selectedElements = [],
-        private readonly array  $environmentData = []
+        private readonly array  $environmentData = [],
+        ?array                  $initialSelectedElements = null
     )
     {
         if (empty($this->steps)) {
             throw new InvalidArgumentException('Job must have at least one step');
         }
+
+        $this->initialSelectedElements = $initialSelectedElements ?? $selectedElements;
     }
 
     public function getName(): string
@@ -62,6 +74,22 @@ final class Job
     public function getEnvironmentData(): array
     {
         return $this->environmentData;
+    }
+
+    /**
+     * @return ElementDescriptor[]
+     */
+    public function getInitialSelectedElements(): array
+    {
+        return $this->initialSelectedElements;
+    }
+
+    /**
+     * A copy of the job with the selection it was created with, used to rerun it.
+     */
+    public function withInitialSelection(): self
+    {
+        return new self($this->name, $this->steps, $this->initialSelectedElements, $this->environmentData);
     }
 
     /**

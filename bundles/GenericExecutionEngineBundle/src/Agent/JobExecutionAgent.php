@@ -18,8 +18,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Agent;
 
 use Doctrine\DBAL\Exception;
+use LogicException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Configuration\ExecutionContextInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\Job;
@@ -150,9 +152,19 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      */
     public function rerunJobRun(int $jobRunId, ?int $ownerId): void
     {
-        $jobRun = $this->jobRunRepository->getJobRunById($jobRunId);
+        $jobRun = $this->jobRunRepository->getJobRunById($jobRunId, true);
         $this->denyInteractionUnlessAllowed($jobRun);
-        $this->startJobExecution($jobRun->getJob(), $ownerId);
+
+        if ($jobRun->getState() === JobRunStates::RUNNING) {
+            throw new LogicException("Job run $jobRunId is still running and cannot be rerun.");
+        }
+
+        $job = $jobRun->getJob();
+        if (!$job instanceof Job) {
+            throw new JobNotFoundException("Job not found for JobRun with id: $jobRunId");
+        }
+
+        $this->startJobExecution($job->withInitialSelection(), $ownerId, $jobRun->getExecutionContext());
     }
 
     public function isRunning(int $jobRunId): bool

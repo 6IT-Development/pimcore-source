@@ -55,7 +55,7 @@ Passes `['%job_id%' => …]`, the translation expects `%job_run_id%` → message
 **Done:** `setJobRunError()` translates with the `admin` domain and the `en` locale, the same as the run log written by
 `updateLogLocalizedWithDomain()`.
 
-### [ ] B-04 – `rerunJobRun()` does not reproduce the original run
+### [x] B-04 – `rerunJobRun()` does not reproduce the original run
 **File:** `src/Agent/JobExecutionAgent.php:142-146`
 - Execution context is lost – `startJobExecution($jobRun->getJob(), $ownerId)` falls back to `'default'` (other
   translation domain / error handling).
@@ -65,6 +65,12 @@ Passes `['%job_id%' => …]`, the translation expects `%job_run_id%` → message
 - No guard: a `running` run can be "rerun" (two parallel runs on the same elements).
 **Fix:** store the original selection separately (or the original serialized job), pass
 `$jobRun->getExecutionContext()`, reject reruns of `running` runs.
+
+**Done:** `Job` keeps the selection it was created with in `initialSelectedElements` (serialized with the job, so no
+schema change; jobs serialized before fall back to their current selection), `withInitialSelection()` copies the job
+with it. `rerunJobRun()` reloads the run, throws `JobNotFoundException` without job and a `LogicException` for a
+`running` run, and starts the copy with the execution context of the original run. The stored selection doubles the
+size of `serializedJob` for jobs whose steps change the selection (column size: B-19). Docs updated in `02_JobRun.md`.
 
 ### [ ] B-05 – `cancelJobRun()` overwrites terminal states
 **File:** `src/Agent/JobExecutionAgent.php:127-137`

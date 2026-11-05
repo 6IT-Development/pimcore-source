@@ -17,7 +17,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Agent;
 
+use LogicException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\Job;
@@ -55,9 +57,11 @@ interface JobExecutionAgentInterface
     public function cancelJobRun(int $jobRunId): void;
 
     /**
-     * Start new job based on given job run
+     * Start a new job run with the job, selection and execution context the given job run was started with
      *
      * @throws PermissionException when called in a request whose user may not interact with the job run
+     * @throws JobNotFoundException when the job run has no job
+     * @throws LogicException when the job run is still running
      */
     public function rerunJobRun(int $jobRunId, ?int $ownerId): void;
 
