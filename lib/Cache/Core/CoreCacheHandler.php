@@ -469,6 +469,19 @@ class CoreCacheHandler implements LoggerAwareInterface
 
         $this->writeInProgress = true;
 
+        try {
+            return $this->writeCacheData($key, $data, $tags, $lifetime);
+        } finally {
+            // always reset, otherwise an exception would silently disable all later cache writes of the process
+            $this->writeInProgress = false;
+        }
+    }
+
+    /**
+     * @param string[] $tags
+     */
+    private function writeCacheData(string $key, mixed $data, array $tags, DateInterval|int|null $lifetime): bool
+    {
         if ($data instanceof ElementInterface) {
             // fetch a fresh copy
             $type = Service::getElementType($data);
@@ -490,16 +503,12 @@ class CoreCacheHandler implements LoggerAwareInterface
                     ]
                 );
 
-                $this->writeInProgress = false;
-
                 return false;
             }
 
             // compute the tags from the copy that is stored, not from the caller's instance
             $tags = $this->prepareCacheTags($key, $data, $tags);
             if (null === $tags) {
-                $this->writeInProgress = false;
-
                 return false;
             }
 
@@ -556,8 +565,6 @@ class CoreCacheHandler implements LoggerAwareInterface
                 ]
             );
         }
-
-        $this->writeInProgress = false;
 
         return $result;
     }
@@ -830,15 +837,26 @@ class CoreCacheHandler implements LoggerAwareInterface
                 continue;
             }
 
-            // tags of elements are computed in storeCacheData() from the stored copy
-            $tags = $queueItem->getData() instanceof ElementInterface
-                ? $queueItem->getTags()
-                : $this->prepareCacheTags($queueItem->getKey(), $queueItem->getData(), $queueItem->getTags());
-            if (null === $tags) {
+            try {
+                // tags of elements are computed in storeCacheData() from the stored copy
+                $tags = $queueItem->getData() instanceof ElementInterface
+                    ? $queueItem->getTags()
+                    : $this->prepareCacheTags($queueItem->getKey(), $queueItem->getData(), $queueItem->getTags());
+                if (null === $tags) {
+                    $result = false;
+                    // item shouldn't go to the cache (either because it's tags are ignored or were cleared within this process) -> see $this->prepareCacheTags();
+                } else {
+                    $result = $this->storeCacheData($queueItem->getKey(), $queueItem->getData(), $tags, $queueItem->getLifetime(), $queueItem->isForce());
+                }
+            } catch (Throwable $e) {
+                // one broken item must not stop the rest of the queue (and the lock removal on shutdown)
+                $this->logger->error('Failed to write {key} to cache: {error}', [
+                    'key' => $key,
+                    'error' => $e->getMessage(),
+                    'exception' => $e,
+                ]);
+
                 $result = false;
-                // item shouldn't go to the cache (either because it's tags are ignored or were cleared within this process) -> see $this->prepareCacheTags();
-            } else {
-                $result = $this->storeCacheData($queueItem->getKey(), $queueItem->getData(), $tags, $queueItem->getLifetime(), $queueItem->isForce());
             }
 
             $processedKeys[] = $key;
@@ -860,6 +878,18 @@ class CoreCacheHandler implements LoggerAwareInterface
      * @internal
      */
     public function shutdown(bool $forceWrite = false): static
+    {
+        try {
+            $this->clearTagsAndWriteOnShutdown($forceWrite);
+        } finally {
+            // remove the write lock, also when clearing or writing failed - otherwise it stays until its TTL
+            $this->writeLock->removeLock();
+        }
+
+        return $this;
+    }
+
+    private function clearTagsAndWriteOnShutdown(bool $forceWrite): void
     {
         // clear tags scheduled for the shutdown
         $this->clearTagsOnShutdown();
@@ -887,11 +917,6 @@ class CoreCacheHandler implements LoggerAwareInterface
         if ($doWrite) {
             $this->writeSaveQueue();
         }
-
-        // remove the write lock
-        $this->writeLock->removeLock();
-
-        return $this;
     }
 
     /**

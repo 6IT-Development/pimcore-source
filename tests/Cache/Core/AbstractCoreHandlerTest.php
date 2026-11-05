@@ -702,6 +702,39 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertFalse($this->writeLock->hasLock());
     }
 
+    public function testFailedImmediateWriteDoesNotDisableLaterWrites(): void
+    {
+        try {
+            // reserved characters in a tag make the cache item throw
+            $this->handler->save('itemA', 'test', ['invalid{tag}'], null, 0, true);
+            $this->fail('Expected an exception for an invalid tag');
+        } catch (\Psr\Cache\InvalidArgumentException) {
+        }
+
+        $this->assertTrue($this->handler->save('itemB', 'test', [], null, 0, true));
+        $this->assertTrue($this->cacheHasItem('itemB'));
+    }
+
+    public function testFailedQueueItemDoesNotStopTheSaveQueue(): void
+    {
+        $this->handler->save('itemA', 'test', ['invalid{tag}'], null, 10);
+        $this->handler->save('itemB', 'test', [], null, 0);
+
+        $this->handler->clearTags(['foo']);
+        $this->handler->shutdown();
+
+        // the lock of the clear is removed although an item failed
+        $this->assertFalse($this->writeLock->hasLock());
+
+        $this->handler->save('itemA', 'test', ['invalid{tag}'], null, 10);
+        $this->handler->save('itemB', 'test', [], null, 0);
+        $this->assertFalse($this->handler->writeSaveQueue());
+
+        $this->assertFalse($this->cacheHasItem('itemA'));
+        $this->assertTrue($this->cacheHasItem('itemB'));
+        $this->assertCount(0, $this->getHandlerPropertyValue('saveQueue'));
+    }
+
     public function testWriteLockOfOtherProcessIsSeen(): void
     {
         // a second process sharing the same storage, with its own write lock instance

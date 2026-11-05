@@ -171,7 +171,7 @@ to `save()`) and runs the `clearedTags` / `tagsIgnoredOnSave` checks on them; an
 
 ---
 
-## [ ] C-03 – `writeInProgress` is never reset on an exception: all later cache writes of the process are silently dropped
+## [x] C-03 – `writeInProgress` is never reset on an exception: all later cache writes of the process are silently dropped
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:459`, `:466`, `:494-510`, `:513-517`, `:541`; `:287-289`, `:445-447`
 
@@ -193,6 +193,12 @@ to `save()`) and runs the `clearedTags` / `tagsIgnoredOnSave` checks on them; an
 **Fix direction:** `try { … } finally { $this->writeInProgress = false; }` around the body of `storeCacheData()`;
 catch `Throwable` per item in `writeSaveQueue()` (log with key, continue with the next item); in `shutdown()` put
 `removeLock()` in a `finally`.
+
+**Done:** `storeCacheData()` keeps its pre-checks and delegates the work to the new private `writeCacheData()` inside
+`try { … } finally { $this->writeInProgress = false; }`, so an exception no longer disables later writes.
+`writeSaveQueue()` catches `Throwable` per item, logs it as an error with the key and continues; the queue is reset
+afterwards. `shutdown()` removes the write lock in a `finally`. Tests: a failing immediate write (tag with reserved
+characters) does not block the next write, and a failing queue item does not stop the other items or the lock removal.
 
 ---
 
