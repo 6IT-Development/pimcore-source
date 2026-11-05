@@ -3176,13 +3176,15 @@ no longer loops forever. `batchAssignTagsToElement()` runs in one transaction an
 `INSERT … ON DUPLICATE KEY UPDATE` statements of up to 1000 rows. `save()` and `delete()` reset the cached `children` of
 the runtime-cached parent tags (old and new parent on a move; the new `Dao::getStoredParentId()` gives the old one).
 
-## [ ] B-172 – `WorkflowState\Dao::delete()` deletes the states of every workflow on the element
+## [x] B-172 – `WorkflowState\Dao::delete()` deletes the states of every workflow on the element
 
 **File:** `models/Element/WorkflowState/Dao.php:58-64`
 
 - The `WHERE` misses `workflow` (part of the primary key) → removing the state of one workflow removes all.
 
 **Fix direction:** add `'workflow' => $this->model->getWorkflow()`.
+
+**Done:** `Dao::delete()` adds `workflow` to the `WHERE`, so it removes only the state of the model's workflow.
 
 ## [ ] B-173 – `PermissionChecker::check()`: child permissions written to the wrong array, undefined columns, deleted roles
 
