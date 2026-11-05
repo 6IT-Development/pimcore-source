@@ -163,7 +163,7 @@ normaliser converts dashes in keys to underscores → a context configured as `m
 **Done:** `execution_context` uses `useAttributeAsKey('name')` and `normalizeKeys(false)`; a context `my-context` keeps
 its name, and contexts from several config files still merge by name.
 
-### [ ] B-12 – Unknown / removed execution context breaks logging and the job run grid
+### [x] B-12 – Unknown / removed execution context breaks logging and the job run grid
 **Files:** `src/Configuration/ExecutionContext.php:33-54`, `src/Repository/JobRunRepository.php:104`,
 `src/Grid/JobRunGrid.php:48`, `src/Agent/JobExecutionAgent.php:67-89`
 - `startJobExecution()` does not validate the context up front → the run is created and dispatched and only fails later
@@ -171,6 +171,12 @@ its name, and contexts from several config files still merge by name.
 - Runs persisted with a context that was later removed from config make `convertJobRunToArray()` throw → the complete
   job run list returns `500`.
 **Fix:** validate in `startJobExecution()`; fall back to the default context (with a warning) when reading old runs.
+
+**Done:** `ExecutionContextInterface::hasContext()`; `startJobExecution()` throws `ExecutionContextNotDefinedException`
+before the run is created (a rerun of a run whose context was removed fails the same way instead of silently changing
+domain and error handling). `getTranslationDomain()` / `getErrorHandlingFromContext()` fall back to the `default`
+context with a warning in the GEE log, so existing runs keep working in the grid and the worker. Documented in
+`02_Configuration.md`.
 
 ### [ ] B-13 – Suggested-only dependencies are hard requirements
 **Files:** `src/Entity/JobRun.php:279-290`, root `composer.json:169-170`

@@ -21,6 +21,7 @@ use Doctrine\DBAL\Exception;
 use LogicException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Configuration\ExecutionContextInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\ExecutionContextNotDefinedException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
@@ -76,6 +77,13 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         string $executionContext = 'default'
     ): JobRun
     {
+        // checked before the run is created: an unknown context would only fail later inside the worker
+        if (!$this->executionContext->hasContext($executionContext)) {
+            throw new ExecutionContextNotDefinedException(
+                sprintf('Execution context "%s" is not defined.', $executionContext)
+            );
+        }
+
         $jobRun = $this->jobRunRepository->createFromJob($job, $ownerId);
         $jobRun->setExecutionContext($executionContext);
         $jobRun->setState(JobRunStates::RUNNING);

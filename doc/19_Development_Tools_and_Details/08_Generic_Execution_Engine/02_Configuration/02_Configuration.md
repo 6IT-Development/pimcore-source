@@ -43,3 +43,6 @@ $jobExecutionAgent->startJobExecution($job, $owner, 'my_custom_context');
 Based on the execution context, the translation domain and error handling strategy are set for the job run. 
 By default, the `admin` translation domain is used. For error handling, the global configuration strategy, which is `continue_on_error`, is used as a fallback.
 Currently, only the translation domain and error handling strategy can be customized per execution context.
+
+Starting a job run with an execution context that is not configured throws an `ExecutionContextNotDefinedException`.
+Job runs whose execution context was removed from the configuration later use the `default` execution context.

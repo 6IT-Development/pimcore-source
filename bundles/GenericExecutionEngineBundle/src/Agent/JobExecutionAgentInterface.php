@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericExecutionEngineBundle\Agent;
 
 use LogicException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\ExecutionContextNotDefinedException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
@@ -29,6 +30,8 @@ interface JobExecutionAgentInterface
 {
     /**
      * Start new Job Run based on a job definition
+     *
+     * @throws ExecutionContextNotDefinedException when the execution context is not configured
      */
     public function startJobExecution(
         Job    $job,
@@ -62,6 +65,7 @@ interface JobExecutionAgentInterface
      *
      * @throws PermissionException when called in a request whose user may not interact with the job run
      * @throws JobNotFoundException when the job run has no job
+     * @throws ExecutionContextNotDefinedException when the execution context of the job run is no longer configured
      * @throws LogicException when the job run is still running
      */
     public function rerunJobRun(int $jobRunId, ?int $ownerId): void;
