@@ -4523,7 +4523,7 @@ admins: defined), otherwise `getFirstAllowedPerspective()`, without writing to t
 perspectives no longer exist, `getFirstAllowedPerspective()` returns the first defined one. Open: a role saved in
 another process is still seen only through a fresh `Role` instance (I-112).
 
-## [ ] B-228 – `setPassword()` silently ignores `null`, `''` and every value of ≤ 4 characters; `setUsername(null)` throws
+## [x] B-228 – `setPassword()` silently ignores `null`, `''` and every value of ≤ 4 characters; `setUsername(null)` throws
 
 **Files:** `models/User.php:106-113`, `:147-152`; `models/UserInterface.php:24-40`; `models/User/AbstractUser.php:144-149`;
 `lib/Tool/Authentication.php:160-184`
@@ -4538,6 +4538,12 @@ another process is still seen only through a fresh `Role` instance (I-112).
 
 **Fix direction:** accept `null` / `''` as "no password"; reject non-hash values explicitly (e.g. `password_get_info()`)
 instead of ignoring them; make `setUsername()` non-nullable or handle `null` (I-110, I-117).
+
+**Done:** `setPassword(null)` removes the password (login disabled). Any other non-empty value is stored regardless of
+its length; a value that `password_get_info()` does not recognise as a hash is stored with a warning instead of being
+rejected, so a user row with such a value stays loadable (its login fails as before). `''` still keeps the current
+password, because form submissions send it for an empty password field (admin bundle, not verified locally).
+`setUsername()` takes a non-nullable `string` in `User` and `UserInterface`, matching `setName()`.
 
 ## [ ] B-229 – `AbstractUser::delete()` is not transactional and leaves user data behind
 

@@ -89,11 +89,28 @@ final class User extends User\UserRole implements UserInterface
         return $this->password;
     }
 
+    /**
+     * Expects a hash from Authentication::getPasswordHash(); null removes the password, which disables the login.
+     * '' keeps the current password: forms send it for an empty password field.
+     */
     public function setPassword(?string $password): static
     {
-        if (strlen((string)$password) > 4) {
-            $this->password = $password;
+        if ($password === '') {
+            return $this;
         }
+
+        if ($password === null) {
+            $this->password = null;
+
+            return $this;
+        }
+
+        if (password_get_info($password)['algo'] === null) {
+            // not rejected: a user row with such a value must stay loadable; the login fails for it
+            Logger::warning(sprintf('The password of user %s is not a password hash, use %s::getPasswordHash()', $this->getName(), Tool\Authentication::class));
+        }
+
+        $this->password = $password;
 
         return $this;
     }
@@ -130,7 +147,7 @@ final class User extends User\UserRole implements UserInterface
     /**
      * @return $this
      */
-    public function setUsername(?string $username): static
+    public function setUsername(string $username): static
     {
         $this->setName($username);
 

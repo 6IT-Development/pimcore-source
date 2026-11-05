@@ -24,6 +24,8 @@ interface UserInterface extends UserRoleInterface
     public function getPassword(): ?string;
 
     /**
+     * Expects a password hash; null removes the password and disables the login, '' keeps the current one
+     *
      * @return $this
      */
     public function setPassword(?string $password): static;
@@ -35,9 +37,11 @@ interface UserInterface extends UserRoleInterface
     public function getUsername(): ?string;
 
     /**
+     * Alias for setName()
+     *
      * @return $this
      */
-    public function setUsername(?string $username): static;
+    public function setUsername(string $username): static;
 
     public function getFirstname(): ?string;
 
