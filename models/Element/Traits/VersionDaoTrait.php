@@ -40,7 +40,7 @@ trait VersionDaoTrait
         ]);
 
         if ($versionId) {
-            return Version::getById($versionId);
+            return Version::getById((int)$versionId);
         }
 
         return null;

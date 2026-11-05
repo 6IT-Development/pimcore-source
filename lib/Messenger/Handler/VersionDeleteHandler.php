@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Messenger\Handler;
 
-use Exception;
 use Pimcore\Logger;
 use Pimcore\Messenger\VersionDeleteMessage;
 use Pimcore\Model\Version;
@@ -45,7 +44,9 @@ class VersionDeleteHandler implements BatchHandlerInterface
     {
         foreach ($jobs as [$message, $ack]) {
             try {
+                // with the auto-save versions: a restored element would otherwise offer a stale auto-save draft
                 $versions = new Version\Listing();
+                $versions->setLoadAutoSave(true);
                 $versions->setCondition('cid = :cid AND ctype = :ctype', [
                     'cid' => $message->getElementId(),
                     'ctype' => $message->getElementType(),
@@ -54,7 +55,7 @@ class VersionDeleteHandler implements BatchHandlerInterface
                 foreach ($versions as $version) {
                     try {
                         $version->delete();
-                    } catch (Exception $e) {
+                    } catch (Throwable $e) {
                         Logger::err(sprintf('Problem deleting the version with Id: %s, reason: %s', $version->getId(), $e->getMessage()));
                     }
                 }

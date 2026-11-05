@@ -15,7 +15,6 @@
 
 namespace Pimcore\Model\Version\Listing;
 
-use Exception;
 use Pimcore\Model;
 use Pimcore\Model\Version\Listing;
 
@@ -41,17 +40,20 @@ class Dao extends Model\Listing\Dao\AbstractDao
     }
 
     /**
-     * Loads a list of versions for the specicified parameters, returns an array of Version elements
+     * Loads a list of versions for the specified parameters, returns an array of Version elements
      *
      * @return Model\Version[]
      */
     public function load(): array
     {
         $versions = [];
-        $data = $this->loadIdList();
+        $rows = $this->db->fetchAllAssociative('SELECT * FROM versions' . $this->getCondition() . $this->getOrder() . $this->getOffsetLimit(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
 
-        foreach ($data as $id) {
-            $versions[] = Model\Version::getById($id);
+        // hydrated from the rows: one query, and no null entry for a version deleted in between
+        foreach ($rows as $row) {
+            $version = new Model\Version();
+            $version->getDao()->assignRow($row);
+            $versions[] = $version;
         }
 
         $this->model->setVersions($versions);
@@ -71,10 +73,6 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
     public function getTotalCount(): int
     {
-        try {
-            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM versions ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception) {
-            return 0;
-        }
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM versions ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }

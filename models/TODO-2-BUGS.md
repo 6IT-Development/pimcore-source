@@ -4416,7 +4416,7 @@ are replaced by one `info` summary per element type (deleted / kept / failed). T
 unchanged (the setting label is defined in the admin bundle, not here). Open: checking the scheduler / element state in
 SQL (I-107).
 
-## [ ] B-224 – `Version\Listing` returns `null` entries and hides SQL errors; deleting an element leaves its auto-save versions
+## [x] B-224 – `Version\Listing` returns `null` entries and hides SQL errors; deleting an element leaves its auto-save versions
 
 **Files:** `models/Version/Listing/Dao.php:29-41`, `:48-60`, `:72-79`; `lib/Messenger/Handler/VersionDeleteHandler.php:42-65`;
 `models/Element/Traits/VersionDaoTrait.php:31-47`
@@ -4432,6 +4432,11 @@ SQL (I-107).
 
 **Fix direction:** hydrate from one `SELECT *` (no per-id lookup, no `null`); let SQL errors propagate;
 `setLoadAutoSave(true)` in the delete handler and catch `\Throwable` per version (I-105).
+
+**Done:** `Version\Listing\Dao::load()` hydrates the versions from one `SELECT *` through the new
+`Version\Dao::assignRow()` (also used by `getById()`), so there is no per-id query and no `null` entry.
+`getTotalCount()` lets SQL errors propagate. `VersionDeleteHandler` loads the auto-save versions too and catches
+`\Throwable` per version. `getLatestVersion()` casts the fetched id before `Version::getById(int)`.
 
 ## [ ] B-225 – `VersionTest` cannot run on PHPUnit 10 / 11 and never loads, deletes or re-saves a version
 

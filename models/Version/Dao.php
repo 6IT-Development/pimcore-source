@@ -41,6 +41,16 @@ class Dao extends Model\Dao\AbstractDao
             throw new NotFoundException('version with id ' . $id . ' not found');
         }
 
+        $this->assignRow($data);
+    }
+
+    /**
+     * @internal
+     *
+     * @param array<string, mixed> $data a row of the versions table
+     */
+    public function assignRow(array $data): void
+    {
         $data['public'] = (bool)$data['public'];
         $data['serialized'] = (bool)$data['serialized'];
         $data['autoSave'] = (bool)$data['autoSave'];
