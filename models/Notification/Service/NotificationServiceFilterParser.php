@@ -18,7 +18,9 @@ declare(strict_types=1);
 namespace Pimcore\Model\Notification\Service;
 
 use Carbon\Carbon;
-use Exception;
+use Carbon\Exceptions\InvalidFormatException;
+use JsonException;
+use Symfony\Component\HttpFoundation\Exception\BadRequestException as SymfonyBadRequestException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
@@ -70,116 +72,124 @@ class NotificationServiceFilterParser
 
     /**
      * @return array<string, array{condition: string, conditionVariables: array<string, mixed>}>
+     *
+     * @throws BadRequestHttpException for a malformed filter
      */
     public function parse(): array
     {
         $result = [];
-        $filter = $this->request->request->get(self::KEY_FILTER, '[]');
-        $items = json_decode($filter, true);
 
-        foreach (array_values($items) as $index => $item) {
-            $type = $item[self::KEY_TYPE];
-
-            // the index keeps keys and placeholders of several filters on the same property and operator apart
-            switch ($type) {
-                case self::TYPE_STRING:
-                    [$key, $condition, $conditionVariables] = $this->parseString($item, $index);
-                    $result[$key] = [
-                        'condition' => $condition,
-                        'conditionVariables' => $conditionVariables,
-                    ];
-
-                    break;
-                case self::TYPE_DATE:
-                    [$key, $condition, $conditionVariables] = $this->parseDate($item, $index);
-                    $result[$key] = [
-                        'condition' => $condition,
-                        'conditionVariables' => $conditionVariables,
-                    ];
-
-                    break;
-            }
+        try {
+            $filter = $this->request->request->getString(self::KEY_FILTER, '[]');
+            $items = $filter === '' ? [] : json_decode($filter, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException|SymfonyBadRequestException) {
+            throw new BadRequestHttpException('Invalid filter');
         }
 
-        return $result;
-    }
+        if (!is_array($items)) {
+            throw new BadRequestHttpException('Invalid filter');
+        }
 
-    /**
-     * @return array{0: string, 1: string, 2: array<string, mixed>}
-     *
-     * @throws Exception
-     */
-    private function parseString(array $item, int $index): array
-    {
-        $result = null;
-        $property = $this->getDbProperty($item);
-        $value = $item[self::KEY_VALUE] ?? '';
+        foreach (array_values($items) as $index => $item) {
+            if (!is_array($item) || !is_string($item[self::KEY_OPERATOR] ?? null)) {
+                throw new BadRequestHttpException('Invalid filter item');
+            }
 
-        if ($item[self::KEY_OPERATOR] == self::OPERATOR_LIKE) {
-            $key = $property . '_like_' . $index;
-            $result = [
-                $key,
-                "`$property` LIKE :$key",
-                [$key => "%$value%"],
+            // the index keeps keys and placeholders of several filters on the same property and operator apart
+            [$key, $condition, $conditionVariables] = match ($item[self::KEY_TYPE] ?? null) {
+                self::TYPE_STRING => $this->parseString($item, $index),
+                self::TYPE_DATE => $this->parseDate($item, $index),
+                default => throw new BadRequestHttpException('Invalid filter type'),
+            };
+
+            $result[$key] = [
+                'condition' => $condition,
+                'conditionVariables' => $conditionVariables,
             ];
         }
 
-        if (is_null($result)) {
-            throw new Exception();
-        }
-
         return $result;
     }
 
     /**
      * @return array{0: string, 1: string, 2: array<string, mixed>}
+     */
+    private function parseString(array $item, int $index): array
+    {
+        $property = $this->getDbProperty($item);
+        $value = $item[self::KEY_VALUE] ?? '';
+
+        if (!is_scalar($value)) {
+            throw new BadRequestHttpException('Invalid filter value');
+        }
+
+        if ($item[self::KEY_OPERATOR] !== self::OPERATOR_LIKE) {
+            throw new BadRequestHttpException('Invalid filter operator');
+        }
+
+        $key = $property . '_like_' . $index;
+        // the search text is matched literally, % and _ are no wildcards
+        $value = addcslashes((string)$value, '\\%_');
+
+        return [
+            $key,
+            "`$property` LIKE :$key",
+            [$key => "%$value%"],
+        ];
+    }
+
+    /**
+     * Compares by whole days: "eq" is the selected day, "gt" after it and "lt" before it, without overlaps
      *
-     * @throws Exception
+     * @return array{0: string, 1: string, 2: array<string, mixed>}
      */
     private function parseDate(array $item, int $index): array
     {
-        $result = null;
         $property = $this->getDbProperty($item);
-        $value = new Carbon($item[self::KEY_VALUE]);
+        $value = $item[self::KEY_VALUE] ?? null;
+
+        if (!is_string($value) && !is_int($value)) {
+            throw new BadRequestHttpException('Invalid filter value');
+        }
+
+        try {
+            $day = new Carbon($value)->startOfDay();
+        } catch (InvalidFormatException) {
+            throw new BadRequestHttpException('Invalid filter date');
+        }
+        $nextDay = $day->copy()->addDay();
 
         switch ($item[self::KEY_OPERATOR]) {
             case self::OPERATOR_EQ:
                 $key = $property . '_eq_' . $index;
-                $result = [
+
+                return [
                     $key,
-                    "`$property` BETWEEN :{$key}_start AND :{$key}_end",
+                    "`$property` >= :{$key}_start AND `$property` < :{$key}_end",
                     [
-                        $key . '_start' => $value->toDateTimeString(),
-                        $key . '_end' => $value->addDay()->subSecond()->toDateTimeString(),
+                        $key . '_start' => $day->toDateTimeString(),
+                        $key . '_end' => $nextDay->toDateTimeString(),
                     ],
                 ];
-
-                break;
             case self::OPERATOR_GT:
                 $key = $property . '_gt_' . $index;
-                $result = [
-                    $key,
-                    "`$property` > :$key",
-                    [$key => $value->toDateTimeString()],
-                ];
 
-                break;
+                return [
+                    $key,
+                    "`$property` >= :$key",
+                    [$key => $nextDay->toDateTimeString()],
+                ];
             case self::OPERATOR_LT:
                 $key = $property . '_lt_' . $index;
-                $result = [
+
+                return [
                     $key,
                     "`$property` < :$key",
-                    [$key => $value->addDay()->subSecond()->toDateTimeString()],
+                    [$key => $day->toDateTimeString()],
                 ];
-
-                break;
         }
 
-        if (is_null($result)) {
-            throw new Exception();
-        }
-
-        return $result;
+        throw new BadRequestHttpException('Invalid filter operator');
     }
 
     private function getDbProperty(array $item): string

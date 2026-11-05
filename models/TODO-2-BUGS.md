@@ -3680,7 +3680,7 @@ suffixes keys and placeholders with the filter's index, so several filters on th
 all applied. The notification listing applies an offset without a limit and ignores negative offsets and limits.
 `Listing\Dao::count()` no longer swallows errors. Open: the typed filter object (I-88).
 
-## [ ] B-196 – Filter parser crashes on malformed input (500 instead of 400) and the date operators overlap
+## [x] B-196 – Filter parser crashes on malformed input (500 instead of 400) and the date operators overlap
 
 **File:** `models/Notification/Service/NotificationServiceFilterParser.php:66-181`
 
@@ -3696,6 +3696,12 @@ all applied. The notification listing applies an offset without a limit and igno
 
 **Fix direction:** `getString()` + `JSON_THROW_ON_ERROR`, validate each item and throw a dedicated exception that the
 controller maps to 400; `gt` → `>= next day 00:00`, `lt` → `< day 00:00`; escape `LIKE` wildcards.
+
+**Done:** `parse()` reads the filter with `getString()` and `JSON_THROW_ON_ERROR` (an empty string is no filter) and
+throws `BadRequestHttpException` (400, as for an unknown property since C-35) for invalid JSON, a non-list, items that
+are not objects, a missing or unknown type or operator, a non-scalar value and an invalid date. Dates compare by whole
+days without overlap: `eq` → `>= day 00:00 AND < next day 00:00`, `gt` → `>= next day 00:00`, `lt` → `< day 00:00`.
+`like` escapes `\`, `%` and `_`, so the search text is matched literally.
 
 ## [ ] B-197 – `findAndMarkAsRead()` / `delete()`: inconsistent authorization contracts
 
