@@ -4851,7 +4851,7 @@ cannot be narrowed, the store holds arbitrary objects). `getIdsByTag()` skips ex
 7-day default as `add()` / `set()`, negative lifetimes throw, and `date` / `expiryDate` default to `0`, so a `NULL`
 expiry counts as expired instead of throwing.
 
-## [ ] B-240 – `SettingsStore`: `NULL` data crashes `get()`, `getScope()` is never `null`, `settype()` coerces silently
+## [x] B-240 – `SettingsStore`: `NULL` data crashes `get()`, `getScope()` is never `null`, `settype()` coerces silently
 
 **Files:** `models/Tool/SettingsStore.php:146-182`; `models/Tool/SettingsStore/Dao.php:59-74`;
 `tests/Model/Tool/SettingsStoreTest.php:45`
@@ -4871,6 +4871,12 @@ expiry counts as expired instead of throwing.
 
 **Fix direction:** treat `NULL` data as "not set" or as the type's empty value; hydrate in one step (type first);
 validate `$data` against `$type` on write; keep `null` scope or change the getter to `string` (I-123).
+
+**Done:** `Dao::getById()` hydrates explicitly, type before data, so `setData()` runs once and converts to the stored
+type; `NULL` data becomes the empty value of the type (`''`, `0`, `0.0`, `false`) instead of a `TypeError`. An invalid
+stored type is logged and read as `string`. `setScope()` keeps `null` and maps the stored `''` back to `null`.
+`SettingsStore::set()` throws `InvalidArgumentException` when the value does not fit the type (`int` or a digit string
+for `int`, numeric for `float`, `bool` / `0` / `1` / `''` for `bool`). Reading legacy rows still uses `settype()`.
 
 ## [ ] B-241 – Email log rows end up empty: field overflow and DB errors are swallowed after an empty `INSERT`
 

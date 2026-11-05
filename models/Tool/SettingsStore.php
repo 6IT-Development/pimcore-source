@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Model\Tool;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Model;
 use Pimcore\Model\Tool\SettingsStore\Dao;
 
@@ -91,13 +92,31 @@ final class SettingsStore extends Model\AbstractModel
     }
 
     /**
-     *
+     * @throws InvalidArgumentException
+     */
+    private static function validateData(float|bool|int|string $data, string $type): void
+    {
+        $valid = match ($type) {
+            self::TYPE_INTEGER => is_int($data) || (is_string($data) && preg_match('/^[+-]?\d+$/', $data)),
+            self::TYPE_FLOAT => is_float($data) || is_int($data) || (is_string($data) && is_numeric($data)),
+            self::TYPE_BOOLEAN => is_bool($data) || in_array($data, [0, 1, '0', '1', ''], true),
+            default => true,
+        };
+
+        if (!$valid) {
+            throw new InvalidArgumentException(sprintf('The value %s is not of the settings store type `%s`', var_export($data, true), $type));
+        }
+    }
+
+    /**
+     * The value must fit the type, e.g. an int or a string of digits for TYPE_INTEGER
      *
      * @throws Exception
      */
     public static function set(string $id, float|bool|int|string $data, string $type = 'string', ?string $scope = null): bool
     {
         self::validateType($type);
+        self::validateData($data, $type);
         $instance = self::getInstance();
 
         return $instance->getDao()->set($id, $data, $type, $scope);
@@ -148,9 +167,12 @@ final class SettingsStore extends Model\AbstractModel
         return $this->scope;
     }
 
+    /**
+     * The empty scope is stored as '' and read as null
+     */
     public function setScope(?string $scope): void
     {
-        $this->scope = (string)$scope;
+        $this->scope = $scope === '' ? null : $scope;
     }
 
     public function getType(): ?string

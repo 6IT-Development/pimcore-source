@@ -18,6 +18,7 @@ namespace Pimcore\Model\Tool\SettingsStore;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Db\Helper;
+use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\Tool\SettingsStore;
 
@@ -78,10 +79,16 @@ class Dao extends Model\Dao\AbstractDao
             throw new Model\Exception\NotFoundException('settings store with id ' . $id . ' and scope ' . $scope . ' not found');
         }
 
-        $this->assignVariablesToModel($item);
-
-        $data = $item['data'] ?? null;
-        $this->model->setData($data);
+        // type before data, setData() converts to the type; a NULL value is the empty value of the type
+        $this->model->setId($item['id']);
+        $this->model->setScope($item['scope']);
+        try {
+            $this->model->setType($item['type']);
+        } catch (Exception) {
+            Logger::warning(sprintf('Settings store item %s has the invalid type "%s" and is read as a string', $id, $item['type']));
+            $this->model->setType(SettingsStore::TYPE_STRING);
+        }
+        $this->model->setData($item['data'] ?? '');
     }
 
     public function getIdsByScope(string $scope): array
