@@ -166,24 +166,35 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
     }
 
     /**
+     * Appends in the database, so lines of workers running in parallel are kept. Only the log of the entity is
+     * reloaded: a refresh would discard its unflushed changes and replace its job by a new object.
+     *
      * @throws Exception
      */
     public function updateLog(JobRun $jobRun, string $message): void
     {
-
         $this->db->executeStatement(
             'UPDATE ' .
             TableConstants::JOB_RUN_TABLE .
-            ' SET log = IF(ISNULL(log),:message,CONCAT(log, "\n", :message)) WHERE id = :id',
+            ' SET log = IF(log IS NULL, :message, CONCAT(log, :separator, :message)) WHERE id = :id',
             [
                 'id' => $jobRun->getId(),
                 'message' => new DateTimeImmutable()->format('c') . ': ' . trim($message),
+                'separator' => "\n",
             ]
         );
 
         $this->genericExecutionEngineLogger->info("[JobRun {$jobRun->getId()}]: " . $message);
 
-        $this->pimcoreEntityManager->refresh($jobRun);
+        $log = $this->db->fetchOne(
+            'SELECT log FROM ' . TableConstants::JOB_RUN_TABLE . ' WHERE id = :id',
+            ['id' => $jobRun->getId()]
+        );
+        $log = is_string($log) ? $log : null;
+
+        // as original value too, otherwise the next flush would write this log back over lines appended meanwhile
+        $this->pimcoreEntityManager->getUnitOfWork()->setOriginalEntityProperty(spl_object_id($jobRun), 'log', $log);
+        $jobRun->setLog($log);
     }
 
     public function getJobRunById(int $id, bool $forceReload = false, ?int $ownerId = null): JobRun

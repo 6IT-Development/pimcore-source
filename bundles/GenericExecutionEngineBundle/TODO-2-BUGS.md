@@ -251,13 +251,18 @@ identical to the current one (same from/to counts as the previous call) nothing 
 **Done:** `JobRunRepository::update()` calls `$jobRun->serializeJob()` before the flush, so a changed job changes the
 mapped `serializedJob` and is written even when no other field changed. A custom Doctrine type stays with I-06.
 
-### [ ] B-18 – `updateLog()` refreshes the entity and discards pending changes
+### [x] B-18 – `updateLog()` refreshes the entity and discards pending changes
 **File:** `src/Repository/JobRunRepository.php:119-135`
 `$this->pimcoreEntityManager->refresh($jobRun)` after the raw `UPDATE` throws away all unflushed changes of the run
 (e.g. a handler sets context and calls `logMessageToJobRun(..., updateCurrentMessage: false)`) and re-deserializes the
 job (new `Job` object – references held by callers are stale). The SQL also uses a double-quoted literal `"\n"`, which
 is an identifier under `ANSI_QUOTES` sql_mode. **Fix:** flush before the raw update (or append the log via DQL/entity),
 use `'\n'`/parameter, refresh only the `log` field.
+
+**Done:** `updateLog()` no longer refreshes the run: it reads back only the `log` column and sets it on the entity and as
+original value in the unit of work (so a later flush neither writes it back over lines of parallel workers nor sees a
+change). Unflushed changes and the job object survive. The separator is a bound parameter, `ISNULL()` became
+`IS NULL`.
 
 ### [ ] B-19 – `log` column overflows (TEXT = 64 KB)
 **Files:** `src/Repository/JobRunRepository.php:122-130`, `src/Installer.php:121`
