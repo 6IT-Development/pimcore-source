@@ -249,8 +249,11 @@ class Fieldcollection extends Model\AbstractModel implements Iterator, DirtyIndi
                 $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
                 DataObject::disableDirtyDetection();
 
-                $data = $fieldDef->load($item, $params);
-                DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
+                try {
+                    $data = $fieldDef->load($item, $params);
+                } finally {
+                    DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
+                }
                 $item->setObjectVar($field, $data);
             }
             $item->markLazyKeyAsLoaded($field);

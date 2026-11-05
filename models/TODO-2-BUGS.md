@@ -3221,7 +3221,7 @@ character `'` itself, so a value starting with `'` gets a second one and `unEsca
 
 ## DataObject (Scope 6)
 
-## [ ] B-175 – Global static flags are not restored on exceptions (dirty detection, inherited values, fallback values, `hideUnpublished`, inheritance runtime cache)
+## [x] B-175 – Global static flags are not restored on exceptions (dirty detection, inherited values, fallback values, `hideUnpublished`, inheritance runtime cache)
 
 **Files:** `models/DataObject/AbstractObject.php:500-507`, `:621`; `models/DataObject/Concrete.php:136-143`;
 `models/DataObject/Localizedfield.php:194-205`, `:371-380`; `models/DataObject/Localizedfield/Dao.php:129-141`,
@@ -3244,6 +3244,17 @@ character `'` itself, so a value starting with `'` gets a second one and `unEsca
 
 **Fix direction:** one scoped helper (`DataObject\Service::useInheritedValues()` already does it right) for every
 flag, used everywhere, plus a `kernel.reset` reset (I-77). Related: B-92, B-125.
+
+**Done:** every remaining toggle restores its flag when the wrapped code throws. The inherited re-checks of mandatory
+fields in `Concrete::update()`, `Objectbricks::checkValidity()` and `Classificationstore::checkValidity()` use
+`DataObject\Service::useInheritedValues()`; `Localizedfields::checkValidity()` restores the flag in a `finally`.
+`Localizedfield\Dao::save()` restores `getFallbackValues` and turns off and clears the InheritanceHelper runtime cache
+in a `finally`. The lazy loaders of `Localizedfield`, `Fieldcollection` and `Objectbrick` and
+`DataObject\Service::copyAsChild()` restore dirty detection in a `finally`. The generated setters (object, field
+collection / brick, localized and plain variants in `ClassDefinition\Data`) wrap the getter call in
+`try { … } finally { setHideUnpublished(…) }`; classes pick this up on their next rebuild. `AbstractObject::save()`,
+`Concrete::update()` / `save()`, `Document::doDelete()` and `Recyclebin\Item::restore()` already restored their flags.
+The `kernel.reset` part stays with I-77.
 
 ## [ ] B-176 – `Localizedfield::__sleep()` mutates the live object when it is written to the cache
 

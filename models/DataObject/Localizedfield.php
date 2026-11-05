@@ -194,14 +194,16 @@ final class Localizedfield extends Model\AbstractModel implements
             $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
             DataObject::disableDirtyDetection();
 
-            foreach ($loadLazyFieldNames as $name) {
-                foreach (Tool::getValidLanguages() as $language) {
-                    $fieldDefinition = $this->getFieldDefinition($name, $this->getContext());
-                    $this->loadLazyField($fieldDefinition, $name, $language);
+            try {
+                foreach ($loadLazyFieldNames as $name) {
+                    foreach (Tool::getValidLanguages() as $language) {
+                        $fieldDefinition = $this->getFieldDefinition($name, $this->getContext());
+                        $this->loadLazyField($fieldDefinition, $name, $language);
+                    }
                 }
+            } finally {
+                DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
             }
-
-            DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
             $this->setLoadedAllLazyData();
         }
 
@@ -371,13 +373,15 @@ final class Localizedfield extends Model\AbstractModel implements
             $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
             DataObject::disableDirtyDetection();
 
-            $data = $fieldDefinition->load($this, $params);
+            try {
+                $data = $fieldDefinition->load($this, $params);
 
-            if ($data === 0 || !empty($data)) {
-                $this->setLocalizedValue($name, $data, $language, false);
+                if ($data === 0 || !empty($data)) {
+                    $this->setLocalizedValue($name, $data, $language, false);
+                }
+            } finally {
+                DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
             }
-
-            DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
 
             $this->markLazyKeyAsLoaded($lazyKey);
         }

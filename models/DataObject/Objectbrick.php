@@ -285,8 +285,11 @@ class Objectbrick extends Model\AbstractModel implements DirtyIndicatorInterface
 
             $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
             DataObject::disableDirtyDetection();
-            $data = $fieldDef->load($this->$brick, $params);
-            DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
+            try {
+                $data = $fieldDef->load($this->$brick, $params);
+            } finally {
+                DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
+            }
 
             $item->setObjectVar($field, $data);
             $item->markLazyKeyAsLoaded($field);

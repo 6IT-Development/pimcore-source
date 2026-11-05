@@ -135,13 +135,8 @@ class Concrete extends DataObject implements LazyLoadedFieldsInterface
                         if ($this->getClass()->getAllowInherit() && $fd->supportsInheritance() && $fd->isEmpty($value)) {
                             //try again with parent data when inheritance is activated
                             try {
-                                $getInheritedValues = DataObject::doGetInheritedValues();
-                                DataObject::setGetInheritedValues(true);
-
-                                $value = $this->$getter();
+                                $value = DataObject\Service::useInheritedValues(true, fn () => $this->$getter());
                                 $fd->checkValidity($value, $omitMandatoryCheck, $params);
-
-                                DataObject::setGetInheritedValues($getInheritedValues);
                             } catch (Exception $e) {
                                 if (!$e instanceof Model\Element\ValidationException) {
                                     throw $e;
