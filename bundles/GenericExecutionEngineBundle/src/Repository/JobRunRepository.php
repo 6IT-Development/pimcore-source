@@ -38,6 +38,11 @@ use Psr\Log\LoggerInterface;
 
 final readonly class JobRunRepository implements JobRunRepositoryInterface
 {
+    /**
+     * Bytes of one line in the run log; longer messages (e.g. stack traces in dev) are cut, the PSR log keeps them
+     */
+    private const int MAX_LOG_LINE_BYTES = 16384;
+
     public function __construct(
         private Connection                      $db,
         private CurrentMessageProviderInterface $currentMessageProvider,
@@ -179,7 +184,7 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
             ' SET log = IF(log IS NULL, :message, CONCAT(log, :separator, :message)) WHERE id = :id',
             [
                 'id' => $jobRun->getId(),
-                'message' => new DateTimeImmutable()->format('c') . ': ' . trim($message),
+                'message' => new DateTimeImmutable()->format('c') . ': ' . $this->truncateLogLine(trim($message)),
                 'separator' => "\n",
             ]
         );
@@ -195,6 +200,18 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
         // as original value too, otherwise the next flush would write this log back over lines appended meanwhile
         $this->pimcoreEntityManager->getUnitOfWork()->setOriginalEntityProperty(spl_object_id($jobRun), 'log', $log);
         $jobRun->setLog($log);
+    }
+
+    private function truncateLogLine(string $message): string
+    {
+        if (strlen($message) <= self::MAX_LOG_LINE_BYTES) {
+            return $message;
+        }
+
+        $suffix = ' [truncated]';
+
+        // mb_strcut() does not split multibyte characters
+        return mb_strcut($message, 0, self::MAX_LOG_LINE_BYTES - strlen($suffix), 'UTF-8') . $suffix;
     }
 
     public function getJobRunById(int $id, bool $forceReload = false, ?int $ownerId = null): JobRun

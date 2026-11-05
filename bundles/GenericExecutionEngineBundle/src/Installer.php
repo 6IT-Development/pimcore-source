@@ -24,7 +24,7 @@ use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
-use Pimcore\Bundle\GenericExecutionEngineBundle\Migrations\Version20261105000100;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Migrations\Version20261105000200;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\PermissionConstants;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\TableConstants;
 use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
@@ -57,7 +57,7 @@ final class Installer extends SettingsStoreAwareInstaller
      */
     public function getLastMigrationVersionClassName(): ?string
     {
-        return Version20261105000100::class;
+        return Version20261105000200::class;
     }
 
     /**
@@ -127,7 +127,7 @@ final class Installer extends SettingsStoreAwareInstaller
                     'length' => 65535,
                 ]
             );
-            $jobRunTable->addColumn('log', 'text', ['notnull' => false, 'length' => 65535]);
+            $jobRunTable->addColumn('log', 'text', ['notnull' => false, 'length' => 4294967295]);
             $jobRunTable->addColumn(
                 'serializedJob',
                 'text',

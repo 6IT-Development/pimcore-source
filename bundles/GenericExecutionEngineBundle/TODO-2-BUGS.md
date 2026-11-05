@@ -264,12 +264,16 @@ original value in the unit of work (so a later flush neither writes it back over
 change). Unflushed changes and the job object survive. The separator is a bound parameter, `ISNULL()` became
 `IS NULL`.
 
-### [ ] B-19 – `log` column overflows (TEXT = 64 KB)
+### [x] B-19 – `log` column overflows (TEXT = 64 KB)
 **Files:** `src/Repository/JobRunRepository.php:122-130`, `src/Installer.php:121`
 Every start/step/skip/error/selection message is appended to one `TEXT` value; large jobs (skip messages per element,
 dev stack traces – `JobExecutionAgent.php:239-241`) exceed 65 535 bytes → MySQL strict mode: "Data too long" exception
 in the worker event → run stuck in `running`; non-strict: silently truncated. **Fix:** separate log table (I-18), or at
 least `LONGTEXT` + size cap.
+
+**Done:** `log` is `LONGTEXT` (installer, mapping, migration `Version20261105000200`, which the installer now reports as
+last migration; its `down()` is irreversible, a TEXT column would cut longer logs). `updateLog()` cuts a single line to
+16 KB (`mb_strcut()`, marked `[truncated]`), the PSR log keeps the full message. A separate log table stays with I-18.
 
 ### [ ] B-20 – `getLastJobRunByName()` matches wrong runs
 **File:** `src/Repository/JobRunRepository.php:204-220`
