@@ -141,7 +141,8 @@ class Ghostscript extends Adapter
      */
     protected function buildPageCountCommand(): string
     {
-        $command = self::getGhostscriptCli() . ' -dNODISPLAY -q';
+        // always run in SAFER mode, do not rely on the default of the installed version
+        $command = self::getGhostscriptCli() . ' -dNODISPLAY -q -dSAFER';
         $localFile = self::getLocalFileFromStream($this->getPdf());
 
         // Adding permit-file-read flag to prevent issue with Ghostscript's SAFER mode which is enabled by default as of version 9.50.
@@ -149,11 +150,23 @@ class Ghostscript extends Adapter
             $command .= ' --permit-file-read=' . escapeshellarg($localFile);
         }
 
-        $command .= ' -c ' . escapeshellarg('(' . $localFile . ') (r) file runpdfbegin pdfpagecount = quit');
+        // the path is placed in a PostScript string literal: escape its metacharacters, otherwise a ")" in the
+        // asset filename ends the string and the rest of the path is executed as PostScript
+        $command .= ' -c ' . escapeshellarg('(' . self::escapePostScriptString($localFile) . ') (r) file runpdfbegin pdfpagecount = quit');
 
         Console::addLowProcessPriority($command);
 
         return $command;
+    }
+
+    /**
+     * Escapes a value for a PostScript string literal `( ... )`
+     *
+     * @internal
+     */
+    public static function escapePostScriptString(string $value): string
+    {
+        return strtr($value, ['\\' => '\\\\', '(' => '\\(', ')' => '\\)']);
     }
 
     /**

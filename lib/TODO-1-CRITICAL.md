@@ -410,7 +410,7 @@ No critical findings in Scope 8 (`lib/DependencyInjection/**`). See [TODO-2-BUGS
 
 ## Document
 
-## [ ] C-08 – Ghostscript page-count command embeds the asset's local path inside a PostScript string literal
+## [x] C-08 – Ghostscript page-count command embeds the asset's local path inside a PostScript string literal
 
 **File:** `lib/Document/Adapter/Ghostscript.php:142-157` (`:152`); `lib/Helper/TemporaryFileHelperTrait.php:37-49`;
 asset key sanitizer `models/Element/Service.php:938-970` (`:957-963`)
@@ -439,6 +439,12 @@ asset key sanitizer `models/Element/Service.php:938-970` (`:957-963`)
 argv argument, or escape `\ ( )` for the PostScript string. Always keep `-dSAFER` (do not rely on the default). As
 defence in depth, operate on a temp copy with a generated safe name (no `( ) \` space), as `saveImage()` effectively
 does. Add a regression test with an asset key containing `)` and `\`. Related: models C-32 (identifier validation).
+
+**Done:** `buildPageCountCommand()` escapes `\`, `(` and `)` of the local path with the new
+`Ghostscript::escapePostScriptString()` (`@internal`) before it is placed in the PostScript string, and always passes
+`-dSAFER`. Verified with Ghostscript 10.02: a PDF named `we(ird) \name).pdf` reports its page count correctly. Unit test
+`tests/Unit/Document/Adapter/GhostscriptTest.php` checks the escaping and runs the page count on such a file when `gs`
+is installed. No temp copy with a safe name (the escaped path is sufficient); the `uniqid()` temp file is B-59.
 
 ---
 
