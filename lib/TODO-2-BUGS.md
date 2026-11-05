@@ -336,7 +336,7 @@ marshaller error be the source; skip the size calculation when not in debug.
 
 ## RuntimeCache
 
-## [ ] B-10 – `RuntimeCache::clear()` loses the kept items while caching is disabled, and crashes without a container
+## [x] B-10 – `RuntimeCache::clear()` loses the kept items while caching is disabled, and crashes without a container
 
 **File:** `lib/Cache/RuntimeCache.php:195-209`, `:166-174`, `:56-63`; `lib/Helper/LongRunningHelper.php:94-105`
 
@@ -351,6 +351,12 @@ marshaller error be the source; skip the size calculation when not in debug.
 
 **Fix direction:** copy kept items with `parent::offsetSet()` (or `exchangeArray()`), guard the container access,
 and reset `$tempInstance` in `clear()`.
+
+**Done:** kept items in `clear()` and the temp-instance values in `getInstance()` are copied with the new private
+`setUnchecked()` (`parent::offsetSet()`), so they survive while caching is disabled; new items are still not cached
+then. `clear()` sets the container service only when `Pimcore::hasContainer()`, otherwise it replaces the temp
+instance; with a container it resets `$tempInstance`. Tests (`tests/Unit/Cache/RuntimeCacheTest.php`): kept items
+survive `clear()` with caching enabled and disabled.
 
 ---
 

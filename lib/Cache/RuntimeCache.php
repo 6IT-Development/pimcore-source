@@ -54,9 +54,9 @@ class RuntimeCache extends ArrayObject
             self::$instance = $instance;
 
             if (self::$tempInstance) {
-                // copy values from static temp. instance to the service instance
+                // copy values from static temp. instance to the service instance (also while caching is disabled)
                 foreach (self::$tempInstance as $key => $value) {
-                    $instance->offsetSet($key, $value);
+                    $instance->setUnchecked($key, $value);
                 }
 
                 self::$tempInstance = null;
@@ -174,6 +174,15 @@ class RuntimeCache extends ArrayObject
     }
 
     /**
+     * Stores a value also while caching is disabled - for values that are already cached and only moved to another
+     * instance
+     */
+    private function setUnchecked(mixed $index, mixed $value): void
+    {
+        parent::offsetSet($index, $value);
+    }
+
+    /**
      * Alias of self::set() to be compatible with Pimcore\Cache
      *
      */
@@ -192,19 +201,34 @@ class RuntimeCache extends ArrayObject
         return self::get($id);
     }
 
+    /**
+     * Replaces the runtime cache by an empty instance that only contains the $keepItems
+     *
+     * The kept items are copied also while caching is disabled (importers disable it and then collect garbage), and
+     * before the container is available the temporary instance is cleared.
+     *
+     * @param string[] $keepItems
+     */
     public static function clear(array $keepItems = []): void
     {
+        // resolve the instance from the container again (it may have been replaced, e.g. after a kernel reboot)
         self::$instance = null;
-        $newInstance = new self();
         $oldInstance = self::getInstance();
+        $newInstance = new self();
 
         foreach ($keepItems as $key) {
             if ($oldInstance->offsetExists($key)) {
-                $newInstance->offsetSet($key, $oldInstance->offsetGet($key));
+                $newInstance->setUnchecked($key, $oldInstance->offsetGet($key));
             }
         }
 
-        Pimcore::getContainer()->set(self::SERVICE_ID, $newInstance);
-        self::$instance = $newInstance;
+        if (Pimcore::hasContainer()) {
+            Pimcore::getContainer()->set(self::SERVICE_ID, $newInstance);
+            self::$instance = $newInstance;
+            self::$tempInstance = null;
+        } else {
+            self::$instance = null;
+            self::$tempInstance = $newInstance;
+        }
     }
 }
