@@ -257,6 +257,12 @@ final class Predefined extends Model\AbstractModel
 
     public function minimize(): void
     {
+        if (!$this->type) {
+            Logger::warning('Predefined asset metadata ' . $this->id . ' has no type, its data is left unchanged');
+
+            return;
+        }
+
         try {
             $loader = Pimcore::getContainer()->get('pimcore.implementation_loader.asset.metadata.data');
             /** @var Model\Asset\MetaData\ClassDefinition\Data\Data $instance */
@@ -269,6 +275,12 @@ final class Predefined extends Model\AbstractModel
 
     public function expand(): void
     {
+        if (!$this->type) {
+            Logger::warning('Predefined asset metadata ' . $this->id . ' has no type, its data is left unchanged');
+
+            return;
+        }
+
         try {
             $loader = Pimcore::getContainer()->get('pimcore.implementation_loader.asset.metadata.data');
             /** @var Model\Asset\MetaData\ClassDefinition\Data\Data $instance */

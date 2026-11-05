@@ -65,8 +65,11 @@ class Document extends Data
 
     public function getDataFromEditMode(mixed $data, array $params = []): ?int
     {
+        // an id (data that is already in the storage form) is accepted as well
         $element = $data;
-        if (is_string($data)) {
+        if (is_numeric($data)) {
+            $element = Service::getElementById('document', (int)$data);
+        } elseif (is_string($data)) {
             $element = Service::getElementByPath('document', $data);
         }
         if ($element instanceof \Pimcore\Model\Document) {
@@ -87,8 +90,11 @@ class Document extends Data
 
     public function getDataForEditMode(mixed $data, array $params = []): string
     {
+        // a path (data that is already in the edit mode form) is accepted as well
         if (is_numeric($data)) {
             $data = Service::getElementById('document', (int)$data);
+        } elseif (is_string($data) && $data !== '') {
+            $data = Service::getElementByPath('document', $data);
         }
         if ($data instanceof \Pimcore\Model\Document) {
             return $data->getRealFullPath();

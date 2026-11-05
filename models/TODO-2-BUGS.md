@@ -3501,7 +3501,7 @@ no longer narrows "all languages dirty" to the one language.
 listed, and skips (with a warning) definitions that still do not load. The list holds `Predefined` objects only and is
 re-indexed after the filter callback; `getByTargetType()` returns a list too.
 
-## [ ] B-189 – `Predefined::minimize()` / `expand()` are not idempotent and crash on a missing type
+## [x] B-189 – `Predefined::minimize()` / `expand()` are not idempotent and crash on a missing type
 
 **Files:** `models/Metadata/Predefined.php:258-280`; `models/Asset/MetaData/ClassDefinition/Data/Asset.php:66-97` (same
 pattern in `Document.php`, `DataObject.php`, `Date.php`)
@@ -3520,6 +3520,12 @@ pattern in `Document.php`, `DataObject.php`, `Date.php`)
 **Fix direction:** keep the storage form in the model and convert only at the edges (`toEditmode()` returns a copy), or
 let the converters accept both forms; validate `type` on save; catch `\Throwable` from the loader with context logging
 (I-87).
+
+**Done:** the element converters (`Asset`, `Document`, `DataObject`) accept both forms: `getDataFromEditMode()` takes an
+id as well as a path and `getDataForEditMode()` a path as well as an id, so a repeated `minimize()` / `expand()` (or a
+save after `expand()`) no longer wipes the reference. `Date::normalize()` already returns `null` for an unparsable date.
+`minimize()` / `expand()` leave the data unchanged with a warning when the definition has no type, instead of the
+`TypeError` from the loader; validating the type on save is part of B-191.
 
 ## [ ] B-190 – Name / language lookups: names with `~` are never found, `''` language matches any language
 

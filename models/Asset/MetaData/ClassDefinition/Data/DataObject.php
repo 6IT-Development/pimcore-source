@@ -65,8 +65,11 @@ class DataObject extends Data
 
     public function getDataFromEditMode(mixed $data, array $params = []): ?int
     {
+        // an id (data that is already in the storage form) is accepted as well
         $element = $data;
-        if (is_string($data)) {
+        if (is_numeric($data)) {
+            $element = Service::getElementById('object', (int)$data);
+        } elseif (is_string($data)) {
             $element = Service::getElementByPath('object', $data);
         }
         if ($element instanceof AbstractObject) {
@@ -87,8 +90,11 @@ class DataObject extends Data
 
     public function getDataForEditMode(mixed $data, array $params = []): string
     {
+        // a path (data that is already in the edit mode form) is accepted as well
         if (is_numeric($data)) {
             $data = Service::getElementById('object', (int)$data);
+        } elseif (is_string($data) && $data !== '') {
+            $data = Service::getElementByPath('object', $data);
         }
         if ($data instanceof AbstractObject) {
             return $data->getRealFullPath();
