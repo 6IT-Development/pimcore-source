@@ -17,8 +17,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Version\Adapter;
 
-use Exception;
+use InvalidArgumentException;
 use Pimcore\Model\Version;
+use RuntimeException;
 
 /**
  * @internal
@@ -34,22 +35,30 @@ class DelegateVersionStorageAdapter implements VersionStorageAdapterInterface
                                 protected VersionStorageAdapterInterface $defaultAdapter,
                                 protected VersionStorageAdapterInterface $fallbackAdapter)
     {
+        // versions only store the type: two adapters of one type (e.g. two database connections) cannot be told
+        // apart when a version is read or deleted
+        if ($defaultAdapter !== $fallbackAdapter && $defaultAdapter->getStorageType() === $fallbackAdapter->getStorageType()) {
+            throw new InvalidArgumentException(sprintf(
+                'The default and the fallback version storage adapter both use storage type "%s"',
+                $defaultAdapter->getStorageType()
+            ));
+        }
+
         $this->adapters[$defaultAdapter->getStorageType()] = $defaultAdapter;
         $this->adapters[$fallbackAdapter->getStorageType()] = $fallbackAdapter;
     }
 
+    /**
+     * @throws RuntimeException
+     */
     protected function getAdapter(?string $storageType = null): VersionStorageAdapterInterface
     {
-        if (empty($storageType) === true) {
+        if ($storageType === null || $storageType === '') {
             return $this->defaultAdapter;
-        } else {
-            $adapter = $this->adapters[$storageType] ?? null;
-        }
-        if (isset($adapter) === false) {
-            throw new Exception('no adapter for storage type ' . $storageType . ' found.');
         }
 
-        return $adapter;
+        return $this->adapters[$storageType]
+            ?? throw new RuntimeException(sprintf('No version storage adapter for storage type "%s" is configured', $storageType));
     }
 
     public function loadMetaData(Version $version): ?string
@@ -65,11 +74,9 @@ class DelegateVersionStorageAdapter implements VersionStorageAdapterInterface
     public function getStorageType(?int $metaDataSize = null,
                                    ?int $binaryDataSize = null): string
     {
-        if (empty($this->fallbackAdapter) === false) {
-            if ($metaDataSize > $this->byteThreshold ||
-                $binaryDataSize > $this->byteThreshold) {
-                return $this->fallbackAdapter->getStorageType($metaDataSize, $binaryDataSize);
-            }
+        if ($metaDataSize > $this->byteThreshold ||
+            $binaryDataSize > $this->byteThreshold) {
+            return $this->fallbackAdapter->getStorageType($metaDataSize, $binaryDataSize);
         }
 
         return $this->defaultAdapter->getStorageType($metaDataSize, $binaryDataSize);

@@ -4346,7 +4346,7 @@ a query and compares an `int`. `getPublic()` delegates to `isPublic()` (both kep
 
 ## Version storage / maintenance (Scope 9)
 
-## [ ] B-222 – Storage adapters: `storageType` is ignored by the plain adapters, binary-in-use checks span storage types, hardlinks share the live inode
+## [x] B-222 – Storage adapters: `storageType` is ignored by the plain adapters, binary-in-use checks span storage types, hardlinks share the live inode
 
 **Files:** `models/Version/Adapter/FileSystemVersionStorageAdapter.php:85-127`; `DatabaseVersionStorageAdapter.php:124-128`;
 `DelegateVersionStorageAdapter.php:33-53`, `:65-76`; `models/Version/Dao.php:96-110`; `models/Version.php:253-262`;
@@ -4374,6 +4374,15 @@ a query and compares an `int`. `getPublic()` delegates to `isPublic()` (both kep
 **Fix direction:** resolve the adapter per version from `storageType` through a registry of all configured adapters
 (keyed by a unique name, not the type); scope `isBinaryHashInUse()` by storage type; close probe streams; document
 the hardlink trade-off or verify `binaryFileHash` on restore (C-39); add an orphan cleanup command (I-106).
+
+**Done:** the FS and DB adapters check the stored `storageType` (`StorageTypeGuardTrait`): loading a version of
+another type logs an error that names the type and the Delegate configuration and returns `null`; `delete()` and the
+stream getters throw instead of silently orphaning the data. The Delegate adapter rejects a default and fallback adapter
+of the same type in its constructor, throws a `RuntimeException` for an unknown type and drops the always-true `empty()`
+check. `isBinaryHashInUse()` counts only other versions in the same storage type (the type of the previous storage
+when a re-saved version changes storage). FS `delete()` removes empty directories also when only the `.bin` was left.
+The double probe stream was already fixed with C-39. The documentation describes switching adapters and the hardlink
+trade-off. Open: a registry of adapters by unique name and an orphan cleanup command (I-106).
 
 ## [ ] B-223 – `VersionsCleanupTask`: one failing delete stalls the cleanup for good; unbounded `NOT IN` lists and `days` result; auto-save cleanup crashes on `null`
 

@@ -245,7 +245,7 @@ final class Version extends AbstractModel
         if ($previous && $previous->getStorageType() && $previous->getStorageType() !== $this->getStorageType()) {
             // the old payload would stay in the storage it was written to
             try {
-                $this->storageAdapter->delete($previous, $this->getDao()->isBinaryHashInUse($previous->getBinaryFileHash()));
+                $this->storageAdapter->delete($previous, $this->getDao()->isBinaryHashInUse($previous->getBinaryFileHash(), $previous->getStorageType()));
             } catch (Throwable $e) {
                 Logger::error(sprintf('Version %s: unable to delete the data in storage type %s: %s', $this->getId(), $previous->getStorageType(), $e));
             }

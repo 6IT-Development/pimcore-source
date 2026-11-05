@@ -121,16 +121,28 @@ class Dao extends Model\Dao\AbstractDao
         return (int)$id;
     }
 
-    public function isBinaryHashInUse(?string $hash): bool
+    /**
+     * Whether another version of the element still uses the binary with this hash in the given storage type; a
+     * binary is shared only within one storage (see getBinaryFileIdForHash())
+     */
+    public function isBinaryHashInUse(?string $hash, ?string $storageType = null): bool
     {
         // versions without a binary (folders, documents, objects) share nothing
         if ($hash === null) {
             return false;
         }
 
-        $count = (int)$this->db->fetchOne('SELECT count(*) FROM versions WHERE binaryFileHash = ? AND cid = ?', [$hash, $this->model->getCid()]);
+        $sql = 'SELECT count(*) FROM versions WHERE binaryFileHash = ? AND cid = ? AND id != ?';
+        $params = [$hash, $this->model->getCid(), (int)$this->model->getId()];
+        $storageType ??= $this->model->getStorageType();
+        if ($storageType !== null) {
+            $sql .= ' AND storageType = ?';
+            $params[] = $storageType;
+        }
 
-        return $count > 1;
+        $count = (int)$this->db->fetchOne($sql, $params);
+
+        return $count > 0;
     }
 
     /**

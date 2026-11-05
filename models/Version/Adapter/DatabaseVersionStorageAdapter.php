@@ -26,6 +26,8 @@ use Pimcore\Model\Version;
  */
 class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 {
+    use StorageTypeGuardTrait;
+
     public const string versionsTableName = 'versionsData';
 
     public function __construct(protected DBAL\Connection $databaseConnection)
@@ -80,6 +82,10 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function loadMetaData(Version $version): ?string
     {
+        if ($this->logIfStoredElsewhere($version)) {
+            return null;
+        }
+
         $metaData = $this->loadData($version->getId(), $version->getCid(), $version->getCtype());
 
         // false: no row, null: no data
@@ -104,6 +110,10 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function loadBinaryData(Version $version): mixed
     {
+        if ($this->logIfStoredElsewhere($version)) {
+            return null;
+        }
+
         $binaryData = $this->loadData($version->getBinaryFileId() ?? $version->getId(), $version->getCid(), $version->getCtype(), true);
 
         return $this->getStream($binaryData);
@@ -111,6 +121,8 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function delete(Version $version, bool $isBinaryHashInUse): void
     {
+        $this->assertStoredHere($version);
+
         $identifier = [
             'id' => $version->getId(),
             'cid' => $version->getCid(),
@@ -145,11 +157,15 @@ class DatabaseVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function getBinaryFileStream(Version $version): mixed
     {
+        $this->assertStoredHere($version);
+
         return $this->loadBinaryData($version);
     }
 
     public function getFileStream(Version $version): mixed
     {
+        $this->assertStoredHere($version);
+
         $metaData = $this->loadMetaData($version);
 
         return $this->getStream($metaData);

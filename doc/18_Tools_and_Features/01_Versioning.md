@@ -114,6 +114,25 @@ Pimcore\Model\Version\Adapter\DatabaseVersionStorageAdapter:
 In this example the version data is stored in the database as long as neither the metadata nor the binary data exceeds 1000000 bytes in size.
 Otherwise, the filesystem is used as storage.
 
+The default and the fallback adapter must use different storage types (`fs`, `db`), since a version only stores the
+type it was written to.
+
+### Switching the storage adapter
+
+Every version stores the storage type it was written to. The filesystem and the database adapter only read and delete
+versions of their own type: after switching from one to the other, the existing versions can no longer be read, and
+deleting them (e.g. by the versions cleanup) fails with an error instead of leaving their data behind. To keep them,
+configure the `DelegateVersionStorageAdapter` with the new adapter as `$defaultAdapter` and the old one as
+`$fallbackAdapter`.
+
+### Hardlinks
+
+With `pimcore.assets.versions.use_hardlinks` (default `true`), the binary of an asset version stored on a local
+filesystem is a hardlink to the asset file instead of a copy. Pimcore replaces an asset file instead of overwriting it,
+so the versions keep their content. Anything that writes the asset file in place (external tools,
+`rsync --inplace`, ...) changes the content of every linked version as well, and permission changes apply to both.
+Disable the option if asset files are modified outside of Pimcore.
+
 ## Turn off Versioning for the Current Process
 
 Sometimes it is very useful to just deactivate versioning for a process. For example for importers or synchronization with 3rd party systems. 

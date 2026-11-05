@@ -30,6 +30,8 @@ use Throwable;
  */
 class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
 {
+    use StorageTypeGuardTrait;
+
     protected FilesystemOperator $storage;
 
     public function __construct()
@@ -39,6 +41,10 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function loadMetaData(Version $version): ?string
     {
+        if ($this->logIfStoredElsewhere($version)) {
+            return null;
+        }
+
         try {
             return $this->storage->read($this->getStorageFilename($version->getId(), $version->getCid(), $version->getCtype()));
         } catch (UnableToReadFile) {
@@ -48,6 +54,10 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function loadBinaryData(Version $version): mixed
     {
+        if ($this->logIfStoredElsewhere($version)) {
+            return null;
+        }
+
         $binaryStoragePath = $this->getBinaryStoragePath($version);
 
         if ($this->storage->fileExists($binaryStoragePath)) {
@@ -59,11 +69,15 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
 
     public function getBinaryFileStream(Version $version): mixed
     {
+        $this->assertStoredHere($version);
+
         return $this->storage->readStream($this->getBinaryStoragePath($version));
     }
 
     public function getFileStream(Version $version): mixed
     {
+        $this->assertStoredHere($version);
+
         return $this->storage->readStream($this->getStorageFilename($version->getId(), $version->getCid(), $version->getCtype()));
     }
 
@@ -152,17 +166,23 @@ class FileSystemVersionStorageAdapter implements VersionStorageAdapterInterface
     public function delete(Version $version,
                            bool    $isBinaryHashInUse): void
     {
+        $this->assertStoredHere($version);
+
         $binaryStoragePath = $this->getBinaryStoragePath($version);
         $storageFileName = $this->getStorageFilename($version->getId(), $version->getCid(), $version->getCtype());
 
-        $storagePath = dirname($storageFileName);
         if ($this->storage->fileExists($storageFileName)) {
             $this->storage->delete($storageFileName);
-            File::recursiveDeleteEmptyDirs($this->storage, $storagePath);
         }
 
         if ($this->storage->fileExists($binaryStoragePath) && !$isBinaryHashInUse) {
             $this->storage->delete($binaryStoragePath);
+        }
+
+        // also when only the binary was left in the directory
+        $storagePath = dirname($storageFileName);
+        if ($this->storage->directoryExists($storagePath)) {
+            File::recursiveDeleteEmptyDirs($this->storage, $storagePath);
         }
     }
 
