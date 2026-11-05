@@ -18,6 +18,16 @@ If activated, the selected jobs are automatically executed.
 
 :::caution
 
-Messages are dispatched via `pimcore_generic_execution_engine` transport. Please ensure you have workers processing this transport.
+Messages are dispatched via `pimcore_generic_execution_engine` transport. Please ensure you have workers processing this transport:
+
+```bash
+bin/console messenger:consume pimcore_generic_execution_engine
+```
+
+The bundle routes all messages implementing
+`Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface` to this
+transport. Do not route them to a `sync://` transport or override the routing so they are handled synchronously: job
+runs are continued by the events of the messenger worker only, so a synchronously handled message leaves the job run
+in `running`.
 
 :::

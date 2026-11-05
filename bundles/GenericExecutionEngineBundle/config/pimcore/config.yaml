@@ -19,3 +19,6 @@ framework:
                 dsn: 'doctrine://default?queue_name=pimcore_generic_execution_engine'
                 retry_strategy:
                     max_retries: 0 # no retries to prevent data corruption
+        routing:
+            # the job run is continued by worker events only, so GEE messages must never be handled synchronously
+            'Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface': pimcore_generic_execution_engine

@@ -32,7 +32,9 @@ use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\SelectionProcessingM
 use Pimcore\Model\Element\ElementDescriptor;
 use Pimcore\Translation\Translator;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\SentStamp;
 use Throwable;
 
 /**
@@ -479,22 +481,38 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     ): void
     {
         if (empty($selectedElements) || $selectionProcessingMode === SelectionProcessingMode::ONCE) {
-            $this->executionEngineBus->dispatch(new $messageString(
+            $this->assertSentToTransport($jobRunId, $this->executionEngineBus->dispatch(new $messageString(
                     $jobRunId,
                     $currentStepId
                 )
-            );
+            ));
 
             return;
         }
 
         foreach ($selectedElements as $selectedElement) {
-            $this->executionEngineBus->dispatch(new $messageString(
+            $this->assertSentToTransport($jobRunId, $this->executionEngineBus->dispatch(new $messageString(
                     $jobRunId,
                     $currentStepId,
                     $selectedElement
                 )
-            );
+            ));
         }
+    }
+
+    /**
+     * Job runs only advance through messenger worker events, a message handled synchronously leaves the run hanging.
+     */
+    private function assertSentToTransport(int $jobRunId, Envelope $envelope): void
+    {
+        if ($envelope->last(SentStamp::class) !== null) {
+            return;
+        }
+
+        $this->genericExecutionEngineLogger->error(
+            "[JobRun $jobRunId]: Message " . $envelope->getMessage()::class . ' was not sent to a transport.' .
+            ' Route GenericExecutionEngineMessageInterface to the pimcore_generic_execution_engine transport' .
+            ' and consume it with a messenger worker, otherwise the job run does not continue.'
+        );
     }
 }

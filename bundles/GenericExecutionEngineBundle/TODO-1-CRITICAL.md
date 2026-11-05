@@ -265,7 +265,7 @@ is I-22. Docs updated in `02_JobRun.md`.
 
 ---
 
-## [ ] C-08 – No messenger routing for GEE messages → jobs run synchronously and never get past the first message
+## [x] C-08 – No messenger routing for GEE messages → jobs run synchronously and never get past the first message
 
 **Files:** `config/pimcore/config.yaml:9-21`, `src/EventSubscriber/JobExecutionSubscriber.php:34-40`,
 `doc/19_Development_Tools_and_Details/08_Generic_Execution_Engine/README.md:19-21`
@@ -285,3 +285,8 @@ is written).
 to `config/pimcore/config.yaml` (routing by interface is supported), and/or detect sync handling (no `SentStamp` on the
 returned envelope) in `dispatchSelectedElements()` and fail loudly. Document the routing + `messenger:consume
 pimcore_generic_execution_engine` requirement.
+
+**Done:** `config/pimcore/config.yaml` routes `GenericExecutionEngineMessageInterface` to
+`pimcore_generic_execution_engine`. `dispatchSelectedElements()` logs an error to the GEE channel for every message
+that comes back without `SentStamp` (handled synchronously), naming the routing and worker requirement; it does not
+throw, as the handler already ran by then. The README documents the routing and the `messenger:consume` command.
