@@ -157,9 +157,7 @@ class Processor
             ];
             $asset->setCustomSetting('thumbnails', $customSetting);
 
-            Model\Version::disable();
-            $asset->save();
-            Model\Version::enable();
+            Model\Version::withoutVersioning(fn () => $asset->save());
 
             $instance->save();
 
@@ -280,13 +278,7 @@ class Processor
                 if ($changed) {
                     $asset->setCustomSetting('thumbnails', $customSetting);
 
-                    Model\Version::disable();
-
-                    try {
-                        $asset->save();
-                    } finally {
-                        Model\Version::enable();
-                    }
+                    Model\Version::withoutVersioning(fn () => $asset->save());
                 }
             }
 
@@ -409,13 +401,7 @@ class Processor
             ];
             $asset->setCustomSetting('thumbnails', $customSetting);
 
-            Model\Version::disable();
-
-            try {
-                $asset->save();
-            } finally {
-                Model\Version::enable();
-            }
+            Model\Version::withoutVersioning(fn () => $asset->save());
         } finally {
             TmpStore::delete($instance->getJobStoreId());
         }

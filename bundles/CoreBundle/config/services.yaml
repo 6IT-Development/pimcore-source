@@ -152,6 +152,8 @@ services:
         alias: Pimcore\Model\Version\Adapter\FileSystemVersionStorageAdapter
 
     Pimcore\Model\Version\Adapter\FileSystemVersionStorageAdapter: ~
+
+    Pimcore\Model\Version\VersioningResetter: ~
     #
     # SECURITY
     #

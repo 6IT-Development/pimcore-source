@@ -142,10 +142,7 @@ class Item extends Model\AbstractModel
             if ($element instanceof DataObject\AbstractObject) {
                 // create an empty object first and clone it
                 // see https://github.com/pimcore/pimcore/issues/4219
-                $versionsEnabled = Model\Version::isEnabled();
-                Model\Version::disable();
-
-                try {
+                Model\Version::withoutVersioning(function () use ($element, &$dummy) {
                     $className = get_class($element);
                     /** @var AbstractObject $dummy */
                     $dummy = Pimcore::getContainer()->get('pimcore.model.factory')->build($className);
@@ -156,11 +153,7 @@ class Item extends Model\AbstractModel
                         $dummy->setOmitMandatoryCheck(true);
                     }
                     $dummy->save(['isRecycleBinRestore' => true]);
-                } finally {
-                    if ($versionsEnabled) {
-                        Model\Version::enable();
-                    }
-                }
+                });
             }
 
             DataObject::disableDirtyDetection();

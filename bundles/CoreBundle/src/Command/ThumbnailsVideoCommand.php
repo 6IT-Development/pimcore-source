@@ -124,16 +124,7 @@ class ThumbnailsVideoCommand extends AbstractCommand
     protected function runSingleCommand(string $item, InputInterface $input, OutputInterface $output): void
     {
         // not in runBeforeFirstCommand(): that only runs in the main process, not in the child processes
-        $versioningEnabled = Version::isEnabled();
-        Version::disable();
-
-        try {
-            $this->generateThumbnails($item, $input, $output);
-        } finally {
-            if ($versioningEnabled) {
-                Version::enable();
-            }
-        }
+        Version::withoutVersioning(fn () => $this->generateThumbnails($item, $input, $output));
     }
 
     private function generateThumbnails(string $item, InputInterface $input, OutputInterface $output): void

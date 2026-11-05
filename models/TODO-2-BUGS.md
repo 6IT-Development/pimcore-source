@@ -4143,7 +4143,7 @@ of a full save. `Task::create()` still does not save, like the predefined proper
 
 ## Version (Scope 9)
 
-## [ ] B-215 – `Version::disable()` / `enable()` is a global flag that does not nest and is never reset: one exception switches versioning off for the rest of a worker
+## [x] B-215 – `Version::disable()` / `enable()` is a global flag that does not nest and is never reset: one exception switches versioning off for the rest of a worker
 
 **Files:** `models/Version.php:78`, `:106-127`, `:129-136`; `lib/Messenger/Handler/AssetUpdateTasksHandler.php:66-72`;
 `models/Asset/Video.php:202-204`, `:231-233`; `models/Asset/Video/Thumbnail/Processor.php:157-159`, `:214-216`,
@@ -4165,6 +4165,13 @@ of a full save. `Task::create()` still does not save, like the predefined proper
 **Fix direction:** a counter-based `Version::withoutVersioning(callable $fn)` with `try` / `finally` that replaces all
 call sites; reset the counter through `ResetInterface`; check the flag before `PRE_SAVE`; do not apply the flag to
 metadata updates of existing versions (B-219, I-102).
+
+**Done:** `Version::withoutVersioning(callable)` disables the versioning for the callback and restores the previous
+state in `finally`, so calls nest and an exception cannot leave it off. It replaces every `disable()` / `enable()`
+pair (`AssetUpdateTasksHandler`, the video thumbnail `Processor`, `ThumbnailsVideoCommand`, the recycle-bin object
+placeholder); `Video` no longer had one. `VersioningResetter` enables the versioning again on `kernel.reset`, for code
+outside the core that still pairs `disable()` / `enable()`. `save()` checks the flag before `PRE_SAVE`, and only for
+new versions, so updates of existing versions are kept. `$disabled` stays public for compatibility.
 
 ## [ ] B-216 – `Version::loadData()` calls `Pimcore::collectGarbage()` on every load: idle DB connections and Monolog handlers are closed and the runtime cache is cleared mid-request
 

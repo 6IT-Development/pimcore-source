@@ -107,6 +107,9 @@ final class Version extends AbstractModel
     /**
      * disables the versioning for the current process, this is useful for importers, ...
      * There are no new versions created, the read continues to operate normally
+     *
+     * Prefer {@see withoutVersioning()}: this flag does not nest, and stays set when the code before enable() throws
+     * (until the next kernel.reset).
      */
     public static function disable(): void
     {
@@ -127,14 +130,36 @@ final class Version extends AbstractModel
         return !self::$disabled;
     }
 
+    /**
+     * Runs the callback without creating versions and restores the previous state afterwards, also when it throws.
+     * Calls nest: a disabled state of the caller is kept.
+     *
+     * @template T
+     *
+     * @param callable(): T $callback
+     *
+     * @return T
+     */
+    public static function withoutVersioning(callable $callback): mixed
+    {
+        $disabled = self::$disabled;
+        self::$disabled = true;
+
+        try {
+            return $callback();
+        } finally {
+            self::$disabled = $disabled;
+        }
+    }
+
     public function save(): void
     {
-        $this->dispatchEvent(new VersionEvent($this), VersionEvents::PRE_SAVE);
-
-        // check if versioning is disabled for this process
-        if (self::$disabled) {
+        // check if versioning is disabled for this process, it only prevents new versions
+        if (self::$disabled && !$this->getId()) {
             return;
         }
+
+        $this->dispatchEvent(new VersionEvent($this), VersionEvents::PRE_SAVE);
 
         $isAsset = false;
         if (!$this->date) {
