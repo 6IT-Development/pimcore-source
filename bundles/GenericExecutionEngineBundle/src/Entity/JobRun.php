@@ -58,17 +58,17 @@ class JobRun
     private ?int $currentStep = null;
 
     #[ORM\Column(length: 300, nullable: true)]
-    private ?string $currentMessage;
+    private ?string $currentMessage = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $log;
+    private ?string $log = null;
 
     private ?SerializerInterface $serializer = null;
 
-    private ?Job $job;
+    private ?Job $job = null;
 
     #[ORM\Column(type: 'text')]
-    private ?string $serializedJob;
+    private ?string $serializedJob = null;
 
     #[ORM\Column(type: 'json')]
     private ?array $context = null;
@@ -77,7 +77,7 @@ class JobRun
     private ?int $creationDate;
 
     #[ORM\Column(nullable: true)]
-    private ?int $modificationDate;
+    private ?int $modificationDate = null;
 
     #[ORM\Column(type: 'string', length: 255)]
     private string $executionContext;
@@ -225,7 +225,7 @@ class JobRun
 
     public function getModificationDate(): ?int
     {
-        return $this->modificationDate ?? null;
+        return $this->modificationDate;
     }
 
     #[ORM\PrePersist]

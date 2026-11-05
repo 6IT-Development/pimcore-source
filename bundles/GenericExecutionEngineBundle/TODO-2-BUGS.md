@@ -203,12 +203,15 @@ default, only 3.x has `= []`, so every 2.x release allowed by the constraint was
 
 ## Entities / repositories
 
-### [ ] B-15 – Uninitialised typed properties on `JobRun`
+### [x] B-15 – Uninitialised typed properties on `JobRun`
 **File:** `src/Entity/JobRun.php:61`, `:64`, `:68`, `:71`, `:80`
 `$currentMessage`, `$log`, `$job`, `$serializedJob`, `$modificationDate` are typed without default. On a new entity
 `getCurrentMessage()`, `getLogs()`, `getJob()` throw "must not be accessed before initialization"; after `PostLoad`
 with an empty `serializedJob` `$job` stays uninitialised → every `getJob()?->…` in the agent/grid/extractor throws
 (the `?->` does not help). `getModificationDate()` works only because of `?? null`. **Fix:** initialise with `null`.
+
+**Done:** the five properties default to `null` (Doctrine instantiates without constructor, defaults still apply), so a
+new run or a run with an empty `serializedJob` returns `null` from `getJob()`; `getModificationDate()` drops the `?? null`.
 
 ### [ ] B-16 – Entity mapping and installer schema disagree
 **Files:** `src/Entity/JobRun.php:51-89`, `src/Entity/JobRunErrorLog.php:33-48`, `src/Installer.php:101-188`
