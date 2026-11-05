@@ -3272,7 +3272,7 @@ language in `items`) from a copy of the items when not in dump state and leaves 
 alone. `__unserialize()` restores `items`, `context` and `objectId` and also reads cache entries written by the former
 `__sleep()` (mangled protected property names).
 
-## [ ] B-177 – Every object load reads the store row with `FOR UPDATE`
+## [x] B-177 – Every object load reads the store row with `FOR UPDATE`
 
 **File:** `models/DataObject/Concrete/Dao.php:133-136`
 
@@ -3281,6 +3281,9 @@ alone. `__unserialize()` restores `items`, `context` and `objectId` and also rea
   transaction) it row-locks every loaded object → lock waits and deadlocks in parallel imports.
 
 **Fix direction:** a plain `SELECT`; lock explicitly only where needed (the inheritance parent lock is separate).
+
+**Done:** `Concrete\Dao::getData()` reads the store row with a plain `SELECT`. The saves keep their own locks (the
+`versionCount` row in `AbstractObject\Dao::update()` and the parent query rows read for inheritance).
 
 ## [ ] B-178 – Listing locale changes after the first query are ignored
 
