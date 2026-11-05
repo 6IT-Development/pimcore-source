@@ -197,7 +197,7 @@ class LocationAwareConfigRepository
     {
         $yamlFilename = $this->getVarConfigFile($key);
 
-        $this->searchAndReplaceMissingParameters($data);
+        $data = $this->escapeContainerParameters($data);
 
         $filesystem = new Filesystem();
         $filesystem->dumpFile($yamlFilename, Yaml::dump($data, 50));
@@ -205,33 +205,34 @@ class LocationAwareConfigRepository
         $this->invalidateConfigCache();
     }
 
-    private function searchAndReplaceMissingParameters(array &$data): void
+    /**
+     * The YAML files are loaded by the container, which resolves `%parameter%` and `%env(...)%` placeholders in keys and
+     * values. Admin-entered data is literal text, so every `%` in a value is escaped (`%%`) - otherwise a value could
+     * read secrets from the container or break the container build with an unknown parameter.
+     *
+     * The container resolves keys but never unescapes them, so keys cannot be escaped: a key containing a placeholder
+     * is rejected instead.
+     *
+     * @throws InvalidArgumentException
+     */
+    private function escapeContainerParameters(array $data): array
     {
-        $container = Pimcore::getContainer();
+        $escaped = [];
+        foreach ($data as $key => $value) {
+            if (is_string($key) && preg_match_all('/%%|%([^%\s]+)%/', $key, $matches) && array_filter($matches[1]) !== []) {
+                throw new InvalidArgumentException(sprintf('Invalid configuration key "%s": "%%...%%" placeholders are not allowed', $key));
+            }
 
-        foreach ($data as &$value) {
             if (is_array($value)) {
-                $this->searchAndReplaceMissingParameters($value);
-
-                continue;
+                $value = $this->escapeContainerParameters($value);
+            } elseif (is_string($value)) {
+                $value = str_replace('%', '%%', $value);
             }
 
-            if (!is_scalar($value)) {
-                continue;
-            }
-
-            if (preg_match('/%([^%\s]+)%/', (string)$value, $match)) {
-                $key = $match[1];
-
-                if (str_starts_with($key, 'env(') && str_ends_with($key, ')') && 'env()' !== $key) {
-                    continue;
-                }
-
-                if (!$container->hasParameter($key)) {
-                    $value = preg_replace('/%([^%\s]+)%/', '%%$1%%', $value);
-                }
-            }
+            $escaped[$key] = $value;
         }
+
+        return $escaped;
     }
 
     private function getVarConfigFile(string $key): string

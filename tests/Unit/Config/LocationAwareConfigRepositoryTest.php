@@ -20,6 +20,8 @@ namespace Pimcore\Tests\Unit\Config;
 use Exception;
 use Pimcore\Config\LocationAwareConfigRepository;
 use Pimcore\Tests\Support\Test\TestCase;
+use ReflectionMethod;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 
 class LocationAwareConfigRepositoryTest extends TestCase
 {
@@ -67,5 +69,35 @@ class LocationAwareConfigRepositoryTest extends TestCase
 
         $this->expectException(Exception::class);
         $repository->fetchAllKeysByReadTargets();
+    }
+
+    /**
+     * C-05: admin data written as YAML is literal text for the container, placeholders are not resolved.
+     */
+    public function testWrittenConfigRoundTripsThroughContainerUnchanged(): void
+    {
+        $data = [
+            'secret' => '%env(APP_SECRET)%',
+            'mixed' => '%kernel.debug% %foo%',
+            'percent' => '100%',
+            'list' => ['%kernel.secret%', 5, true, null],
+            'keys with 100% or %% stay' => 'value',
+        ];
+
+        $method = new ReflectionMethod(LocationAwareConfigRepository::class, 'escapeContainerParameters');
+        $escaped = $method->invoke($this->createRepository(null), $data);
+
+        $parameterBag = new ParameterBag(['kernel.debug' => true, 'kernel.secret' => 'secret']);
+        $resolved = $parameterBag->unescapeValue($parameterBag->resolveValue($escaped));
+
+        $this->assertSame($data, $resolved);
+    }
+
+    public function testWrittenConfigRejectsPlaceholderKeys(): void
+    {
+        $method = new ReflectionMethod(LocationAwareConfigRepository::class, 'escapeContainerParameters');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $method->invoke($this->createRepository(null), ['options' => ['%kernel.secret%' => 'label']]);
     }
 }

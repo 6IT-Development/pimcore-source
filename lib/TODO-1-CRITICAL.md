@@ -254,7 +254,7 @@ the container, disabled and invalid cases; the settings-store cases need the dat
 
 ---
 
-## [ ] C-05 – Admin-entered config values are not escaped for the container: `%param%` / `%env(…)%` are resolved (secret disclosure) or break the container build
+## [x] C-05 – Admin-entered config values are not escaped for the container: `%param%` / `%env(…)%` are resolved (secret disclosure) or break the container build
 
 **File:** `lib/Config/LocationAwareConfigRepository.php:195-205`, `:207-234`; `:289-321`; `lib/Kernel.php:78-131`
 
@@ -282,6 +282,14 @@ the container, disabled and invalid cases; the settings-store cases need the dat
 **Fix direction:** treat admin data as literal. Escape every `%` in keys and values (`str_replace('%', '%%', …)`,
 recursively). Allow parameters only through an explicit, documented allowlist, if at all. Add a test that
 round-trips `%env(APP_SECRET)%`, `%kernel.debug% %foo%` and `100%` unchanged (I-22). See I-17.
+
+**Done:** `writeYaml()` replaces `searchAndReplaceMissingParameters()` with `escapeContainerParameters()`, which escapes
+every `%` in string values recursively (`%%`), so admin data is literal for the container: no parameter / env
+resolution, no build failure on unknown parameters. Symfony resolves array keys but never unescapes them, so keys cannot
+be escaped; a key that contains a `%name%` placeholder is rejected with an `InvalidArgumentException` before the file is
+written (keys with a single `%` or `%%` round-trip unchanged). Unit test: `%env(APP_SECRET)%`, `%kernel.debug% %foo%`,
+`100%` and a nested `%kernel.secret%` round-trip unchanged through `ParameterBag::resolveValue()` /
+`unescapeValue()`, and a placeholder key is rejected. No parameter allowlist (I-17).
 
 ---
 
