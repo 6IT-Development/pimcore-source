@@ -5063,7 +5063,7 @@ stored child `[]` stays `[]`, and a key whose type changed between scalar and ar
 `getItems()` was not rebuilt on `getLocalizedKeyValue()`: that getter also treats an empty child value as missing and
 inherits it, which `getItems()` keeps as stored.
 
-## [ ] B-247 – Classification store calculated-value keys: the getter returns the edit-mode string, and the setter throws
+## [x] B-247 – Classification store calculated-value keys: the getter returns the edit-mode string, and the setter throws
 
 **Files:** `models/DataObject/Classificationstore.php:339-345`, `:178-206`; `models/DataObject/Service.php:1458-1507`, `:1509-1530`;
 `models/DataObject/ClassDefinition/Data/CalculatedValue.php:28`
@@ -5083,6 +5083,13 @@ inherits it, which `getItems()` keeps as stored.
 
 **Fix direction:** use `getCalculatedFieldValue()` in the getter; reject or ignore calculated keys in
 `setLocalizedKeyValue()`.
+
+**Done:** `getLocalizedKeyValue()` computes calculated-value keys with `Service::getCalculatedFieldValue()` (calculator
+`compute()`, uncast expression results), like the object, localized and brick getters, and returns `null` for a store
+without object. The admin edit mode is unaffected: it builds its payload with the key definition's
+`getDataForEditmode()`. `setLocalizedKeyValue()` ignores calculated-value keys (no storage, no group activation, no
+dirty flag), so a value sent back by a client no longer ends in the undefined `getDataForResource()` call. The syntax
+error message returned as value stays with `Service` (Scope 6).
 
 ## [ ] B-248 – Classification store changes that are not saved, and a dirty check that is wrong both ways
 

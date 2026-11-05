@@ -178,6 +178,11 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         // @TODO Find a better solution for using isEmpty() in all ClassDefintion DataTypes
 
         $keyConfig = Model\DataObject\Classificationstore\DefinitionCache::get($keyId);
+        // calculated values are computed on read and not stored
+        if ($keyConfig?->getType() === 'calculatedValue') {
+            return $this;
+        }
+
         /** @var Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface $dataDefinition */
         $dataDefinition = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
 
@@ -348,10 +353,16 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
 
         $keyConfig = Model\DataObject\Classificationstore\DefinitionCache::get($keyId);
         if ($keyConfig->getType() == 'calculatedValue') {
+            // computed like the getters of calculated fields of objects, bricks and localized fields, not as admin string
+            if (!$this->getObject()) {
+                return null;
+            }
+
             $data = new Model\DataObject\Data\CalculatedValue($this->getFieldname());
             $childDef = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
             $data->setContextualData('classificationstore', $this->getFieldname(), null, $language, $groupId, $keyId, $childDef);
-            return Model\DataObject\Service::getCalculatedFieldValueForEditMode($this->getObject(), [], $data);
+
+            return Model\DataObject\Service::getCalculatedFieldValue($this->getObject(), $data);
         }
 
         $fieldDefinition = Model\DataObject\Classificationstore\Service::getFieldDefinitionFromKeyConfig($keyConfig);
