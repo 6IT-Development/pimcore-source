@@ -4490,7 +4490,7 @@ role, role folder, user id) with a warning naming the user and the id. `setRoles
 `'1,,2'` or a trailing comma) and duplicates. `PermissionChecker` was already null-safe (`$role?->`). Open: checking the
 type of the ids in `setRoles()` and loading all roles with one query (I-112).
 
-## [ ] B-227 – Merged role data is cached on the user object and never invalidated; the perspective helpers return undefined, duplicate or no longer allowed perspectives
+## [x] B-227 – Merged role data is cached on the user object and never invalidated; the perspective helpers return undefined, duplicate or no longer allowed perspectives
 
 **Files:** `models/User.php:75-85`, `:310-313`, `:332-343`, `:510-517`, `:529-546`, `:553-556`, `:567-579`, `:586-599`,
 `:627-641`; `models/User/UserRole.php:314-365`
@@ -4514,6 +4514,14 @@ type of the ids in `setRoles()` and loading all roles with one query (I-112).
 **Fix direction:** reset the merged caches in the setters (or compute them in a resolver service, I-112); intersect with
 the defined perspectives and `array_unique()`; validate `activePerspective` against the allowed list and fall back to
 `getFirstAllowedPerspective()`.
+
+**Done:** the merged perspectives and website translation languages are no longer cached on the (runtime-cached) user
+object; they are computed per call like the class / doc type permissions, so changes to the user or its roles are seen
+at once (the three `merged*` properties are removed, `User` is final). `getMergedPerspectives()` removes duplicates and
+keeps only defined perspectives. `getActivePerspective()` returns the stored perspective only while it is allowed (for
+admins: defined), otherwise `getFirstAllowedPerspective()`, without writing to the model. For an admin whose assigned
+perspectives no longer exist, `getFirstAllowedPerspective()` returns the first defined one. Open: a role saved in
+another process is still seen only through a fresh `Role` instance (I-112).
 
 ## [ ] B-228 – `setPassword()` silently ignores `null`, `''` and every value of ≤ 4 characters; `setUsername(null)` throws
 

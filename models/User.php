@@ -70,21 +70,6 @@ final class User extends User\UserRole implements UserInterface
 
     protected ?string $activePerspective = null;
 
-    /**
-     * @var string[]|null
-     */
-    protected ?array $mergedPerspectives = null;
-
-    /**
-     * @var string[]|null
-     */
-    protected ?array $mergedWebsiteTranslationLanguagesEdit = null;
-
-    /**
-     * @var string[]|null
-     */
-    protected ?array $mergedWebsiteTranslationLanguagesView = null;
-
     protected ?int $lastLogin = null;
 
     protected ?string $keyBindings = null;
@@ -523,13 +508,18 @@ final class User extends User\UserRole implements UserInterface
         $this->contentLanguages = $contentLanguages;
     }
 
+    /**
+     * The stored perspective while the user may still use it, otherwise the first allowed one
+     */
     public function getActivePerspective(): string
     {
-        if (!$this->activePerspective) {
-            $this->activePerspective = 'default';
+        // admins may use every defined perspective
+        $allowed = $this->isAdmin() ? self::getDefinedPerspectiveNames() : $this->getMergedPerspectives();
+        if ($this->activePerspective && in_array($this->activePerspective, $allowed, true)) {
+            return $this->activePerspective;
         }
 
-        return $this->activePerspective;
+        return $this->getFirstAllowedPerspective();
     }
 
     public function setActivePerspective(?string $activePerspective): void
@@ -538,25 +528,28 @@ final class User extends User\UserRole implements UserInterface
     }
 
     /**
-     * Returns an array of perspective names related to user and all related roles
+     * Returns an array of the defined perspective names related to user and all related roles
+     *
+     * Not cached on the object, like the class and doc type permissions: the user is shared through the runtime
+     * cache, so a cached result would miss later changes to the user or its roles.
      *
      * @return string[]
      */
     private function getMergedPerspectives(): array
     {
-        if (null === $this->mergedPerspectives) {
-            $this->mergedPerspectives = $this->getPerspectives();
-            foreach ($this->getRoleObjects() as $userRole) {
-                $this->mergedPerspectives = array_merge($this->mergedPerspectives, $userRole->getPerspectives());
-            }
-            $this->mergedPerspectives = array_values($this->mergedPerspectives);
-            if (!$this->mergedPerspectives) {
-                // nothing assigned: every perspective is allowed
-                $this->mergedPerspectives = self::getDefinedPerspectiveNames();
-            }
+        $perspectives = $this->getPerspectives();
+        foreach ($this->getRoleObjects() as $userRole) {
+            $perspectives = array_merge($perspectives, $userRole->getPerspectives());
         }
 
-        return $this->mergedPerspectives;
+        $definedPerspectives = self::getDefinedPerspectiveNames();
+        if (!$perspectives) {
+            // nothing assigned: every perspective is allowed
+            return $definedPerspectives;
+        }
+
+        // a deleted or renamed perspective is no longer allowed
+        return array_values(array_intersect(array_unique($perspectives), $definedPerspectives));
     }
 
     /**
@@ -566,7 +559,9 @@ final class User extends User\UserRole implements UserInterface
      */
     public function getFirstAllowedPerspective(): string
     {
-        return $this->getMergedPerspectives()[0] ?? 'default';
+        // the assigned perspectives first, also for admins
+        return $this->getMergedPerspectives()[0]
+            ?? ($this->isAdmin() ? self::getDefinedPerspectiveNames()[0] : 'default');
     }
 
     /**
@@ -599,15 +594,12 @@ final class User extends User\UserRole implements UserInterface
      */
     private function getMergedWebsiteTranslationLanguagesEdit(): array
     {
-        if (null === $this->mergedWebsiteTranslationLanguagesEdit) {
-            $this->mergedWebsiteTranslationLanguagesEdit = $this->getWebsiteTranslationLanguagesEdit();
-            foreach ($this->getRoleObjects() as $userRole) {
-                $this->mergedWebsiteTranslationLanguagesEdit = array_merge($this->mergedWebsiteTranslationLanguagesEdit, $userRole->getWebsiteTranslationLanguagesEdit());
-            }
-            $this->mergedWebsiteTranslationLanguagesEdit = array_values(array_unique($this->mergedWebsiteTranslationLanguagesEdit));
+        $languages = $this->getWebsiteTranslationLanguagesEdit();
+        foreach ($this->getRoleObjects() as $userRole) {
+            $languages = array_merge($languages, $userRole->getWebsiteTranslationLanguagesEdit());
         }
 
-        return $this->mergedWebsiteTranslationLanguagesEdit;
+        return array_values(array_unique($languages));
     }
 
     /**
@@ -638,16 +630,12 @@ final class User extends User\UserRole implements UserInterface
      */
     private function getMergedWebsiteTranslationLanguagesView(): array
     {
-        if (null === $this->mergedWebsiteTranslationLanguagesView) {
-            $this->mergedWebsiteTranslationLanguagesView = $this->getWebsiteTranslationLanguagesView();
-            foreach ($this->getRoleObjects() as $userRole) {
-                $this->mergedWebsiteTranslationLanguagesView = array_merge($this->mergedWebsiteTranslationLanguagesView, $userRole->getWebsiteTranslationLanguagesView());
-            }
-
-            $this->mergedWebsiteTranslationLanguagesView = array_values(array_unique($this->mergedWebsiteTranslationLanguagesView));
+        $languages = $this->getWebsiteTranslationLanguagesView();
+        foreach ($this->getRoleObjects() as $userRole) {
+            $languages = array_merge($languages, $userRole->getWebsiteTranslationLanguagesView());
         }
 
-        return $this->mergedWebsiteTranslationLanguagesView;
+        return array_values(array_unique($languages));
     }
 
     /**
