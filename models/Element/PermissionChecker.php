@@ -70,6 +70,7 @@ class PermissionChecker
 
         $permissions = [];
         $details = [];
+        $parentIds = self::collectParentIds($element);
 
         foreach ($users as $user) {
             if (!$user instanceof User) {
@@ -80,13 +81,10 @@ class PermissionChecker
             $userPermission['userId'] = $user->getId();
             $userPermission['userName'] = $user->getName();
 
+            $userIds = array_map('intval', $user->getRoles());
+            $userIds[] = $user->getId();
+
             foreach ($result['columns'] as $columnName) {
-                $parentIds = self::collectParentIds($element);
-
-                $userIds = $user->getRoles();
-
-                $userIds[] = $user->getId();
-
                 if ($user->isAdmin()) {
                     $userPermission[$columnName] = true;
 
@@ -97,7 +95,7 @@ class PermissionChecker
 
                 try {
                     $permissionsParent = $db->fetchAssociative(
-                        'SELECT * FROM users_workspaces_' . $type . ' , users u WHERE userId = u.id AND cid IN (' . implode(
+                        'SELECT w.*, u.type, u.name FROM users_workspaces_' . $type . ' w, users u WHERE userId = u.id AND cid IN (' . implode(
                             ',',
                             $parentIds
                         ) . ') AND userId IN (' . implode(
@@ -123,7 +121,7 @@ class PermissionChecker
                         }
 
                         $permissionsChildren = $db->fetchAssociative(
-                            'SELECT list FROM users_workspaces_' . $type . ', users u WHERE userId = u.id AND cpath LIKE ? AND userId IN (' . implode(
+                            'SELECT w.list, w.cpath, u.type, u.name FROM users_workspaces_' . $type . ' w, users u WHERE userId = u.id AND cpath LIKE ? AND userId IN (' . implode(
                                 ',',
                                 $userIds
                             ) . ') AND list = 1 LIMIT 1',
@@ -131,8 +129,8 @@ class PermissionChecker
                         );
 
                         if ($permissionsChildren) {
-                            $result[$columnName] = (bool)$permissionsChildren[$columnName];
-                            $details[] = self::createDetail($user, $columnName, $result[$columnName], $permissionsChildren['type'], $permissionsChildren['name'], $permissionsChildren['cpath']);
+                            $userPermission[$columnName] = (bool)$permissionsChildren[$columnName];
+                            $details[] = self::createDetail($user, $columnName, $userPermission[$columnName], $permissionsChildren['type'], $permissionsChildren['name'], $permissionsChildren['cpath']);
 
                             continue;
                         }
@@ -156,18 +154,17 @@ class PermissionChecker
     protected static function collectParentIds(ElementInterface $element): array
     {
         // collect properties via parent - ids
-        $parentIds = [1];
+        $parentIds = [1 => 1];
 
         $obj = $element->getParent();
-        if ($obj) {
-            while ($obj) {
-                $parentIds[] = $obj->getId();
-                $obj = $obj->getParent();
-            }
+        // stop at an id seen before, so a cycle in stored data cannot loop forever
+        while ($obj && !isset($parentIds[$obj->getId()])) {
+            $parentIds[$obj->getId()] = $obj->getId();
+            $obj = $obj->getParent();
         }
-        $parentIds[] = $element->getId();
+        $parentIds[$element->getId()] = $element->getId();
 
-        return $parentIds;
+        return array_values($parentIds);
     }
 
     protected static function createDetail(User $user, ?string $a = null, ?bool $b = null, ?string $c = null, ?string $d = null, ?string $e = null, ?string $f = null): array
@@ -201,7 +198,7 @@ class PermissionChecker
                 // check roles
                 foreach ($user->getRoles() as $roleId) {
                     $role = User\Role::getById($roleId);
-                    if ($role->getPermission($permissionKey)) {
+                    if ($role?->getPermission($permissionKey)) {
                         $entry = self::createDetail($user, $permissionKey, true, $role->getType(), $role->getName());
 
                         break;

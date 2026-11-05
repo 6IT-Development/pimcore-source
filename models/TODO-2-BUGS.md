@@ -3186,7 +3186,7 @@ the runtime-cached parent tags (old and new parent on a move; the new `Dao::getS
 
 **Done:** `Dao::delete()` adds `workflow` to the `WHERE`, so it removes only the state of the model's workflow.
 
-## [ ] B-173 – `PermissionChecker::check()`: child permissions written to the wrong array, undefined columns, deleted roles
+## [x] B-173 – `PermissionChecker::check()`: child permissions written to the wrong array, undefined columns, deleted roles
 
 **File:** `models/Element/PermissionChecker.php:117-139`, `:156-171`, `:186-219`
 
@@ -3196,6 +3196,11 @@ the runtime-cached parent tags (old and new parent on a move; the new `Dao::getS
 - `collectParentIds()` has no loop guard; one query per column per user.
 
 **Fix direction:** write to `$userPermission`, select the needed columns, null-check roles.
+
+**Done:** the "list allowed through a child workspace" result is written to `$userPermission`. Both workspace queries
+select the columns the details read (`w.cpath`, `u.type`, `u.name`; the parent query `w.*` instead of `*` over both
+tables). `getUserPermissions()` skips roles that no longer exist. `collectParentIds()` stops at an id it has already
+collected and runs once per call, and the role ids are built once per user instead of once per column.
 
 ## [ ] B-174 – `Element\Service` small defects
 
