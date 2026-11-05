@@ -142,7 +142,7 @@ is unchanged (see B-items).
 
 ---
 
-## [ ] C-04 – Cancelled / failed job runs keep executing all queued step messages; "stop" stops *every* worker of the app
+## [x] C-04 – Cancelled / failed job runs keep executing all queued step messages; "stop" stops *every* worker of the app
 
 **Files:** `src/Messenger/Middleware/StepConditionMiddleware.php:41-59`, `src/Agent/JobExecutionAgent.php:127-137`,
 `:309-322`, `src/Messenger/Handler/AbstractAutomationActionHandler.php:237-242`
@@ -161,6 +161,12 @@ is unchanged (see B-items).
 **Fix direction:** in `StepConditionMiddleware` (only when a `ReceivedStamp` is present, see C-05) load the run with a
 fresh read and **skip the handler** when the run is not `running` or when `getCurrentJobStep()` ≠ `currentStep`; remove
 the `stopMessengerWorkers()` call. Document that handlers do not need to check `isRunning()` any more.
+
+**Done:** for received envelopes `StepConditionMiddleware` reloads the run and returns without calling the handler when
+the run is not `running`, is on another step than the message, or no longer exists (logged to the GEE channel). The
+worker event that follows is ignored by the agent for the same reasons (C-02). `stopJobExecutionOnError()` no longer
+stops the messenger workers. The JobRun docs say that queued messages of cancelled/failed runs are skipped and handlers
+need not check `isRunning()`; a message already being handled still runs to its end.
 
 ---
 

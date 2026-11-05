@@ -46,6 +46,9 @@ $jobExecutionAgent->cancelJobRun($jobRun->getId());
 ```
 
 The state of the job run will be set to `cancelled` and the job run will be stopped.
+Messages of the job run that are still queued are consumed without calling their handler, the same applies when a job
+run failed because of `stop_on_first_error`. Handlers therefore do not need to check `isRunning()` themselves; a
+message that is already being handled when the job run is cancelled still runs to its end.
 
 ## Rerun Job Run
 

@@ -27,7 +27,6 @@ use Pimcore\Bundle\GenericExecutionEngineBundle\Repository\JobRunErrorLogReposit
 use Pimcore\Bundle\GenericExecutionEngineBundle\Repository\JobRunRepositoryInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\ErrorHandlingMode;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\SelectionProcessingMode;
-use Pimcore\Helper\StopMessengerWorkersTrait;
 use Pimcore\Model\Element\ElementDescriptor;
 use Pimcore\Translation\Translator;
 use Psr\Log\LoggerInterface;
@@ -39,8 +38,6 @@ use Throwable;
  */
 final class JobExecutionAgent implements JobExecutionAgentInterface
 {
-    use StopMessengerWorkersTrait;
-
     private const string LOG_JOB_RUN_ID_KEY = '%job_run_id%';
 
     private const string LOG_JOB_RUN_NAME_KEY = '%job_run_name%';
@@ -325,7 +322,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         string $errorMessage
     ): void
     {
-        $this->stopMessengerWorkers();
+        // queued messages of the run are skipped by StepConditionMiddleware once the run is failed
         $this->setJobRunError($jobRun, $errorMessage, [], false);
         $this->genericExecutionEngineLogger->info("[JobRun {$jobRun->getId()}]: JobRun cancelled due to errors.");
         $this->jobRunRepository->updateLogLocalizedWithDomain(
