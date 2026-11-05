@@ -287,11 +287,15 @@ installer creates it and migration `Version20261105000300` adds it to existing t
 serialized job. `getLastJobRunByName()` compares it exactly (case-sensitive, names cut to `JobRun::JOB_NAME_LENGTH` on
 both sides) and orders by `creationDate`, then `id`.
 
-### [ ] B-21 – `getTotalCount()` ignores the owner filter of `getJobRunsByUserId()`
+### [x] B-21 – `getTotalCount()` ignores the owner filter of `getJobRunsByUserId()`
 **File:** `src/Repository/JobRunRepository.php:164-187`
 The list is restricted to the owner (no "see all" permission) but the total counts **all** runs → wrong pagination
 (empty pages) and disclosure of the overall number of runs. **Fix:** `getTotalCountByUserId(?int $ownerId)` with the
 same criteria.
+
+**Done:** `getTotalCountByUserId(?int $ownerId)` counts with the criteria of `getJobRunsByUserId()` (0 without owner
+unless the user may see all runs), `getTotalCountForUser(UserInterface)` with those of `getJobRunsForUser()`.
+`getTotalCount()` stays the unfiltered count for system code. Callers in the admin UI bundle have to switch.
 
 ---
 

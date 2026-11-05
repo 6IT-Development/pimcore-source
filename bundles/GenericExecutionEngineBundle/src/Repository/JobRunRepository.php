@@ -295,6 +295,30 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
         return $this->pimcoreEntityManager->getRepository(JobRun::class)->count([]);
     }
 
+    public function getTotalCountByUserId(?int $ownerId = null): int
+    {
+        $params = [];
+        if (!$this->permissionService->isAllowedToSeeAllJobRuns()) {
+            if ($ownerId === null) {
+                return 0;
+            }
+            $params['ownerId'] = $ownerId;
+        }
+
+        return $this->pimcoreEntityManager->getRepository(JobRun::class)->count($params);
+    }
+
+    public function getTotalCountForUser(UserInterface $user): int
+    {
+        try {
+            $criteria = $this->getUserCriteria($user);
+        } catch (PermissionException) {
+            return 0;
+        }
+
+        return $this->pimcoreEntityManager->getRepository(JobRun::class)->count($criteria);
+    }
+
     public function getRunningJobsByUserId(
         int   $ownerId,
         array $orderBy = [],

@@ -127,7 +127,21 @@ interface JobRunRepositoryInterface
      */
     public function getAllJobRuns(array $orderBy = [], int $limit = 100, int $offset = 0): array;
 
+    /**
+     * Number of all job runs without any permission check, for system code only; lists shown to a user count with
+     * getTotalCountByUserId() or getTotalCountForUser().
+     */
     public function getTotalCount(): int;
+
+    /**
+     * Number of the job runs getJobRunsByUserId() returns for $ownerId, without limit and offset.
+     */
+    public function getTotalCountByUserId(?int $ownerId = null): int;
+
+    /**
+     * Number of the job runs getJobRunsForUser() returns for the user, without limit and offset.
+     */
+    public function getTotalCountForUser(UserInterface $user): int;
 
     public function getRunningJobsByUserId(
         int   $ownerId,
