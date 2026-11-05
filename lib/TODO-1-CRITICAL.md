@@ -310,7 +310,7 @@ B-36–B-42 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-30–I-37.
 
 ## DataObject
 
-## [ ] C-06 – Class description breaks out of the generated doc block: PHP code injection into `var/classes/DataObject/<Class>.php`
+## [x] C-06 – Class description breaks out of the generated doc block: PHP code injection into `var/classes/DataObject/<Class>.php`
 
 **File:** `lib/DataObject/ClassBuilder/ClassBuilder.php:47-55`; `models/DataObject/ClassDefinition.php:961` (`setDescription()`,
 no validation); `:331-367` (`save()` validates name / id / parent class / traits, not the description)
@@ -342,6 +342,16 @@ $cd .= ' * ' . $description . "\n";
 emit it with `str_replace('*/', '*\/', …)` **after** stripping all `*` / `/` sequences in a loop until stable. Best:
 generate the doc block with a code generator that escapes comments (I-38). Add a regression test with `**//`,
 `*/*/`, `/***/` (I-45).
+
+**Done:** new `Pimcore\DataObject\ClassBuilder\DocCommentHelper::escapeText()` (`@internal`) escapes every `*/` as
+`*\/` in one pass (the result cannot contain a new terminator) and continues `\n`, `\r\n` and `\r` line breaks with
+` * `. `ClassBuilder` uses it for the class description instead of the stripping `str_replace()`, and so does
+`ClassDefinition::getInfoDocBlock()` for the description and the (previously not sanitized at all) title in the header
+of `var/classes/definition_<Class>.php`. Unit test `tests/Unit/DataObject/ClassBuilder/DocCommentHelperTest.php`
+tokenizes a generated header with `**//` + payload, `*/*/`, `/***/` and multi-line terminators: one doc comment,
+nothing injected. Not covered here (same stripping pattern, no TODO item yet): field titles in the getter / setter /
+filter doc blocks of `models/DataObject/ClassDefinition/Data.php` and its subclasses, and the custom-layout
+description in `CustomLayout::getInfoDocBlock()`.
 
 ---
 

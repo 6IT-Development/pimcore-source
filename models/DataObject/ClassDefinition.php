@@ -21,6 +21,7 @@ use Exception;
 use Pimcore;
 use Pimcore\Cache;
 use Pimcore\Cache\RuntimeCache;
+use Pimcore\DataObject\ClassBuilder\DocCommentHelper;
 use Pimcore\DataObject\ClassBuilder\FieldDefinitionDocBlockBuilderInterface;
 use Pimcore\DataObject\ClassBuilder\PHPClassDumperInterface;
 use Pimcore\Db;
@@ -514,14 +515,11 @@ final class ClassDefinition extends Model\AbstractModel implements ClassDefiniti
         $cd .= ' * Variants: ' . ($this->getAllowVariants() ? 'yes' : 'no') . "\n";
 
         if ($title = $this->getTitle()) {
-            $cd .= ' * Title: ' . $title . "\n";
+            $cd .= ' * Title: ' . DocCommentHelper::escapeText($title) . "\n";
         }
 
         if ($description = $this->getDescription()) {
-            $description = str_replace(['/**', '*/', '//'], '', $description);
-            $description = str_replace("\n", "\n * ", $description);
-
-            $cd .= ' * ' . $description . "\n";
+            $cd .= ' * ' . DocCommentHelper::escapeText($description) . "\n";
         }
 
         $cd .= " *\n";

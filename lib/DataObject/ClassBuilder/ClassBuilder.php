@@ -45,13 +45,7 @@ class ClassBuilder implements ClassBuilderInterface
         $cd .= ' * Variants: ' . ($classDefinition->getAllowVariants() ? 'yes' : 'no') . "\n";
 
         if ($description = $classDefinition->getDescription()) {
-            $description = str_replace(
-                ['/**', '*/', '//', "\n"],
-                ['', '', '', "\n * "],
-                $description
-            );
-
-            $cd .= ' * ' . $description . "\n";
+            $cd .= ' * ' . DocCommentHelper::escapeText($description) . "\n";
         }
 
         $cd .= " *\n";
