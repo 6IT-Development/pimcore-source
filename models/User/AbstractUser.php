@@ -87,22 +87,20 @@ abstract class AbstractUser extends Model\AbstractModel implements AbstractUserI
     {
         $user = new static();
         self::checkCreateData($values);
-        $user->setValues($values);
+        $user->setValues($values, true);
         $user->save();
 
         return $user;
     }
 
+    /**
+     * Resolves the id and loads through getById(), so a lookup by name returns the same cached instance
+     */
     public static function getByName(string $name): ?static
     {
-        try {
-            $user = new static();
-            $user->getDao()->getByName($name);
+        $id = Db::get()->fetchOne('SELECT id FROM users WHERE `type` = ? AND `name` = ?', [new static()->getType(), $name]);
 
-            return $user;
-        } catch (Model\Exception\NotFoundException) {
-            return null;
-        }
+        return $id === false ? null : static::getById((int)$id);
     }
 
     public function getId(): ?int

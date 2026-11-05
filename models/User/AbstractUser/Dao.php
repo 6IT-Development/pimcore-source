@@ -206,5 +206,6 @@ class Dao extends Model\Dao\AbstractDao
     {
         $data['lastLogin'] = new DateTime()->getTimestamp();
         $this->db->update('users', $data, ['id' => $this->model->getId()]);
+        $this->model->setValue('lastLogin', $data['lastLogin']);
     }
 }

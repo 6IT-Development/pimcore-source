@@ -52,6 +52,19 @@ class Dao extends Model\User\AbstractUser\Dao
         }
     }
 
+    /**
+     *
+     * @throws Exception
+     */
+    public function getByPasswordRecoveryToken(string $token): void
+    {
+        parent::getByPasswordRecoveryToken($token);
+
+        if (in_array($this->model->getType(), ['user', 'role'])) {
+            $this->loadWorkspaces();
+        }
+    }
+
     public function loadWorkspaces(): void
     {
         $types = ['asset', 'document', 'object'];

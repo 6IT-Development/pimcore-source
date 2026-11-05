@@ -4708,7 +4708,7 @@ last workspace per element id and per path before inserting, so duplicate entrie
 `Workspace\Dao::save()` throws a `LogicException` naming the class for unknown workspace subclasses. The schema change
 stays with I-120.
 
-## [ ] B-235 – `getById()` / `getByName()` / listings return different instances; stale or partially hydrated user objects
+## [x] B-235 – `getById()` / `getByName()` / listings return different instances; stale or partially hydrated user objects
 
 **Files:** `models/User/AbstractUser.php:44-104`; `models/User/AbstractUser/Dao.php:35-81`, `:164-168`;
 `models/User/UserRole/Dao.php:33-53`; `lib/Security/User/UserChecker.php:38-51`; `lib/Tool/Authentication.php:36-68`,
@@ -4728,6 +4728,12 @@ stays with I-120.
 
 **Fix direction:** one cached hydration path for id, name and token; update the model in `setLastLoginDate()`; load
 workspaces in every user lookup (I-115).
+
+**Done:** `getByName()` resolves the id and loads through `getById()`, so login and the rest of the request share the
+runtime-cached instance (with workspaces). `setLastLoginDate()` also updates `lastLogin` on the model, and
+`authenticateSession()` uses the same 60-second throttle as `UserChecker::checkPostAuth()`. `UserRole\Dao` loads the
+workspaces for `getByPasswordRecoveryToken()` too, so saving a token-loaded user keeps them. `create()` skips `null`
+values (`setValues($values, true)`).
 
 ## [ ] B-236 – `Authentication` token / password helpers built on the user model
 

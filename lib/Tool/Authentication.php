@@ -58,7 +58,11 @@ class Authentication
 
             if ($user instanceof Pimcore\Security\User\User && self::isValidUser($user->getUser())) {
                 $pimcoreUser = $user->getUser();
-                $pimcoreUser->setLastLoginDate(); //set user current login date
+
+                // same throttle as UserChecker::checkPostAuth(), this runs on every session authentication
+                if ($pimcoreUser->getLastLogin() <= time() - 60) {
+                    $pimcoreUser->setLastLoginDate(); //set user current login date
+                }
 
                 return $pimcoreUser;
             }
