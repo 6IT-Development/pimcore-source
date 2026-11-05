@@ -16,9 +16,11 @@
 namespace Pimcore\Model\Notification\Listing;
 
 use Doctrine\DBAL\Exception;
+use Pimcore\Logger;
 use Pimcore\Model\Listing\Dao\AbstractDao;
 use Pimcore\Model\Notification;
 use Pimcore\Model\Notification\Listing;
+use UnexpectedValueException;
 
 /**
  * @internal
@@ -64,7 +66,14 @@ class Dao extends AbstractDao
 
         $ids = $this->db->fetchFirstColumn($sql, $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
         foreach ($ids as $id) {
-            $notification = Notification::getById((int)$id);
+            try {
+                $notification = Notification::getById((int)$id);
+            } catch (UnexpectedValueException $e) {
+                // one invalid row (e.g. of a deleted recipient) must not break the whole list
+                Logger::warning(sprintf('Skipping invalid notification %d: %s', $id, $e->getMessage()));
+
+                continue;
+            }
 
             if ($notification instanceof Notification) {
                 $notifications[] = $notification;

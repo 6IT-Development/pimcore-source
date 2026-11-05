@@ -117,7 +117,7 @@ class Dao extends AbstractDao
             throw new UnexpectedValueException('Title of the Notification cannot be empty');
         }
 
-        if (!isset($data['message']) || !is_string($data['message']) || $data['message'] === '') {
+        if ((!isset($data['message']) || !is_string($data['message']) || $data['message'] === '') && !isset($data['payload'])) {
             throw new UnexpectedValueException('Message text of the Notification cannot be empty');
         }
 

@@ -305,10 +305,13 @@ class NotificationService
         $listing = new Listing();
         $listing->setCondition('recipient = ?', [$user]);
 
-        $this->transactional(function () use ($listing): void {
+        $this->transactional(function () use ($listing, $user): void {
             foreach ($listing->getData() as $notification) {
                 $notification->delete();
             }
+
+            // rows the listing skips as invalid
+            Db::get()->delete(Notification\Dao::DB_TABLE_NAME, ['recipient' => $user]);
         });
     }
 

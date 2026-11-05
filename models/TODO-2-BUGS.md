@@ -3611,7 +3611,7 @@ save, or make `data` a `variableNode`.
 
 ## Notification (Scope 7)
 
-## [ ] B-193 – One invalid row breaks the whole notification list (and `deleteAll()`): the model writes what the DAO refuses to read
+## [x] B-193 – One invalid row breaks the whole notification list (and `deleteAll()`): the model writes what the DAO refuses to read
 
 **Files:** `models/Notification/Dao.php:92-142`; `models/Notification.php:107-124`, `:324-329`;
 `models/Notification/Listing/Dao.php:54-77`; `models/User/AbstractUser/Dao.php:153-158`
@@ -3629,6 +3629,12 @@ save, or make `data` a `variableNode`.
 
 **Fix direction:** one `validate()` in `Notification::save()`; when loading, skip broken rows with a warning instead of
 throwing; delete or cascade a user's notifications (I-90).
+
+**Done:** `Notification::validate()` (called by `save()`) rejects what the DAO refuses to load: no recipient, an empty
+title, an empty message without a payload (payload-only notifications are accepted on both sides now).
+`Listing\Dao::load()` skips rows that fail to hydrate with a warning, and `deleteAll()` also removes those rows by
+recipient. Deleting a user deletes the user's notifications and clears the sender of the ones they sent.
+`setCreationDate()` / `setModificationDate()` accept `null`. Open: foreign keys in the schema (I-90).
 
 ## [ ] B-194 – `NotificationService::format()` timestamps are shifted by the PHP timezone offset
 

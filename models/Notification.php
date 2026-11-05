@@ -26,6 +26,7 @@ use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Exception\NotFoundException;
 use Pimcore\Model\Notification\Dao;
+use UnexpectedValueException;
 
 /**
  * @method Dao getDao()
@@ -146,7 +147,7 @@ class Notification extends AbstractModel
     /**
      * @return $this
      */
-    public function setCreationDate(string $creationDate): static
+    public function setCreationDate(?string $creationDate): static
     {
         $this->creationDate = $creationDate;
 
@@ -161,7 +162,7 @@ class Notification extends AbstractModel
     /**
      * @return $this
      */
-    public function setModificationDate(string $modificationDate): static
+    public function setModificationDate(?string $modificationDate): static
     {
         $this->modificationDate = $modificationDate;
 
@@ -319,11 +320,34 @@ class Notification extends AbstractModel
     }
 
     /**
+     * Rejects what the DAO refuses to load, so that one notification cannot break the whole listing
+     *
+     * @throws UnexpectedValueException
+     */
+    public function validate(): void
+    {
+        if (!$this->recipient instanceof User) {
+            throw new UnexpectedValueException('Notification needs a recipient');
+        }
+
+        if ($this->title === '') {
+            throw new UnexpectedValueException('Title of the Notification cannot be empty');
+        }
+
+        // payload-only notifications (Studio) carry no message
+        if (($this->message === null || $this->message === '') && $this->payload === null) {
+            throw new UnexpectedValueException('Message text of the Notification cannot be empty');
+        }
+    }
+
+    /**
      * @throws Exception
      */
     public function save(): void
     {
         $this->dispatchEvent(new NotificationEvent($this), NotificationEvents::PRE_SAVE);
+        // after PRE_SAVE, listeners may still complete the notification
+        $this->validate();
         $this->getDao()->save();
         $this->dispatchEvent(new NotificationEvent($this), NotificationEvents::POST_SAVE);
     }

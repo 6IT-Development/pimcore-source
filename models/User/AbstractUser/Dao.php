@@ -156,6 +156,10 @@ class Dao extends Model\Dao\AbstractDao
         Logger::debug('delete user with ID: ' . $userId);
 
         $this->db->delete('users', ['id' => $userId]);
+
+        // no foreign keys: a notification of a missing recipient cannot be loaded
+        $this->db->delete(Model\Notification\Dao::DB_TABLE_NAME, ['recipient' => $userId]);
+        $this->db->update(Model\Notification\Dao::DB_TABLE_NAME, ['sender' => null], ['sender' => $userId]);
     }
 
     /**
