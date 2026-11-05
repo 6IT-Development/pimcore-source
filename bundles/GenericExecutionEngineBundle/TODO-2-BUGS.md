@@ -47,10 +47,13 @@ Passes `['%job_id%' => …]`, the translation expects `%job_run_id%` → message
 
 **Done:** `dispatchStepMessage()` passes `getLogParams($jobRun)` like `continueJobStepExecution()`.
 
-### [ ] B-03 – Log translation in `setJobRunError()` ignores the translation domain
+### [x] B-03 – Log translation in `setJobRunError()` ignores the translation domain
 **File:** `src/Agent/JobExecutionAgent.php:344-348`
 `$this->translator->trans($errorMessage, $params)` uses the default `messages` domain, all `gee_*` keys live in
 `admin` → the PSR log gets the raw key. **Fix:** pass `'admin'` (same domain as `updateLogLocalizedWithDomain()`).
+
+**Done:** `setJobRunError()` translates with the `admin` domain and the `en` locale, the same as the run log written by
+`updateLogLocalizedWithDomain()`.
 
 ### [ ] B-04 – `rerunJobRun()` does not reproduce the original run
 **File:** `src/Agent/JobExecutionAgent.php:142-146`

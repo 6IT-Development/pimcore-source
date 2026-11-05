@@ -362,7 +362,8 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     {
         $jobRun->setState($status ?? JobRunStates::FAILED);
         if ($translate) {
-            $translatedMessage = $this->translator->trans($errorMessage, $params);
+            // same domain and locale as the run log written by updateLogLocalizedWithDomain()
+            $translatedMessage = $this->translator->trans($errorMessage, $params, 'admin', 'en');
             $this->genericExecutionEngineLogger->info(
                 "[JobRun {$jobRun->getId()}]: " . $translatedMessage . ' --> Job execution failed.'
             );
