@@ -170,7 +170,7 @@ need not check `isRunning()`; a message already being handled still runs to its 
 
 ---
 
-## [ ] C-05 – `StepConditionMiddleware` runs on dispatch *and* consume and double-counts skipped messages
+## [x] C-05 – `StepConditionMiddleware` runs on dispatch *and* consume and double-counts skipped messages
 
 **Files:** `src/Messenger/Middleware/StepConditionMiddleware.php:41-59`, `config/pimcore/config.yaml:11-15`,
 `src/EventSubscriber/JobExecutionSubscriber.php:63-71`, `src/Agent/JobExecutionAgent.php:451-477`
@@ -191,6 +191,12 @@ Bus middleware is executed for `dispatch()` (sending side) and again when the wo
 **Fix direction:** act only on received envelopes (`$envelope->last(ReceivedStamp::class) !== null`), otherwise pass
 through. When skipping, do **not** call the agent – let the worker event drive the continuation exactly once (e.g. add a
 custom `StepSkippedStamp` and have `JobExecutionSubscriber` log the skip). Replace the recursion by queuing.
+
+**Done:** `StepConditionMiddleware` passes every envelope without `ReceivedStamp` straight on, so the condition is
+evaluated once, in the worker, and dispatching a step no longer recurses into the agent. A skipped message is logged to
+the run and the middleware returns without calling the agent; the following `WorkerMessageHandledEvent` counts it
+exactly once. The agent dependency of the middleware is removed (no stamp was needed, the skip is logged in the
+middleware).
 
 ---
 

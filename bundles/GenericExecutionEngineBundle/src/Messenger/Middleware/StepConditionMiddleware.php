@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Middleware;
 
-use Pimcore\Bundle\GenericExecutionEngineBundle\Agent\JobExecutionAgentInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Extractor\JobRunExtractorInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\JobRunStates;
@@ -29,14 +28,17 @@ use Symfony\Component\Messenger\Middleware\StackInterface;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 
 /**
+ * Decides on the consuming side whether the handler of a GEE message runs. Messages being dispatched pass through
+ * untouched. A skipped message is still counted for its step by the WorkerMessageHandledEvent that follows
+ * (JobExecutionSubscriber), exactly like a handled one.
+ *
  * @internal
  */
 final readonly class StepConditionMiddleware implements MiddlewareInterface
 {
     public function __construct(
-        private JobExecutionAgentInterface $jobExecutionAgent,
-        private JobRunExtractorInterface   $jobRunExtractor,
-        private LoggerInterface            $genericExecutionEngineLogger,
+        private JobRunExtractorInterface $jobRunExtractor,
+        private LoggerInterface          $genericExecutionEngineLogger,
     )
     {
     }
@@ -44,21 +46,18 @@ final readonly class StepConditionMiddleware implements MiddlewareInterface
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
     {
         $message = $envelope->getMessage();
-        if ($message instanceof GenericExecutionEngineMessageInterface) {
-            if ($envelope->last(ReceivedStamp::class) !== null && !$this->isForRunningStep($message)) {
-                // the job run was cancelled, failed or left the step: do not run the handler for queued messages
-                return $envelope;
-            }
+        if (!$message instanceof GenericExecutionEngineMessageInterface
+            || $envelope->last(ReceivedStamp::class) === null) {
+            return $stack->next()->handle($envelope, $stack);
+        }
 
-            if ($this->jobRunExtractor->checkCondition($message)) {
-                return $stack->next()->handle($envelope, $stack);
-            }
+        if (!$this->isForRunningStep($message)) {
+            // the job run was cancelled, failed or left the step: do not run the handler for queued messages
+            return $envelope;
+        }
 
-            $this->logToJobRun(
-                $message,
-            );
-
-            $this->jobExecutionAgent->continueJobMessageExecution($message);
+        if (!$this->jobRunExtractor->checkCondition($message)) {
+            $this->logToJobRun($message);
 
             return $envelope;
         }
