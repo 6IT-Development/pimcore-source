@@ -380,8 +380,9 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
             return [$b->isForce(), $b->getPriority()] <=> [$a->isForce(), $a->getPriority()];
         });
 
-        // remove overrun
-        array_splice($this->saveQueue, $this->maxWriteToCacheItems);
+        // remove overrun - preserve the keys, numeric cache keys like '123' are int array keys that array_splice() would
+        // renumber, so a later save of the same key would not replace the queued item
+        $this->saveQueue = array_slice($this->saveQueue, 0, $this->maxWriteToCacheItems, true);
     }
 
     /**

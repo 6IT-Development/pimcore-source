@@ -932,6 +932,22 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertEquals(['tag_a' => true], $this->getHandlerPropertyValue('clearedTags'));
     }
 
+    public function testCleanupQueueKeepsNumericKeys(): void
+    {
+        $this->handler->save('123', 'old');
+        $this->handler->save('456', 'other');
+        $this->handler->cleanupQueue();
+
+        $this->handler->save('123', 'new');
+
+        $queue = $this->getHandlerPropertyValue('saveQueue');
+        $this->assertCount(2, $queue);
+        $this->assertSame(['123', '456'], array_map('strval', array_keys($queue)));
+
+        $this->handler->writeSaveQueue();
+        $this->assertSame('new', $this->cache->getItem('123')->get());
+    }
+
     public static function falsyValues(): array
     {
         return [

@@ -297,7 +297,7 @@ ignored `output` is neither scheduled by `clearTags()` / `addTagClearedOnShutdow
 
 ---
 
-## [ ] B-08 – `cleanupQueue()` renumbers numeric cache keys: the queue then holds duplicates of the same key
+## [x] B-08 – `cleanupQueue()` renumbers numeric cache keys: the queue then holds duplicates of the same key
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:340`, `:355-364`, `:803-812`
 
@@ -308,6 +308,10 @@ ignored `output` is neither scheduled by `clearTags()` / `addTagClearedOnShutdow
 
 **Fix direction:** keep the queue keyed by string and truncate with `array_slice($queue, 0, $max, true)`; then the
 `processedKeys` check can go (I-03).
+
+**Done:** `cleanupQueue()` truncates with `array_slice(…, true)`, so numeric keys keep their slot and a later save of
+the same key replaces the queued item. The `processedKeys` check stays for I-03. Test: re-saving `'123'` after a
+cleanup replaces the queued value.
 
 ---
 
