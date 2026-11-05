@@ -20,6 +20,7 @@ namespace Pimcore\Workflow\Notification;
 use Exception;
 use Pimcore\Logger;
 use Pimcore\Model\Element\ElementInterface;
+use Pimcore\Model\Notification;
 use Pimcore\Model\Notification\Service\NotificationService;
 use Symfony\Component\Workflow\Workflow;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -50,6 +51,10 @@ class PimcoreNotificationService extends AbstractNotificationService
 
             foreach ($recipients as $language => $recipientsPerLanguage) {
                 $title = $this->translator->trans('workflow_change_email_notification_subject', [$subjectType . ' ' . $subject->getFullPath(), $workflow->getName()], 'admin', $language);
+                // the title contains the full element path, which can exceed the column size
+                if (mb_strlen($title) > Notification::TITLE_MAX_LENGTH) {
+                    $title = mb_substr($title, 0, Notification::TITLE_MAX_LENGTH - 1) . '…';
+                }
                 $message = $this->translator->trans(
                     'workflow_change_email_notification_text',
                     [

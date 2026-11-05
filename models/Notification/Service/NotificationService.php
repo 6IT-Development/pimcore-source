@@ -57,20 +57,13 @@ class NotificationService
         ?ElementInterface $element = null
     ): void
     {
-        $sender = User::getById($fromUser);
         $recipient = User::getById($userId);
 
         if (!$recipient instanceof User) {
             throw new UnexpectedValueException(sprintf('No user found with the ID %d', $userId));
         }
 
-        if (empty($title)) {
-            throw new UnexpectedValueException('Title of the Notification cannot be empty');
-        }
-
-        if (empty($message)) {
-            throw new UnexpectedValueException('Message text of the Notification cannot be empty');
-        }
+        $sender = $this->validateAndGetSender($fromUser, $title, $message);
 
         $notification = new Notification();
         $notification->setRecipient($recipient);
@@ -123,6 +116,9 @@ class NotificationService
 
         $users = $listing->getUsers();
         $users = $this->userService->filterUsersWithPermission($users);
+
+        // fail before the first notification is sent, not after some members got one
+        $this->validateAndGetSender($fromUser, $title, $message);
 
         foreach ($users as $user) {
             $this->sendToUser($user->getId(), $fromUser, $title, $message, $element);
@@ -328,6 +324,32 @@ class NotificationService
 
         // rows the listing skips as invalid
         Db::get()->delete(Notification\Dao::DB_TABLE_NAME, ['recipient' => $user]);
+    }
+
+    /**
+     * Validates the parts that are the same for every recipient
+     *
+     * @throws UnexpectedValueException
+     */
+    private function validateAndGetSender(int $fromUser, string $title, string $message): ?User
+    {
+        // '0' is a valid title and message
+        if ($title === '') {
+            throw new UnexpectedValueException('Title of the Notification cannot be empty');
+        }
+
+        if ($message === '') {
+            throw new UnexpectedValueException('Message text of the Notification cannot be empty');
+        }
+
+        $sender = User::getById($fromUser);
+
+        // 0 is the system user, which may be missing in older installations
+        if (!$sender instanceof User && $fromUser !== 0) {
+            throw new UnexpectedValueException(sprintf('No sender found with the ID %d', $fromUser));
+        }
+
+        return $sender;
     }
 
     /**

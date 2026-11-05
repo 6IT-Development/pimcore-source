@@ -3741,7 +3741,7 @@ instead of inserting it again. `deleteAll()` no longer wraps the deletions in a 
 see C-34), so `POST_DELETE` fires after the row is deleted for good. Open: a transaction opened by a caller around
 `save()` / `delete()` still delays the commit past the post events (I-88).
 
-## [ ] B-199 – Notification small defects
+## [x] B-199 – Notification small defects
 
 **Files:** `models/Notification.php:66`, `:201-214`; `models/Notification/Service/NotificationService.php:59-74`,
 `:90-133`; `bundles/CoreBundle/config/pimcore/default.yaml:148`; `bundles/InstallBundle/dump/install.sql:804-805`
@@ -3756,6 +3756,12 @@ see C-34), so `POST_DELETE` fires after the row is deleted for good. Open: a tra
   transaction open (C-34).
 
 **Fix direction:** `?string` → `string` consistently; `=== ''` checks; validate the sender and the lengths in the model.
+
+**Done:** `setTitle()` / `getTitle()` use `string`. `sendToUser()` checks title and message with `=== ''` and throws for
+an unknown sender (except `0`, the system user). `Notification::validate()` rejects titles over 250 and types over 20
+characters (`TITLE_MAX_LENGTH` / `TYPE_MAX_LENGTH`); the workflow notification shortens its title (which contains the
+element path) instead of failing. `sendToGroup()` validates title, message and sender before the first notification
+is sent, so these errors no longer leave a group half notified; a DB error midway still does.
 
 ## [ ] B-200 – Notification tests assert nothing; `testSendToGroup` expects a count that cannot happen
 

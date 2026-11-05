@@ -35,6 +35,10 @@ class Notification extends AbstractModel
 {
     use RecursionBlockingEventDispatchHelperTrait;
 
+    public const int TITLE_MAX_LENGTH = 250;
+
+    public const int TYPE_MAX_LENGTH = 20;
+
     /**
      * @internal
      *
@@ -199,7 +203,7 @@ class Notification extends AbstractModel
         return $this;
     }
 
-    public function getTitle(): ?string
+    public function getTitle(): string
     {
         return $this->title;
     }
@@ -207,7 +211,7 @@ class Notification extends AbstractModel
     /**
      * @return $this
      */
-    public function setTitle(?string $title): static
+    public function setTitle(string $title): static
     {
         $this->title = $title;
 
@@ -332,6 +336,15 @@ class Notification extends AbstractModel
 
         if ($this->title === '') {
             throw new UnexpectedValueException('Title of the Notification cannot be empty');
+        }
+
+        // the column sizes, a non-strict SQL mode would truncate silently
+        if (mb_strlen($this->title) > self::TITLE_MAX_LENGTH) {
+            throw new UnexpectedValueException(sprintf('Title of the Notification cannot be longer than %d characters', self::TITLE_MAX_LENGTH));
+        }
+
+        if ($this->type !== null && mb_strlen($this->type) > self::TYPE_MAX_LENGTH) {
+            throw new UnexpectedValueException(sprintf('Type of the Notification cannot be longer than %d characters', self::TYPE_MAX_LENGTH));
         }
 
         // payload-only notifications (Studio) carry no message
