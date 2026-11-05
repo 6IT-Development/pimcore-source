@@ -4878,7 +4878,7 @@ stored type is logged and read as `string`. `setScope()` keeps `null` and maps t
 `SettingsStore::set()` throws `InvalidArgumentException` when the value does not fit the type (`int` or a digit string
 for `int`, numeric for `float`, `bool` / `0` / `1` / `''` for `bool`). Reading legacy rows still uses `settype()`.
 
-## [ ] B-241 – Email log rows end up empty: field overflow and DB errors are swallowed after an empty `INSERT`
+## [x] B-241 – Email log rows end up empty: field overflow and DB errors are swallowed after an empty `INSERT`
 
 **Files:** `models/Tool/Email/Log/Dao.php:59-115`; `models/Tool/Email/Log.php:381-402`; `lib/Helper/Mail.php:146-197`;
 `bundles/InstallBundle/dump/install.sql:211-232`
@@ -4897,6 +4897,14 @@ for `int`, numeric for `float`, `bool` / `0` / `1` / `''` for `bool`). Reading l
 **Fix direction:** one `INSERT` with all columns; `JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE`; truncate or
 widen the columns (`MEDIUMTEXT` for params, I-127); let the exception reach `Mail::sendWithoutRendering()`, which already
 catches and logs it; store the raw URI.
+
+**Done:** `Log\Dao::save()` inserts a new log with all columns in one `INSERT` (the empty `create()` is gone) and no
+longer catches DB errors, so a failed save throws before any body file is written; `Mail::sendWithoutRendering()`
+logs the message. Values that do not fit are shortened: `requestUri`, `from`, `subject` (500) and `replyTo` (255) by
+characters, `error` to the `TEXT` size; `params` over the `TEXT` size are replaced by a note, since cut JSON cannot be
+read. The params JSON is encoded with `JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE`. `requestUri` stays
+HTML-escaped: the admin grid that displays it is in admin-ui-classic-bundle and was not checked for escaping, so
+storing the raw URI could open an XSS.
 
 ## [ ] B-242 – Loaded email logs throw on most getters; `getParams()` returns a different structure and re-saving double-wraps it
 

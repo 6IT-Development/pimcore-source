@@ -17,7 +17,7 @@ namespace Pimcore\Model\Tool\Email\Log;
 
 use DateTimeInterface;
 use Exception;
-use Pimcore\Logger;
+use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Tool\Email\Log;
 use stdClass;
@@ -34,6 +34,10 @@ class Dao extends Model\Dao\AbstractDao
      *
      */
     protected static string $dbTable = 'email_log';
+
+    private const array VARCHAR_COLUMN_LENGTHS = ['requestUri' => 500, 'from' => 500, 'replyTo' => 255, 'subject' => 500];
+
+    private const int TEXT_COLUMN_BYTES = 65535;
 
     /**
      * Get the data for the object from database for the given id, or from the ID which is set in the object
@@ -54,14 +58,12 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
-     * Save document to database
+     * Save document to database, a new log is inserted with all columns at once
+     *
+     * @throws Exception
      */
     public function save(): void
     {
-        if (!$this->model->getId()) {
-            $this->create();
-        }
-
         $data = [];
 
         $emailLog = $this->model->getObjectVars();
@@ -82,19 +84,47 @@ class Dao extends Model\Dao\AbstractDao
                 } elseif (is_array($value)) {
                     //converts the dynamic params to a basic json string
                     $preparedData = self::createJsonLoggingObject($value);
-                    $value = json_encode($preparedData);
+                    $value = json_encode($preparedData, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
                 }
 
-                $key = $this->db->quoteIdentifier($key);
-                $data[$key] = $value;
+                $data[$key] = $this->fitColumn($key, $value);
             }
         }
 
-        try {
+        $data = Helper::quoteDataIdentifiers($this->db, $data);
+
+        if ($this->model->getId()) {
             $this->db->update(self::$dbTable, $data, ['id' => $this->model->getId()]);
-        } catch (Exception) {
-            Logger::emerg('Could not Save emailLog with the id "' . $this->model->getId() . '" ');
+        } else {
+            $this->db->insert(self::$dbTable, $data);
+            $this->model->setId((int)$this->db->lastInsertId());
+            $this->model->setModificationDate(time());
         }
+    }
+
+    /**
+     * Shortens values that do not fit their column, so strict SQL mode does not reject the whole log entry
+     */
+    private function fitColumn(string $column, mixed $value): mixed
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        if (isset(self::VARCHAR_COLUMN_LENGTHS[$column])) {
+            return mb_substr($value, 0, self::VARCHAR_COLUMN_LENGTHS[$column]);
+        }
+
+        if (in_array($column, ['params', 'error'], true) && strlen($value) > self::TEXT_COLUMN_BYTES) {
+            if ($column === 'params') {
+                // cut JSON would be unreadable, so the params are replaced by a note
+                return json_encode([self::prepareLoggingData('params', sprintf('Not logged, the params have %d bytes', strlen($value)))]);
+            }
+
+            return mb_strcut($value, 0, self::TEXT_COLUMN_BYTES);
+        }
+
+        return $value;
     }
 
     /**
@@ -103,15 +133,6 @@ class Dao extends Model\Dao\AbstractDao
     public function delete(): void
     {
         $this->db->delete(self::$dbTable, ['id' => $this->model->getId()]);
-    }
-
-    public function create(): void
-    {
-        $this->db->insert(self::$dbTable, []);
-
-        $date = time();
-        $this->model->setId((int)$this->db->lastInsertId());
-        $this->model->setModificationDate($date);
     }
 
     protected function createJsonLoggingObject(array|string $data): array|string

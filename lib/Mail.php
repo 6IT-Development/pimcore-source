@@ -537,8 +537,8 @@ class Mail extends Email
                 $error = $sendingFailedException?->getMessage()
                     ?? ($suppressed ? 'Not sent: every recipient is on the email blocklist' : null);
                 $this->lastLogEntry = MailHelper::logEmail($this, $recipients, $error);
-            } catch (Exception) {
-                Logger::emerg("Couldn't log Email");
+            } catch (Exception $e) {
+                Logger::emerg("Couldn't log Email: " . $e->getMessage());
             }
         }
 
