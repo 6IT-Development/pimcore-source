@@ -62,9 +62,11 @@ the direct consumers where a defect originates in the interplay (`lib/Migrations
 `SystemConfig`, `TemporaryFileHelperTrait`, `StopMessengerWorkersTrait`, `SymfonyExpression/*`), plus the direct consumers where a
 defect originates in the interplay (`lib/File.php::getLocalTempFilePath()`, `lib/SystemSettingsConfig.php:72`,
 `lib/Messenger/Middleware/CollectGarbageMiddleware.php`, `bundles/GenericExecutionEngineBundle/src/Extractor/JobRunExtractor.php`)
-**(15, partial)** `lib/Http/**` – scanned so far: `RequestHelper`, `Response/CodeInjector`, `Request/Resolver/EditmodeResolver`.
-**Not yet scanned:** `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`, `Context/PimcoreContextGuesser`,
-`Exception/ResponseException`, `Request/Resolver/{Abstract,Document,OutputTimestamp,PimcoreContext,ResponseHeader,Site,StaticPage,Template}Resolver`
+**(15)** `lib/Http/**` (`RequestHelper`, `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`,
+`Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Response/CodeInjector`, `Request/Resolver/*`), plus the direct
+consumers where a defect originates in the interplay (`models/Document/Editable/Scheduledblock.php::filterElements()`,
+`bundles/CoreBundle/config/services.yaml:77-88`, `bundles/CoreBundle/src/DependencyInjection/Configuration.php::addHttpClientNode()`,
+`bundles/CoreBundle/src/EventListener/Traits/ResponseInjectionTrait.php`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-2-BUGS.md](TODO-2-BUGS.md),
@@ -78,10 +80,14 @@ C-06 / B-26 `exit` in commands, I-29 `lib/Console` helpers – not repeated),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-63 one loader for `config_location` imports – not
 repeated),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-43 move `SessionStatus` wiring, I-52 worker
-state reset – not repeated)
+state reset – not repeated),
+[CoreBundle TODO-1/2/3](../bundles/CoreBundle/TODO-1-CRITICAL.md) (Scope 15: C-08 `ResponseStack` / shared request state reset,
+C-09 output-timestamp override in static pages, B-50 empty route matcher entry, I-49 `isHtmlResponse()` cost, I-61
+`httpclient.proxy_pass` in container parameters – not repeated)
 
 Code quality, readability, modernization (Symfony 7.4 / PHP 8.4) and logic simplifications. No behaviour change unless
-stated. IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`).
+stated. IDs are stable – refer to them as `I-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15:
+`765372d338`; Scope 15 files other than `RequestHelper` / `CodeInjector` / `EditmodeResolver`: `6473319314`).
 Grouped by area: **Core cache handler** I-01–I-08, **RuntimeCache** I-09, **Warming** I-10,
 **CacheClearer / SessionStatus** I-11, **Tests** I-12,
 **Composer** I-13–I-15, **Config** I-16–I-22, **Console** I-23–I-29,
@@ -90,7 +96,7 @@ Grouped by area: **Core cache handler** I-01–I-08, **RuntimeCache** I-09, **Wa
 **Element** I-58–I-59, **Event** I-60–I-64,
 **Exception** I-65, **Extension** I-66–I-71,
 **Helper** I-72–I-77,
-**Http** I-78 (partial scope).
+**Http** I-78–I-83.
 
 ---
 
@@ -1380,9 +1386,9 @@ caught in `lib/Image/Optimizer.php:53`, documented in `lib/Image/Optimizer/Optim
 
 ---
 
-## Http (partial – see scope note)
+## Http
 
-### [ ] I-78 – `RequestHelper` / `CodeInjector` / `EditmodeResolver` cleanup (partial scope)
+### [ ] I-78 – `RequestHelper` / `CodeInjector` / `EditmodeResolver` cleanup
 
 **File:** `lib/Http/RequestHelper.php`, `lib/Http/Response/CodeInjector.php`, `lib/Http/Request/Resolver/EditmodeResolver.php`
 
@@ -1392,4 +1398,88 @@ caught in `lib/Image/Optimizer.php:53`, documented in `lib/Image/Optimizer/Optim
   admin bundle's route config.
 - `CodeInjector::injectIntoPresetSelector()` uses regex on HTML; `<body` inside a script or comment can match. With the
   C-09 fix, use one DOM-based path for all selectors.
-- Remaining `lib/Http` files are not reviewed yet; continue Scope 15 in the next session.
+
+### [ ] I-79 – `ClientFactory`: timeouts, visibility, service definition
+
+**File:** `lib/Http/ClientFactory.php`, `bundles/CoreBundle/config/services.yaml:77-88`
+
+- `RequestOptions::TIMEOUT => 3600` with no `CONNECT_TIMEOUT`: one unreachable host blocks a web request (or a worker)
+  for up to an hour. Add a short `connect_timeout` (e.g. 10 s) and make both configurable under `pimcore.httpclient`.
+- Constructor promotion with `private readonly Config $config`; `===` for the adapter check (`:44`); mark the class `final`.
+- The proxy URI building (B-94) can move to a small private method; read the `httpclient` sub-array once.
+- `services.yaml:78` says *"keep this public until static method was removed"*: the class has no static method any
+  more, so the service can be private (check external bundles that fetch it from the container first).
+- The `curl_exec` / `tcp://` workaround (`:50-54`, issue #3835) is probably obsolete with Guzzle 7 (its stream handler
+  rewrites an `http://` proxy itself – verify), so `http://` could be used always.
+
+### [ ] I-80 – `RequestMatcherFactory` / `PimcoreContextGuesser`: build each chain matcher once
+
+**Files:** `lib/Http/RequestMatcherFactory.php`, `lib/Http/Context/PimcoreContextGuesser.php`
+
+- `buildRequestMatcher()` returns a bare `array` of matchers and `guess()` wraps it in a new `ChainRequestMatcher` for
+  every entry on every call (`:55-63`). Return `ChainRequestMatcher` (or `RequestMatcherInterface`) from the factory and
+  type the result `list<RequestMatcherInterface>`.
+- An entry without criteria builds an empty chain, which matches every request. `Configuration::addRoutesChild()` now
+  rejects such entries (CoreBundle B-50), but `addContextRoutes()` is public and bypasses the config; skip or reject empty
+  entries in the factory too.
+- `addContextRoutes()` after the first `guess()` is silently ignored, because `$matchers` is cached. Reset
+  `$this->matchers = null` in `addContextRoutes()`.
+- `isset($entry['x']) && $entry['x']` → `!empty($entry['x'])` / `($entry['x'] ?? false)`; the *"TODO add support for IPs,
+  attributes and schemes"* can map to `IpsRequestMatcher` / `SchemeRequestMatcher` if the config gains those keys.
+- Constructor promotion, `readonly`, empty doc blocks (`/** … * */`) can go.
+
+### [ ] I-81 – Request resolvers: typing and small simplifications
+
+**Files:** `lib/Http/Request/Resolver/{Abstract,Document,OutputTimestamp,PimcoreContext,ResponseHeader,Site,StaticPage,Template}Resolver.php`
+
+- `AbstractRequestResolver`: `getCurrentRequest()` / `getMainRequest()` call the stack twice. Use
+  `$this->requestStack->getCurrentRequest() ?? throw new LogicException(…)`. Promote `protected readonly RequestStack`.
+- `PimcoreContextResolver`:
+  - `getPimcoreContext()` is declared `?string` but always returns a string (the guesser has a default), so the
+    `if (!$resolvedContext) return false;` branch in `matchesPimcoreContext()` (`:96-100`) is dead;
+  - `matchesPimcoreContext()` normalisation (`:84-94`) → `$context = (array)$context; if ($context === []) throw …;
+    return in_array($this->getPimcoreContext($request), $context, true);`;
+  - typo *"contect"* (`:77`).
+- `SiteResolver::getSite()` returns the raw attribute under a `?Site` return type: anything else under `_site` (e.g. a
+  route default) is a `TypeError`. Check with `instanceof`. `isSiteRequest()` (`:61`) `null !== $site && $site instanceof
+  Site` → `$this->getSite($request) instanceof Site`.
+- `DocumentResolver::setDocument()` reads `getProperty('language')` twice and passes it to `setLocale(string)` without a
+  type check. Read it once and require a non-empty string.
+- `OutputTimestampResolver`: `timestampWasQueried()` has no caller in this repository and the flag lives on the shared
+  service, so it is never reset between requests in a worker. Store it as a request attribute or remove it (deprecate
+  first, it is a public method).
+- `ResponseHeaderResolver::getResponseHeaders()` trusts the attribute to be `ResponseHeader[]`. Filter with `instanceof`
+  or document that only `addResponseHeader()` may write it.
+- `TemplateResolver::getTemplate()` / `SiteResolver::getSitePath()` return raw attributes under `?string` (same
+  `TypeError` risk as `getSite()`).
+- Empty doc blocks (`/** * * */`) can go. Mark `final` where nothing extends the class (`StaticPageResolver`,
+  `TemplateResolver`, `ResponseHeaderResolver`, `OutputTimestampResolver` – all `@internal`), then `static::` → `self::`.
+
+### [ ] I-82 – `ResponseHelper`, `ResponseStack`, `ResponseException`: small items
+
+**Files:** `lib/Http/ResponseHelper.php`, `lib/Http/ResponseStack.php`, `lib/Http/Exception/ResponseException.php`
+
+- `ResponseHelper::disableCache()`:
+  - `no-transform` is added twice (`:38`, `:47`);
+  - `post-check` / `pre-check` (IE-only) and `max-stale` (a request directive) have no effect in responses;
+  - `max-age=0` together with `no-store` is redundant. With the B-92 fix, one fixed header value is enough.
+- `ResponseStack`: `!empty($this->responses)` → `$this->responses !== []`; `getLastResponse()` → `$this->responses[array_key_last(…)]`
+  (no internal-pointer side effect from `end()`). Mark `final`.
+- `ResponseException`:
+  - `?Exception $previous` → `?\Throwable`;
+  - the exception message is always `''`, which makes logs useless. Use e.g. `sprintf('Response %d', $response->getStatusCode())`;
+  - `protected Response $response` → `private readonly` with constructor promotion. It is not `@internal`, so keep the
+    constructor signature compatible (add parameters at the end only).
+
+### [ ] I-83 – Tests for Scope 15
+
+**Files:** new `tests/Unit/Http/*`
+
+- `ResponseHelper::disableCache()` on a fresh response and on a `public, s-maxage=3600` response, with and without `$force`
+  (B-92).
+- `ResponseHelper::isHtmlResponse()` for `JsonResponse` with `<html` in the payload, `text/html` without `<html`, a
+  redirect, and a missing content type (B-93).
+- `ClientFactory` proxy URI with a password containing `@:/#%` and without a port (B-94).
+- `OutputTimestampResolver::getOutputTimestamp()` with an empty request stack (B-95).
+- `PimcoreContextGuesser`: first matching context wins; routes added after the first `guess()` are used (I-80).
+- `RequestHelper`, `CodeInjector`, `EditmodeResolver` cases from B-88–B-91 and C-09.

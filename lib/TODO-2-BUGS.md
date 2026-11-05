@@ -64,9 +64,11 @@ the direct consumers where a defect originates in the interplay (`lib/Migrations
 `SystemConfig`, `TemporaryFileHelperTrait`, `StopMessengerWorkersTrait`, `SymfonyExpression/*`), plus the direct consumers where a
 defect originates in the interplay (`lib/File.php::getLocalTempFilePath()`, `lib/SystemSettingsConfig.php:72`,
 `lib/Messenger/Middleware/CollectGarbageMiddleware.php`, `bundles/GenericExecutionEngineBundle/src/Extractor/JobRunExtractor.php`)
-**(15, partial)** `lib/Http/**` – scanned so far: `RequestHelper`, `Response/CodeInjector`, `Request/Resolver/EditmodeResolver`.
-**Not yet scanned:** `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`, `Context/PimcoreContextGuesser`,
-`Exception/ResponseException`, `Request/Resolver/{Abstract,Document,OutputTimestamp,PimcoreContext,ResponseHeader,Site,StaticPage,Template}Resolver`
+**(15)** `lib/Http/**` (`RequestHelper`, `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`,
+`Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Response/CodeInjector`, `Request/Resolver/*`), plus the direct
+consumers where a defect originates in the interplay (`models/Document/Editable/Scheduledblock.php::filterElements()`,
+`bundles/CoreBundle/config/services.yaml:77-88`, `bundles/CoreBundle/src/DependencyInjection/Configuration.php::addHttpClientNode()`,
+`bundles/CoreBundle/src/EventListener/Traits/ResponseInjectionTrait.php`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-1-CRITICAL.md](TODO-1-CRITICAL.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
@@ -82,10 +84,14 @@ C-06 / B-26 `exit` in commands, I-29 `lib/Console` helpers – not repeated),
 [CoreBundle TODO-1/2](../bundles/CoreBundle/TODO-2-BUGS.md) (C-11 config directory prefix, B-55 shallow merge of
 `config_location` – not repeated),
 [CoreBundle TODO-3](../bundles/CoreBundle/TODO-3-IMPROVEMENTS.md) (I-52 messenger worker static state reset, I-20
-`CacheWarmingCommand` – not repeated)
+`CacheWarmingCommand` – not repeated),
+[CoreBundle TODO-1/2/3](../bundles/CoreBundle/TODO-1-CRITICAL.md) (Scope 15: C-08 `ResponseStack` / shared request state reset,
+C-09 output-timestamp override in static pages, B-50 empty route matcher entry, I-49 `isHtmlResponse()` cost, I-61
+`httpclient.proxy_pass` in container parameters – not repeated)
 
 Functional defects: wrong results, crashes on reachable input, swallowed errors, misleading output.
-IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`).
+IDs are stable – refer to them as `B-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15:
+`765372d338`; Scope 15 files other than `RequestHelper` / `CodeInjector` / `EditmodeResolver`: `6473319314`).
 Grouped by area, roughly ordered by impact inside each group: **Core cache handler / write lock** B-01–B-09,
 **RuntimeCache** B-10, **Warming** B-11–B-12, **FullPage / SessionStatus** B-13, **Tests** B-14,
 **Composer** B-15–B-16, **Config** B-17–B-25,
@@ -96,7 +102,7 @@ Grouped by area, roughly ordered by impact inside each group: **Core cache handl
 **Event** B-69–B-72, **Exception** – (no bug findings),
 **Extension** B-73–B-77,
 **Helper** B-78–B-87,
-**Http** B-88–B-91 (partial scope).
+**Http** B-88–B-95.
 
 ---
 
@@ -1811,7 +1817,7 @@ hex in `ContrastColor`, move the type check out of the `try`, and use `$this->lo
 
 ---
 
-## Http (partial – see scope note)
+## Http
 
 ## [ ] B-88 – `RequestHelper::createRequestWithContext()` permanently changes the shared `RequestContext` host
 
@@ -1857,3 +1863,75 @@ directly) and leave the shared context untouched.
 
 **Fix direction:** reset the flag via `ResetInterface` (or scope it with try/finally at the caller), `$this->logger?->`,
 and `(bool)` the attribute.
+
+## [ ] B-92 – `ResponseHelper::disableCache()` never sets `Cache-Control` unless forced, and keeps `public` / `s-maxage` when forced
+
+**File:** `lib/Http/ResponseHelper.php:34-57` (`:36`)
+
+- `ResponseHeaderBag::__construct()` always sets `Cache-Control` (to `''` when the response has none), so
+  `$response->headers->has('Cache-Control')` is `true` for **every** response. Without `$force` the `no-cache` /
+  `no-store` / `private` directives are therefore never added; only `Pragma` and `Expires` are set. Symfony then sends
+  its computed default (`no-cache, private`, or `private, must-revalidate` once `Expires` is set), so `no-store` is missing
+  and a response with `Last-Modified` / `ETag` stays revalidatable from caches.
+- With `$force = true` the directives are **added** to the existing ones: a response that already had
+  `public, s-maxage=3600` ends up as `public, private, no-store, …, s-maxage=3600`. Shared caches (Varnish, CDN) read
+  `s-maxage` / `public` and may still store the response.
+- No caller in this repository; it is a public helper for bundles (verify the admin bundle's usage before changing the
+  semantics of `$force`).
+
+**Fix direction:** check for an explicitly set value (`$response->headers->hasCacheControlDirective(…)` for the relevant
+directives, or `'' !== $response->headers->get('Cache-Control', '')`) instead of `has()`. When applying, replace the
+header (`$response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate, private')` and
+`removeCacheControlDirective('public' / 's-maxage')`) instead of adding to it.
+
+## [ ] B-93 – `ResponseHelper::isHtmlResponse()` treats any response containing `<html` as HTML, so code injection rewrites JSON / XML / text responses
+
+**File:** `lib/Http/ResponseHelper.php:59-70` (`:65`); callers `lib/Http/Response/CodeInjector.php:61`,
+`bundles/CoreBundle/src/EventListener/Traits/ResponseInjectionTrait.php:37-40`,
+`bundles/CoreBundle/src/EventListener/Frontend/InternalWysiwygHtmlAttributeFilterListener.php:64`
+
+- The check ignores `Content-Type` and redirects. A `JsonResponse` / XML feed / `text/plain` export whose payload contains
+  an HTML document as a string (rendered snippet, e-mail preview, page source view) is classified as HTML:
+  - `CodeInjector` inserts raw `<script>` markup at the `<body` / `</head>` match inside the JSON string, which breaks the
+    JSON (unescaped quotes) or the XML;
+  - `InternalWysiwygHtmlAttributeFilterListener` regex-replaces attributes inside the payload.
+- Conversely `<HTML` (upper case) is not matched, so legacy uppercase templates get no injection.
+- `LocaleListener::isHtmlResponse()` (`bundles/CoreBundle/src/EventListener/Frontend/LocaleListener.php:148-158`)
+  already uses the right rule (no redirect, `Content-Type` missing or containing `html`); the two implementations
+  disagree.
+
+**Fix direction:** one implementation in `ResponseHelper`: exclude redirects, binary and streamed responses, then decide
+by `Content-Type` (missing → HTML, as `Response::prepare()` defaults to `text/html`; otherwise contains `html`). Keep the
+`<html` body sniff only as a case-insensitive fallback for a missing content type, if at all. Let `LocaleListener` use it.
+
+## [ ] B-94 – `ClientFactory::createClient()` builds the proxy URI from raw credentials and an optional port
+
+**File:** `lib/Http/ClientFactory.php:44-59` (`:47`, `:56`); config `bundles/CoreBundle/src/DependencyInjection/Configuration.php:323-357`
+
+- `proxy_user` / `proxy_pass` are concatenated unencoded into `http://user:pass@host:port`. A password containing `@`,
+  `:`, `/`, `#`, `?` or `%` changes how the URI is parsed: the proxy host becomes part of the password, or the
+  credentials are cut off. Every outgoing request (`pimcore.http_client`, `GuzzleHttp\Client`) then fails with a
+  connection / 407 error that does not point at the password.
+- `proxy_port` defaults to `null`, which gives `http://host:`. Curl then falls back to its default proxy port (1080), not
+  80 / 8080. `proxy_host` `null` with `adapter: Proxy` gives `http://:`, which fails late on the first request instead of
+  at container compile time.
+- `$this->config['httpclient']['proxy_pass']` is read without `?? ''`; with the CoreBundle defaults it is `null`, so the
+  URI contains `user:@`.
+
+**Fix direction:** `rawurlencode()` user and password, append `:port` only when it is set, and validate in
+`addHttpClientNode()` that `proxy_host` is set when `adapter` is `Proxy`.
+
+## [ ] B-95 – `OutputTimestampResolver::getOutputTimestamp()` throws outside an HTTP request, breaking scheduled blocks in CLI code
+
+**File:** `lib/Http/Request/Resolver/OutputTimestampResolver.php:36-59`; caller
+`models/Document/Editable/Scheduledblock.php:73-95` (`:82-83`)
+
+- `getMainRequest()` throws `LogicException('A main request must be available.')` when the request stack is empty.
+  `Scheduledblock::filterElements()` calls it for every non-editmode access (`loop()`, `start()`, `blockStart()`,
+  `getCurrentIndex()`, `getIterator()`), so iterating a scheduled block from a command, a messenger handler or a
+  maintenance task (exports, search indexing, data migration scripts that read editables) fails, although "now" is
+  well defined there. Rendering through `DocumentRenderer` is not affected (it pushes a request).
+- `setOutputTimestamp()` has the same problem.
+
+**Fix direction:** return `time()` when `$this->requestStack->getMainRequest()` is `null` (and make `setOutputTimestamp()`
+a no-op or keep the value on the service until `reset()`). Add a unit test without a request.

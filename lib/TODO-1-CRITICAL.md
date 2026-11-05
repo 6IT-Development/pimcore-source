@@ -63,9 +63,11 @@ the direct consumers where a defect originates in the interplay (`lib/Migrations
 `SystemConfig`, `TemporaryFileHelperTrait`, `StopMessengerWorkersTrait`, `SymfonyExpression/*`), plus the direct consumers where a
 defect originates in the interplay (`lib/File.php::getLocalTempFilePath()`, `lib/SystemSettingsConfig.php:72`,
 `lib/Messenger/Middleware/CollectGarbageMiddleware.php`, `bundles/GenericExecutionEngineBundle/src/Extractor/JobRunExtractor.php`)
-**(15, partial)** `lib/Http/**` – scanned so far: `RequestHelper`, `Response/CodeInjector`, `Request/Resolver/EditmodeResolver`.
-**Not yet scanned:** `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`, `Context/PimcoreContextGuesser`,
-`Exception/ResponseException`, `Request/Resolver/{Abstract,Document,OutputTimestamp,PimcoreContext,ResponseHeader,Site,StaticPage,Template}Resolver`
+**(15)** `lib/Http/**` (`RequestHelper`, `ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`, `ResponseStack`,
+`Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Response/CodeInjector`, `Request/Resolver/*`), plus the direct
+consumers where a defect originates in the interplay (`models/Document/Editable/Scheduledblock.php::filterElements()`,
+`bundles/CoreBundle/config/services.yaml:77-88`, `bundles/CoreBundle/src/DependencyInjection/Configuration.php::addHttpClientNode()`,
+`bundles/CoreBundle/src/EventListener/Traits/ResponseInjectionTrait.php`)
 
 Target: Symfony 7.4, PHP 8.4 (branch `s74-p84`)
 Related: [TODO-2-BUGS.md](TODO-2-BUGS.md), [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md),
@@ -76,10 +78,14 @@ C-06 / B-26 `exit` in commands, I-29 `lib/Console` helpers – not repeated),
 [models TODO-1](../models/TODO-1-CRITICAL.md) (C-09 path traversal through `getVarConfigFile()` – the repository
 fix is tracked there, not repeated),
 [models TODO-1](../models/TODO-1-CRITICAL.md) (C-23 site cache tagging – not repeated),
-[CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-09 static page generator / session check – not repeated)
+[CoreBundle TODO-1](../bundles/CoreBundle/TODO-1-CRITICAL.md) (C-09 static page generator / session check – not repeated),
+[CoreBundle TODO-1/2/3](../bundles/CoreBundle/TODO-1-CRITICAL.md) (Scope 15: C-08 `ResponseStack` / shared request state reset,
+C-09 output-timestamp override in static pages, B-50 empty route matcher entry, I-49 `isHtmlResponse()` cost, I-61
+`httpclient.proxy_pass` in container parameters – not repeated)
 
 Errors that cause data corruption, stale data that is never invalidated, or a whole subsystem silently not working.
-IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15: `765372d338`).
+IDs are stable – refer to them as `C-xx` in later sessions. Line numbers are from commit `765372d338` (Scope 2–15:
+`765372d338`; Scope 15 files other than `RequestHelper` / `CodeInjector` / `EditmodeResolver`: `6473319314`).
 Grouped by area: **Core cache handler / write lock** C-01–C-03, **Composer** – (no critical findings),
 **Config** C-04–C-05, **Console** – (no critical findings),
 **Controller** – (no critical findings),
@@ -90,7 +96,7 @@ Grouped by area: **Core cache handler / write lock** C-01–C-03, **Composer** �
 **Exception** – (no critical findings),
 **Extension** – (no critical findings),
 **Helper** – (no critical findings),
-**Http** C-09 (partial scope).
+**Http** C-09.
 
 ---
 
@@ -419,7 +425,7 @@ local-path behaviour of `TemporaryFileHelperTrait` by C-08 (not repeated).
 
 ---
 
-## Http (partial – see scope note)
+## Http
 
 ## [ ] C-09 – `CodeInjector::injectIntoDomSelector()` runs `html_entity_decode()` over the whole page: escaped content becomes live HTML
 
@@ -438,3 +444,8 @@ local-path behaviour of `TemporaryFileHelperTrait` by C-08 (not repeated).
 **Fix direction:** never decode the whole document. Parse the code as a fragment (`DOMDocument::createDocumentFragment()`
 + `appendXML()` / HTML5 parser) and insert the nodes before / after / instead of the target's children, then serialize
 without entity decoding.
+
+No further critical findings in the rest of Scope 15 (`ClientFactory`, `RequestMatcherFactory`, `ResponseHelper`,
+`ResponseStack`, `Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Request/Resolver/*`). See
+[TODO-2-BUGS.md](TODO-2-BUGS.md) B-88–B-95 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-78–I-83. The
+`ResponseStack` reset is covered by CoreBundle C-08 (already applied: `ResponseStack implements ResetInterface`).
