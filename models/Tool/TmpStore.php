@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Tool;
 
+use InvalidArgumentException;
 use Pimcore\Model;
 use Pimcore\Model\Tool\TmpStore\Dao;
 
@@ -47,13 +48,13 @@ final class TmpStore extends Model\AbstractModel
      * @internal
      *
      */
-    protected int $date;
+    protected int $date = 0;
 
     /**
      * @internal
      *
      */
-    protected int $expiryDate;
+    protected int $expiryDate = 0;
 
     /**
      * @internal
@@ -76,35 +77,31 @@ final class TmpStore extends Model\AbstractModel
         return self::$instance;
     }
 
-    private static function getDefaultLifetime(): int
+    /**
+     * null and 0 mean the default of 7 days
+     */
+    private static function getLifetime(?int $lifetime): int
     {
-        return 86400 * 7;
+        if ($lifetime < 0) {
+            throw new InvalidArgumentException('The tmp store lifetime must not be negative');
+        }
+
+        return $lifetime ?: 86400 * 7;
     }
 
+    /**
+     * Stores the item unless an unexpired one with this id exists
+     *
+     * @return bool true if stored, false if an item with this id already exists
+     */
     public static function add(string $id, mixed $data, ?string $tag = null, ?int $lifetime = null): bool
     {
-        $instance = self::getInstance();
-
-        if (!$lifetime) {
-            $lifetime = self::getDefaultLifetime();
-        }
-
-        if (self::get($id)) {
-            return true;
-        }
-
-        return $instance->getDao()->add($id, $data, $tag, $lifetime);
+        return self::getInstance()->getDao()->insertIfAbsent($id, $data, $tag, self::getLifetime($lifetime));
     }
 
     public static function set(string $id, mixed $data, ?string $tag = null, ?int $lifetime = null): bool
     {
-        $instance = self::getInstance();
-
-        if (!$lifetime) {
-            $lifetime = self::getDefaultLifetime();
-        }
-
-        return $instance->getDao()->add($id, $data, $tag, $lifetime);
+        return self::getInstance()->getDao()->add($id, $data, $tag, self::getLifetime($lifetime));
     }
 
     public static function delete(string $id): void
@@ -195,10 +192,6 @@ final class TmpStore extends Model\AbstractModel
 
     public function update(?int $lifetime = null): bool
     {
-        if (!$lifetime) {
-            $lifetime = 86400;
-        }
-
-        return $this->getDao()->add($this->getId(), $this->getData(), $this->getTag(), $lifetime);
+        return $this->getDao()->add($this->getId(), $this->getData(), $this->getTag(), self::getLifetime($lifetime));
     }
 }

@@ -98,7 +98,8 @@ class MaintenanceModeHelper implements MaintenanceModeHelperInterface
 
     protected function addEntry(string $sessionId): void
     {
-        TmpStore::add(self::ENTRY_ID, $sessionId);
+        // set, not add: activating again must store the new session id
+        TmpStore::set(self::ENTRY_ID, $sessionId);
         self::clearLocalCache();
     }
 

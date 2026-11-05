@@ -4814,7 +4814,7 @@ installer markers and the editor session store fail loudly instead of reporting 
 `tag` against the 190-character columns first and throw `InvalidArgumentException`. The `bool` return type stays
 (always `true`) until I-123.
 
-## [ ] B-239 – `TmpStore`: scalar types are lost, `add()` is not atomic, `unserialize()` failures become `false`, expired ids are returned
+## [x] B-239 – `TmpStore`: scalar types are lost, `add()` is not atomic, `unserialize()` failures become `false`, expired ids are returned
 
 **Files:** `models/Tool/TmpStore.php:84-134`, `:196-203`; `models/Tool/TmpStore/Dao.php:30-80`;
 `lib/Maintenance/Tasks/TmpStoreCleanupTask.php:35-38`; `lib/Maintenance/Executor.php:114-128`;
@@ -4841,6 +4841,15 @@ installer markers and the editor session store fail loudly instead of reporting 
 **Fix direction:** serialize every non-string value (or store a type column like `SettingsStore`); `INSERT … ON
 DUPLICATE KEY` free "add" via `INSERT IGNORE` + affected rows; `unserialize($data, ['allowed_classes' => …])` and treat
 failures as "not found"; filter `expiryDate` in `getIdsByTag()`; one default lifetime (I-124).
+
+**Done:** every value except a string is serialized, so `int`, `float`, `bool` and `null` come back with their type
+(existing unserialized rows are read as before). `add()` is atomic: the DAO removes an expired row for the id and
+inserts, a duplicate key means "taken", and `add()` then returns `false` instead of `true`.
+`MaintenanceModeHelper::addEntry()` uses `set()`, so activating again stores the new session id. A serialized value
+that fails to unserialize or yields `__PHP_Incomplete_Class` is logged and treated as not found (`allowed_classes`
+cannot be narrowed, the store holds arbitrary objects). `getIdsByTag()` skips expired items, `update()` uses the same
+7-day default as `add()` / `set()`, negative lifetimes throw, and `date` / `expiryDate` default to `0`, so a `NULL`
+expiry counts as expired instead of throwing.
 
 ## [ ] B-240 – `SettingsStore`: `NULL` data crashes `get()`, `getScope()` is never `null`, `settype()` coerces silently
 
