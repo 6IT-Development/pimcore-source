@@ -33,6 +33,7 @@ use Pimcore\Model\Document\Listing;
 use Pimcore\Model\Element\DuplicateFullPathException;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Model\Tool\Email\Log as EmailLog;
 use Pimcore\SystemSettingsConfig;
 use Pimcore\Tool;
 use Pimcore\Tool\Frontend as FrontendTool;
@@ -653,6 +654,16 @@ class Document extends Element\AbstractElement
         // remove translations
         $service = new Document\Service();
         $service->removeTranslation($this);
+
+        // the FK on email_log.documentId deletes the log rows with the document, their body files are removed here
+        $emailLogIds = $this->getDao()->getEmailLogIds();
+        if ($emailLogIds) {
+            self::afterDeleteCommit(static function () use ($emailLogIds): void {
+                foreach ($emailLogIds as $emailLogId) {
+                    (new EmailLog())->setId($emailLogId)->deleteLogFiles();
+                }
+            });
+        }
     }
 
     public function delete(): void

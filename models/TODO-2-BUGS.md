@@ -4942,7 +4942,7 @@ not added, because the admin `EmailController` (admin-ui-classic-bundle) reads t
 objects as strings; `createJsonLoggingObject()` returns `[]` for a non-array instead of a JSON string.
 `getBodyHtml()` returns `string`, `setReplyTo()` accepts `null`. A string passed to `setParams()` is now stored as it is.
 
-## [ ] B-243 – Email log storage and cleanup: orphaned body files, `null` items in listings, the whole history loaded at once
+## [x] B-243 – Email log storage and cleanup: orphaned body files, `null` items in listings, the whole history loaded at once
 
 **Files:** `models/Tool/Email/Log.php:186-202`, `:283-340`, `:373-379`; `models/Tool/Email/Log/Listing/Dao.php:33-66`;
 `bundles/CoreBundle/src/Command/EmailLogsCleanupCommand.php:60-67`; `bundles/InstallBundle/dump/install.sql:231`
@@ -4961,6 +4961,14 @@ objects as strings; `createJsonLoggingObject()` returns `[]` for a non-array ins
 **Fix direction:** delete files in a `POST_DELETE` path that also covers document deletion (or drop the cascade and
 clean up in code); skip `null` in `load()`; batch the cleanup (`LIMIT` + loop) and add a retention maintenance task
 (I-126).
+
+**Done:** `Document::doDelete()` reads the IDs of the document's email logs (`Document\Dao::getEmailLogIds()`, any
+document type, since `Mail::setDocument()` accepts every document) and removes their body files after the outermost
+commit, so the cascade no longer leaves them behind; the cascade itself stays. `Log::delete()` deletes the row first
+and the files after it (a failed DB delete keeps the files), through the new `deleteLogFiles()`, and does nothing for
+an unsaved log. `Listing\Dao::load()` skips logs deleted since the IDs were read, and `getTotalCount()` no longer turns
+SQL errors into `0`. `EmailLogsCleanupCommand` already deleted in ID-keyed batches; the retention maintenance task stays
+with I-126, and the two `fileExists()` calls per loaded log stay (the admin grid reads the flags).
 
 ## [ ] B-244 – Email blocklist: addresses are not normalised; listing and getters have side effects
 

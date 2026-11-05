@@ -15,7 +15,6 @@
 
 namespace Pimcore\Model\Tool\Email\Log\Listing;
 
-use Exception;
 use Pimcore\Model;
 use Pimcore\Model\Tool\Email\Log\Listing;
 
@@ -36,7 +35,10 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
         $emailLogsArray = [];
         foreach ($emailLogs as $log) {
-            $emailLogsArray[] = Model\Tool\Email\Log::getById($log);
+            // the row may have been deleted since the IDs were fetched
+            if ($emailLog = Model\Tool\Email\Log::getById((int)$log)) {
+                $emailLogsArray[] = $emailLog;
+            }
         }
         $this->model->setEmailLogs($emailLogsArray);
 
@@ -58,10 +60,6 @@ class Dao extends Model\Listing\Dao\AbstractDao
      */
     public function getTotalCount(): int
     {
-        try {
-            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM email_log ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception) {
-            return 0;
-        }
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM email_log ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }

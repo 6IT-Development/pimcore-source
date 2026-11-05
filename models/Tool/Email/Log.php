@@ -377,10 +377,31 @@ class Log extends Model\AbstractModel
      */
     public function delete(): void
     {
+        if (!$this->getId()) {
+            return;
+        }
+
+        // the row goes first: if that fails, the log still has its files
+        $this->getDao()->delete();
+        $this->deleteLogFiles();
+    }
+
+    /**
+     * Removes the html and text log files from the storage
+     *
+     * @internal
+     */
+    public function deleteLogFiles(): void
+    {
+        if (!$this->getId()) {
+            return;
+        }
+
         $storage = Storage::get('email_log');
         $storage->delete($this->getHtmlLogFilename());
         $storage->delete($this->getTextLogFilename());
-        $this->getDao()->delete();
+        $this->emailLogExistsHtml = 0;
+        $this->emailLogExistsText = 0;
     }
 
     public function save(): void

@@ -318,6 +318,16 @@ class Dao extends Model\Element\Dao
     }
 
     /**
+     * Returns the IDs of the email logs of mails sent with this document
+     *
+     * @return int[]
+     */
+    public function getEmailLogIds(): array
+    {
+        return array_map('intval', $this->db->fetchFirstColumn('SELECT id FROM email_log WHERE documentId = ?', [$this->model->getId()]));
+    }
+
+    /**
      * Quick check if there are children.
      */
     public function hasChildren(?bool $includingUnpublished = null, ?User $user = null): bool
