@@ -567,26 +567,40 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
         if ($result) {
             $this->logger->debug('Added entry {key} to cache', ['key' => $item->getKey()]);
         } else {
-            try {
-                $itemData = $item->get();
-                if (!is_scalar($itemData)) {
-                    $itemData = serialize($itemData);
-                }
-                $itemSizeText = formatBytes(mb_strlen((string)$itemData));
-            } catch (Throwable) {
-                $itemSizeText = 'unknown';
-            }
-
             $this->logger->error(
-                'Failed to add entry {key} to cache. Item size was {itemSize}',
+                'Failed to add entry {key} of type {type} to cache. Item size was {itemSize}',
                 [
                     'key' => $item->getKey(),
-                    'itemSize' => $itemSizeText,
+                    'type' => get_debug_type($data),
+                    'itemSize' => $this->getItemSizeText($data),
                 ]
             );
         }
 
         return $result;
+    }
+
+    /**
+     * Size of the data for the failed-save log, in bytes
+     *
+     * Non-scalar data is only measured in debug mode: serializing a large object graph right after its save failed
+     * doubles the memory use, and the size differs from what the adapter's marshaller would store anyway.
+     */
+    private function getItemSizeText(mixed $data): string
+    {
+        if (is_scalar($data)) {
+            return formatBytes(strlen((string) $data));
+        }
+
+        try {
+            if (!\Pimcore::inDebugMode()) {
+                return 'unknown (only measured in debug mode)';
+            }
+
+            return formatBytes(strlen(serialize($data))) . ' (serialized)';
+        } catch (Throwable) {
+            return 'unknown';
+        }
     }
 
     /**

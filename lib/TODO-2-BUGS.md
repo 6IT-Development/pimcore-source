@@ -315,7 +315,7 @@ cleanup replaces the queued value.
 
 ---
 
-## [ ] B-09 – Failed-save log measures the item size wrongly and may exhaust memory
+## [x] B-09 – Failed-save log measures the item size wrongly and may exhaust memory
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:521-538`
 
@@ -327,6 +327,10 @@ cleanup replaces the queued value.
 
 **Fix direction:** `strlen()`; better, log the type / class and let the adapter's own `CacheItem::METADATA` /
 marshaller error be the source; skip the size calculation when not in debug.
+
+**Done:** the failed-save error logs the key, the type (`get_debug_type()`) and a size from the new private
+`getItemSizeText()`: `strlen()` bytes for scalars, the serialized byte length for other data only in debug mode
+(`Pimcore::inDebugMode()`), otherwise "unknown". No test (log text only).
 
 ---
 
