@@ -48,17 +48,15 @@ class Dao extends Model\Dao\AbstractDao
             throw new InvalidArgumentException(sprintf('Property "%s" is not assigned to an element', $name));
         }
 
-        $data = $this->model->getData();
-
-        if ($this->model->getType() == 'object' || $this->model->getType() == 'asset' || $this->model->getType() == 'document') {
-            if ($data instanceof Model\Element\ElementInterface) {
-                $data = $data->getId();
-            } else {
-                $data = null;
+        if ($type === 'object' || $type === 'asset' || $type === 'document') {
+            // the stored id, also when the target is missing: the dependencies show the dangling reference
+            $data = $this->model->getRelationId();
+        } else {
+            $data = $this->model->getData();
+            if ($data !== null && !is_scalar($data)) {
+                // a serialized array or object would be read back as the serialized string
+                throw new InvalidArgumentException(sprintf('Property "%s" of type "%s" accepts only scalar data, %s given', $name, $type, get_debug_type($data)));
             }
-        } elseif ($data !== null && !is_scalar($data)) {
-            // a serialized array or object would be read back as the serialized string
-            throw new InvalidArgumentException(sprintf('Property "%s" of type "%s" accepts only scalar data, %s given', $name, $type, get_debug_type($data)));
         }
 
         $cpath = $this->model->getCpath();

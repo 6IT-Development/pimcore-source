@@ -3851,7 +3851,7 @@ without `ctype` (`document` / `asset` / `object`) or `cid`. Open: `type` `NOT NU
 The check is in the DAO (not in `setData()`) because callers set the data before the type (`setDataFromResource()`,
 imports). Rows serialized earlier are still loaded and re-saved as the stored string.
 
-## [ ] B-204 – Relation properties are silently wiped: dangling targets, unknown paths and missing id mappings become `NULL`
+## [x] B-204 – Relation properties are silently wiped: dangling targets, unknown paths and missing id mappings become `NULL`
 
 **Files:** `models/Property/Dao.php:35-42`; `models/Property.php:53-74` (`:57-62`), `:120-128`, `:292-303`
 
@@ -3868,6 +3868,12 @@ imports). Rows serialized earlier are still loaded and re-saved as the stored st
 **Fix direction:** keep the raw id in the model and save it as is (`is_numeric($this->data)`); resolve the element only
 in `getData()`. Throw (or report to the caller) on unknown paths. In `rewriteIds()`, keep the old id when the mapping
 target is missing.
+
+**Done:** `Property::getRelationId()` (internal) returns the stored id without loading the element, and
+`Property\Dao::save()` stores it for relation types, so a deleted target keeps its id and no element is loaded per
+save. `setDataFromEditmode()` throws an `InvalidArgumentException` for a non-empty path that does not resolve (an empty
+path still clears the property). `rewriteIds()` works on the stored id and keeps the old target when the mapped element
+does not exist. An unsaved target (id `null`) still stores `NULL`; there is no id to keep.
 
 ## [ ] B-205 – Property small defects
 

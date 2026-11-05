@@ -59,9 +59,12 @@ final class Property extends AbstractModel
         // IMPORTANT: if you use this method be sure that the type of the property is already set
 
         if (in_array($this->getType(), ['document', 'asset', 'object'])) {
-            $el = Element\Service::getElementByPath($this->getType(), (string)$data);
             $this->data = null;
-            if ($el) {
+            if ((string)$data !== '') {
+                $el = Element\Service::getElementByPath($this->getType(), (string)$data);
+                if (!$el) {
+                    throw new \InvalidArgumentException(sprintf('Property "%s": there is no %s "%s"', $this->getName(), $this->getType(), $data));
+                }
                 $this->data = $el->getId();
             }
         } elseif ($this->type == 'bool') {
@@ -127,6 +130,21 @@ final class Property extends AbstractModel
         }
 
         return $this->data;
+    }
+
+    /**
+     * Returns the stored id of a relation property without loading the element, so that a missing
+     * target does not turn into NULL
+     *
+     * @internal
+     */
+    public function getRelationId(): ?int
+    {
+        if ($this->data instanceof ElementInterface) {
+            return $this->data->getId();
+        }
+
+        return is_numeric($this->data) ? (int)$this->data : null;
     }
 
     public function getName(): ?string
@@ -294,11 +312,12 @@ final class Property extends AbstractModel
     public function rewriteIds(array $idMapping): void
     {
         if (!$this->isInherited()) {
-            if (array_key_exists($this->getType(), $idMapping)) {
-                if ($this->getData() instanceof ElementInterface) {
-                    if (array_key_exists((int)$this->getData()->getId(), $idMapping[$this->getType()])) {
-                        $this->setData(Element\Service::getElementById($this->getType(), $idMapping[$this->getType()][$this->getData()->getId()]));
-                    }
+            $id = $this->getRelationId();
+            if ($id !== null && isset($idMapping[$this->getType()][$id])) {
+                // keep the old target when the mapped element does not exist
+                $target = Element\Service::getElementById($this->getType(), $idMapping[$this->getType()][$id]);
+                if ($target) {
+                    $this->setData($target);
                 }
             }
         }
