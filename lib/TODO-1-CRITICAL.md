@@ -211,7 +211,7 @@ No critical findings in Scope 2 (`lib/Composer/PackageInfo.php`). Its defects ar
 
 ## Config
 
-## [ ] C-04 – `fetchAllKeysByReadTargets()` ignores YAML configs with the default settings: select options defined in YAML are missing from the admin and from the class rebuild
+## [x] C-04 – `fetchAllKeysByReadTargets()` ignores YAML configs with the default settings: select options defined in YAML are missing from the admin and from the class rebuild
 
 **File:** `lib/Config/LocationAwareConfigRepository.php:271-278`; `models/DataObject/SelectOptions/Config/Listing/Dao.php:33`;
 `bundles/CoreBundle/src/Command/ClassesRebuildCommand.php:169`, `ClassesDefinitionsBuildCommand.php:95`;
@@ -244,6 +244,13 @@ return array_unique(SettingsStore::getIdsByScope($this->settingsStoreScope));
 `match ($this->getReadTargets()[0] ?? null) { SYMFONY_CONFIG => container keys, SETTINGS_STORE => settings-store ids,
 null => merged + unique, DISABLED => [] }`. Use `getReadTargets()` instead of reading the array directly. Add a test
 for each read-target value (I-22).
+
+**Done:** `fetchAllKeysByReadTargets()` uses `getReadTargets()` and the rule of `loadConfigByKey()`: `symfony-config`
+→ container keys, `settings-store` → settings-store ids, `disabled` → none, no read target (default, or node without
+`read_target`) → both merged and unique (`fetchAllKeys()`). YAML-stored select options are listed again in the admin
+and by the class rebuild commands, and nodes without `read_target` no longer hit an undefined array key. An invalid
+read target throws like in `getReadTargets()`. Unit test `tests/Unit/Config/LocationAwareConfigRepositoryTest.php` covers
+the container, disabled and invalid cases; the settings-store cases need the database (I-22).
 
 ---
 

@@ -274,13 +274,20 @@ class LocationAwareConfigRepository
         ));
     }
 
+    /**
+     * Returns the keys that loadConfigByKey() can load, following the same read-target rule: no read target means
+     * container config and settings store.
+     *
+     * @throws Exception on an invalid read target
+     */
     public function fetchAllKeysByReadTargets(): array
     {
-        if ($this->storageConfig[self::READ_TARGET][self::TYPE] === self::LOCATION_SYMFONY_CONFIG) {
-            return array_keys($this->containerConfig);
-        }
-
-        return array_unique(SettingsStore::getIdsByScope($this->settingsStoreScope));
+        return match ($this->getReadTargets()[0] ?? null) {
+            self::LOCATION_SYMFONY_CONFIG => array_keys($this->containerConfig),
+            self::LOCATION_SETTINGS_STORE => array_values(array_unique(SettingsStore::getIdsByScope($this->settingsStoreScope))),
+            self::LOCATION_DISABLED => [],
+            default => array_values($this->fetchAllKeys()),
+        };
     }
 
     private function invalidateConfigCache(): void
