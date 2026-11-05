@@ -3911,7 +3911,7 @@ Open (I-99, migration): `cpath` as `utf8mb4` and the `inheritable` default.
 
 ## Predefined property (Scope 8)
 
-## [ ] B-206 – Predefined property listing can contain `null`s → opening any element with properties in the admin fails
+## [x] B-206 – Predefined property listing can contain `null`s → opening any element with properties in the admin fails
 
 **Files:** `models/Property/Predefined/Listing/Dao.php:34-51` (`:38-40`); `models/Property/Predefined/Dao.php:76-98`
 (`:85-88`); `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:54-84`; `lib/Config/LocationAwareConfigRepository.php:263-278`;
@@ -3929,6 +3929,10 @@ Open (I-99, migration): `cpath` as `utf8mb4` and the `inheritable` default.
 
 **Fix direction:** `loadIdListByReadTargets()`, skip `null` results with a log entry, return `list<Predefined>`; shared
 fix with B-188.
+
+**Done:** as in B-188: `Listing\Dao::loadList()` takes the ids from `loadIdListByReadTargets()`, skips a definition that
+does not load with a warning, and re-indexes the list after the user filter, so it is a `list<Predefined>` without
+`null`s and `getTotalCount()` counts only loaded definitions.
 
 ## [ ] B-207 – `Predefined::getCtype(): string` throws for definitions without `ctype`
 
