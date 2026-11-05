@@ -355,8 +355,9 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
      */
     protected function addToSaveQueue(CacheQueueItem $item): bool
     {
+        // prepareCacheData() signals "do not cache" with null - falsy values like [], 0 or '' are valid cache data
         $data = $this->prepareCacheData($item->getData());
-        if ($data) {
+        if (null !== $data) {
             $this->saveQueue[$item->getKey()] = $item;
 
             if (count($this->saveQueue) > ($this->maxWriteToCacheItems * 3)) {

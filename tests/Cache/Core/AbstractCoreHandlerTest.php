@@ -902,6 +902,29 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertTrue($this->cacheHasItem('itemA'));
     }
 
+    public static function falsyValues(): array
+    {
+        return [
+            [[]],
+            [0],
+            [''],
+            ['0'],
+            [false],
+        ];
+    }
+
+    /**
+     * @dataProvider falsyValues
+     */
+    public function testFalsyValuesAreWrittenFromTheSaveQueue(mixed $value): void
+    {
+        $this->assertTrue($this->handler->save('itemA', $value));
+        $this->handler->writeSaveQueue();
+
+        $this->assertTrue($this->cacheHasItem('itemA'));
+        $this->assertSame($value, $this->cache->getItem('itemA')->get());
+    }
+
     public function testStoringAnElementKeepsTheCallersInstanceAndDispatchesNoEvent(): void
     {
         $folder = TestHelper::createAssetFolder('cache-handler-');

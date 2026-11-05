@@ -236,7 +236,7 @@ in the runtime cache and dispatches no `POST_LOAD`.
 
 ---
 
-## [ ] B-05 – Queued saves of falsy values (`[]`, `0`, `''`, `'0'`, `false`) are silently dropped
+## [x] B-05 – Queued saves of falsy values (`[]`, `0`, `''`, `'0'`, `false`) are silently dropped
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:336-350` (`:339`); compare `:311-315`
 
@@ -251,6 +251,9 @@ if ($data) {        // prepareCacheData() signals "do not cache" with null, not 
 - `save()` returns `false` → callers that log or retry on `false` treat a valid empty value as an error.
 
 **Fix direction:** `if (null !== $data)`; add a test for `[]` / `0` in the deferred path.
+
+**Done:** `addToSaveQueue()` checks `null !== $data` like the immediate path. Test: `[]`, `0`, `''`, `'0'` and `false`
+are queued and written with their value.
 
 ---
 
