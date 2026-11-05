@@ -19,14 +19,15 @@ namespace Pimcore\Bundle\GenericExecutionEngineBundle\Extractor;
 
 use Doctrine\DBAL\Exception;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Model\Job;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\JobStepInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Repository\JobRunRepositoryInterface;
 use Pimcore\Helper\SymfonyExpression\ExpressionServiceInterface;
 use Pimcore\Model\Element\ElementDescriptor;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
-use Pimcore\Model\Exception\NotFoundException;
 
 final readonly class JobRunExtractor implements JobRunExtractorInterface
 {
@@ -45,13 +46,26 @@ final readonly class JobRunExtractor implements JobRunExtractorInterface
     public function getJobStep(GenericExecutionEngineMessageInterface $message): JobStepInterface
     {
         $jobRun = $this->getJobRun($message);
-        $jobSteps = $jobRun->getJob()?->getSteps();
+        $job = $this->getJobOfRun($jobRun);
+        $jobSteps = $job->getSteps();
+        $stepId = $message->getCurrentJobStep();
 
-        if (!array_key_exists($message->getCurrentJobStep(), $jobSteps)) {
-            throw new NotFoundException('Job not found!');
+        if (!array_key_exists($stepId, $jobSteps)) {
+            throw new JobNotFoundException(
+                "Step $stepId not found in Job {$job->getName()} of JobRun with id: {$jobRun->getId()}"
+            );
         }
 
-        return $jobSteps[$message->getCurrentJobStep()];
+        return $jobSteps[$stepId];
+    }
+
+    /**
+     * @throws JobNotFoundException when the job of the run could not be deserialized
+     */
+    private function getJobOfRun(JobRun $jobRun): Job
+    {
+        return $jobRun->getJob()
+            ?? throw new JobNotFoundException('Job not found for JobRun with id: ' . $jobRun->getId());
     }
 
     public function getEnvironmentData(JobRun $jobRun): array
@@ -145,7 +159,7 @@ final readonly class JobRunExtractor implements JobRunExtractorInterface
         $jobRun = $this->getJobRun($message);
 
         /** @var ElementDescriptor[] $elementDescriptors */
-        $elementDescriptors = $jobRun->getJob()?->getSelectedElements();
+        $elementDescriptors = $this->getJobOfRun($jobRun)->getSelectedElements();
 
         foreach ($elementDescriptors as $elementDescriptor) {
             $element = $this->getElementByType(

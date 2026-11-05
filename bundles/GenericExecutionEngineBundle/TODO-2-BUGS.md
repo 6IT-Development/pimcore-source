@@ -343,12 +343,16 @@ whole list fails. `getState()->value` on a `?JobRunStates` getter. **Fix:** fall
 
 ## Extractor / handler base / middleware
 
-### [ ] B-26 – `JobRunExtractor` null handling
+### [x] B-26 – `JobRunExtractor` null handling
 **File:** `src/Extractor/JobRunExtractor.php:45-55`, `:138-162`
 - `getJobStep()`: `$jobSteps` is `null` when the job is missing → `array_key_exists(…, null)` → `TypeError`; the
   exception text says "Job not found!" for a missing **step** and uses `Pimcore\Model\Exception\NotFoundException`
   instead of the bundle's `JobNotFoundException`.
 - `getElementsFromMessage()`: `foreach` over `null` (warning + empty result) when the job is missing.
+
+**Done:** both methods throw `JobNotFoundException` when the run has no job; `getJobStep()` throws it with
+"Step <id> not found in Job <name> of JobRun with id: <id>" for a missing step. Documented with `@throws` on
+`JobRunExtractorInterface`.
 
 ### [ ] B-27 – Step conditions referencing `context` / `environmentData` fail when those are empty
 **File:** `src/Extractor/JobRunExtractor.php:84-113`

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Extractor;
 
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\JobStepInterface;
 use Pimcore\Model\Element\ElementInterface;
@@ -34,6 +35,9 @@ interface JobRunExtractorInterface
 
     public function getJobRun(GenericExecutionEngineMessageInterface $message, bool $forceReload = false): JobRun;
 
+    /**
+     * @throws JobNotFoundException when the run has no job or the job has no step with the id of the message
+     */
     public function getJobStep(GenericExecutionEngineMessageInterface $message): JobStepInterface;
 
     public function getEnvironmentData(JobRun $jobRun): array;
@@ -51,7 +55,11 @@ interface JobRunExtractorInterface
         array                                  $types = [JobRunExtractorInterface::ASSET_TYPE]
     ): ?ElementInterface;
 
-    /** @return ElementInterface[] */
+    /**
+     * @return ElementInterface[]
+     *
+     * @throws JobNotFoundException when the run has no job
+     */
     public function getElementsFromMessage(
         GenericExecutionEngineMessageInterface $message,
         array                                  $types = [JobRunExtractorInterface::ASSET_TYPE]
