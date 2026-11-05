@@ -39,7 +39,7 @@ class Blocklist extends Model\AbstractModel
     {
         try {
             $address = new self();
-            $address->getDao()->getByAddress($addr);
+            $address->getDao()->getByAddress(self::normalizeAddress($addr));
 
             return $address;
         } catch (Model\Exception\NotFoundException) {
@@ -47,9 +47,28 @@ class Blocklist extends Model\AbstractModel
         }
     }
 
+    /**
+     * Brings an address into the form it is stored and looked up in: without surrounding spaces, `mailto:` prefix and
+     * display name, lower-cased
+     *
+     * @internal
+     */
+    public static function normalizeAddress(string $address): string
+    {
+        $address = trim($address);
+        if (preg_match('/<([^<>]*)>$/', $address, $matches)) {
+            $address = trim($matches[1]);
+        }
+        if (stripos($address, 'mailto:') === 0) {
+            $address = trim(substr($address, 7));
+        }
+
+        return mb_strtolower($address);
+    }
+
     public function setAddress(string $address): void
     {
-        $this->address = $address;
+        $this->address = self::normalizeAddress($address);
     }
 
     public function getAddress(): ?string
@@ -62,12 +81,8 @@ class Blocklist extends Model\AbstractModel
         $this->creationDate = $creationDate;
     }
 
-    public function getCreationDate(): int
+    public function getCreationDate(): ?int
     {
-        if (!$this->creationDate) {
-            $this->creationDate = time();
-        }
-
         return $this->creationDate;
     }
 
@@ -76,12 +91,8 @@ class Blocklist extends Model\AbstractModel
         $this->modificationDate = $modificationDate;
     }
 
-    public function getModificationDate(): int
+    public function getModificationDate(): ?int
     {
-        if (!$this->modificationDate) {
-            $this->modificationDate = time();
-        }
-
         return $this->modificationDate;
     }
 }

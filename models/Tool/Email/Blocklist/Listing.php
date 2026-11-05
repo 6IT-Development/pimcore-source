@@ -23,7 +23,6 @@ use Pimcore\Model;
  * @internal
  *
  * @method \Pimcore\Model\Tool\Email\Blocklist\Listing\Dao getDao()
- * @method void delete()*
  * @method Model\Tool\Email\Blocklist[] load()
  * @method Model\Tool\Email\Blocklist|false current()
  * @method int getTotalCount()

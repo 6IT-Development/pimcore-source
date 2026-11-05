@@ -15,9 +15,12 @@
 
 namespace Pimcore\Model\Tool\Email\Blocklist;
 
+use InvalidArgumentException;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Tool\Email\Blocklist;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Exception\RfcComplianceException;
 
 /**
  * @internal
@@ -42,9 +45,17 @@ class Dao extends Model\Dao\AbstractDao
 
     /**
      * Save object to database
+     *
+     * @throws InvalidArgumentException when the address is not a valid email address
      */
     public function save(): void
     {
+        try {
+            new Address((string)$this->model->getAddress());
+        } catch (RfcComplianceException $e) {
+            throw new InvalidArgumentException(sprintf('"%s" is not a valid email address', $this->model->getAddress()), 0, $e);
+        }
+
         $this->model->setModificationDate(time());
         if (!$this->model->getCreationDate()) {
             $this->model->setCreationDate(time());

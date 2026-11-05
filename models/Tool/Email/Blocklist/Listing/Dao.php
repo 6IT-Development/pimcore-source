@@ -15,7 +15,6 @@
 
 namespace Pimcore\Model\Tool\Email\Blocklist\Listing;
 
-use Exception;
 use Pimcore\Model;
 use Pimcore\Model\Tool\Email\Blocklist\Listing;
 
@@ -32,13 +31,13 @@ class Dao extends Model\Listing\Dao\AbstractDao
      */
     public function load(): array
     {
-        $addressData = $this->db->fetchFirstColumn('SELECT address FROM email_blocklist' . $this->getCondition() . $this->getOrder() . $this->getOffsetLimit(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
+        $addressData = $this->db->fetchAllAssociative('SELECT * FROM email_blocklist' . $this->getCondition() . $this->getOrder() . $this->getOffsetLimit(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
 
         $addresses = [];
         foreach ($addressData as $data) {
-            if ($address = Model\Tool\Email\Blocklist::getByAddress($data)) {
-                $addresses[] = $address;
-            }
+            $address = new Model\Tool\Email\Blocklist();
+            $address->setValues($data, true);
+            $addresses[] = $address;
         }
 
         $this->model->setItems($addresses);
@@ -48,10 +47,6 @@ class Dao extends Model\Listing\Dao\AbstractDao
 
     public function getTotalCount(): int
     {
-        try {
-            return (int)$this->db->fetchOne('SELECT COUNT(*) FROM email_blocklist ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
-        } catch (Exception) {
-            return 0;
-        }
+        return (int)$this->db->fetchOne('SELECT COUNT(*) FROM email_blocklist ' . $this->getCondition(), $this->model->getConditionVariables(), $this->model->getConditionVariableTypes());
     }
 }

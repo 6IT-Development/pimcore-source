@@ -4970,7 +4970,7 @@ an unsaved log. `Listing\Dao::load()` skips logs deleted since the IDs were read
 SQL errors into `0`. `EmailLogsCleanupCommand` already deleted in ID-keyed batches; the retention maintenance task stays
 with I-126, and the two `fileExists()` calls per loaded log stay (the admin grid reads the flags).
 
-## [ ] B-244 – Email blocklist: addresses are not normalised; listing and getters have side effects
+## [x] B-244 – Email blocklist: addresses are not normalised; listing and getters have side effects
 
 **Files:** `models/Tool/Email/Blocklist.php:38-86`; `models/Tool/Email/Blocklist/Dao.php:33-76`;
 `models/Tool/Email/Blocklist/Listing/Dao.php:33-56`
@@ -4986,6 +4986,14 @@ with I-126, and the two `fileExists()` calls per loaded log stay (the admin grid
 
 **Fix direction:** normalise (`trim`, lower-case, `Address::create()->getAddress()`) on write and lookup and reject
 invalid addresses; hydrate listings from one `SELECT *` (I-125).
+
+**Done:** `Blocklist::normalizeAddress()` trims, takes the address out of a `Name <a@b.c>` form, drops a `mailto:`
+prefix and lower-cases; `setAddress()` and `getByAddress()` use it, so `Mail::filterLogAddresses()` and the admin
+match these forms too. `Dao::save()` throws `InvalidArgumentException` for an address that Symfony's `Address` rejects
+(validation stays out of `setAddress()`, so legacy rows still load). The date getters return `?int` without writing
+`time()`; `save()` sets the dates. `Listing\Dao::load()` hydrates from one `SELECT *`, `getTotalCount()` no longer
+hides SQL errors, and the stray `@method void delete()*` is gone. Legacy rows stored with a prefix or display name are
+not rewritten: they no longer match a lookup and have to be re-entered.
 
 ---
 
