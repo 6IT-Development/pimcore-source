@@ -15,12 +15,15 @@
 
 namespace Pimcore\Model\Tool\Email\Log;
 
+use BackedEnum;
 use DateTimeInterface;
 use Exception;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Tool\Email\Log;
 use stdClass;
+use Stringable;
+use UnitEnum;
 
 /**
  * @internal
@@ -76,8 +79,10 @@ class Dao extends Model\Dao\AbstractDao
                     continue;
                 }
 
-                // get the value from the getter
-                $value = $this->model->$getter();
+                // get the value from the getter, except for the params of a loaded log: they are already the stored JSON
+                if ($key !== 'params' || !is_string($value)) {
+                    $value = $this->model->$getter();
+                }
 
                 if (is_bool($value)) {
                     $value = (int)$value;
@@ -98,8 +103,9 @@ class Dao extends Model\Dao\AbstractDao
         } else {
             $this->db->insert(self::$dbTable, $data);
             $this->model->setId((int)$this->db->lastInsertId());
-            $this->model->setModificationDate(time());
         }
+
+        $this->model->setModificationDate(time());
     }
 
     /**
@@ -135,18 +141,16 @@ class Dao extends Model\Dao\AbstractDao
         $this->db->delete(self::$dbTable, ['id' => $this->model->getId()]);
     }
 
-    protected function createJsonLoggingObject(array|string $data): array|string
+    protected function createJsonLoggingObject(array|string $data): array
     {
-        if (!is_array($data)) {
-            return json_encode(new stdClass());
-        } else {
-            $loggingData = [];
+        $loggingData = [];
+        if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $loggingData[] = self::prepareLoggingData($key, $value);
+                $loggingData[] = self::prepareLoggingData((string)$key, $value);
             }
-
-            return $loggingData;
         }
+
+        return $loggingData;
     }
 
     /**
@@ -160,7 +164,7 @@ class Dao extends Model\Dao\AbstractDao
         $class = new stdClass();
         $class->key = $key; // key has to be a string otherwise the treeGrid won't work
 
-        if (is_string($value) || is_int($value) || is_null($value)) {
+        if (is_scalar($value) || is_null($value)) {
             $class->data = ['type' => 'simple',
                 'value' => $value,];
         } elseif ($value instanceof DateTimeInterface) {
@@ -170,9 +174,18 @@ class Dao extends Model\Dao\AbstractDao
             $class->data = ['type' => 'object',
                 'objectId' => $value->getId(),
                 'objectClass' => get_class($value),];
+        } elseif ($value instanceof BackedEnum) {
+            $class->data = ['type' => 'simple',
+                'value' => $value->value,];
+        } elseif ($value instanceof UnitEnum) {
+            $class->data = ['type' => 'simple',
+                'value' => $value->name,];
+        } elseif ($value instanceof Stringable) {
+            $class->data = ['type' => 'simple',
+                'value' => (string)$value,];
         } elseif (is_array($value)) {
             foreach ($value as $entryKey => $entryValue) {
-                $class->children[] = self::prepareLoggingData($entryKey, $entryValue);
+                $class->children[] = self::prepareLoggingData((string)$entryKey, $entryValue);
             }
         }
 

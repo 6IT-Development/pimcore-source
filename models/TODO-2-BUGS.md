@@ -4906,7 +4906,7 @@ read. The params JSON is encoded with `JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_S
 HTML-escaped: the admin grid that displays it is in admin-ui-classic-bundle and was not checked for escaping, so
 storing the raw URI could open an XSS.
 
-## [ ] B-242 – Loaded email logs throw on most getters; `getParams()` returns a different structure and re-saving double-wraps it
+## [x] B-242 – Loaded email logs throw on most getters; `getParams()` returns a different structure and re-saving double-wraps it
 
 **Files:** `models/Tool/Email/Log.php:47-117`, `:142-145`, `:178-181`, `:186-202`, `:225-232`, `:251-254`, `:273-276`,
 `:297-300`, `:321-368`, `:471-474`; `models/Tool/Email/Log/Dao.php:117-159`
@@ -4930,6 +4930,17 @@ storing the raw URI could open an XSS.
 **Fix direction:** nullable properties with `null` defaults; drop `modificationDate` or add the column; separate
 `getParamsTree()` from the raw params and never re-encode a loaded tree; log scalars of all types and `Stringable` /
 `BackedEnum` values (I-125).
+
+**Done:** `requestUri`, `from`, `subject`, `sentDate` and `modificationDate` are nullable with `null` defaults (getters
+return `?string` / `?int`), `params` defaults to `[]` and the `emailLogExists*` flags to `0`; `save()` sets the flags
+once a body file is written. `modificationDate` stays without a column: the DAO sets it on every save, a loaded log
+returns `null`. `getParams()` no longer replaces the stored JSON with its decoded form and returns `[]` for unreadable
+JSON; the DAO writes the stored JSON of a loaded log back unchanged, so re-saving no longer nests the tree. The
+`getParams()` docblock now states that a loaded log returns the tree-grid structure; a separate `getParamsTree()` was
+not added, because the admin `EmailController` (admin-ui-classic-bundle) reads the tree through `getParams()`.
+`prepareLoggingData()` logs `bool` and `float` values, backed enums by value, unit enums by name and `Stringable`
+objects as strings; `createJsonLoggingObject()` returns `[]` for a non-array instead of a JSON string.
+`getBodyHtml()` returns `string`, `setReplyTo()` accepts `null`. A string passed to `setParams()` is now stored as it is.
 
 ## [ ] B-243 – Email log storage and cleanup: orphaned body files, `null` items in listings, the whole history loaded at once
 

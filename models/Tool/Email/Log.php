@@ -42,24 +42,24 @@ class Log extends Model\AbstractModel
     protected ?int $documentId = null;
 
     /**
-     * Parameters passed for replacement
+     * Parameters passed for replacement; a loaded log holds the stored JSON of the tree-grid structure instead
      */
-    protected string|array $params;
+    protected string|array $params = [];
 
     /**
-     * Modification date as timestamp
+     * Modification date as timestamp, set when the log is saved (it has no column and is not loaded)
      */
-    protected int $modificationDate;
+    protected ?int $modificationDate = null;
 
     /**
-     * The request URI from were the email was sent
+     * The request URI from were the email was sent, null for mails sent outside a request
      */
-    protected string $requestUri;
+    protected ?string $requestUri = null;
 
     /**
      * The "from" email address
      */
-    protected string $from;
+    protected ?string $from = null;
 
     /**
      * Contains the reply to email addresses (multiple recipients are separated by a ",")
@@ -84,17 +84,17 @@ class Log extends Model\AbstractModel
     /**
      * Contains 1 if a html logfile exists and 0 if no html logfile exists
      */
-    protected int $emailLogExistsHtml;
+    protected int $emailLogExistsHtml = 0;
 
     /**
      * Contains 1 if a text logfile exists and 0 if no text logfile exists
      */
-    protected int $emailLogExistsText;
+    protected int $emailLogExistsText = 0;
 
     /**
      * Contains the timestamp when the email was sent
      */
-    protected int $sentDate;
+    protected ?int $sentDate = null;
 
     /**
      * Contains the rendered html content of the email
@@ -109,7 +109,7 @@ class Log extends Model\AbstractModel
     /**
      * Contains the rendered subject of the email
      */
-    protected string $subject;
+    protected ?string $subject = null;
 
     /**
      * Error log, when mail send resulted in failure - empty if successfully sent
@@ -139,7 +139,7 @@ class Log extends Model\AbstractModel
     /**
      * Returns the request uri
      */
-    public function getRequestUri(): string
+    public function getRequestUri(): ?string
     {
         return $this->requestUri;
     }
@@ -175,7 +175,7 @@ class Log extends Model\AbstractModel
     /**
      * Returns the subject
      */
-    public function getSubject(): string
+    public function getSubject(): ?string
     {
         return $this->subject;
     }
@@ -220,12 +220,17 @@ class Log extends Model\AbstractModel
     }
 
     /**
-     * Returns the dynamic parameter
+     * Returns the params as given to setParams(), or for a loaded log the tree-grid structure they were stored in
+     * (a list of ['key' => ..., 'data' => ...] or ['key' => ..., 'children' => [...]]), since the original params
+     * are not stored
      */
     public function getParams(): array
     {
         if (is_string($this->params)) {
-            $this->params = json_decode($this->params, true);
+            // the stored JSON is kept as it is, so saving a loaded log does not wrap the tree once more
+            $params = json_decode($this->params, true);
+
+            return is_array($params) ? $params : [];
         }
 
         return $this->params;
@@ -248,7 +253,7 @@ class Log extends Model\AbstractModel
      *
      * @return int - Timestamp
      */
-    public function getModificationDate(): int
+    public function getModificationDate(): ?int
     {
         return $this->modificationDate;
     }
@@ -270,7 +275,7 @@ class Log extends Model\AbstractModel
     /**
      * Returns the sent date and time as unix timestamp
      */
-    public function getSentDate(): int
+    public function getSentDate(): ?int
     {
         return $this->sentDate;
     }
@@ -387,6 +392,7 @@ class Log extends Model\AbstractModel
         if ($html = $this->getBodyHtml()) {
             try {
                 $storage->write($this->getHtmlLogFilename(), $html);
+                $this->emailLogExistsHtml = 1;
             } catch (FilesystemException|UnableToWriteFile $exception) {
                 Logger::warn('Could not write html email log file.' . $exception . ' LogId: ' . $this->getId());
             }
@@ -395,6 +401,7 @@ class Log extends Model\AbstractModel
         if ($text = $this->getBodyText()) {
             try {
                 $storage->write($this->getTextLogFilename(), $text);
+                $this->emailLogExistsText = 1;
             } catch (FilesystemException|UnableToWriteFile $exception) {
                 Logger::warn('Could not write text email log file.' . $exception . ' LogId: ' . $this->getId());
             }
@@ -468,7 +475,7 @@ class Log extends Model\AbstractModel
     /**
      * Returns the "from" email address
      */
-    public function getFrom(): string
+    public function getFrom(): ?string
     {
         return $this->from;
     }
@@ -476,7 +483,7 @@ class Log extends Model\AbstractModel
     /**
      * @return $this
      */
-    public function setReplyTo(string $replyTo): static
+    public function setReplyTo(?string $replyTo): static
     {
         $this->replyTo = $replyTo;
 
@@ -504,7 +511,7 @@ class Log extends Model\AbstractModel
     /**
      * returns the html content of the email
      */
-    public function getBodyHtml(): ?string
+    public function getBodyHtml(): string
     {
         return $this->bodyHtml;
     }
