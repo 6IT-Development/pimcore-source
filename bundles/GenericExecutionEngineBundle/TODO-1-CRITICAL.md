@@ -230,7 +230,7 @@ The voter (I-22) is still open.
 
 ---
 
-## [ ] C-07 – Repository access checks are fail-open (`ownerId === null` ⇒ no restriction)
+## [x] C-07 – Repository access checks are fail-open (`ownerId === null` ⇒ no restriction)
 
 **Files:** `src/Repository/JobRunRepository.php:137-156`, `:164-182`, `:184-187`, `src/Agent/JobExecutionAgent.php:117-122`
 
@@ -252,6 +252,16 @@ Controllers live outside this bundle (studio backend / admin UI), so the impact 
 the mistake. **Fix direction:** split into explicit methods (`findForUser(UserInterface $user, …)` that applies
 `gee_job_run_permission` + "see all" and `findAllUnrestricted()` for system code), never treat `null` as "no filter";
 enforce interaction rights in the agent or via a voter (I-22).
+
+**Done:** new `getJobRunByIdForUser()` / `getJobRunsForUser()` take a `UserInterface`, require
+`gee_job_run_permission` and filter by owner unless the user may see all runs; `getAllJobRuns()` is the explicit
+unrestricted listing for system code. The legacy methods fail closed: `getJobRunsByUserId(null)` returns nothing unless
+the current user may see all runs, and `getJobRunById()` with an explicitly passed `null` owner finds nothing for such
+users (detected with `func_num_args()`; omitting the owner stays the system lookup the agent and handlers use).
+`cancelJobRun()` / `rerunJobRun()` call `PermissionService::isAllowedToInteractWithJobRun()` and throw a
+`PermissionException` inside a request whose user lacks the job run permission or neither owns the run nor may see all
+runs; outside of a request (CLI, worker) they stay unrestricted. `isInteractionAllowed()` is unchanged (B-06), the voter
+is I-22. Docs updated in `02_JobRun.md`.
 
 ---
 

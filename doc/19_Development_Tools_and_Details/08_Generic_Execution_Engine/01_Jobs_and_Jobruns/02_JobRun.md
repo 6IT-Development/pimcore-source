@@ -2,6 +2,16 @@
 Job Runs are the entity for storing information about runs of a job. There is the
 [`Pimcore\Bundle\GenericExecutionEngineBundle\Repository\JobRunRepositoryInterface`] for all kind of CRUD operations on job runs.
 
+### Loading Job Runs for a User
+Use `getJobRunByIdForUser($id, $user)` and `getJobRunsForUser($user)` to load job runs on behalf of a user. They
+require the `gee_job_run_permission` permission and return only the user's own job runs unless the user has the
+`gee_see_all_job_runs_permission` permission. `getJobRunById($id)` without owner and `getAllJobRuns()` do not check
+any permission and are meant for system code only.
+
+`cancelJobRun()` and `rerunJobRun()` throw a `PermissionException` when they are called in a request whose user does not
+have the job run permission or neither owns the job run nor may see all job runs. Called outside of a request (CLI,
+messenger worker) they are not restricted.
+
 ### Localization of Current Message
 The current message of a job run can be localized. That means, that in user interface, the message is translated into
 the users' language. To ease handling of these messages, the `JobRunRepository` provides a specialized

@@ -20,8 +20,11 @@ namespace Pimcore\Bundle\GenericExecutionEngineBundle\Repository;
 use Doctrine\DBAL\Exception;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\Job;
 use Pimcore\Model\Element\ElementDescriptor;
+use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Model\UserInterface;
 
 interface JobRunRepositoryInterface
 {
@@ -74,9 +77,27 @@ interface JobRunRepositoryInterface
      */
     public function updateLog(JobRun $jobRun, string $message): void;
 
+    /**
+     * Without $ownerId this is an unrestricted lookup for system code (agent, handlers, workers).
+     * When $ownerId is passed, the run must belong to that owner unless the current user may see all job runs; a
+     * passed null owner then finds nothing. For lookups on behalf of a user prefer getJobRunByIdForUser().
+     *
+     * @throws NotFoundException
+     */
     public function getJobRunById(int $id, bool $forceReload = false, ?int $ownerId = null): JobRun;
 
     /**
+     * Returns the job run when the user has the job run permission and owns the run or may see all job runs.
+     *
+     * @throws NotFoundException when the run does not exist or belongs to another user
+     * @throws PermissionException when the user may not see job runs at all
+     */
+    public function getJobRunByIdForUser(int $id, UserInterface $user, bool $forceReload = false): JobRun;
+
+    /**
+     * Job runs of $ownerId, or all job runs when the current user may see all job runs.
+     * Without $ownerId only users allowed to see all job runs get a result; prefer getJobRunsForUser().
+     *
      * @return JobRun[]
      */
     public function getJobRunsByUserId(
@@ -85,6 +106,26 @@ interface JobRunRepositoryInterface
         int   $limit = 100,
         int   $offset = 0
     ): array;
+
+    /**
+     * Job runs the user may see: none without the job run permission, all with "see all job runs", otherwise the
+     * user's own runs.
+     *
+     * @return JobRun[]
+     */
+    public function getJobRunsForUser(
+        UserInterface $user,
+        array         $orderBy = [],
+        int           $limit = 100,
+        int           $offset = 0
+    ): array;
+
+    /**
+     * All job runs without any permission check, for system code only.
+     *
+     * @return JobRun[]
+     */
+    public function getAllJobRuns(array $orderBy = [], int $limit = 100, int $offset = 0): array;
 
     public function getTotalCount(): int;
 

@@ -25,11 +25,14 @@ use Pimcore\Bundle\GenericExecutionEngineBundle\Configuration\ExecutionContextIn
 use Pimcore\Bundle\GenericExecutionEngineBundle\CurrentMessage\CurrentMessageProviderInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\JobNotFoundException;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\Job;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\JobRunStates;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Security\PermissionServiceInterface;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\PermissionConstants;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\TableConstants;
 use Pimcore\Model\Exception\NotFoundException;
+use Pimcore\Model\UserInterface;
 use Pimcore\Translation\Translator;
 use Psr\Log\LoggerInterface;
 
@@ -182,27 +185,27 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
 
     public function getJobRunById(int $id, bool $forceReload = false, ?int $ownerId = null): JobRun
     {
-
         $params = ['id' => $id];
-        if ($ownerId !== null && !$this->permissionService->isAllowedToSeeAllJobRuns()) {
+
+        // an owner passed explicitly means a lookup for a user: a null owner (unknown user) must not see every run
+        if (func_num_args() >= 3 && !$this->permissionService->isAllowedToSeeAllJobRuns()) {
+            if ($ownerId === null) {
+                throw new NotFoundException("JobRun with id $id not found.");
+            }
             $params['ownerId'] = $ownerId;
         }
 
-        $jobRun = $this->pimcoreEntityManager->getRepository(JobRun::class)->findOneBy($params);
-        if (!$jobRun) {
-            throw new NotFoundException("JobRun with id $id not found.");
-        }
+        return $this->findJobRun($params, $forceReload);
+    }
 
-        if ($forceReload) {
-            $this->pimcoreEntityManager->refresh($jobRun);
-        }
-
-        return $jobRun;
-
+    public function getJobRunByIdForUser(int $id, UserInterface $user, bool $forceReload = false): JobRun
+    {
+        return $this->findJobRun(['id' => $id, ...$this->getUserCriteria($user)], $forceReload);
     }
 
     /**
-     * Get all job runs by user id. If user has permission to see all job runs, all job runs will be returned.
+     * Get all job runs by user id. If the current user has permission to see all job runs, all job runs will be
+     * returned. Without owner id only users allowed to see all job runs get a result.
      *
      * @return JobRun[]
      *
@@ -215,7 +218,10 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
     ): array
     {
         $params = [];
-        if ($ownerId !== null && !$this->permissionService->isAllowedToSeeAllJobRuns()) {
+        if (!$this->permissionService->isAllowedToSeeAllJobRuns()) {
+            if ($ownerId === null) {
+                return [];
+            }
             $params['ownerId'] = $ownerId;
         }
 
@@ -225,6 +231,32 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
             $limit,
             $offset
         );
+    }
+
+    public function getJobRunsForUser(
+        UserInterface $user,
+        array         $orderBy = [],
+        int           $limit = 100,
+        int           $offset = 0
+    ): array
+    {
+        try {
+            $criteria = $this->getUserCriteria($user);
+        } catch (PermissionException) {
+            return [];
+        }
+
+        return $this->pimcoreEntityManager->getRepository(JobRun::class)->findBy(
+            $criteria,
+            $orderBy,
+            $limit,
+            $offset
+        );
+    }
+
+    public function getAllJobRuns(array $orderBy = [], int $limit = 100, int $offset = 0): array
+    {
+        return $this->pimcoreEntityManager->getRepository(JobRun::class)->findBy([], $orderBy, $limit, $offset);
     }
 
     public function getTotalCount(): int
@@ -263,6 +295,36 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
         }
 
         return $result[0];
+    }
+
+    /**
+     * @throws PermissionException when the user may not see job runs at all
+     */
+    private function getUserCriteria(UserInterface $user): array
+    {
+        if (!$user->isAllowed(PermissionConstants::GEE_JOB_RUN)) {
+            throw new PermissionException('You are not allowed to see job runs.');
+        }
+
+        if ($user->isAllowed(PermissionConstants::GEE_SEE_ALL_JOB_RUNS)) {
+            return [];
+        }
+
+        return ['ownerId' => $user->getId()];
+    }
+
+    private function findJobRun(array $criteria, bool $forceReload): JobRun
+    {
+        $jobRun = $this->pimcoreEntityManager->getRepository(JobRun::class)->findOneBy($criteria);
+        if (!$jobRun) {
+            throw new NotFoundException("JobRun with id {$criteria['id']} not found.");
+        }
+
+        if ($forceReload) {
+            $this->pimcoreEntityManager->refresh($jobRun);
+        }
+
+        return $jobRun;
     }
 
     /**

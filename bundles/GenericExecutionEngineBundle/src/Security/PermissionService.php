@@ -17,11 +17,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Security;
 
+use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Constants\PermissionConstants;
 use Pimcore\Model\UserInterface;
 use Pimcore\Security\User\TokenStorageUserResolver;
 use Pimcore\Tool\Authentication;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Checks the permissions of the user of the current request. The user is resolved on every call and never kept,
@@ -32,7 +34,8 @@ use Pimcore\Tool\Authentication;
 final readonly class PermissionService implements PermissionServiceInterface
 {
     public function __construct(
-        private TokenStorageUserResolver $userResolver
+        private TokenStorageUserResolver $userResolver,
+        private RequestStack             $requestStack
     )
     {
     }
@@ -61,6 +64,21 @@ final readonly class PermissionService implements PermissionServiceInterface
     public function isAllowedToSeeAllJobRuns(): bool
     {
         return $this->getUser()?->isAllowed(PermissionConstants::GEE_SEE_ALL_JOB_RUNS) ?? false;
+    }
+
+    public function isAllowedToInteractWithJobRun(JobRun $jobRun): bool
+    {
+        if ($this->requestStack->getCurrentRequest() === null) {
+            return true;
+        }
+
+        $user = $this->getUser();
+        if (!$user?->isAllowed(PermissionConstants::GEE_JOB_RUN)) {
+            return false;
+        }
+
+        return $jobRun->getOwnerId() === $user->getId()
+            || $user->isAllowed(PermissionConstants::GEE_SEE_ALL_JOB_RUNS);
     }
 
     /**

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Agent;
 
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\Job;
 use Throwable;
@@ -48,11 +49,15 @@ interface JobExecutionAgentInterface
 
     /**
      * Cancel given job run
+     *
+     * @throws PermissionException when called in a request whose user may not interact with the job run
      */
     public function cancelJobRun(int $jobRunId): void;
 
     /**
      * Start new job based on given job run
+     *
+     * @throws PermissionException when called in a request whose user may not interact with the job run
      */
     public function rerunJobRun(int $jobRunId, ?int $ownerId): void;
 

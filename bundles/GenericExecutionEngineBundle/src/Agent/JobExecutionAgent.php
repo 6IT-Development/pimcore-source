@@ -20,11 +20,13 @@ namespace Pimcore\Bundle\GenericExecutionEngineBundle\Agent;
 use Doctrine\DBAL\Exception;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Configuration\ExecutionContextInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Exception\PermissionException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Messenger\Messages\GenericExecutionEngineMessageInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\Job;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Model\JobRunStates;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Repository\JobRunErrorLogRepositoryInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Repository\JobRunRepositoryInterface;
+use Pimcore\Bundle\GenericExecutionEngineBundle\Security\PermissionServiceInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\ErrorHandlingMode;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\SelectionProcessingMode;
 use Pimcore\Model\Element\ElementDescriptor;
@@ -52,7 +54,8 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         private readonly JobRunErrorLogRepositoryInterface $jobRunErrorLogRepository,
         private readonly LoggerInterface                   $genericExecutionEngineLogger,
         private readonly MessageBusInterface               $executionEngineBus,
-        private readonly Translator                        $translator
+        private readonly Translator                        $translator,
+        private readonly PermissionServiceInterface        $permissionService
     )
     {
         $this->isDev = $environment === 'dev';
@@ -130,6 +133,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     public function cancelJobRun(int $jobRunId): void
     {
         $jobRun = $this->jobRunRepository->getJobRunById($jobRunId, true);
+        $this->denyInteractionUnlessAllowed($jobRun);
         $this->genericExecutionEngineLogger->info("[JobRun {$jobRun->getId()}]: JobRun cancelled.");
         $jobRun->setState(JobRunStates::CANCELLED);
         $this->jobRunRepository->updateLogLocalizedWithDomain(
@@ -145,6 +149,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     public function rerunJobRun(int $jobRunId, ?int $ownerId): void
     {
         $jobRun = $this->jobRunRepository->getJobRunById($jobRunId);
+        $this->denyInteractionUnlessAllowed($jobRun);
         $this->startJobExecution($jobRun->getJob(), $ownerId);
     }
 
@@ -153,6 +158,16 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         $jobRun = $this->jobRunRepository->getJobRunById($jobRunId, true);
 
         return $jobRun->getState() === JobRunStates::RUNNING;
+    }
+
+    /**
+     * @throws PermissionException
+     */
+    private function denyInteractionUnlessAllowed(JobRun $jobRun): void
+    {
+        if (!$this->permissionService->isAllowedToInteractWithJobRun($jobRun)) {
+            throw new PermissionException("You are not allowed to interact with job run {$jobRun->getId()}.");
+        }
     }
 
     private function getSelectionProcessingModeFromJobRun(
