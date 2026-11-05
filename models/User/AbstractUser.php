@@ -162,22 +162,22 @@ abstract class AbstractUser extends Model\AbstractModel implements AbstractUserI
      */
     public function save(): static
     {
-        $isUpdate = false;
-        if ($this->getId()) {
-            $isUpdate = true;
+        // the system user (id 0) is an existing row
+        $isUpdate = $this->getId() !== null;
+
+        // before the events: listeners must not act on a user that is then rejected
+        $this->validateName($isUpdate);
+
+        if ($isUpdate) {
             $this->dispatchEvent(new UserRoleEvent($this), UserRoleEvents::PRE_UPDATE);
         } else {
             $this->dispatchEvent(new UserRoleEvent($this), UserRoleEvents::PRE_ADD);
         }
 
-        if (!preg_match('/^[a-zA-Z0-9\-\.~_@]+$/', $this->getName())) {
-            throw new Exception('Invalid name for user/role `' . $this->getName() . '` (allowed characters: a-z A-Z 0-9 -.~_@)');
-        }
-
         $this->beginTransaction();
 
         try {
-            if (!$this->getId()) {
+            if (!$isUpdate) {
                 $this->getDao()->create();
             }
 
@@ -186,6 +186,11 @@ abstract class AbstractUser extends Model\AbstractModel implements AbstractUserI
             $this->commit();
         } catch (Exception $e) {
             $this->rollBack();
+
+            // the insert was rolled back: a retry must insert again instead of updating a row that does not exist
+            if (!$isUpdate) {
+                $this->id = null;
+            }
 
             throw $e;
         }
@@ -197,6 +202,28 @@ abstract class AbstractUser extends Model\AbstractModel implements AbstractUserI
         }
 
         return $this;
+    }
+
+    /**
+     * The character rule applies to new and renamed users / roles only: names stored before it (or by an SSO
+     * provider) must not block later saves, e.g. on login
+     *
+     * @throws Exception
+     */
+    private function validateName(bool $isUpdate): void
+    {
+        $name = $this->getName();
+        if ($name === null || strlen($name) < 2 || strlen($name) > 50) {
+            throw new Exception('Name of user/role must be 2 to 50 characters long');
+        }
+
+        if ($isUpdate && $this->getDao()->getStoredName() === $name) {
+            return;
+        }
+
+        if (!preg_match('/^[a-zA-Z0-9\-\.~_@]+$/', $name)) {
+            throw new Exception('Invalid name for user/role `' . $name . '` (allowed characters: a-z A-Z 0-9 -.~_@)');
+        }
     }
 
     /**

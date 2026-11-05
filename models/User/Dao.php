@@ -25,6 +25,22 @@ use Pimcore\Model\User;
 class Dao extends UserRole\Dao
 {
     /**
+     * Writes only the password, without validating and saving the whole user (e.g. a rehash on login)
+     */
+    public function updatePassword(): void
+    {
+        $this->db->update('users', ['password' => $this->model->getPassword()], ['id' => $this->model->getId()]);
+    }
+
+    /**
+     * Writes only the password recovery token, without validating and saving the whole user
+     */
+    public function updatePasswordRecoveryToken(): void
+    {
+        $this->db->update('users', ['passwordRecoveryToken' => $this->model->getPasswordRecoveryToken()], ['id' => $this->model->getId()]);
+    }
+
+    /**
      * Deletes object from database
      */
     public function delete(): void

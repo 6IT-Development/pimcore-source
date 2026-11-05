@@ -4573,7 +4573,7 @@ import configs that are neither shared globally nor with anyone (shared ones are
 avatar original and thumbnail after the commit (errors are logged). The parent cache reset uses `> 0`, and deleting an
 unsaved object throws a matching message. Open: foreign keys for the user columns (I-120).
 
-## [ ] B-230 – `AbstractUser::save()`: a failed insert leaves a phantom id; name validation is incomplete and blocks logins of legacy users
+## [x] B-230 – `AbstractUser::save()`: a failed insert leaves a phantom id; name validation is incomplete and blocks logins of legacy users
 
 **Files:** `models/User/AbstractUser.php:161-198`; `models/User/AbstractUser/Dao.php:95-103`, `:123-148`;
 `lib/Tool/Authentication.php:124-158`, `:160-179`, `:234-245`; `bundles/InstallBundle/dump/install.sql:461`, `:489`
@@ -4596,6 +4596,13 @@ unsaved object throws a matching message. Open: foreign keys for the user column
 **Fix direction:** validate (regex, 2–50 characters, non-null) before events and before `create()`; reset the id on
 rollback; use `getId() === null` for "new"; update password hash / token / last login with targeted DAO updates
 instead of a full `save()` (I-114).
+
+**Done:** `AbstractUser::save()` validates the name (non-null, 2–50 characters, then the character rule) before the
+`PRE_ADD` / `PRE_UPDATE` events; the length check is removed from the DAO. The character rule applies only to new users
+/ roles and to changed names (`Dao::getStoredName()`), so legacy names can be saved again. "New" means `getId() === null`,
+so the system user (id `0`) is updated, not inserted. When the insert is rolled back, the id is reset to `null`.
+`Authentication` writes the rehashed password and the recovery token with the new targeted `User\Dao::updatePassword()`
+/ `updatePasswordRecoveryToken()` instead of a full `save()`.
 
 ## [ ] B-231 – `User::getImage()` ignores the requested size after the first call; the fallback avatar depends on the admin bundle; `setImage()` crashes on unreadable input
 

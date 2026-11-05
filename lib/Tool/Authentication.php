@@ -132,9 +132,9 @@ class Authentication
         if (self::isValidUser($user)) {
             $user = User::getById($user->getId());
 
-            // expiring the token
+            // expiring the token; only the token is written, not the whole user
             $user->setPasswordRecoveryToken(null);
-            $user->save();
+            $user->getDao()->updatePasswordRecoveryToken();
 
             if ($adminRequired && !$user->isAdmin()) {
                 return null;
@@ -172,7 +172,7 @@ class Authentication
 
         if (password_needs_rehash($user->getPassword(), $config['algorithm'], $config['options'])) {
             $user->setPassword(self::getPasswordHash($user->getName(), $password));
-            $user->save();
+            $user->getDao()->updatePassword();
         }
 
         return true;
@@ -239,7 +239,7 @@ class Authentication
         $token = Crypto::encryptWithPassword($data, $secret);
 
         $user->setPasswordRecoveryToken($token);
-        $user->save();
+        $user->getDao()->updatePasswordRecoveryToken();
 
         return $token;
     }

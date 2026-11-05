@@ -92,6 +92,16 @@ class Dao extends Model\Dao\AbstractDao
         return $data;
     }
 
+    /**
+     * The name of the stored row, null when there is none
+     */
+    public function getStoredName(): ?string
+    {
+        $name = $this->db->fetchOne('SELECT name FROM users WHERE id = ?', [$this->model->getId()]);
+
+        return is_string($name) ? $name : null;
+    }
+
     public function create(): void
     {
         $this->db->insert('users', [
@@ -122,10 +132,6 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function update(): void
     {
-        if (strlen($this->model->getName()) < 2) {
-            throw new Exception('Name of user/role must be at least 2 characters long');
-        }
-
         $data = [];
         $dataRaw = $this->model->getObjectVars();
         foreach ($dataRaw as $key => $value) {
