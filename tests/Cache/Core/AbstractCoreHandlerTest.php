@@ -863,6 +863,41 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertFalse($this->writeLock->hasLock());
     }
 
+    public function testForceImmediateWriteRespectsTheWriteLock(): void
+    {
+        $otherWriteLock = $this->createWriteLock();
+        $otherWriteLock->lock();
+
+        $this->handler->setForceImmediateWrite(true);
+        $this->assertFalse($this->handler->save('itemA', 'test'));
+        $this->assertFalse($this->cacheHasItem('itemA'));
+
+        // force still bypasses the lock
+        $this->assertTrue($this->handler->save('itemB', 'test', [], null, 0, true));
+        $this->assertTrue($this->cacheHasItem('itemB'));
+    }
+
+    public function testImmediateWriteIsDeferredWhileTransactionIsActive(): void
+    {
+        $handler = $this->getMockBuilder(CoreCacheHandler::class)
+            ->onlyMethods(['isCli', 'isTransactionActive'])
+            ->setConstructorArgs([$this->cache, $this->writeLock, \Pimcore::getEventDispatcher()])
+            ->getMock();
+        $handler->setLogger(static::$logger);
+        $handler->method('isCli')->willReturn(true);
+        $handler->method('isTransactionActive')->willReturn(true);
+
+        $this->assertTrue($handler->save('itemA', 'test', [], null, 0, true));
+        $this->assertFalse($this->cacheHasItem('itemA'));
+
+        // the forced item is written on shutdown also in CLI mode and while another process holds the write lock
+        $otherWriteLock = $this->createWriteLock();
+        $otherWriteLock->lock();
+
+        $handler->shutdown();
+        $this->assertTrue($this->cacheHasItem('itemA'));
+    }
+
     /**
      * Data provider for invalid keys.
      *

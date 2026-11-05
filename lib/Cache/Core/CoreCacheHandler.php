@@ -22,6 +22,7 @@ use DateInterval;
 use DeepCopy\Matcher\PropertyMatcher;
 use DeepCopy\TypeFilter\ReplaceFilter;
 use DeepCopy\TypeMatcher\TypeMatcher;
+use Pimcore\Db;
 use Pimcore\Event\CoreCacheEvents;
 use Pimcore\Model\Document\Hardlink\Wrapper\WrapperInterface;
 use Pimcore\Model\Element\ElementDumpStateInterface;
@@ -309,6 +310,21 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
         }
 
         if ($force || $this->forceImmediateWrite) {
+            if ($this->isTransactionActive()) {
+                // the data may depend on changes that are not committed yet (and may be rolled back), write it on
+                // shutdown instead - elements are re-read from the database then
+                $this->logger->debug('Deferring the immediate write of {key} as a database transaction is active', ['key' => $key]);
+
+                return $this->addToSaveQueue(new CacheQueueItem($key, $data, $tags, $lifetime, $priority, $force));
+            }
+
+            // like the save queue, immediate writes respect the write lock of a running clear - only force bypasses it
+            if (!$force && $this->writeLock->hasLock()) {
+                $this->logger->debug('Not saving {key} to cache as there\'s an active write lock', ['key' => $key]);
+
+                return false;
+            }
+
             $data = $this->prepareCacheData($data);
             if (null === $data) {
                 // logging is done in prepare method if item could not be created
@@ -357,9 +373,9 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
      */
     public function cleanupQueue(): void
     {
-        // order by priority
+        // order by priority, forced items (deferred immediate writes) first so they are not dropped
         uasort($this->saveQueue, function (CacheQueueItem $a, CacheQueueItem $b) {
-            return $b->getPriority() <=> $a->getPriority();
+            return [$b->isForce(), $b->getPriority()] <=> [$a->isForce(), $a->getPriority()];
         });
 
         // remove overrun
@@ -822,6 +838,9 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
                 );
             }
 
+            // forced items bypass the write lock, like forced immediate writes
+            $this->writeForcedQueueItems();
+
             return false;
         }
 
@@ -838,27 +857,7 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
                 continue;
             }
 
-            try {
-                // tags of elements are computed in storeCacheData() from the stored copy
-                $tags = $queueItem->getData() instanceof ElementInterface
-                    ? $queueItem->getTags()
-                    : $this->prepareCacheTags($queueItem->getKey(), $queueItem->getData(), $queueItem->getTags());
-                if (null === $tags) {
-                    $result = false;
-                    // item shouldn't go to the cache (either because it's tags are ignored or were cleared within this process) -> see $this->prepareCacheTags();
-                } else {
-                    $result = $this->storeCacheData($queueItem->getKey(), $queueItem->getData(), $tags, $queueItem->getLifetime(), $queueItem->isForce());
-                }
-            } catch (Throwable $e) {
-                // one broken item must not stop the rest of the queue (and the lock removal on shutdown)
-                $this->logger->error('Failed to write {key} to cache: {error}', [
-                    'key' => $key,
-                    'error' => $e->getMessage(),
-                    'exception' => $e,
-                ]);
-
-                $result = false;
-            }
+            $result = $this->writeQueueItem($queueItem);
 
             $processedKeys[] = $key;
             $totalResult = $totalResult && $result;
@@ -868,6 +867,49 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
         $this->saveQueue = [];
 
         return $totalResult;
+    }
+
+    /**
+     * Writes the forced items of the save queue (immediate writes deferred because of an active transaction) and
+     * removes them from the queue - they are written when the rest of the queue is not (write lock, CLI mode)
+     */
+    private function writeForcedQueueItems(): void
+    {
+        $forcedItems = array_filter($this->saveQueue, static fn (CacheQueueItem $item) => $item->isForce());
+        if ($forcedItems === []) {
+            return;
+        }
+
+        $this->saveQueue = array_diff_key($this->saveQueue, $forcedItems);
+
+        foreach ($forcedItems as $queueItem) {
+            $this->writeQueueItem($queueItem);
+        }
+    }
+
+    private function writeQueueItem(CacheQueueItem $queueItem): bool
+    {
+        try {
+            // tags of elements are computed in storeCacheData() from the stored copy
+            $tags = $queueItem->getData() instanceof ElementInterface
+                ? $queueItem->getTags()
+                : $this->prepareCacheTags($queueItem->getKey(), $queueItem->getData(), $queueItem->getTags());
+            if (null === $tags) {
+                // item shouldn't go to the cache (either because it's tags are ignored or were cleared within this process) -> see $this->prepareCacheTags();
+                return false;
+            }
+
+            return $this->storeCacheData($queueItem->getKey(), $queueItem->getData(), $tags, $queueItem->getLifetime(), $queueItem->isForce());
+        } catch (Throwable $e) {
+            // one broken item must not stop the rest of the queue (and the lock removal on shutdown)
+            $this->logger->error('Failed to write {key} to cache: {error}', [
+                'key' => $queueItem->getKey(),
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return false;
+        }
     }
 
     /**
@@ -945,6 +987,22 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
         // write collected items to cache backend
         if ($doWrite) {
             $this->writeSaveQueue();
+        } else {
+            // forced saves are written in CLI mode too, also when they were deferred because of a transaction
+            $this->writeForcedQueueItems();
+        }
+    }
+
+    /**
+     * @codeCoverageIgnore
+     */
+    protected function isTransactionActive(): bool
+    {
+        try {
+            return Db::get()->isTransactionActive();
+        } catch (Throwable) {
+            // no database (e.g. before the kernel is booted) - nothing to defer for
+            return false;
         }
     }
 

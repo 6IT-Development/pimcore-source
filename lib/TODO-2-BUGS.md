@@ -176,7 +176,7 @@ removes the own write lock.
 
 ---
 
-## [ ] B-03 – `forceImmediateWrite` bypasses the write lock, and immediate writes inside a DB transaction cache uncommitted data
+## [x] B-03 – `forceImmediateWrite` bypasses the write lock, and immediate writes inside a DB transaction cache uncommitted data
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:310-323`, `:443-457`, `:466`; `:790-799`
 
@@ -192,6 +192,16 @@ removes the own write lock.
 **Fix direction:** check `$this->writeLock->hasLock()` in `storeCacheData()` unless `$force`; when
 `Db::get()->isTransactionActive()`, put the item into the save queue instead of writing (or register it for after
 commit).
+
+**Done:** `save()` checks the write lock in the immediate path unless `force` (the queue path checks it in
+`writeSaveQueue()` already, so `storeCacheData()` does not read the lock once per queued item). While
+`Db::get()->isTransactionActive()` (new protected `isTransactionActive()`, `false` without a database) an immediate
+write is put into the save queue instead; elements are re-read from the database when the queue is written. Forced
+queue items are kept by `cleanupQueue()` before the others, bypass the write lock in `writeSaveQueue()` and are written
+on shutdown in CLI mode as well (`writeForcedQueueItems()`), so deferring does not lose them. Not covered: non-element
+data computed inside a transaction that is rolled back is still cached at shutdown (no rollback hook in DBAL). Tests:
+`forceImmediateWrite` under a foreign write lock, and a forced save inside a transaction written on shutdown in CLI
+mode under a foreign lock.
 
 ---
 
