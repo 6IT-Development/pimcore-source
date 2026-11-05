@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Model;
 
+use Exception;
+use InvalidArgumentException;
 use Pimcore\Config;
 use Pimcore\Config\LocationAwareConfigRepository;
 use Pimcore\File;
@@ -25,6 +27,7 @@ use Pimcore\Image;
 use Pimcore\Logger;
 use Pimcore\Model\User\Role;
 use Pimcore\Tool;
+use Symfony\Component\Mime\MimeTypes;
 use Throwable;
 
 /**
@@ -33,6 +36,10 @@ use Throwable;
 final class User extends User\UserRole implements UserInterface
 {
     use TemporaryFileHelperTrait;
+
+    private const int MAX_IMAGE_SIZE = 1000;
+
+    private const string TRANSPARENT_PIXEL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
     protected string $type = 'user';
 
@@ -436,11 +443,10 @@ final class User extends User\UserRole implements UserInterface
         // after the commit: files cannot be rolled back
         try {
             $storage = Tool\Storage::get('admin');
-            foreach ([$this->getOriginalImageStoragePath(), $this->getThumbnailImageStoragePath()] as $path) {
-                if ($storage->fileExists($path)) {
-                    $storage->delete($path);
-                }
+            if ($storage->fileExists($this->getOriginalImageStoragePath())) {
+                $storage->delete($this->getOriginalImageStoragePath());
             }
+            $this->deleteThumbnailImages();
         } catch (Throwable $e) {
             Logger::error(sprintf('Unable to delete the image of the deleted user %s: %s', $this->getId(), $e));
         }
@@ -455,69 +461,122 @@ final class User extends User\UserRole implements UserInterface
     }
 
     /**
+     * One thumbnail per size: a single path would keep the size of the first request
+     *
      * @internal
      */
-    protected function getThumbnailImageStoragePath(): string
+    protected function getThumbnailImageStoragePath(int $width, int $height): string
     {
-        return sprintf('/user-image/user-thumbnail-%s.png', $this->getId());
+        return sprintf('%s/%dx%d.png', $this->getThumbnailImageStorageDirectory(), $width, $height);
     }
 
-    public function setImage(?string $path): void
+    private function getThumbnailImageStorageDirectory(): string
+    {
+        return sprintf('/user-image/thumbnails/user-%s', $this->getId());
+    }
+
+    private function deleteThumbnailImages(): void
     {
         $storage = Tool\Storage::get('admin');
-        $originalFileStoragePath = $this->getOriginalImageStoragePath();
-        $thumbFileStoragePath = $this->getThumbnailImageStoragePath();
+        $storage->deleteDirectory($this->getThumbnailImageStorageDirectory());
 
-        if ($storage->fileExists($originalFileStoragePath)) {
-            $storage->delete($originalFileStoragePath);
-        }
-
-        if ($storage->fileExists($thumbFileStoragePath)) {
-            $storage->delete($thumbFileStoragePath);
-        }
-
-        if ($path) {
-            $handle = fopen($path, 'rb');
-            $storage->writeStream($originalFileStoragePath, $handle);
-            fclose($handle);
+        // the single thumbnail of earlier releases
+        $legacyThumbnailPath = sprintf('/user-image/user-thumbnail-%s.png', $this->getId());
+        if ($storage->fileExists($legacyThumbnailPath)) {
+            $storage->delete($legacyThumbnailPath);
         }
     }
 
     /**
+     * @param string|null $path a local image file, null removes the image
      *
+     * @throws Exception when the user is not saved yet
+     * @throws InvalidArgumentException when the file is no readable image; the current image is kept then
+     */
+    public function setImage(?string $path): void
+    {
+        if ($this->getId() === null) {
+            // the files are named by the id
+            throw new Exception('The image can only be set for a saved user');
+        }
+
+        $storage = Tool\Storage::get('admin');
+        $originalFileStoragePath = $this->getOriginalImageStoragePath();
+
+        if ($path) {
+            $mimeType = is_file($path) && is_readable($path) ? MimeTypes::getDefault()->guessMimeType($path) : null;
+            if (!$mimeType || !str_starts_with($mimeType, 'image/')) {
+                throw new InvalidArgumentException(sprintf('The user image "%s" is not a readable image file', basename($path)));
+            }
+
+            $handle = fopen($path, 'rb');
+            if ($handle === false) {
+                throw new InvalidArgumentException(sprintf('The user image "%s" cannot be opened', basename($path)));
+            }
+
+            // replaces the current image only once the new one could be read
+            try {
+                $storage->writeStream($originalFileStoragePath, $handle);
+            } finally {
+                fclose($handle);
+            }
+        } elseif ($storage->fileExists($originalFileStoragePath)) {
+            $storage->delete($originalFileStoragePath);
+        }
+
+        $this->deleteThumbnailImages();
+    }
+
+    /**
      * @return resource
      */
     public function getImage(?int $width = null, ?int $height = null)
     {
-        if (!$width) {
-            $width = 46;
-        }
-        if (!$height) {
-            $height = 46;
-        }
+        // every size is stored: keep the sizes in a sane range
+        $width = min(max($width ?: 46, 1), self::MAX_IMAGE_SIZE);
+        $height = min(max($height ?: 46, 1), self::MAX_IMAGE_SIZE);
 
         $storage = Tool\Storage::get('admin');
-        if ($storage->fileExists($this->getOriginalImageStoragePath())) {
-            if (!$storage->fileExists($this->getThumbnailImageStoragePath())) {
+        if ($this->getId() !== null && $storage->fileExists($this->getOriginalImageStoragePath())) {
+            $thumbnailPath = $this->getThumbnailImageStoragePath($width, $height);
+            if (!$storage->fileExists($thumbnailPath)) {
                 $originalImageStream = $storage->readStream($this->getOriginalImageStoragePath());
                 $localFile = self::getLocalFileFromStream($originalImageStream);
                 @fclose($originalImageStream);
                 $targetFile = File::getLocalTempFilePath('png');
 
-                $image = Image::getInstance();
-                if ($image->load($localFile)) {
-                    $image->cover($width, $height);
-                    $image->save($targetFile, 'png');
-                    $storage->write($this->getThumbnailImageStoragePath(), file_get_contents($targetFile));
+                try {
+                    $image = Image::getInstance();
+                    if ($image->load($localFile)) {
+                        $image->cover($width, $height);
+                        $image->save($targetFile, 'png');
+                        $storage->write($thumbnailPath, file_get_contents($targetFile));
+                    } else {
+                        Logger::warning(sprintf('The image of user %s cannot be loaded, the fallback image is used', $this->getId()));
+                    }
+                } finally {
+                    if (is_file($targetFile)) {
+                        unlink($targetFile);
+                    }
                 }
             }
 
-            if ($storage->fileExists($this->getThumbnailImageStoragePath())) {
-                return $storage->readStream($this->getThumbnailImageStoragePath());
+            if ($storage->fileExists($thumbnailPath)) {
+                return $storage->readStream($thumbnailPath);
             }
         }
 
-        return fopen($this->getFallbackImage(), 'rb');
+        $fallbackImage = $this->getFallbackImage();
+        if (is_file($fallbackImage) && ($handle = fopen($fallbackImage, 'rb'))) {
+            return $handle;
+        }
+
+        // the admin bundle assets are not installed (e.g. headless setups): a transparent pixel
+        $handle = fopen('php://memory', 'r+b');
+        fwrite($handle, base64_decode(self::TRANSPARENT_PIXEL_PNG));
+        rewind($handle);
+
+        return $handle;
     }
 
     /**

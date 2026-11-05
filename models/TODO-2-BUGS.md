@@ -4604,7 +4604,7 @@ so the system user (id `0`) is updated, not inserted. When the insert is rolled 
 `Authentication` writes the rehashed password and the recovery token with the new targeted `User\Dao::updatePassword()`
 / `updatePasswordRecoveryToken()` instead of a full `save()`.
 
-## [ ] B-231 – `User::getImage()` ignores the requested size after the first call; the fallback avatar depends on the admin bundle; `setImage()` crashes on unreadable input
+## [x] B-231 – `User::getImage()` ignores the requested size after the first call; the fallback avatar depends on the admin bundle; `setImage()` crashes on unreadable input
 
 **Files:** `models/User.php:416-427`, `:429-448`, `:454-485`, `:735-746`; `models/UserInterface.php:136-142`, `:210`
 
@@ -4622,6 +4622,13 @@ so the system user (id `0`) is updated, not inserted. When the insert is rolled 
 
 **Fix direction:** per-size thumbnail paths (`user-thumbnail-<id>-<w>x<h>.png`); ship the fallback in core or return
 `null`; validate the upload (Symfony Mime) and write before deleting; require a saved user (I-116).
+
+**Done:** thumbnails are stored per size under `/user-image/thumbnails/user-<id>/<w>x<h>.png` (sizes clamped to
+1–1000); `setImage()` and `delete()` remove that directory and the single thumbnail of earlier releases. When the admin
+bundle's `avatar.png` is not installed, `getImage()` returns a stream with a transparent 1×1 PNG instead of `false`. An
+original that cannot be loaded is logged as a warning (no negative cache), and the temp thumbnail file is removed.
+`setImage()` requires a saved user, checks that the file is a readable `image/*` (Symfony Mime) and writes it over the
+current original before the thumbnails are removed, so a failing upload keeps the existing avatar.
 
 ## [ ] B-232 – `setTwoFactorAuthentication('<key>', null)` wipes the whole 2FA configuration, including `required`
 

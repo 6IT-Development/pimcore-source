@@ -137,6 +137,9 @@ interface UserInterface extends UserRoleInterface
 
     public function getAllowDirtyClose(): bool;
 
+    /**
+     * @param string|null $path a local image file, null removes the image; the user must be saved
+     */
     public function setImage(?string $path): void;
 
     /**
