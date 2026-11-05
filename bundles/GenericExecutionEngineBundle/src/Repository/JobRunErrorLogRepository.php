@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericExecutionEngineBundle\Repository;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRunErrorLog;
 
@@ -33,12 +34,20 @@ final readonly class JobRunErrorLogRepository implements JobRunErrorLogRepositor
     public function createFromJobRun(
         JobRun  $jobRun,
         ?int    $elementId = null,
-        ?string $message = null
+        ?string $message = null,
+        ?int    $stepNumber = null
     ): void
     {
+        $stepNumber ??= $jobRun->getCurrentStep();
+        if ($stepNumber === null) {
+            throw new InvalidArgumentException(
+                "JobRun {$jobRun->getId()} is on no step, pass the step number of the error log."
+            );
+        }
+
         $jobRunErrorLog = new JobRunErrorLog(
             $jobRun->getId(),
-            $jobRun->getCurrentStep(),
+            $stepNumber,
             $elementId,
             $message
         );

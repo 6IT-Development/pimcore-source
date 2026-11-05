@@ -297,6 +297,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             $jobRun,
             $message->getElement()?->getId(),
             $errorMessage,
+            $message->getCurrentJobStep()
         );
 
         match (

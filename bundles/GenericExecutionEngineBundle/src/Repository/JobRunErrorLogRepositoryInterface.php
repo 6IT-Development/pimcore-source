@@ -17,15 +17,22 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\Repository;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRun;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Entity\JobRunErrorLog;
 
 interface JobRunErrorLogRepositoryInterface
 {
+    /**
+     * @param int|null $stepNumber step the error happened in, defaults to the current step of the job run
+     *
+     * @throws InvalidArgumentException when no step number is given and the job run is on no step
+     */
     public function createFromJobRun(
         JobRun  $jobRun,
         ?int    $elementId = null,
-        ?string $message = null
+        ?string $message = null,
+        ?int    $stepNumber = null
     ): void;
 
     public function update(JobRunErrorLog $jobRunErrorLog): void;

@@ -138,11 +138,16 @@ Configuration already defines it).
 `error_handling` default comes from `Configuration`, so a project value now applies to jobs of the default context.
 The configuration docs already describe this chain.
 
-### [ ] B-10 – Error log creation crashes when `currentStep` is `null`
+### [x] B-10 – Error log creation crashes when `currentStep` is `null`
 **Files:** `src/Repository/JobRunErrorLogRepository.php:39-44`, `src/Entity/JobRunErrorLog.php:50-55`
 `JobRunErrorLog::__construct(int $stepNumber)` receives `$jobRun->getCurrentStep()` (`?int`). A failing message that
 is processed after the run was completed/reset (left-over message, C-03/C-04) → `TypeError` in the failure path → the
 original error is lost. **Fix:** use `$message->getCurrentJobStep()` as step number (it is what actually failed).
+
+**Done:** `createFromJobRun()` takes an optional step number, the agent passes `$message->getCurrentJobStep()`. Without
+it the current step of the run is used, and when that is `null` an `InvalidArgumentException` names the missing step
+instead of a `TypeError` in the entity constructor. (Since C-02/C-04 the agent no longer handles messages of runs that
+are off the message step, so the agent path did not hit `null` any more.)
 
 ---
 
