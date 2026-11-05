@@ -40,10 +40,12 @@ failed, otherwise `finished`. One failed message writes one log, so `COUNT(*)` p
 `COUNT(DISTINCT elementId)` (the log stores no element type, ids of different types would collapse).
 `getLogsByJobRunId()` filters by `stepNumber`.
 
-### [ ] B-02 – Wrong placeholder for `gee_error_no_job_definition` in `dispatchStepMessage()`
+### [x] B-02 – Wrong placeholder for `gee_error_no_job_definition` in `dispatchStepMessage()`
 **File:** `src/Agent/JobExecutionAgent.php:371-375`, `translations/admin.en.yaml:3`
 Passes `['%job_id%' => …]`, the translation expects `%job_run_id%` → message shows the literal `%job_run_id%`.
 `continueJobStepExecution()` (`:189-193`) uses `getLogParams()` correctly. **Fix:** use `getLogParams($jobRun)`.
+
+**Done:** `dispatchStepMessage()` passes `getLogParams($jobRun)` like `continueJobStepExecution()`.
 
 ### [ ] B-03 – Log translation in `setJobRunError()` ignores the translation domain
 **File:** `src/Agent/JobExecutionAgent.php:344-348`

@@ -391,7 +391,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             $this->setJobRunError(
                 $jobRun,
                 'gee_error_no_job_definition',
-                ['%job_id%' => $jobRun->getId()]
+                $this->getLogParams($jobRun)
             );
 
             return;
