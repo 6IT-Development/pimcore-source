@@ -190,11 +190,14 @@ with a clear message (or move to `require` – I-27).
 job run load. The bundle is opt-in (`bundles.php`), installs without it are unaffected; moving the packages to `require`
 stays with I-27.
 
-### [ ] B-14 – `EntityRepository::count()` without criteria needs a newer ORM than allowed by composer
+### [x] B-14 – `EntityRepository::count()` without criteria needs a newer ORM than allowed by composer
 **Files:** `src/Repository/JobRunRepository.php:186`, `src/Repository/JobRunErrorLogRepository.php:82`, root
 `composer.json:53` (`doctrine/orm: ^2.15 || ^3.0`)
 `count()` without arguments is only valid on ORM versions where `$criteria` has a default (*verify the exact version*);
 on older 2.x it is an `ArgumentCountError`. **Fix:** pass `[]` or raise the constraint.
+
+**Done:** both `getTotalCount()` methods pass `[]`. Verified: ORM 2.19.3 still declares `count(array $criteria)` without
+default, only 3.x has `= []`, so every 2.x release allowed by the constraint was affected.
 
 ---
 

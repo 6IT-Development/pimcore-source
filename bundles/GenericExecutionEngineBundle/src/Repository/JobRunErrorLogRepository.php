@@ -88,7 +88,7 @@ final readonly class JobRunErrorLogRepository implements JobRunErrorLogRepositor
 
     public function getTotalCount(): int
     {
-        return $this->getLogRepository()->count();
+        return $this->getLogRepository()->count([]);
     }
 
     public function getTotalCountByJobRunId(int $jobRunId, ?int $step = null): int

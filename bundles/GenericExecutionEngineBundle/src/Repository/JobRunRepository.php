@@ -261,7 +261,7 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
 
     public function getTotalCount(): int
     {
-        return $this->pimcoreEntityManager->getRepository(JobRun::class)->count();
+        return $this->pimcoreEntityManager->getRepository(JobRun::class)->count([]);
     }
 
     public function getRunningJobsByUserId(
