@@ -3763,7 +3763,7 @@ characters (`TITLE_MAX_LENGTH` / `TYPE_MAX_LENGTH`); the workflow notification s
 element path) instead of failing. `sendToGroup()` validates title, message and sender before the first notification
 is sent, so these errors no longer leave a group half notified; a DB error midway still does.
 
-## [ ] B-200 – Notification tests assert nothing; `testSendToGroup` expects a count that cannot happen
+## [x] B-200 – Notification tests assert nothing; `testSendToGroup` expects a count that cannot happen
 
 **File:** `tests/Unit/Notification/Service/NotificationServiceTest.php:83-158`
 
@@ -3775,6 +3775,11 @@ is sent, so these errors no longer leave a group half notified; a DB error midwa
 
 **Fix direction:** `assertSame()`; give the group the permission and expect `1`; assert the transaction nesting level
 (I-92).
+
+**Done:** the three tests use `assertSame()`. `testSendToGroup` gives the group the `notifications` permission and
+expects the one notification of its single member. `testSendToNoExistUser` catches the exception itself and asserts
+that the transaction nesting level is unchanged afterwards. Not run here (no `vendor/` and test DB in this checkout).
+Open: the remaining I-92 test cases.
 
 ---
 

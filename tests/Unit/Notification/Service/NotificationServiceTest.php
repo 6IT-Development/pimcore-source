@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Tests\Unit\Notification\Service;
 
 use Pimcore;
+use Pimcore\Db;
 use Pimcore\Model\Notification\Service\NotificationService;
 use Pimcore\Model\User;
 use Pimcore\Tests\Support\Test\TestCase;
@@ -53,16 +54,22 @@ class NotificationServiceTest extends TestCase
     public function testSendToNoExistUser(): void
     {
         $user = 100;
+        $nestingLevel = Db::get()->getTransactionNestingLevel();
 
-        $this->expectException(UnexpectedValueException::class);
-        $this->expectExceptionMessage(sprintf('No user found with the ID %d', $user));
+        try {
+            $this->notificationService->sendToUser(
+                $user,
+                100,
+                'Test title',
+                'Test message'
+            );
+            $this->fail('Sending to a user that does not exist must fail');
+        } catch (UnexpectedValueException $e) {
+            $this->assertSame(sprintf('No user found with the ID %d', $user), $e->getMessage());
+        }
 
-        $this->notificationService->sendToUser(
-            $user,
-            100,
-            'Test title',
-            'Test message'
-        );
+        // a failing call must not leave a transaction open for the following tests
+        $this->assertSame($nestingLevel, Db::get()->getTransactionNestingLevel());
     }
 
     public function testSendToNoExistGroup(): void
@@ -100,7 +107,7 @@ class NotificationServiceTest extends TestCase
 
         $notifications = $this->notificationService->findAll(['recipient' => $user->getId()]);
 
-        $this->equalTo($count, $notifications['total']);
+        $this->assertSame($count, $notifications['total']);
     }
 
     public function testSendToUserWithElement(): void
@@ -126,16 +133,18 @@ class NotificationServiceTest extends TestCase
 
         $notifications = $this->notificationService->findAll(['recipient' => $user->getId()]);
 
-        $this->equalTo($count, $notifications['total']);
+        $this->assertSame($count, $notifications['total']);
     }
 
     public function testSendToGroup(): void
     {
-        $count = 3;
+        // one member, who receives the notification through the group's permission
+        $count = 1;
         $group = new User\Role();
 
         $group
             ->setName('notification-group')
+            ->setPermission('notifications', true)
             ->save();
 
         $user = new User();
@@ -154,6 +163,6 @@ class NotificationServiceTest extends TestCase
 
         $notifications = $this->notificationService->findAll(['recipient' => $user->getId()]);
 
-        $this->equalTo($count, $notifications['total']);
+        $this->assertSame($count, $notifications['total']);
     }
 }
