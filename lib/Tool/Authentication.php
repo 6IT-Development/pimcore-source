@@ -133,32 +133,22 @@ class Authentication
             return null;
         }
 
-        if (self::isValidUser($user)) {
-            $user = User::getById($user->getId());
-
-            // expiring the token; only the token is written, not the whole user
-            $user->setPasswordRecoveryToken(null);
-            $user->getDao()->updatePasswordRecoveryToken();
-
-            if ($adminRequired && !$user->isAdmin()) {
-                return null;
-            }
-
-            try {
-                $timeZone = date_default_timezone_get();
-                date_default_timezone_set('UTC');
-
-                if ($timestamp > time() || $timestamp < (time() - (60 * 60 * 24))) {
-                    return null;
-                }
-            } finally {
-                date_default_timezone_set($timeZone);
-            }
-
-            return $user;
+        // the timestamp is part of the encrypted token, time() is UTC regardless of the time zone
+        $timestamp = (int)$timestamp;
+        if ($timestamp > time() || $timestamp < (time() - (60 * 60 * 24))) {
+            return null;
         }
 
-        return null;
+        $user = self::isValidUser($user) ? User::getById($user->getId()) : null;
+        if (!self::isValidUser($user) || ($adminRequired && !$user->isAdmin())) {
+            return null;
+        }
+
+        // expiring the token; only the token is written, not the whole user
+        $user->setPasswordRecoveryToken(null);
+        $user->getDao()->updatePasswordRecoveryToken();
+
+        return $user;
     }
 
     public static function verifyPassword(User $user, string $password): bool
@@ -223,11 +213,16 @@ class Authentication
     }
 
     /**
+     * @throws UserNotFoundException
+     *
      * @internal
      */
     public static function generateToken(string $username): string
     {
         $user = User::getByName($username);
+        if (!$user) {
+            throw new UserNotFoundException(sprintf('User "%s" does not exist', $username));
+        }
 
         return self::generateTokenByUser($user);
     }
@@ -242,7 +237,7 @@ class Authentication
         $data = time() - 1 . '|' . $user->getName();
         $token = Crypto::encryptWithPassword($data, $secret);
 
-        $user->setPasswordRecoveryToken($token);
+        $user->setPasswordRecoveryToken(self::hashToken($token));
         $user->getDao()->updatePasswordRecoveryToken();
 
         return $token;
@@ -255,7 +250,7 @@ class Authentication
     private static function tokenDecrypt(string $token): array
     {
         $user = new User();
-        $user->getDao()->getByPasswordRecoveryToken($token);
+        $user->getDao()->getByPasswordRecoveryToken(self::hashToken($token));
 
         $secret = Pimcore::getContainer()->getParameter('secret');
         $decrypted = Crypto::decryptWithPassword($token, $secret);
@@ -263,5 +258,13 @@ class Authentication
         $explode = explode('|', $decrypted);
 
         return [$explode[0], $user];
+    }
+
+    /**
+     * Only a hash of the recovery token is stored, so a read of the users table gives no working login links
+     */
+    private static function hashToken(string $token): string
+    {
+        return hash('sha256', $token);
     }
 }

@@ -4735,7 +4735,7 @@ runtime-cached instance (with workspaces). `setLastLoginDate()` also updates `la
 workspaces for `getByPasswordRecoveryToken()` too, so saving a token-loaded user keeps them. `create()` skips `null`
 values (`setValues($values, true)`).
 
-## [ ] B-236 – `Authentication` token / password helpers built on the user model
+## [x] B-236 – `Authentication` token / password helpers built on the user model
 
 **Files:** `lib/Tool/Authentication.php:124-158`, `:160-179`, `:224-262`; `models/User.php:118-133`
 
@@ -4749,6 +4749,12 @@ values (`setValues($values, true)`).
 
 **Fix direction:** targeted DAO updates for token and password; `null` check in `generateToken()`; store a hash of a
 random token plus an expiry column (I-117, I-120).
+
+**Done:** `authenticateToken()` checks the token age first, then that the reloaded user is valid and (if required) an
+admin, and only then clears the token with the targeted DAO update; the time-zone switch is gone. `generateToken()`
+throws `UserNotFoundException` for an unknown name. Only a SHA-256 hash of the token is stored and looked up, so the
+`users` table no longer holds working login links (tokens issued before this change stop working). The index / expiry
+column stays with I-120.
 
 ## [ ] B-237 – User model small defects
 
