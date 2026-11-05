@@ -278,7 +278,7 @@ fails with the warning.
 
 ---
 
-## [ ] B-07 – Shutdown tag clear ignores `tagsIgnoredOnClear`
+## [x] B-07 – Shutdown tag clear ignores `tagsIgnoredOnClear`
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:624-637`, `:655-660`, `:698-706`
 
@@ -289,6 +289,11 @@ fails with the warning.
 
 **Fix direction:** filter `tagsIgnoredOnClear` in `addTagClearedOnShutdown()` (or in `clearTagsOnShutdown()`) and
 document which list wins.
+
+**Done:** `addTagClearedOnShutdown()` (also used by `normalizeClearTags()`) does not schedule a tag that is in
+`tagsIgnoredOnClear` at the time of the call; documented on the method: the ignore list at the time the clear is
+requested wins, so removing the ignore entry after the bulk operation does not clear the tag at shutdown. Test: an
+ignored `output` is neither scheduled by `clearTags()` / `addTagClearedOnShutdown()` nor cleared on shutdown.
 
 ---
 

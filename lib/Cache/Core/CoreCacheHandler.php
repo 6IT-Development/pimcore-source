@@ -763,6 +763,8 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
     /**
      * Adds a tag to the shutdown queue, see clearTagsOnShutdown
      *
+     * A tag in the tagsIgnoredOnClear list at the time of the call is not added, so ignoring e.g. "output" during a
+     * bulk operation keeps the full page cache although the tag is cleared at shutdown.
      *
      * @return $this
      *
@@ -770,6 +772,12 @@ class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
      */
     public function addTagClearedOnShutdown(string $tag): static
     {
+        if (in_array($tag, $this->tagsIgnoredOnClear, true)) {
+            $this->logger->debug('Not scheduling tag {tag} for the shutdown clear as it is ignored on clear', ['tag' => $tag]);
+
+            return $this;
+        }
+
         $this->writeLock->lock();
 
         $this->tagsClearedOnShutdown[] = $tag;
