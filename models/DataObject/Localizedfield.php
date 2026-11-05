@@ -601,25 +601,34 @@ final class Localizedfield extends Model\AbstractModel implements
         return true;
     }
 
-    public function __sleep(): array
+    public function __serialize(): array
     {
+        $items = $this->items;
         if (!$this->isInDumpState()) {
-            /**
-             * Remove all lazy loaded fields if item gets serialized for the cache (not for versions)
-             * This is actually not perfect, but currently we don't have an alternative
-             */
-            $lazyLoadedFields = $this->getLazyLoadedFieldNames();
-            foreach ($lazyLoadedFields as $fieldName) {
-                foreach (Tool::getValidLanguages() as $language) {
-                    unset($this->items[$language][$fieldName]);
-
-                    $lazyKey = $this->buildLazyKey($fieldName, $language);
-                    $this->unmarkLazyKeyAsLoaded($lazyKey);
+            // the cache gets no lazy loaded fields (versions do), they are loaded again on access;
+            // the live instance keeps them, it may still be saved with changed values
+            foreach ($this->getLazyLoadedFieldNames() as $fieldName) {
+                foreach (array_keys($items) as $language) {
+                    unset($items[$language][$fieldName]);
                 }
             }
         }
 
-        return ['items', 'context', 'objectId'];
+        return [
+            'items' => $items,
+            'context' => $this->context,
+            'objectId' => $this->objectId,
+        ];
+    }
+
+    public function __unserialize(array $data): void
+    {
+        foreach (['items', 'context', 'objectId'] as $name) {
+            // entries written by the former __sleep() use the mangled name of the protected property
+            if (array_key_exists($name, $data) || array_key_exists($name = "\0*\0" . $name, $data)) {
+                $this->{ltrim($name, "\0*")} = $data[$name];
+            }
+        }
     }
 
     public function getContext(): array

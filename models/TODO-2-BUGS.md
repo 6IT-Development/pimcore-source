@@ -3256,7 +3256,7 @@ collection / brick, localized and plain variants in `ClassDefinition\Data`) wrap
 `Concrete::update()` / `save()`, `Document::doDelete()` and `Recyclebin\Item::restore()` already restored their flags.
 The `kernel.reset` part stays with I-77.
 
-## [ ] B-176 – `Localizedfield::__sleep()` mutates the live object when it is written to the cache
+## [x] B-176 – `Localizedfield::__sleep()` mutates the live object when it is written to the cache
 
 **File:** `models/DataObject/Localizedfield.php:600-619`
 
@@ -3266,6 +3266,11 @@ The `kernel.reset` part stays with I-77.
   "untouchable" and are not saved; the next read reloads the old values.
 
 **Fix direction:** `__serialize()` that returns a filtered copy and leaves the instance alone.
+
+**Done:** `Localizedfield` replaces `__sleep()` with `__serialize()`, which removes the lazy-loaded fields (of every
+language in `items`) from a copy of the items when not in dump state and leaves the instance and its loaded lazy keys
+alone. `__unserialize()` restores `items`, `context` and `objectId` and also reads cache entries written by the former
+`__sleep()` (mangled protected property names).
 
 ## [ ] B-177 – Every object load reads the store row with `FOR UPDATE`
 
