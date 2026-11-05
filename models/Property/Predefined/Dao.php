@@ -16,6 +16,7 @@
 namespace Pimcore\Model\Property\Predefined;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Config;
 use Pimcore\Model;
@@ -52,13 +53,15 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function getById(?string $id = null): void
     {
-        if ($id != null) {
+        // strict checks: '0' is a valid id
+        if ($id !== null) {
             $this->model->setId($id);
         }
 
-        $data = $this->getDataByName($this->model->getId());
+        $modelId = $this->model->getId();
+        $data = $modelId !== null ? $this->getDataByName($modelId) : null;
 
-        if ($data && $id != null) {
+        if ($data && $id !== null) {
             $data['id'] = $id;
         }
 
@@ -124,10 +127,17 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function save(): void
     {
+        // otherwise the YAML file is written without being loaded, or nothing is written at all
+        if (!$this->isWriteable()) {
+            throw new Exception('Predefined property ' . $this->model->getId() . ' is not writeable.');
+        }
+
+        $this->validate();
+
         $key = $this->model->getKey();
         $existing = $key !== null ? (self::getKeyIndex()[$key] ?? null) : null;
         if ($existing && $existing->getId() !== $this->model->getId()) {
-            throw new \InvalidArgumentException(sprintf('There is already a predefined property with key "%s".', $key));
+            throw new InvalidArgumentException(sprintf('There is already a predefined property with key "%s".', $key));
         }
 
         if (!$this->model->getId()) {
@@ -151,6 +161,33 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         }
         $this->saveData($this->model->getId(), $data);
         RuntimeCache::set(self::KEY_INDEX_CACHE_KEY, null);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private function validate(): void
+    {
+        $id = $this->model->getId();
+        // the id becomes the YAML file name and the settings store key
+        if ($id !== null && !preg_match('/^[A-Za-z0-9_-]+$/D', $id)) {
+            throw new InvalidArgumentException(sprintf('Invalid id "%s" for a predefined property.', $id));
+        }
+
+        if ((string)$this->model->getKey() === '' || (string)$this->model->getName() === '') {
+            throw new InvalidArgumentException('A predefined property needs a key and a name.');
+        }
+
+        $type = $this->model->getType();
+        if (!in_array($type, Model\Property::TYPES, true)) {
+            throw new InvalidArgumentException(sprintf('Unknown type "%s" for predefined property %s.', $type, $this->model->getKey()));
+        }
+
+        // a comma-separated list of element types, empty for all
+        $ctype = (string)$this->model->getCtype();
+        if ($ctype !== '' && array_diff(explode(',', $ctype), ['document', 'asset', 'object'])) {
+            throw new InvalidArgumentException(sprintf('Unknown element type in "%s" for predefined property %s.', $ctype, $this->model->getKey()));
+        }
     }
 
     /**

@@ -3978,7 +3978,7 @@ per `RuntimeCache` and resets it on `save()` / `delete()`; `getByKey()` looks th
 per-key cache entry and returns a fresh instance on every call. `save()` rejects a key that another definition already
 has. The static config cache of `getById()` is invalidated by `saveData()` / `deleteData()` already.
 
-## [ ] B-209 – `Predefined::save()` / `create()` / `getById()` defects (mirror of B-191 / B-192)
+## [x] B-209 – `Predefined::save()` / `create()` / `getById()` defects (mirror of B-191 / B-192)
 
 **Files:** `models/Property/Predefined.php:57-67`, `:91-97`; `models/Property/Predefined/Dao.php:50-70`, `:103-133`;
 `lib/Model/Dao/PimcoreLocationAwareConfigDao.php:100-142`
@@ -3998,6 +3998,12 @@ has. The static config cache of `getById()` is invalidated by `saveData()` / `de
 
 **Fix direction:** same as B-191 / B-192: check writeability, `validate()` (key, name, type, ctype, id pattern),
 `$id !== null`, cast legacy ids; `create()` should not save (or take the required fields).
+
+**Done:** `Predefined\Dao::save()` throws when the definition is not writeable and validates before writing: the id
+pattern `[A-Za-z0-9_-]+`, a non-empty key and name, a type from `Property::TYPES`, and `ctype` as an empty or
+comma-separated list of `document` / `asset` / `object`. `getById()` compares strictly, so `'0'` loads and a missing id
+ends in `NotFoundException`. `Predefined::create()` returns an unsaved definition. Legacy numeric ids are cast to string
+by the listing since B-206.
 
 ---
 

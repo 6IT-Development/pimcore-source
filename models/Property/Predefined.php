@@ -76,12 +76,12 @@ final class Predefined extends Model\AbstractModel
         }
     }
 
+    /**
+     * Returns a new, unsaved definition: key, name and type are required before save()
+     */
     public static function create(): Predefined
     {
-        $type = new self();
-        $type->save();
-
-        return $type;
+        return new self();
     }
 
     public function getKey(): ?string
