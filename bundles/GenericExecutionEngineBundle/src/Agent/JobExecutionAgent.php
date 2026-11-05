@@ -312,7 +312,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             ErrorHandlingMode::CONTINUE_ON_ERROR =>
             $this->continueJobExecutionOnError(
                 $jobRun,
-                $message->getCurrentJobStep(),
+                $message,
                 $processedElements,
                 $errorMessage
             )
@@ -337,21 +337,30 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     }
 
     /**
+     * Only the element failed: the error goes to the run log, the run stays running and keeps its current message.
+     *
      * @throws Exception
      */
     private function continueJobExecutionOnError(
-        JobRun $jobRun,
-        int    $step,
-        int    $processedElements,
-        string $errorMessage
+        JobRun                                 $jobRun,
+        GenericExecutionEngineMessageInterface $message,
+        int                                    $processedElements,
+        string                                 $errorMessage
     ): void
     {
-        $this->setJobRunError(
+        $step = $message->getCurrentJobStep();
+        $element = $message->getElement();
+
+        $this->jobRunRepository->updateLogLocalizedWithDomain(
             $jobRun,
-            $errorMessage,
-            [],
-            false,
-            JobRunStates::RUNNING
+            'gee_job_element_failed',
+            [
+                ...$this->getLogParams($jobRun),
+                '%step%' => $step,
+                '%element%' => $element ? $element->getType() . ' ' . $element->getId() : '-',
+                '%error%' => $errorMessage,
+            ],
+            false
         );
 
         $this->handleNextMessage($jobRun, $step, $processedElements);
@@ -379,14 +388,13 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      * @throws Exception
      */
     private function setJobRunError(
-        JobRun        $jobRun,
-        string        $errorMessage,
-        array         $params = [],
-        bool          $translate = true,
-        ?JobRunStates $status = null
+        JobRun $jobRun,
+        string $errorMessage,
+        array  $params = [],
+        bool   $translate = true
     ): void
     {
-        $jobRun->setState($status ?? JobRunStates::FAILED);
+        $jobRun->setState(JobRunStates::FAILED);
         if ($translate) {
             // same domain and locale as the run log written by updateLogLocalizedWithDomain()
             $translatedMessage = $this->translator->trans($errorMessage, $params, 'admin', 'en');
@@ -399,10 +407,10 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
                 $params
             );
         } else {
+            // raw error texts only go to the log, the current message is set by the caller as translation message
             $this->genericExecutionEngineLogger->info(
                 "[JobRun {$jobRun->getId()}]: " . $errorMessage . ' --> Job execution failed.'
             );
-            $jobRun->setCurrentMessage($errorMessage);
             $this->jobRunRepository->update($jobRun);
             $this->jobRunRepository->updateLog($jobRun, $errorMessage);
         }

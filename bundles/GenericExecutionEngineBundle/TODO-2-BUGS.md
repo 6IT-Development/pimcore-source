@@ -93,12 +93,18 @@ loads the user by id and applies the same rule to active users only, so it now a
 `rerunJobRun()` enforce: owner-less runs are open to users who may see all runs, an owner without the job run
 permission is denied. The voter is still I-22.
 
-### [ ] B-07 – Continue-on-error path logs "Job execution failed" and overwrites the current message with raw text
+### [x] B-07 – Continue-on-error path logs "Job execution failed" and overwrites the current message with raw text
 **File:** `src/Agent/JobExecutionAgent.php:289-304`, `:354-361`
 In `CONTINUE_ON_ERROR` mode every element error logs `… --> Job execution failed.` (info level) and sets
 `currentMessage` to the raw exception text although the run continues; the raw text then goes through
 `getMessageFromSerializedString()` (B-22). Error-log entry already exists (`:243-247`). **Fix:** separate
 "element failed" from "run failed" messages, keep `currentMessage` as translation message.
+
+**Done:** `continueJobExecutionOnError()` no longer goes through `setJobRunError()`: it writes the new
+`gee_job_element_failed` translation (step, element type and id, error text) to the run log without touching the state
+or the current message. `setJobRunError()` lost its unused state argument, always fails the run, and its untranslated
+branch (`stop_on_first_error`) writes the raw error only to the log; the caller sets `gee_job_failed` as current
+message.
 
 ### [ ] B-08 – Step messages are instantiated without type check; non-list `steps` break dispatch
 **File:** `src/Agent/JobExecutionAgent.php:385-396`, `:460-475`, `src/Model/Job.php:29-39`

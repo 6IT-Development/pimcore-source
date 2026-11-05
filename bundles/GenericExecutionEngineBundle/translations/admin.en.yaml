@@ -5,6 +5,7 @@ gee_error_missing_message_implementation: Step message implementation %message% 
 gee_error_no_steps: Job definition %job_run_name% has no steps defined.
 gee_job_cancelled: Job Run %job_run_name% (%job_run_id%) cancelled
 gee_job_failed: Job Run %job_run_name% (%job_run_id%) failed.
+gee_job_element_failed: 'Step %step% of Job Run %job_run_name% (%job_run_id%) failed for element %element%, the job run continues: %error%'
 gee_middleware_step_condition_not_met: Skipping step %stepName% with id %stepId% in %jobName%, condition not met.
 gee_job_started: Job Run %job_run_name% (%job_run_id%) started.
 gee_job_finished: Job Run %job_run_name% (%job_run_id%) completed successfully.
