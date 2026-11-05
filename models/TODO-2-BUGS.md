@@ -4090,7 +4090,7 @@ out of the dump itself, so restoring a version still does not bring back old tas
 tasks of every document type (moved there from `PageSnippet`), so links and hardlinks no longer leave active rows.
 `Task\Dao::save()` inserts the row with its id when the id is set but the row is gone.
 
-## [ ] B-213 – `Task\Listing` returns `null` entries and cached tasks; `getTotalCount()` hides errors
+## [x] B-213 – `Task\Listing` returns `null` entries and cached tasks; `getTotalCount()` hides errors
 
 **Files:** `models/Schedule/Task/Listing/Dao.php:33-54`; `models/Schedule/Task.php:49-69`;
 `models/Element/Traits/ScheduledTasksTrait.php:39-77` (`:70`)
@@ -4105,6 +4105,11 @@ tasks of every document type (moved there from `PageSnippet`), so links and hard
 
 **Fix direction:** hydrate rows directly from one `SELECT *` (no per-id lookup, no `null`s); do not share cached
 instances with listings; let SQL errors propagate (I-97).
+
+**Done:** `Task\Listing\Dao::load()` hydrates the tasks from one `SELECT *`, so no entry can be `null` and no
+instance is shared. `Task::getById()` no longer uses the `RuntimeCache`: tasks are small and changed by listings,
+element saves and the maintenance claim, so a cached instance only kept old state. `getTotalCount()` lets SQL errors
+propagate.
 
 ## [ ] B-214 – Schedule small defects
 

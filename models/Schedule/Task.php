@@ -17,8 +17,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\Schedule;
 
-use Exception;
-use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model;
 use Pimcore\Model\Schedule\Task\Dao;
 
@@ -49,24 +47,15 @@ class Task extends Model\AbstractModel
 
     public static function getById(int $id): ?Task
     {
-        $cacheKey = 'scheduled_task_' . $id;
-
+        // not cached: listings and element saves change tasks, a shared instance would keep their old state
         try {
-            $task = RuntimeCache::get($cacheKey);
-            if (!$task) {
-                throw new Exception('Scheduled Task in Registry is not valid');
-            }
-        } catch (Exception) {
-            try {
-                $task = new self();
-                $task->getDao()->getById($id);
-                RuntimeCache::set($cacheKey, $task);
-            } catch (Model\Exception\NotFoundException) {
-                return null;
-            }
-        }
+            $task = new self();
+            $task->getDao()->getById($id);
 
-        return $task;
+            return $task;
+        } catch (Model\Exception\NotFoundException) {
+            return null;
+        }
     }
 
     public static function create(array $data): Task
