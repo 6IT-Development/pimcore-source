@@ -4287,7 +4287,7 @@ The auto-save reuse in `doSaveVersion()` sets new data and still rewrites; when 
 payload is deleted from its storage type after the new one is written (a failure there is only logged). `save()`
 throws when there is no data instead of failing in `strlen(null)`.
 
-## [ ] B-220 – `Version::save()` defects
+## [x] B-220 – `Version::save()` defects
 
 **Files:** `models/Version.php:129-192`, `:194-221`; `models/Asset.php:1580-1593`
 
@@ -4311,6 +4311,14 @@ throws when there is no data instead of failing in `strlen(null)`.
 **Fix direction:** accept only `ElementInterface` (`setData(?ElementInterface)`); remove the `__wakeup()` call; take
 hash and size from the pending stream (or from the asset checksum when the binary is unchanged); build the stack
 trace with `debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)` (I-104).
+
+**Done:** `setData()` accepts `?ElementInterface`, and `save()` throws unless the data is an element; the array /
+raw-string branch is gone (loaded legacy payloads are only written again through `updateMetadata()`, B-219). The
+`__wakeup()` call on the live element is removed. The asset binary is read once into a rewindable stream (a
+non-seekable pending stream is copied to `php://temp`); hash, size (`fstat()`, falling back to `getFileSize()`) and
+the stored binary all come from that stream, so a new upload is no longer stored with the old file or sized by it. The
+stack trace is built from `debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)` in the format of `getTraceAsString()`. The
+redundant `setId()` after `Dao::save()` is removed. Open: skipping the hash for an unchanged binary (I-104).
 
 ## [ ] B-221 – Version small defects
 

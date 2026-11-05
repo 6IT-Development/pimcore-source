@@ -187,63 +187,51 @@ final class Version extends AbstractModel
         // the payload is rewritten, it may move to another storage type
         $previous = $this->getId() ? clone $this : null;
 
-        $isAsset = false;
         if (!$this->date) {
             $this->setDate(time());
         }
 
-        // get stack trace, if enabled
+        // get stack trace, if enabled; without the arguments, they would be stored with every version
         if ($this->getGenerateStackTrace()) {
-            $this->stackTrace = new Exception()->getTraceAsString();
+            $this->stackTrace = self::getStackTraceAsString();
         }
 
         $data = $this->getData();
-        if ($data === null) {
-            throw new Exception('The version has no data to save');
+        if (!$data instanceof ElementInterface) {
+            throw new Exception('The version has no element to save');
         }
 
-        // if necessary convert the data to save it to filesystem
-        if (is_object($data) || is_array($data)) {
-            // this is because of lazy loaded element inside documents and objects (eg: relational data-types, fieldcollections, ...)
-            if ($data instanceof Element\ElementInterface) {
-                Element\Service::loadAllFields($data);
-            }
+        // this is because of lazy loaded element inside documents and objects (eg: relational data-types, fieldcollections, ...)
+        Element\Service::loadAllFields($data);
 
-            $this->setSerialized(true);
+        $this->setSerialized(true);
 
-            $condensedData = $this->marshalData($data);
+        // __sleep() only runs on the copy made by marshalData(), the element itself is unchanged
+        $dataString = Serialize::serialize($this->marshalData($data));
 
-            $dataString = Serialize::serialize($condensedData);
-
-            // revert all changed made by __sleep()
-            if (method_exists($data, '__wakeup')) {
-                $data->__wakeup();
-            }
-        } else {
-            $dataString = $data;
-        }
-
-        if ($data instanceof Asset && $data->getType() != 'folder') {
-            $isAsset = true;
-            $dataStream = $data->getStream();
+        $binaryStream = null;
+        $binarySize = null;
+        if ($data instanceof Asset && $data->getType() !== 'folder') {
+            // hash, size and stored binary are all taken from the same stream: the pending one of a new upload
+            $binaryStream = $this->getRewindableBinaryStream($data);
             $ctx = hash_init('sha3-512');
-            hash_update_stream($ctx, $dataStream);
+            hash_update_stream($ctx, $binaryStream);
             $this->setBinaryFileHash(hash_final($ctx));
+            rewind($binaryStream);
+            $binarySize = (fstat($binaryStream) ?: [])['size'] ?? $data->getFileSize();
         }
 
-        $this->setStorageType($this->storageAdapter->getStorageType(strlen($dataString),
-            $isAsset ? $data->getfileSize() : null));
+        $this->setStorageType($this->storageAdapter->getStorageType(strlen($dataString), $binarySize));
 
-        if ($isAsset) {
+        if ($binaryStream) {
             $this->setBinaryFileId($this->getDao()->getBinaryFileIdForHash($this->getBinaryFileHash()));
         }
 
         $isNew = !$this->getId();
-        $id = $this->getDao()->save();
-        $this->setId($id);
+        $this->getDao()->save();
 
         try {
-            $this->storageAdapter->save($this, $dataString, $isAsset ? $data->getStream() : null);
+            $this->storageAdapter->save($this, $dataString, $binaryStream);
         } catch (Throwable $e) {
             // a version row without its data would be offered for restore, and its binary hash reused by later versions
             if ($isNew) {
@@ -264,6 +252,49 @@ final class Version extends AbstractModel
         }
 
         $this->dispatchEvent(new VersionEvent($this), VersionEvents::POST_SAVE);
+    }
+
+    /**
+     * The pending stream of an upload may not be seekable, a second read would open the stored (old) file instead
+     *
+     * @return resource
+     */
+    private function getRewindableBinaryStream(Asset $asset)
+    {
+        $stream = $asset->getStream();
+        if (!is_resource($stream)) {
+            throw new Exception(sprintf('The binary data of asset %s cannot be read', $asset->getId()));
+        }
+
+        if (stream_get_meta_data($stream)['seekable'] && rewind($stream)) {
+            return $stream;
+        }
+
+        $copy = fopen('php://temp', 'r+b');
+        stream_copy_to_stream($stream, $copy);
+        rewind($copy);
+
+        return $copy;
+    }
+
+    private static function getStackTraceAsString(): string
+    {
+        $lines = [];
+        // without the frame of this method, like the trace of an exception created by the caller
+        foreach (array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 1) as $i => $frame) {
+            $lines[] = sprintf(
+                '#%d %s%s: %s%s%s()',
+                $i,
+                $frame['file'] ?? '[internal function]',
+                isset($frame['line']) ? '(' . $frame['line'] . ')' : '',
+                $frame['class'] ?? '',
+                $frame['type'] ?? '',
+                $frame['function']
+            );
+        }
+        $lines[] = '#' . count($lines) . ' {main}';
+
+        return implode("\n", $lines);
     }
 
     /**
@@ -517,7 +548,7 @@ final class Version extends AbstractModel
     /**
      * @return $this
      */
-    public function setData(mixed $data): Version
+    public function setData(?ElementInterface $data): Version
     {
         $this->data = $data;
         $this->dataLoaded = true;
