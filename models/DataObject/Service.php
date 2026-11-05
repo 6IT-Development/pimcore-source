@@ -118,11 +118,13 @@ class Service extends Model\Element\Service
         foreach ($classesToCheck as $classname => $fields) {
             $listName = '\\Pimcore\\Model\\DataObject\\' . ucfirst($classname) . '\\Listing';
             $list = new $listName();
+            $list->setUnpublished(true);
             $conditionParts = [];
             foreach ($fields as $field) {
-                $conditionParts[] = $field . ' = ?';
+                $conditionParts[] = $list->quoteIdentifier($field) . ' = ?';
             }
-            $list->setCondition(implode(' AND ', $conditionParts), array_fill(0, count($conditionParts), $userId));
+            // a reference in any of the user fields counts
+            $list->setCondition(implode(' OR ', $conditionParts), array_fill(0, count($conditionParts), $userId));
             $objects = $list->load();
             $userObjects[] = $objects;
         }

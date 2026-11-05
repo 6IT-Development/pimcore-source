@@ -3377,7 +3377,7 @@ source's tasks, so saving the target no longer moves the source's tasks. Tasks t
 version belongs to the source and the task DAO rejects it for another element. `Element\Service::cloneMe()` sets
 `scheduledTasks` to `null` in the copy, so a copy loads its own (none yet) instead of taking over loaded task objects.
 
-## [ ] B-183 – `getObjectsReferencingUser()` combines user fields with `AND`
+## [x] B-183 – `getObjectsReferencingUser()` combines user fields with `AND`
 
 **File:** `models/DataObject/Service.php:96-130`
 
@@ -3385,6 +3385,9 @@ version belongs to the source and the task DAO rejects it for another element. `
   checks miss references.
 
 **Fix direction:** `OR`.
+
+**Done:** the user fields of a class are combined with `OR`, so an object that references the user in any one of them
+is found. The listing also includes unpublished objects (they hold references too) and quotes the field names.
 
 ## [ ] B-184 – Encrypted field value object loses falsy values and its delegate in serialization
 
