@@ -19,7 +19,6 @@ use InvalidArgumentException;
 use Pimcore\Db\Helper;
 use Pimcore\Model;
 use Pimcore\Model\Property;
-use Pimcore\Tool\Serialize;
 
 /**
  * @internal
@@ -57,10 +56,9 @@ class Dao extends Model\Dao\AbstractDao
             } else {
                 $data = null;
             }
-        }
-
-        if (is_array($data) || is_object($data)) {
-            $data = Serialize::serialize($data);
+        } elseif ($data !== null && !is_scalar($data)) {
+            // a serialized array or object would be read back as the serialized string
+            throw new InvalidArgumentException(sprintf('Property "%s" of type "%s" accepts only scalar data, %s given', $name, $type, get_debug_type($data)));
         }
 
         $cpath = $this->model->getCpath();

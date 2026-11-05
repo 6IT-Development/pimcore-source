@@ -3833,7 +3833,7 @@ its next property save (delete-all and re-insert), which is the only way to clea
 `Property\Dao::save()` rejects a missing name, a type outside `Property::TYPES` (now also `null` / `''`) and a property
 without `ctype` (`document` / `asset` / `object`) or `cid`. Open: `type` `NOT NULL` by migration (I-99).
 
-## [ ] B-203 – Array / object values are serialized on save but returned as the serialized string on load
+## [x] B-203 – Array / object values are serialized on save but returned as the serialized string on load
 
 **Files:** `models/Property/Dao.php:44-46`; `models/Property.php:81-98`, `:166-179`
 
@@ -3845,6 +3845,11 @@ without `ctype` (`document` / `asset` / `object`) or `cid`. Open: `type` `NOT NU
 
 **Fix direction:** accept only scalar data for `text` / `select` / `bool` (`TypeError` / `InvalidArgumentException` in
 `setData()`), or store JSON and decode for every type.
+
+**Done:** `Property\Dao::save()` no longer serializes: a property that is not a relation must hold scalar data or
+`null`, otherwise it throws an `InvalidArgumentException` naming the property, its type and the given data type.
+The check is in the DAO (not in `setData()`) because callers set the data before the type (`setDataFromResource()`,
+imports). Rows serialized earlier are still loaded and re-saved as the stored string.
 
 ## [ ] B-204 – Relation properties are silently wiped: dangling targets, unknown paths and missing id mappings become `NULL`
 
