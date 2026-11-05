@@ -4111,7 +4111,7 @@ instance is shared. `Task::getById()` no longer uses the `RuntimeCache`: tasks a
 element saves and the maintenance claim, so a cached instance only kept old state. `getTotalCount()` lets SQL errors
 propagate.
 
-## [ ] B-214 – Schedule small defects
+## [x] B-214 – Schedule small defects
 
 **Files:** `models/Schedule/Task.php:71-83`; `models/Schedule/Task/Dao.php:42-81`;
 `models/Element/Traits/ScheduledTasksTrait.php:64-77`; `lib/Maintenance/Tasks/ScheduledTasksTask.php:60-61`, `:87`,
@@ -4131,6 +4131,13 @@ propagate.
 
 **Fix direction:** one `INSERT` with all columns (or a transaction); ignore / reject client ids in `saveScheduledTasks()`
 unless the row belongs to the element; set `userModification` to the task user before saving; validate on save (I-97).
+
+**Done:** `Task\Dao::save()` inserts a new task with all columns in one statement (`create()`), and updates only
+existing rows. It requires `cid` and a valid `ctype` for every task, and a `date` for active ones, so no task is
+pending forever. `saveScheduledTasks()` drops the id of a task whose row belongs to another element, so the task is
+created as a new one instead of being moved (`Task::setId()` accepts `null`). The executor sets `userModification` to
+the task user before the scheduled save, and deactivates the tasks of missing / inactive users with `claim()` instead
+of a full save. `Task::create()` still does not save, like the predefined property `create()` after B-209.
 
 ---
 

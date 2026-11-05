@@ -67,6 +67,11 @@ trait ScheduledTasksTrait
         $ignoreIds = [];
         $ctype = Service::getElementType($this);
         foreach ($scheduledTasks as $task) {
+            // the id of another element's task (e.g. sent by a client) must not move that task to this element
+            if ($task->getId() && ($stored = Task::getById($task->getId()))
+                && ($stored->getCid() !== $this->getId() || $stored->getCtype() !== $ctype)) {
+                $task->setId(null);
+            }
             $task->setDao(null);
             $task->setCid($this->getId());
             $task->setCtype($ctype);

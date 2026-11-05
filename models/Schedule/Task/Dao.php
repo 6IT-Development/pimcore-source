@@ -42,6 +42,10 @@ class Dao extends Model\Dao\AbstractDao
 
     public function save(): void
     {
+        if (!$this->model->getCid() || !in_array($this->model->getCtype(), ['document', 'asset', 'object'], true)) {
+            throw new InvalidArgumentException('A scheduled task needs the id and the type of its element');
+        }
+
         // a pending task the maintenance cannot execute would be deactivated without running
         if ($this->model->getActive()) {
             $action = $this->model->getAction();
@@ -53,6 +57,10 @@ class Dao extends Model\Dao\AbstractDao
             }
             if ($action === 'publish-version' && !$this->model->getVersion()) {
                 throw new InvalidArgumentException('A scheduled "publish-version" task needs a version');
+            }
+            // never due, the maintenance compares the date
+            if (!$this->model->getDate()) {
+                throw new InvalidArgumentException('A pending scheduled task needs a date');
             }
         }
 
@@ -72,9 +80,9 @@ class Dao extends Model\Dao\AbstractDao
         // a task carried over with the id of a row that is gone would update nothing
         if (!$this->model->getId() || !$this->db->fetchOne('SELECT id FROM schedule_tasks WHERE id = ?', [$this->model->getId()])) {
             $this->create();
+        } else {
+            $this->update();
         }
-
-        $this->update();
     }
 
     /**
@@ -82,7 +90,12 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function create(): void
     {
-        $this->db->insert('schedule_tasks', $this->model->getId() ? ['id' => $this->model->getId()] : []);
+        // one statement, a failing update after an empty insert left a row of NULLs behind
+        $data = $this->getTaskData();
+        if (!$this->model->getId()) {
+            unset($data['id']);
+        }
+        $this->db->insert('schedule_tasks', $data);
         if (!$this->model->getId()) {
             $this->model->setId((int)$this->db->lastInsertId());
         }
@@ -92,6 +105,14 @@ class Dao extends Model\Dao\AbstractDao
      * Save changes to database, it's an good idea to use save() instead
      */
     public function update(): void
+    {
+        $this->db->update('schedule_tasks', $this->getTaskData(), ['id' => $this->model->getId()]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getTaskData(): array
     {
         $site = $this->model->getObjectVars();
         $data = [];
@@ -107,7 +128,7 @@ class Dao extends Model\Dao\AbstractDao
             }
         }
 
-        $this->db->update('schedule_tasks', $data, ['id' => $this->model->getId()]);
+        return $data;
     }
 
     /**

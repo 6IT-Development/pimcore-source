@@ -98,8 +98,7 @@ class ScheduledTasksTask implements TaskInterface
                     $task->getCid(),
                     $task->getUserId()
                 ));
-                $task->setActive(false);
-                $task->save();
+                $task->claim();
 
                 return;
             }
@@ -169,6 +168,7 @@ class ScheduledTasksTask implements TaskInterface
                 if ($publishable) {
                     $element->setPublished(true);
                 }
+                $this->setModifyingUser($element, $taskUser);
                 $element->save();
 
                 return null;
@@ -181,6 +181,7 @@ class ScheduledTasksTask implements TaskInterface
                     return 'the user is not allowed to ' . $task->getAction();
                 }
                 $element->setPublished($task->getAction() === 'publish');
+                $this->setModifyingUser($element, $taskUser);
                 $element->save();
 
                 return null;
@@ -193,6 +194,16 @@ class ScheduledTasksTask implements TaskInterface
                 return null;
             default:
                 return 'unknown action "' . $task->getAction() . '"';
+        }
+    }
+
+    /**
+     * Without an admin session the save would record the system user instead of the user who scheduled the task
+     */
+    private function setModifyingUser(ElementInterface $element, ?User $taskUser): void
+    {
+        if ($taskUser) {
+            $element->setUserModification($taskUser->getId());
         }
     }
 
