@@ -178,12 +178,17 @@ domain and error handling). `getTranslationDomain()` / `getErrorHandlingFromCont
 context with a warning in the GEE log, so existing runs keep working in the grid and the worker. Documented in
 `02_Configuration.md`.
 
-### [ ] B-13 – Suggested-only dependencies are hard requirements
+### [x] B-13 – Suggested-only dependencies are hard requirements
 **Files:** `src/Entity/JobRun.php:279-290`, root `composer.json:169-170`
 `PhpDocExtractor` throws a `LogicException` when `phpdocumentor/reflection-docblock` is missing and
 `symfony/property-info` is only *suggested* → every `JobRun` load (PostLoad) crashes, but the bundle installs and boots
 fine. **Fix:** check `class_exists()` in the extension (`ContainerBuilder::willBeAvailable()`) or the installer and fail
 with a clear message (or move to `require` – I-27).
+
+**Done:** the extension checks for `PropertyInfoExtractor` and `DocBlockFactory` while loading and throws a
+`LogicException` with the `composer require` command, so the container build fails with a clear message instead of every
+job run load. The bundle is opt-in (`bundles.php`), installs without it are unaffected; moving the packages to `require`
+stays with I-27.
 
 ### [ ] B-14 – `EntityRepository::count()` without criteria needs a newer ORM than allowed by composer
 **Files:** `src/Repository/JobRunRepository.php:186`, `src/Repository/JobRunErrorLogRepository.php:82`, root

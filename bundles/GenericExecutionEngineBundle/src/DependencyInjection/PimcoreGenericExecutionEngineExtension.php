@@ -18,6 +18,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericExecutionEngineBundle\DependencyInjection;
 
 use Exception;
+use LogicException;
+use phpDocumentor\Reflection\DocBlockFactory;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Agent\JobExecutionAgentInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Configuration\ExecutionContextInterface;
 use Pimcore\Bundle\GenericExecutionEngineBundle\Utils\Enums\ErrorHandlingMode;
@@ -25,6 +27,7 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\PropertyInfo\PropertyInfoExtractor;
 
 class PimcoreGenericExecutionEngineExtension extends Extension
 {
@@ -33,6 +36,8 @@ class PimcoreGenericExecutionEngineExtension extends Extension
      */
     public function load(array $configs, ContainerBuilder $container): void
     {
+        $this->checkSerializerDependencies();
+
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
@@ -46,5 +51,20 @@ class PimcoreGenericExecutionEngineExtension extends Extension
             '$errorHandlingMode',
             $config['error_handling'] ?? ErrorHandlingMode::CONTINUE_ON_ERROR->value
         );
+    }
+
+    /**
+     * Job runs read the step and selection types of their job from its docblocks. Both packages are only suggested by
+     * pimcore/pimcore, without them every job run load would fail, so the bundle refuses to boot instead.
+     */
+    private function checkSerializerDependencies(): void
+    {
+        if (!class_exists(PropertyInfoExtractor::class) || !class_exists(DocBlockFactory::class)) {
+            throw new LogicException(
+                'The PimcoreGenericExecutionEngineBundle requires "symfony/property-info" and ' .
+                '"phpdocumentor/reflection-docblock". Try running ' .
+                '"composer require symfony/property-info phpdocumentor/reflection-docblock".'
+            );
+        }
     }
 }
