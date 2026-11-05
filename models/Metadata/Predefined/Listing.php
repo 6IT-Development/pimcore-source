@@ -66,12 +66,11 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
     }
 
     /**
-     *
-     * @return Predefined[]|null
+     * @return list<Predefined>
      *
      * @throws Exception
      */
-    public static function getByTargetType(string $type, array|string|null $subTypes = null): ?array
+    public static function getByTargetType(string $type, array|string|null $subTypes = null): array
     {
         if ($type !== 'asset') {
             throw new Exception('other types than assets are currently not supported');
@@ -97,7 +96,7 @@ class Listing extends AbstractModel implements CallableFilterListingInterface, C
             }));
         }
 
-        return $list->load();
+        return array_values($list->load());
     }
 
     public static function getByKeyAndLanguage(string $key, ?string $language, ?string $targetSubtype = null): ?Predefined

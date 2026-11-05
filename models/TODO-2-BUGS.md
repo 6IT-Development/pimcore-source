@@ -3584,7 +3584,7 @@ metadata type and a target subtype must be an asset type. `delete()` throws a `N
 was not loaded. Open: the process-wide static cache of `PimcoreLocationAwareConfigDao` is still not reset in other
 workers (`kernel.reset`, I-87); the repository-side path check stays with C-09.
 
-## [ ] B-192 – Predefined metadata small defects
+## [x] B-192 – Predefined metadata small defects
 
 **Files:** `models/Metadata/Predefined/Dao.php:50-67`; `models/Metadata/Predefined/Listing.php:74-101`;
 `bundles/CoreBundle/src/DependencyInjection/Configuration.php:667-695`
@@ -3601,6 +3601,11 @@ workers (`kernel.reset`, I-87); the repository-side path check stays with C-09.
 
 **Fix direction:** `$id !== null`; `array_values()`; remove `inheritable` or model it; validate `is_scalar($data)` on
 save, or make `data` a `variableNode`.
+
+**Done:** `Dao::getById()` compares strictly, so `'0'` is looked up, and throws `NotFoundException` instead of a
+`TypeError` when no id is known. `getByTargetType()` is declared `array` and returns a list in both branches.
+`inheritable` stays accepted by the config tree (existing files keep compiling) but is deprecated as unused.
+`save()` rejects a non-scalar `data`.
 
 ---
 

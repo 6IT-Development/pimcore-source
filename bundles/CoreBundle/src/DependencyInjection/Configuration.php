@@ -692,6 +692,7 @@ final class Configuration implements ConfigurationInterface
                                             ->scalarNode('targetSubtype')->end()
                                             ->scalarNode('config')->end()
                                             ->booleanNode('inheritable')
+                                                ->setDeprecated('pimcore/pimcore', '11.5', 'The "%path%.%node%" option is not used by predefined asset metadata and will be removed in Pimcore 12.')
                                                 ->beforeNormalization()
                                                     ->ifString()
                                                     ->then(static fn ($v) => self::normalizeBoolString($v))

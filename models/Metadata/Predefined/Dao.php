@@ -52,13 +52,15 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
      */
     public function getById(?string $id = null): void
     {
-        if ($id != null) {
+        // strict checks: '0' is a valid id
+        if ($id !== null) {
             $this->model->setId($id);
         }
 
-        $data = $this->getDataByName($this->model->getId());
+        $modelId = $this->model->getId();
+        $data = $modelId !== null ? $this->getDataByName($modelId) : null;
 
-        if ($data && $id != null) {
+        if ($data && $id !== null) {
             $data['id'] = $id;
         }
 
@@ -150,6 +152,12 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
         $assetTypes = Asset::getTypes();
         if ($targetSubtype !== '' && $assetTypes && !in_array($targetSubtype, $assetTypes, true)) {
             throw new InvalidArgumentException(sprintf('Unknown asset type "%s" for predefined asset metadata %s.', $targetSubtype, $this->model->getName()));
+        }
+
+        // the config tree stores "data" as a scalar node, an array would break the next container compilation
+        $data = $this->model->getData();
+        if ($data !== null && !is_scalar($data)) {
+            throw new InvalidArgumentException(sprintf('The default value of predefined asset metadata %s must be a scalar.', $this->model->getName()));
         }
     }
 
