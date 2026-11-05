@@ -29,6 +29,24 @@ interface JobRunRepositoryInterface
 
     public function update(JobRun $jobRun): JobRun;
 
+    /**
+     * Atomically counts one handled message of the given step.
+     * Returns the new count, or null when the job run is no longer on that step (the message is stale).
+     * The entity is refreshed from the database afterwards.
+     *
+     * @throws Exception
+     */
+    public function incrementProcessedElementsForStep(JobRun $jobRun, int $step): ?int;
+
+    /**
+     * Moves the job run from $fromStep to $toStep (null = no step, job finished) and resets the step counter.
+     * Returns false when the job run is not on $fromStep any more, i.e. another worker already switched it.
+     * The entity is refreshed from the database afterwards.
+     *
+     * @throws Exception
+     */
+    public function switchStep(JobRun $jobRun, int $fromStep, ?int $toStep): bool;
+
     public function updateLogLocalized(
         JobRun $jobRun,
         string $message,

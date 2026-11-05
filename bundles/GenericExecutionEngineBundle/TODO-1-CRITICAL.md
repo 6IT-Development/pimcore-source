@@ -77,7 +77,7 @@ listeners may use the entity manager. The docs describe when the event fires and
 
 ---
 
-## [ ] C-02 – Lost-update race on `processedElementsForStep` → steps never complete with more than one worker
+## [x] C-02 – Lost-update race on `processedElementsForStep` → steps never complete with more than one worker
 
 **Files:** `src/Agent/JobExecutionAgent.php:94-115`, `:171-179`, `:324-330`, `src/Repository/JobRunRepository.php:62-69`
 
@@ -103,6 +103,13 @@ a `SELECT … FOR UPDATE` (or `SELECT` inside the same transaction), and advance
 the counter to `>= totalElements` (guard the step transition with
 `UPDATE … SET currentStep = :next WHERE id = :id AND currentStep = :step` and check the affected rows so only one worker
 dispatches the next step). Ignore messages whose `getCurrentJobStep()` ≠ the run's `currentStep`.
+
+**Done:** `JobRunRepository::incrementProcessedElementsForStep()` increments the counter in SQL
+(`WHERE id = :id AND currentStep = :step`) and reads the result in the same transaction; it returns `null` for a message
+of a step the run is no longer on, which the agent logs and ignores. The step is completed when the returned count is
+`>= totalElements`, and `switchStep()` moves the run with `WHERE currentStep = :fromStep`, so only the worker whose
+update hits the row dispatches the next step or sets the completion state. Both refresh the entity afterwards, and the
+agent passes the run and step on instead of reloading them per helper. The per-step expected count is C-03.
 
 ---
 

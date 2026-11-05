@@ -96,22 +96,29 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         ?Throwable                             $throwable = null
     ): void
     {
-        $jobRun = $this->jobRunRepository->getJobRunById($message->getJobRunId());
-        if (!$this->isRunning($jobRun->getId())) {
+        $jobRun = $this->jobRunRepository->getJobRunById($message->getJobRunId(), true);
+        if ($jobRun->getState() !== JobRunStates::RUNNING) {
             return;
         }
 
-        if ($jobRun->getTotalElements() > 0) {
-            $this->incrementProcessedElements($jobRun);
+        $step = $message->getCurrentJobStep();
+        $processedElements = $this->jobRunRepository->incrementProcessedElementsForStep($jobRun, $step);
+        if ($processedElements === null) {
+            $this->genericExecutionEngineLogger->info(
+                "[JobRun {$jobRun->getId()}]: Ignoring message of step $step," .
+                " the job run is on step {$jobRun->getCurrentStep()}."
+            );
+
+            return;
         }
 
         if (!$throwable) {
-            $this->handleNextMessage($message);
+            $this->handleNextMessage($jobRun, $step, $processedElements);
 
             return;
         }
 
-        $this->handleJobExecutionError($message, $throwable);
+        $this->handleJobExecutionError($jobRun, $message, $throwable, $processedElements);
     }
 
     public function isInteractionAllowed(int $jobRunId, int $ownerId): bool
@@ -152,11 +159,14 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         return $jobRun->getState() === JobRunStates::RUNNING;
     }
 
-    private function getSelectionProcessingModeFromJobRun(JobRun $jobRun): SelectionProcessingMode
+    private function getSelectionProcessingModeFromJobRun(
+        JobRun $jobRun,
+        ?int   $stepIndex = null
+    ): SelectionProcessingMode
     {
         $steps = $jobRun->getJob()?->getSteps();
         if ($steps !== null) {
-            $step = $steps[$jobRun->getCurrentStep()] ?? null;
+            $step = $steps[$stepIndex ?? $jobRun->getCurrentStep()] ?? null;
             if ($step) {
                 return $step->getSelectionProcessingMode();
             }
@@ -166,24 +176,23 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
     }
 
     /**
+     * Continues with the next step once the handled message was the last one of its step.
+     *
      * @throws Exception
      */
-    private function handleNextMessage(GenericExecutionEngineMessageInterface $message): void
+    private function handleNextMessage(JobRun $jobRun, int $step, int $processedElements): void
     {
-        $jobRun = $this->jobRunRepository->getJobRunById($message->getJobRunId());
-
-        if ($this->getSelectionProcessingModeFromJobRun($jobRun) === SelectionProcessingMode::ONCE ||
-            $jobRun->getProcessedElementsForStep() === $jobRun->getTotalElements()) {
-            $this->continueJobStepExecution($message);
+        if ($this->getSelectionProcessingModeFromJobRun($jobRun, $step) === SelectionProcessingMode::ONCE ||
+            $processedElements >= $jobRun->getTotalElements()) {
+            $this->continueJobStepExecution($jobRun, $step);
         }
     }
 
     /**
      * @throws Exception
      */
-    private function continueJobStepExecution(GenericExecutionEngineMessageInterface $message): void
+    private function continueJobStepExecution(JobRun $jobRun, int $finishedStep): void
     {
-        $jobRun = $this->jobRunRepository->getJobRunById($message->getJobRunId());
         $job = $jobRun->getJob();
         if (!$job instanceof Job) {
             $this->setJobRunError(
@@ -197,7 +206,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
 
         $this->genericExecutionEngineLogger->info(
             "[JobRun {$jobRun->getId()}]:" .
-            " Job step {$jobRun->getCurrentStep()} of Job '{$job->getName()}' finished."
+            " Job step $finishedStep of Job '{$job->getName()}' finished."
         );
 
         if ($jobRun->getState() === JobRunStates::CANCELLED) {
@@ -208,18 +217,20 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             return;
         }
 
-        $nextStep = $jobRun->getCurrentStep() + 1;
+        $nextStep = $finishedStep + 1;
+        $isLastStep = count($job->getSteps()) <= $nextStep;
 
-        if (count($job->getSteps()) <= $nextStep) {
-            $jobRun->setCurrentStep(null);
+        // only the worker that moves the run away from the finished step continues, all others stop here
+        if (!$this->jobRunRepository->switchStep($jobRun, $finishedStep, $isLastStep ? null : $nextStep)) {
+            return;
+        }
+
+        if ($isLastStep) {
             $this->setCompletionState($jobRun);
             $this->jobRunRepository->update($jobRun);
 
             $this->genericExecutionEngineLogger->info("[JobRun {$jobRun->getId()}]: Job '{$job->getName()}' finished.");
         } else {
-            $jobRun->setProcessedElementsForStep(0);
-            $jobRun->setCurrentStep($nextStep);
-            $this->jobRunRepository->update($jobRun);
             $this->dispatchStepMessage($jobRun);
         }
     }
@@ -228,12 +239,12 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      * @throws Exception
      */
     private function handleJobExecutionError(
+        JobRun                                 $jobRun,
         GenericExecutionEngineMessageInterface $message,
-        Throwable                              $throwable
+        Throwable                              $throwable,
+        int                                    $processedElements
     ): void
     {
-        $jobRun = $this->jobRunRepository->getJobRunById($message->getJobRunId());
-
         $this->genericExecutionEngineLogger->error("[JobRun {$jobRun->getId()}]: " . $throwable);
         $errorMessage = $throwable->getMessage();
         if ($this->isDev) {
@@ -249,7 +260,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
         match (
         $this->getErrorHandlingMode(
             $jobRun,
-            $this->getSelectionProcessingModeFromJobRun($jobRun)
+            $this->getSelectionProcessingModeFromJobRun($jobRun, $message->getCurrentJobStep())
         )
         ) {
             ErrorHandlingMode::STOP_ON_FIRST_ERROR =>
@@ -260,7 +271,8 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             ErrorHandlingMode::CONTINUE_ON_ERROR =>
             $this->continueJobExecutionOnError(
                 $jobRun,
-                $message,
+                $message->getCurrentJobStep(),
+                $processedElements,
                 $errorMessage
             )
         };
@@ -287,9 +299,10 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
      * @throws Exception
      */
     private function continueJobExecutionOnError(
-        JobRun                                 $jobRun,
-        GenericExecutionEngineMessageInterface $message,
-        string                                 $errorMessage
+        JobRun $jobRun,
+        int    $step,
+        int    $processedElements,
+        string $errorMessage
     ): void
     {
         $this->setJobRunError(
@@ -300,7 +313,7 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             JobRunStates::RUNNING
         );
 
-        $this->handleNextMessage($message);
+        $this->handleNextMessage($jobRun, $step, $processedElements);
     }
 
     /**
@@ -319,14 +332,6 @@ final class JobExecutionAgent implements JobExecutionAgentInterface
             'gee_job_failed',
             $this->getLogParams($jobRun)
         );
-    }
-
-    private function incrementProcessedElements(JobRun $jobRun): void
-    {
-        $currentElementCount = $jobRun->getProcessedElementsForStep() + 1;
-
-        $jobRun->setProcessedElementsForStep($currentElementCount);
-        $this->jobRunRepository->update($jobRun);
     }
 
     /**

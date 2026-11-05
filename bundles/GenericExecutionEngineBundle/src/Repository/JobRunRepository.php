@@ -70,6 +70,52 @@ final readonly class JobRunRepository implements JobRunRepositoryInterface
 
     /**
      * @throws Exception
+     */
+    public function incrementProcessedElementsForStep(JobRun $jobRun, int $step): ?int
+    {
+        $processedElements = $this->db->transactional(function (Connection $db) use ($jobRun, $step): ?int {
+            $affectedRows = $db->executeStatement(
+                'UPDATE ' . TableConstants::JOB_RUN_TABLE .
+                ' SET processedElementsForStep = processedElementsForStep + 1' .
+                ' WHERE id = :id AND currentStep = :step',
+                ['id' => $jobRun->getId(), 'step' => $step]
+            );
+
+            if ($affectedRows === 0) {
+                return null;
+            }
+
+            // the row stays locked by the update until the commit, so this reads our own increment
+            return (int) $db->fetchOne(
+                'SELECT processedElementsForStep FROM ' . TableConstants::JOB_RUN_TABLE . ' WHERE id = :id',
+                ['id' => $jobRun->getId()]
+            );
+        });
+
+        $this->pimcoreEntityManager->refresh($jobRun);
+
+        return $processedElements;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function switchStep(JobRun $jobRun, int $fromStep, ?int $toStep): bool
+    {
+        $affectedRows = $this->db->executeStatement(
+            'UPDATE ' . TableConstants::JOB_RUN_TABLE .
+            ' SET currentStep = :toStep, processedElementsForStep = 0' .
+            ' WHERE id = :id AND currentStep = :fromStep',
+            ['id' => $jobRun->getId(), 'fromStep' => $fromStep, 'toStep' => $toStep]
+        );
+
+        $this->pimcoreEntityManager->refresh($jobRun);
+
+        return $affectedRows > 0;
+    }
+
+    /**
+     * @throws Exception
      *
      * @internal
      */
