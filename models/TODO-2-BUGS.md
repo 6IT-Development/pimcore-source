@@ -5189,7 +5189,7 @@ named `ArrayParameterType` parameter, because the condition variables may be pos
 lists all types (`getChildren()` callers may pass one) and is now documented as such. `ListingTest` has
 `testObjectTypeFilterWithOrCondition()` and `testInvalidObjectType()` (not run locally, no `vendor/`).
 
-## [ ] B-251 – `DefinitionModifier`: modified layouts are out of sync with the definition's field list; `Localizedfields` and `Block` containers are half-supported
+## [x] B-251 – `DefinitionModifier`: modified layouts are out of sync with the definition's field list; `Localizedfields` and `Block` containers are half-supported
 
 **Files:** `models/DataObject/DefinitionModifier.php:116-150`, `:176-190`; `models/DataObject/ClassDefinition.php:337`,
 `:708-760`; `models/DataObject/ClassDefinition/Dao.php:159`; `models/DataObject/ClassDefinition/Layout.php:239-244`;
@@ -5216,6 +5216,19 @@ lists all types (`getChildren()` callers may pass one) and is now documented as 
 **Fix direction:** accept the owning definition (or return the modified layout) and call `setLayoutDefinitions()` at
 the end; treat every type with children (`Layout`, `Localizedfields`, `Block`) uniformly through one interface;
 validate names and nesting; `===`.
+
+**Done:** every public method also accepts the owning definition (`ClassDefinitionInterface`,
+`Fieldcollection\Definition`, `Objectbrick\Definition`): the modifier edits its layout and then calls
+`setLayoutDefinitions()`, so the field list (and `deletedDataComponents`) match the changed layout before `save()`.
+Passing a `Layout` keeps working as before; the class docblock says that the caller then has to call
+`setLayoutDefinitions()`. `Layout`, `Localizedfields` and `Block` are containers alike: `findField()` descends into
+all three and `insertFieldsFront/Back()` inserts into all three. The added fields are validated and
+`InvalidArgumentException` is thrown for elements that are neither `Data` nor `Layout`, for data field names that are
+already used (a replaced element's names are free again; fields inside `Localizedfields` share the definition's
+names, the `Localizedfields` container itself may repeat, a `Block` has names of its own) and for a `Localizedfields`
+inside another one. Names match with `===`; the first match per level still wins, which the `findField()` docblock now
+says. Checked with a script against the classes of another local Pimcore installation; `DefinitionModifierTest` was
+not run (no `vendor/`), and no `doc/` page was added.
 
 ---
 
