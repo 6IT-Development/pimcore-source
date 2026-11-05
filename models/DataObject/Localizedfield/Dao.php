@@ -230,19 +230,9 @@ class Dao extends Model\Dao\AbstractDao
                             )) {
                             Helper::upsert($this->db, $storeTable, $insertData, $this->getPrimaryKey($storeTable));
                         }
-                    } catch (TableNotFoundException) {
-                        // if the table doesn't exist -> create it! deferred creation for object bricks ...
-                        try {
-                            $this->db->rollBack();
-                        } catch (Exception $er) {
-                            // PDO adapter throws exceptions if rollback fails
-                            Logger::info((string)$er);
-                        }
-
-                        $this->createUpdateTable();
-
-                        // throw exception which gets caught in AbstractObject::save() -> retry saving
-                        throw new LanguageTableDoesNotExistException('missing table created, start next run ... ;-)');
+                    } catch (TableNotFoundException $e) {
+                        // deferred creation for object bricks ...
+                        $this->createMissingTablesAndRetry($e);
                     }
 
                     if ($container instanceof DataObject\ClassDefinition || $container instanceof DataObject\Objectbrick\Definition) {
@@ -262,26 +252,9 @@ class Dao extends Model\Dao\AbstractDao
 
                         try {
                             $oldData = $this->db->fetchAssociative($sql);
-                        } catch (TableNotFoundException) {
-                            // if the table doesn't exist -> create it!
-
-                            // the following is to ensure consistent data and atomic transactions, while having the flexibility
-                            // to add new languages on the fly without saving all classes having localized fields
-
-                            // first we need to roll back all modifications, because otherwise they would be implicitly committed
-                            // by the following DDL
-                            try {
-                                $this->db->rollBack();
-                            } catch (Exception $er) {
-                                // PDO adapter throws exceptions if rollback fails
-                                Logger::info((string)$er);
-                            }
-
-                            // this creates the missing table
-                            $this->createUpdateTable();
-
-                            // at this point we throw an exception so that the transaction gets repeated in DataObject::save()
-                            throw new LanguageTableDoesNotExistException('missing table created, start next run ... ;-)');
+                        } catch (TableNotFoundException $e) {
+                            // a language added without saving all classes having localized fields
+                            $this->createMissingTablesAndRetry($e);
                         }
 
                         // get fields which shouldn't be updated
@@ -501,22 +474,13 @@ class Dao extends Model\Dao\AbstractDao
                     $fd->delete($object, $params);
                 }
             }
-        } catch (Exception $e) {
-            Logger::error((string)$e);
-
-            if ($isUpdate && $e instanceof TableNotFoundException) {
-                try {
-                    $this->db->rollBack();
-                } catch (Exception $er) {
-                    // PDO adapter throws exceptions if rollback fails
-                    Logger::info((string)$er);
-                }
-
-                $this->createUpdateTable();
-
-                // throw exception which gets caught in AbstractObject::save() -> retry saving
-                throw new LanguageTableDoesNotExistException('missing table created, start next run ... ;-)');
+        } catch (TableNotFoundException $e) {
+            if ($isUpdate) {
+                $this->createMissingTablesAndRetry($e);
             }
+
+            // the object is being deleted, a table that does not exist holds no rows of it
+            Logger::info((string)$e);
         }
 
         // remove relations
@@ -562,7 +526,7 @@ class Dao extends Model\Dao\AbstractDao
             $sql = Helper::quoteInto($this->db, 'src_id = ?', $objectId) . " AND ownertype = 'localizedfield' AND "
                 . Helper::quoteInto($this->db,
                     'ownername LIKE ?',
-                    '/' . $context['containerType'] . '~' . $containerName . '/' . $index . '/%'
+                    Helper::escapeLike('/' . $context['containerType'] . '~' . $containerName . '/' . $index . '/') . '%'
                 ) . $dirtyLanguageCondition;
 
             if ($deleteQuery || $context['containerType'] === 'fieldcollection') {
@@ -582,6 +546,38 @@ class Dao extends Model\Dao\AbstractDao
         }
 
         return false;
+    }
+
+    /**
+     * Creates the missing tables of a language added after the class was saved and makes AbstractObject::save() retry.
+     *
+     * The DDL commits implicitly, so this works only when the object save runs in its own transaction: rolling back
+     * inside a surrounding transaction would only lower the nesting level, and the DDL would commit the caller's work.
+     *
+     * @throws Exception
+     */
+    private function createMissingTablesAndRetry(TableNotFoundException $e): never
+    {
+        if ($this->db->getTransactionNestingLevel() > 1) {
+            throw new Exception(
+                'A localized table is missing and cannot be created inside the surrounding transaction, run "bin/console pimcore:deployment:classes-rebuild" to create it',
+                0,
+                $e
+            );
+        }
+
+        // roll back first, the DDL below would commit the modifications implicitly
+        try {
+            $this->db->rollBack();
+        } catch (Exception $er) {
+            // PDO adapter throws exceptions if rollback fails
+            Logger::info((string)$er);
+        }
+
+        $this->createUpdateTable();
+
+        // gets caught in AbstractObject::save() -> retry saving
+        throw new LanguageTableDoesNotExistException('missing table created, start next run ... ;-)');
     }
 
     public function load(DataObject\Fieldcollection\Data\AbstractData|DataObject\Objectbrick\Data\AbstractData|DataObject\Concrete $object, array $params = []): void

@@ -3302,7 +3302,7 @@ the table for the new locale. The on-demand creation of missing localized tables
 after the class was saved, but it reacts only to a DBAL `TableNotFoundException` (no driver message matching) and also
 covers `getTotalCount()`.
 
-## [ ] B-179 – Localized fields: deferred table creation rolls back the caller's transaction; `delete()` swallows errors
+## [x] B-179 – Localized fields: deferred table creation rolls back the caller's transaction; `delete()` swallows errors
 
 **File:** `models/DataObject/Localizedfield/Dao.php:226-285`, `:447-519`, `:547-583`
 
@@ -3316,6 +3316,14 @@ covers `getTotalCount()`.
 
 **Fix direction:** create language tables when languages / classes change, never during a data save; propagate errors;
 escape `LIKE` values.
+
+**Done:** the three deferred-creation paths share `createMissingTablesAndRetry()`. It rolls back, creates the tables
+and throws the `RetryableException` only when the object save runs in its own transaction (nesting level 1); inside a
+surrounding transaction it throws an exception that names `pimcore:deployment:classes-rebuild` instead, so the caller's
+work is neither rolled back half nor committed by the DDL. Core has no hook for language changes (they are saved by the
+admin UI), so the creation on save stays for the standalone case. `delete()` catches only `TableNotFoundException`:
+during an update it goes through the same helper, when the object is deleted a missing table is logged and skipped;
+every other error propagates. The fieldcollection `ownername LIKE` prefix is escaped with `Helper::escapeLike()`.
 
 ## [ ] B-180 – Field collections: a read error loads an empty collection that the next save persists; DDL inside the save transaction
 
