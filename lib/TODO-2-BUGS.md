@@ -142,7 +142,7 @@ at once, removal without an own lock, a corrupted lock value and an expired own 
 
 ---
 
-## [ ] B-02 – Per-process state of `CoreCacheHandler` / `WriteLock` is never reset in long-running processes
+## [x] B-02 – Per-process state of `CoreCacheHandler` / `WriteLock` is never reset in long-running processes
 
 **File:** `lib/Cache/Core/CoreCacheHandler.php:76`, `:82`, `:100`, `:107`, `:576`, `:684`; `lib/Cache/Core/WriteLock.php:46-48`;
 `lib/Pimcore.php:165-177`; `bundles/CoreBundle/config/cache.yaml:45-62`
@@ -164,6 +164,15 @@ at once, removal without an own lock, a corrupted lock value and an expired own 
 logic: clear shutdown tags, write/drop queue, remove lock, reset `clearedTags`, `cacheCleared`) and `WriteLock`;
 the services are autoconfigured, so the `kernel.reset` tag is added automatically and the `services_resetter`
 runs it after each messenger message / worker request. Keep `Pimcore::shutdown()` for classic FPM.
+
+**Done:** `CoreCacheHandler` and `WriteLock` implement `ResetInterface`; both services are autoconfigured, so the
+`services_resetter` calls them after each messenger message and worker request. `CoreCacheHandler::reset()` runs
+`shutdown()` (clear the shutdown tags, write the queue under the usual CLI / write-lock rules, remove the lock) and then
+drops the remaining queue and resets `clearedTags`, `tagsClearedOnShutdown`, `cacheCleared` and `writeInProgress`;
+an exception is logged instead of stopping the worker. `WriteLock::reset()` removes the own lock. Settings changed by
+code (`enabled`, `handleCli`, `forceImmediateWrite`, ignored-tag lists) are kept. `Pimcore::shutdown()` stays for
+classic FPM. Tests: reset writes the queue and lets a cleared tag be cached again, drops the unwritten CLI queue, and
+removes the own write lock.
 
 ---
 

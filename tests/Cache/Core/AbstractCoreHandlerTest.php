@@ -820,6 +820,49 @@ abstract class AbstractCoreHandlerTest extends Unit
         $this->assertFalse($this->writeLock->hasLock());
     }
 
+    public function testResetWritesTheQueueAndClearsThePerProcessState(): void
+    {
+        $this->handler->save('itemA', 'test');
+        $this->handler->clearTags(['tag_a', 'output']);
+        $this->handler->clearAll();
+
+        $this->handler->reset();
+
+        $this->assertFalse($this->writeLock->hasLock());
+        $this->assertEmpty($this->getHandlerPropertyValue('clearedTags'));
+        $this->assertEmpty($this->getHandlerPropertyValue('tagsClearedOnShutdown'));
+        $this->assertEmpty($this->getHandlerPropertyValue('saveQueue'));
+        $this->assertFalse($this->getHandlerPropertyValue('cacheCleared'));
+
+        // the next message / request can cache items with a tag that was cleared before
+        $this->assertTrue($this->handler->save('itemB', 'test', ['tag_a']));
+        $this->handler->writeSaveQueue();
+        $this->assertTrue($this->cacheHasItem('itemB'));
+    }
+
+    /**
+     * @group cache-cli
+     */
+    public function testResetDropsTheQueueThatIsNotWrittenInCliMode(): void
+    {
+        $this->handler->setHandleCli(true);
+        $this->handler->save('itemA', 'test');
+        $this->handler->setHandleCli(false);
+
+        $this->handler->reset();
+
+        $this->assertFalse($this->cacheHasItem('itemA'));
+        $this->assertEmpty($this->getHandlerPropertyValue('saveQueue'));
+    }
+
+    public function testWriteLockResetRemovesTheOwnLock(): void
+    {
+        $this->writeLock->lock();
+        $this->writeLock->reset();
+
+        $this->assertFalse($this->writeLock->hasLock());
+    }
+
     /**
      * Data provider for invalid keys.
      *

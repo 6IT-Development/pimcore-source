@@ -35,6 +35,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\CacheItem;
 use Symfony\Contracts\EventDispatcher\Event;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
 
 /**
@@ -46,7 +47,7 @@ use Throwable;
  *
  * @internal
  */
-class CoreCacheHandler implements LoggerAwareInterface
+class CoreCacheHandler implements LoggerAwareInterface, ResetInterface
 {
     use LoggerAwareTrait;
 
@@ -887,6 +888,34 @@ class CoreCacheHandler implements LoggerAwareInterface
         }
 
         return $this;
+    }
+
+    /**
+     * Runs the shutdown logic and resets the per-process state between messages of a messenger worker or requests
+     * of a worker runtime (kernel.reset), as Pimcore::shutdown() only runs at the end of the process
+     *
+     * Items that were not written (e.g. in CLI mode without handleCli) are dropped, and the lists of cleared tags
+     * and the cache-cleared state no longer block saves of the next message or request.
+     *
+     * @internal
+     */
+    public function reset(): void
+    {
+        try {
+            $this->shutdown();
+        } catch (Throwable $e) {
+            // an exception here would stop the worker
+            $this->logger->error('Failed to shut down the cache handler on reset: {error}', [
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+        } finally {
+            $this->saveQueue = [];
+            $this->clearedTags = [];
+            $this->tagsClearedOnShutdown = [];
+            $this->cacheCleared = false;
+            $this->writeInProgress = false;
+        }
     }
 
     private function clearTagsAndWriteOnShutdown(bool $forceWrite): void

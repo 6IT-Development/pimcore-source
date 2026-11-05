@@ -20,11 +20,13 @@ namespace Pimcore\Cache\Core;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
+use Symfony\Contracts\Service\ResetInterface;
+use Throwable;
 
 /**
  * @internal
  */
-class WriteLock implements LoggerAwareInterface
+class WriteLock implements LoggerAwareInterface, ResetInterface
 {
     use LoggerAwareTrait;
 
@@ -206,5 +208,26 @@ class WriteLock implements LoggerAwareInterface
         $item->expiresAfter($this->lifetime);
 
         return $this->itemPool->save($item);
+    }
+
+    /**
+     * Removes the lock of this process between messages of a messenger worker or requests of a worker runtime
+     * (kernel.reset)
+     *
+     * @internal
+     */
+    public function reset(): void
+    {
+        try {
+            $this->removeLock();
+        } catch (Throwable $e) {
+            // an exception here would stop the worker; the lock expires after its lifetime
+            $this->logger->error('Failed to remove the write lock on reset: {error}', [
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+        } finally {
+            $this->timestamp = null;
+        }
     }
 }
