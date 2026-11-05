@@ -191,11 +191,13 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
             $value = $dataDefinition->getDataForResource($value, $this->object, ['owner' => $this]);
         }
 
-        // set the given group to active groups
-        $this->setActiveGroups($this->activeGroups + [$groupId => true]);
-
         if (!$this->isFieldDirty('_self')) {
-            if ($this->object) {
+            if ($this->object && $dataDefinition instanceof Model\DataObject\ClassDefinition\Data\EqualComparisonInterface) {
+                // compares the values themselves: the resource form of encrypted fields differs on every call
+                if (!$dataDefinition->isEqual($this->items[$groupId][$keyId][$language] ?? null, $value)) {
+                    $this->markFieldDirty('_self');
+                }
+            } elseif ($this->object) {
                 $oldData = $this->items[$groupId][$keyId][$language] ?? null;
                 $oldData = $dataDefinition->getDataForResource($oldData, $this->object, ['owner' => $this]);
                 if (!$dataDefinition instanceof Model\DataObject\ClassDefinition\Data\Password) {
@@ -224,6 +226,8 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         }
 
         if ($nonEmpty || $value) {
+            // set the given group to active groups, removing a value does not switch a group on
+            $this->setActiveGroups($this->activeGroups + [$groupId => true]);
             $this->items[$groupId][$keyId][$language] = $value;
         } elseif (isset($this->items[$groupId][$keyId][$language])) {
             unset($this->items[$groupId][$keyId][$language]);
@@ -239,12 +243,14 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
     }
 
     /**
-     * Removes the group with the given id
+     * Removes the data of the group with the given id, deactivates the group and drops its collection mapping
      *
      */
     public function removeGroupData(int $groupId): void
     {
-        unset($this->items[$groupId]);
+        unset($this->items[$groupId], $this->groupCollectionMapping[$groupId]);
+        $this->setActiveGroups(array_diff_key($this->activeGroups, [$groupId => true]));
+        $this->markFieldDirty('_self');
     }
 
     /** Returns an array of
@@ -460,12 +466,18 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
      */
     public function setGroupCollectionMappings(array $groupCollectionMapping): void
     {
+        if ($groupCollectionMapping != $this->groupCollectionMapping) {
+            $this->markFieldDirty('_self');
+        }
         $this->groupCollectionMapping = $groupCollectionMapping;
     }
 
     public function setGroupCollectionMapping(?int $groupId = null, ?int $collectionId = null): void
     {
         if ($groupId && $collectionId) {
+            if (($this->groupCollectionMapping[$groupId] ?? null) !== $collectionId) {
+                $this->markFieldDirty('_self');
+            }
             $this->groupCollectionMapping[$groupId] = $collectionId;
         }
     }

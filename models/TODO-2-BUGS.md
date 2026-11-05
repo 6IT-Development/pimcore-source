@@ -5091,7 +5091,7 @@ without object. The admin edit mode is unaffected: it builds its payload with th
 dirty flag), so a value sent back by a client no longer ends in the undefined `getDataForResource()` call. The syntax
 error message returned as value stays with `Service` (Scope 6).
 
-## [ ] B-248 – Classification store changes that are not saved, and a dirty check that is wrong both ways
+## [x] B-248 – Classification store changes that are not saved, and a dirty check that is wrong both ways
 
 **Files:** `models/DataObject/Classificationstore.php:183`, `:185-206`, `:216-226`, `:235-238`, `:427-437`;
 `models/DataObject/Classificationstore/Dao.php:54-56`
@@ -5112,6 +5112,14 @@ error message returned as value stays with `Service` (Scope 6).
 **Fix direction:** mark `_self` dirty in every mutator (and clean up `activeGroups` / mappings in `removeGroupData()`);
 activate the group only for non-empty values; compare with `EqualComparisonInterface::isEqual()` where available; give
 the DAO a raw hydration method that bypasses dirty detection (I-130).
+
+**Done:** `removeGroupData()` marks the store dirty and also removes the group from `activeGroups` and its collection
+mapping; `setGroupCollectionMappings()` / `setGroupCollectionMapping()` mark it dirty when the mapping changes. The
+admin `getDataFromEditmode()` calls `removeGroupData()` only for groups it has just deactivated, so its result is the
+same. `setLocalizedKeyValue()` activates the group only when it stores a value. The dirty check uses
+`EqualComparisonInterface::isEqual()` on the values when the key type implements it (encrypted fields no longer count
+as changed on every call) and keeps the resource-form comparison for the other types. The raw hydration for
+`Dao::load()` is left to I-130; load still resets the dirty map at the end.
 
 ## [ ] B-249 – Classification store: `null` key configurations, stores without object and uninitialised state end in `Error`s
 
