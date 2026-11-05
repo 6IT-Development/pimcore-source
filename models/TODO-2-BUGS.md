@@ -5158,7 +5158,7 @@ parents whose getter does not return a store. `$fieldname` defaults to `''`. `$o
 `ElementDescriptor`, which the deep-copy marshalling puts there; `getObject()` returns `null` for it instead of
 throwing a `TypeError`.
 
-## [ ] B-250 – `DataObject\Listing`: the object-type filter is ANDed to an unparenthesised condition – folders and variants leak through `OR` conditions
+## [x] B-250 – `DataObject\Listing`: the object-type filter is ANDed to an unparenthesised condition – folders and variants leak through `OR` conditions
 
 **Files:** `models/DataObject/Listing.php:37`, `:63-75`; `lib/Model/Listing/Dao/QueryBuilderHelperTrait.php:56-74`
 
@@ -5181,6 +5181,13 @@ $condition .= ' ' . $tableName . ".type IN ('" . implode("','", $objectTypes) . 
 
 **Fix direction:** `'(' . $condition . ') AND type IN (:objectTypes)'` with `ArrayParameterType::STRING`; validate the
 values against `DataObject::$types` in `setObjectTypes()`; add a test with an `OR` condition (I-134).
+
+**Done:** `QueryBuilderHelperTrait::applyConditionsToQueryBuilder()` builds `(<condition>) AND objects.type IN (...)`,
+so an `OR` in the condition no longer bypasses the type filter. The types are quoted with `$db->quote()` instead of a
+named `ArrayParameterType` parameter, because the condition variables may be positional and the two cannot be mixed.
+`setObjectTypes()` throws `InvalidArgumentException` for values outside `DataObject::$types`; an empty array still
+lists all types (`getChildren()` callers may pass one) and is now documented as such. `ListingTest` has
+`testObjectTypeFilterWithOrCondition()` and `testInvalidObjectType()` (not run locally, no `vendor/`).
 
 ## [ ] B-251 – `DefinitionModifier`: modified layouts are out of sync with the definition's field list; `Localizedfields` and `Block` containers are half-supported
 

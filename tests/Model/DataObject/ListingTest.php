@@ -227,4 +227,22 @@ class ListingTest extends ModelTestCase
         $totalCount = $list->getTotalCount();
         $this->assertEquals(8, $totalCount, 'expected 8 objects');
     }
+
+    public function testObjectTypeFilterWithOrCondition(): void
+    {
+        // the root (ID 1) is a folder, the OR must not let it through the type filter
+        $list = new DataObject\Listing();
+        $list->setObjectTypes([DataObject::OBJECT_TYPE_OBJECT]);
+        $list->setCondition('id = 1 OR `key` LIKE ?', ['listing-test-10\_%']);
+
+        $this->assertEquals(1, $list->getTotalCount(), 'expected only the object, not the root folder');
+        $this->assertSame([DataObject::OBJECT_TYPE_OBJECT], array_map(fn ($object) => $object->getType(), $list->load()));
+    }
+
+    public function testInvalidObjectType(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new DataObject\Listing())->setObjectTypes(["object') OR ('1"]);
+    }
 }

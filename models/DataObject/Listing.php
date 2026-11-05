@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Model\DataObject;
 
+use InvalidArgumentException;
 use Pimcore\Model;
 use Pimcore\Model\DataObject\Listing\Dao;
 use Pimcore\Model\Paginator\PaginateListingInterface;
@@ -60,8 +61,20 @@ class Listing extends Model\Listing\AbstractListing implements PaginateListingIn
         return $this;
     }
 
+    /**
+     * Restricts the listing to the given object types (DataObject::OBJECT_TYPE_*), an empty array lists all types
+     *
+     * @param string[] $objectTypes
+     *
+     * @throws InvalidArgumentException for values that are not an object type
+     */
     public function setObjectTypes(array $objectTypes): static
     {
+        $invalidTypes = array_diff($objectTypes, Model\DataObject::$types);
+        if ($invalidTypes) {
+            throw new InvalidArgumentException(sprintf('Invalid object type(s): %s', implode(', ', array_map('strval', $invalidTypes))));
+        }
+
         $this->setData(null);
 
         $this->objectTypes = $objectTypes;

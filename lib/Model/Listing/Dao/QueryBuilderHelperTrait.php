@@ -59,10 +59,10 @@ trait QueryBuilderHelperTrait
             $tableName = $this->getTableName();
 
             if (!empty($objectTypes)) {
-                if (!empty($condition)) {
-                    $condition .= ' AND ';
-                }
-                $condition .= ' ' . $tableName . ".type IN ('" . implode("','", $objectTypes) . "')";
+                // the condition is wrapped, so an OR in it cannot bypass the type filter; the types are quoted, since
+                // the condition variables may be positional and cannot be mixed with named parameters
+                $typeCondition = $tableName . '.type IN (' . implode(',', array_map($this->db->quote(...), array_map('strval', $objectTypes))) . ')';
+                $condition = $condition ? '(' . $condition . ') AND ' . $typeCondition : $typeCondition;
             }
 
             if ($condition) {
