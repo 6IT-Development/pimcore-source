@@ -4545,7 +4545,7 @@ rejected, so a user row with such a value stays loadable (its login fails as bef
 password, because form submissions send it for an empty password field (admin bundle, not verified locally).
 `setUsername()` takes a non-nullable `string` in `User` and `UserInterface`, matching `setName()`.
 
-## [ ] B-229 – `AbstractUser::delete()` is not transactional and leaves user data behind
+## [x] B-229 – `AbstractUser::delete()` is not transactional and leaves user data behind
 
 **Files:** `models/User/AbstractUser.php:203-265`; `models/User/Dao.php:30-52`; `models/User.php:416-448`;
 `bundles/InstallBundle/dump/install.sql:192`, `:248`, `:334`, `:440`, `:723-796`
@@ -4564,6 +4564,14 @@ password, because form submissions send it for an empty password field (admin bu
 
 **Fix direction:** wrap `delete()` in `beginTransaction()` / `commit()` / `rollBack()` like `save()`; clear the other
 user references in `User\Dao::delete()` (or add FKs, I-120); delete the avatar files after commit; fix `> 1` → `> 0`.
+
+**Done:** `AbstractUser::delete()` deletes the children, the role relations and the row in one transaction (rolled
+back and rethrown on failure); the runtime cache is reset and `POST_DELETE` dispatched after the commit. `User\Dao::delete()`
+also clears `translations_messages.userOwner` / `userModification` and `notes.user`, deletes the user's `edit_lock`
+rows, grid config favourites and the grid / import config shares with the user, and deletes the user's own grid /
+import configs that are neither shared globally nor with anyone (shared ones are kept). `User::delete()` removes the
+avatar original and thumbnail after the commit (errors are logged). The parent cache reset uses `> 0`, and deleting an
+unsaved object throws a matching message. Open: foreign keys for the user columns (I-120).
 
 ## [ ] B-230 – `AbstractUser::save()`: a failed insert leaves a phantom id; name validation is incomplete and blocks logins of legacy users
 

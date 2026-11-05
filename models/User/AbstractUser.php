@@ -204,6 +204,9 @@ abstract class AbstractUser extends Model\AbstractModel implements AbstractUserI
      */
     public function delete(): void
     {
+        if ($this->getId() === null) {
+            throw new Exception('Only a saved user or role can be deleted');
+        }
         if ($this->getId() < 1) {
             throw new Exception('Deleting the system user is not allowed!');
         }
@@ -213,27 +216,39 @@ abstract class AbstractUser extends Model\AbstractModel implements AbstractUserI
 
         $type = $this->getType();
 
-        // delete all children
-        $list = ($type === 'role' || $type === 'rolefolder') ? new Model\User\Role\Listing() : new Listing();
-        $list->setCondition('parentId = ?', $this->getId());
-        foreach ($list as $user) {
-            $user->delete();
-        }
+        // children, role relations and the row go together: a failure must not leave half a subtree deleted or
+        // users pointing to a deleted role
+        $this->beginTransaction();
 
-        // remove user-role relations
-        if ($type === 'role') {
-            $this->cleanupUserRoleRelations();
-        }
+        try {
+            // delete all children
+            $list = ($type === 'role' || $type === 'rolefolder') ? new Model\User\Role\Listing() : new Listing();
+            $list->setCondition('parentId = ?', $this->getId());
+            foreach ($list as $user) {
+                $user->delete();
+            }
 
-        // now delete the current user
-        $this->getDao()->delete();
+            // remove user-role relations
+            if ($type === 'role') {
+                $this->cleanupUserRoleRelations();
+            }
+
+            // now delete the current user
+            $this->getDao()->delete();
+
+            $this->commit();
+        } catch (Exception $e) {
+            $this->rollBack();
+
+            throw $e;
+        }
 
         $cacheKey = 'user_' . $this->getId();
         if (RuntimeCache::isRegistered($cacheKey)) {
             RuntimeCache::set($cacheKey, null);
         }
 
-        if ($parentUserId && $parentUserId > 1) {
+        if ($parentUserId && $parentUserId > 0) {
             $parentCacheKey = 'user_' . $parentUserId;
             if (RuntimeCache::isRegistered($parentCacheKey)) {
                 RuntimeCache::set($parentCacheKey, null);

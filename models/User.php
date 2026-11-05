@@ -25,6 +25,7 @@ use Pimcore\Image;
 use Pimcore\Logger;
 use Pimcore\Model\User\Role;
 use Pimcore\Tool;
+use Throwable;
 
 /**
  * @method User\Dao getDao()
@@ -426,6 +427,23 @@ final class User extends User\UserRole implements UserInterface
     public function getAllowDirtyClose(): bool
     {
         return $this->allowDirtyClose;
+    }
+
+    public function delete(): void
+    {
+        parent::delete();
+
+        // after the commit: files cannot be rolled back
+        try {
+            $storage = Tool\Storage::get('admin');
+            foreach ([$this->getOriginalImageStoragePath(), $this->getThumbnailImageStoragePath()] as $path) {
+                if ($storage->fileExists($path)) {
+                    $storage->delete($path);
+                }
+            }
+        } catch (Throwable $e) {
+            Logger::error(sprintf('Unable to delete the image of the deleted user %s: %s', $this->getId(), $e));
+        }
     }
 
     /**
