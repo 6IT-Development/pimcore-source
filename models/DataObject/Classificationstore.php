@@ -514,20 +514,21 @@ class Classificationstore extends Model\AbstractModel implements DirtyIndicatorI
         return Classificationstore\GroupConfig::getById($groupId);
     }
 
-    private function mergeArrays(array $a1, array $a2): array
+    /**
+     * Merges the items of a child into those of its parent, the child winning. Only the group, key and language
+     * levels are merged; a value is kept as a whole, so array values (multiselect, table, ...) are not mixed index
+     * by index.
+     */
+    private function mergeArrays(array $childItems, array $parentItems, int $level = 0): array
     {
-        foreach ($a1 as $key => $value) {
-            if (array_key_exists($key, $a2)) {
-                if (is_array($value)) {
-                    $a2[$key] = $this->mergeArrays($a2[$key], $value);
-                } else {
-                    $a2[$key] = $value;
-                }
+        foreach ($childItems as $key => $value) {
+            if ($level < 2 && is_array($value) && isset($parentItems[$key]) && is_array($parentItems[$key])) {
+                $parentItems[$key] = $this->mergeArrays($value, $parentItems[$key], $level + 1);
             } else {
-                $a2[$key] = $value;
+                $parentItems[$key] = $value;
             }
         }
 
-        return $a2;
+        return $parentItems;
     }
 }

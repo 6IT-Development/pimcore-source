@@ -5035,7 +5035,7 @@ where it was; following `Localizedfield`'s flag (default `false`) would have swi
 `Localizedfield::getLocalizedValue()` keeps its depth-first order but skips languages the running lookup of the same
 store and field already visited (a static set keyed by object and field name, cleared by the outermost call).
 
-## [ ] B-246 – `Classificationstore::getItems()` with inherited values: parent array values replace the child's own values element by element
+## [x] B-246 – `Classificationstore::getItems()` with inherited values: parent array values replace the child's own values element by element
 
 **Files:** `models/DataObject/Classificationstore.php:97-110`, `:452-463`, `:494-509`
 
@@ -5056,6 +5056,12 @@ $a2[$key] = $this->mergeArrays($a2[$key], $value);   // arguments swapped on eve
 **Fix direction:** merge only down to the language level (`[group][key][language]`) and treat the value as opaque
 (`$a2[$key] = $value` below that level); better, build the inherited view from `getLocalizedKeyValue()` so one rule
 applies.
+
+**Done:** `mergeArrays($childItems, $parentItems)` merges only the group, key and language levels with the child
+winning on each, and takes a value as a whole: child `['a']` over parent `['b', 'c']` gives `['a']`, an explicitly
+stored child `[]` stays `[]`, and a key whose type changed between scalar and array no longer reaches a `TypeError`.
+`getItems()` was not rebuilt on `getLocalizedKeyValue()`: that getter also treats an empty child value as missing and
+inherits it, which `getItems()` keeps as stored.
 
 ## [ ] B-247 – Classification store calculated-value keys: the getter returns the edit-mode string, and the setter throws
 
