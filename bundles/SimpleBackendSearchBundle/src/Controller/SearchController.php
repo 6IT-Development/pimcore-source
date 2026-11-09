@@ -89,7 +89,13 @@ class SearchController extends UserAwareController
 
         $allParams = $filterPrepareEvent->getArgument('requestParams');
 
-        $query = fulltext_boolean_query($allParams['query'] ?? '');
+        // an empty search (or a lone *) lists everything; a search with nothing searchable in it (only short
+        // words, stopwords or excluded words) lists nothing
+        $searchText = trim((string)($allParams['query'] ?? ''));
+        $query = '*' === $searchText ? null : fulltext_boolean_query($searchText);
+        if (null === $query && '' !== $searchText && '*' !== $searchText) {
+            return $this->jsonResponse(['data' => [], 'success' => true, 'total' => 0]);
+        }
 
         $types = explode(',', preg_replace('/[^a-z,]/i', '', $allParams['type'] ?? ''));
         $subtypes = explode(',', preg_replace('/[^a-z,]/i', '', $allParams['subtype'] ?? ''));
