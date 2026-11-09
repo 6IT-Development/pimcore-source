@@ -74,6 +74,7 @@
     "sabre/dav": "^4.1.2",
     "scheb/2fa-bundle": "^6.0 || ^7.5",
     "scheb/2fa-google-authenticator": "^6.0 || ^7.5",
+    "six-it/symfony-essentials-bundle": "^1.1.8",
     "spatie/image-optimizer": "^1.6.2",
     "symfony-cmf/routing-bundle": "^3.0",
     "symfony/cache": "^7.4",

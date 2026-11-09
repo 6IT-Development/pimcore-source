@@ -89,7 +89,7 @@ class SearchController extends UserAwareController
 
         $allParams = $filterPrepareEvent->getArgument('requestParams');
 
-        $query = $this->filterQueryParam($allParams['query'] ?? '');
+        $query = fulltext_boolean_query($allParams['query'] ?? '');
 
         $types = explode(',', preg_replace('/[^a-z,]/i', '', $allParams['type'] ?? ''));
         $subtypes = explode(',', preg_replace('/[^a-z,]/i', '', $allParams['subtype'] ?? ''));
@@ -482,37 +482,16 @@ class SearchController extends UserAwareController
         return '(' . implode(' OR ', $allowedTypes) . ')';
     }
 
-    protected function filterQueryParam(string $query): string
-    {
-        if ($query == '*') {
-            $query = '';
-        }
-
-        $query = str_replace('&quot;', '"', $query);
-        $query = str_replace('%', '*', $query);
-        $query = str_replace('@', '#', $query);
-        $query = preg_replace('@([^ ])\-@', '$1 ', $query);
-
-        $query = str_replace(['<', '>', '(', ')', '~'], ' ', $query);
-
-        // it is not allowed to have * behind another *
-        $query = preg_replace('#[*]+#', '*', $query);
-
-        // no boolean operators at the end of the query
-        return rtrim($query, '+- ');
-    }
-
     #[Route('/quicksearch', name: 'pimcore_bundle_search_search_quicksearch', methods: [Request::METHOD_GET])]
     public function quickSearchAction(
         Request                  $request,
         EventDispatcherInterface $eventDispatcher
     ): JsonResponse
     {
-        $query = $this->filterQueryParam($request->query->getString('query'));
-        if (!preg_match('/[+\-*"]/', $query)) {
-            // check for a boolean operator (which was not filtered by filterQueryParam()),
-            // if present, do not add asterisk at the end of the query
-            $query = $query . '*';
+        // every word is a required prefix; without a required word there is nothing to match
+        $query = fulltext_boolean_query($request->query->getString('query'));
+        if (null === $query) {
+            return $this->jsonResponse(['data' => [], 'success' => true]);
         }
 
         $db = Db::get();
