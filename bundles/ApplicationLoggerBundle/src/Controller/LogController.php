@@ -110,7 +110,8 @@ class LogController extends UserAwareController implements KernelControllerEvent
             $qb->andWhere('message LIKE ' . $qb->createNamedParameter('%' . $message . '%'));
         }
 
-        if (0 !== $pid = $requestSource->getInt('pid')) {
+        $pid = trim($requestSource->getString('pid'));
+        if ('' !== $pid && ctype_digit($pid)) {
             $qb->andWhere('pid LIKE ' . $qb->createNamedParameter('%' . $pid . '%'));
         }
 
