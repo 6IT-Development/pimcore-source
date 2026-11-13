@@ -2506,3 +2506,17 @@ structure in I-199; tests in I-204.
 >   `Listing/Dao.php` is not (I-73). Nothing in the two files can lose data or open a security hole on its own:
 >   **no critical item**. Nothing was executed.
 > - Critical items: none. Bugs: B-351–B-352. Improvements: I-205–I-207.
+
+---
+
+## [x] C-61 – `User` perspective checks need the admin UI bundle (`Pimcore\Bundle\AdminBundle\Perspective\Config`)
+
+**File:** `models/User.php` (`getMergedPerspectives()`, `getFirstAllowedPerspective()`)
+
+`User` imported `Pimcore\Bundle\AdminBundle\Perspective\Config`. With no admin bundle installed (or a different admin UI)
+the class does not exist, so every perspective check of a user fails with `Class not found`, and permission checks that
+reach it fail with them.
+
+**Done:** fixed by `77d25eed5a` (Kornél): `User::getDefinedPerspectiveNames()` reads `pimcore.perspectives.definitions`
+through `LocationAwareConfigRepository` and falls back to `default`; `getFirstAllowedPerspective()` no longer reaches
+into the admin bundle.
