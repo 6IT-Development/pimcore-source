@@ -438,3 +438,16 @@ local-path behaviour of `TemporaryFileHelperTrait` by C-08 (not repeated).
 **Fix direction:** never decode the whole document. Parse the code as a fragment (`DOMDocument::createDocumentFragment()`
 + `appendXML()` / HTML5 parser) and insert the nodes before / after / instead of the target's children, then serialize
 without entity decoding.
+
+---
+
+## [x] C-10 – Generated Objectbrick container classes declare `$brickGetters` without a type
+
+**File:** `lib/DataObject/ClassBuilder/ObjectBrickContainerClassBuilder.php:42`
+
+`Objectbrick` declares `protected array $brickGetters`. The generated container class redeclared it untyped
+(`protected $brickGetters = [...]`), and PHP rejects that: `Type of …::$brickGetters must be array`. Loading such a class
+is a fatal error.
+
+**Done:** fixed by `7cb7841b76` (Kornél): the generated property is `protected array $brickGetters`. Existing generated
+classes have to be rebuilt. Models counterpart: B-354.
