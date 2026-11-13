@@ -6082,3 +6082,16 @@ classes are `Carbon\Carbon`, `Pimcore\Model\DataObject\Data\BlockElement`, `Pimc
 checks return types at runtime, so returning a real instance throws `TypeError`.
 
 **Done:** fixed by `b589f240a1` (Kornél, part "small fixes"): the imported class names are used. Lib counterpart: B-92.
+
+---
+
+## [x] B-354 – `Link::denormalize()` and the calculated-value helpers use the wrong class namespace
+
+**Files:** `models/DataObject/ClassDefinition/Data/Link.php` (`denormalize()`), `models/DataObject/Service.php`
+(`getCalculatedFieldValueForEditMode()`, `getCalculatedFieldValue()`)
+
+`?\DataObject\Data\Link` is a global name that does not exist. In `Service`, `?Data\CalculatedValue` resolves to
+`ClassDefinition\Data\CalculatedValue` because `Data` is imported as the class-definition namespace, not to
+`DataObject\Data\CalculatedValue`. A real instance therefore fails the type check with `TypeError`.
+
+**Done:** fixed by `7cb7841b76` (Kornél): `DataObject\Data\Link` / `DataObject\Data\CalculatedValue`. Lib counterpart: C-10.
