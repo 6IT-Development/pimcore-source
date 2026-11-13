@@ -568,3 +568,17 @@ from an allowlist (e.g. the configured `high_resolution` values / `1, 1.5, 2, 3`
 time/page within the asset's duration/page count, extension from the enabled auto formats. Otherwise return 404 without
 generating. Optionally sign deferred URLs (HMAC of the path with `kernel.secret`) the way Symfony's `UriSigner` does,
 and only generate for signed URLs. Add a functional test (I-72).
+
+---
+
+## [x] C-16 – Controllers still use the removed `Symfony\Component\Routing\Annotation\Route` annotations
+
+**Files:** the admin controllers and `config/pimcore/routing.yaml` of the bundles (ApplicationLogger, CustomReports,
+Glossary, Seo, StaticRoutes, WordExport, Xliff, …), `bundles/CoreBundle/config/{pimcore/default,templating,services_workflow}.yaml`
+
+Symfony 7 removed the annotation `Route` class, and `routing.yaml` still loaded the annotation loader. The controllers
+had no routes (404 for the admin API of these bundles) or failed while the container / routes were built.
+
+**Done:** fixed by `07d7bf13c8` (Kornél, "annotatation -> attribute"): `#[Route(...)]` from
+`Symfony\Component\Routing\Attribute\Route`, route resources of type `attribute`, `validation.enable_attributes`, and
+the removed `Symfony\Component\Templating\EngineInterface` alias replaced.
