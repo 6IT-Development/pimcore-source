@@ -6068,3 +6068,17 @@ return strcasecmp($a->getGroup() . $a->getName(), $b->getGroup() . $b->getName()
 **Fix direction:** compare `[$a->getPriority(), mb_strtolower($a->getGroup() ?? ''), mb_strtolower($a->getName())]`
 with `<=>` (or `strcasecmp` on group, then on name); reset `$docTypes = null` in `setFilter()` / `setOrder()`
 overrides (or in the traits for all config listings); count without touching the cache (I-205).
+
+---
+
+## [x] B-353 – Return types name classes that do not exist (`\Carbon`, `\BlockElement`, `\AbstractObject`)
+
+**Files:** `models/DataObject/ClassDefinition/Data/Date.php` (`denormalize()`), `models/Document/Editable/Date.php`
+(`getData()`), `models/DataObject/Data/BlockElement.php` (`marshalForCache()`),
+`models/Asset/MetaData/ClassDefinition/Data/DataObject.php` (`denormalize()`)
+
+The types were written as global-namespace names (`?\Carbon`, `\BlockElement|array|object`, `\AbstractObject`) although the
+classes are `Carbon\Carbon`, `Pimcore\Model\DataObject\Data\BlockElement`, `Pimcore\Model\DataObject\AbstractObject`. PHP
+checks return types at runtime, so returning a real instance throws `TypeError`.
+
+**Done:** fixed by `b589f240a1` (Kornél, part "small fixes"): the imported class names are used. Lib counterpart: B-92.
