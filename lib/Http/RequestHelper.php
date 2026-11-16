@@ -148,7 +148,11 @@ class RequestHelper
             'pimcore_admin',
             'pimcore_object_preview',
             'pimcore_version',
-        ], fn($key) => $request->query->get($key) || $request->request->get($key))) {
+        ], fn($key) => array_any(
+            // public query parameters: an array value (?pimcore_preview[]=1) counts as not given instead of a 400
+            [$request->query->all(), $request->request->all()],
+            fn(array $parameters) => is_scalar($parameters[$key] ?? null) && $parameters[$key],
+        ))) {
             return true;
         }
 

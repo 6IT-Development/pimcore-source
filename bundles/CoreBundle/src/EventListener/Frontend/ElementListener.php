@@ -144,7 +144,8 @@ class ElementListener implements EventSubscriberInterface, LoggerAwareInterface
         }
 
         // document preview
-        if ($request->query->getBoolean('pimcore_preview')) {
+        // public query parameter: a non-boolean or array value is read as false instead of a 400
+        if (filter_var($request->query->all()['pimcore_preview'] ?? false, \FILTER_VALIDATE_BOOL, \FILTER_NULL_ON_FAILURE)) {
             // get document from session
 
             // TODO originally, this was the following call. What was in this->getParam('document') and
