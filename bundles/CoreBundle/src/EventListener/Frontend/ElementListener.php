@@ -164,7 +164,8 @@ final class ElementListener implements EventSubscriberInterface
         }
 
         // document preview
-        if ($request->query->getBoolean('pimcore_preview')) {
+        // public query parameter: a non-boolean or array value is read as false instead of a 400
+        if (filter_var($request->query->all()['pimcore_preview'] ?? false, \FILTER_VALIDATE_BOOL, \FILTER_NULL_ON_FAILURE)) {
             // get document from session
             if ($documentFromSession = Document\Service::getElementFromSession('document', $document->getId(), $request->getSession()->getId())) {
                 // if there is a document in the session use it

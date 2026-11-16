@@ -2015,3 +2015,23 @@ a no-op or keep the value on the service until `reset()`). Add a unit test witho
 
 **Done:** fixed by `b589f240a1` (Kornél, part "small fixes"): null-safe command check, `Admin::isInMaintenanceMode()` /
 `deactivateMaintenanceMode()` as a BC layer, imported class names. Models counterpart: B-353. B-26 / B-29 stay open.
+
+---
+
+## [x] B-93 – `RequestHelper::isFrontendRequestByAdmin()`: an array `pimcore_*` parameter answers 400 on every frontend request
+
+Scope 5, found while checking the boutique's `?pimcore_preview[]=1` probes (same class as B-71 / B-72).
+
+**File:** `lib/Http/RequestHelper.php:141-160`
+
+- `isFrontendRequestByAdmin()` runs for every frontend request and reads `pimcore_editmode`, `pimcore_preview`,
+  `pimcore_admin`, `pimcore_object_preview` and `pimcore_version` with `$request->query->get($key)` /
+  `$request->request->get($key)`. `InputBag::get()` throws `BadRequestException` ("contains a non-scalar value") for an
+  array, so `?pimcore_preview[]=1` (or `?pimcore_editmode[a][b]=1`, or the same in a POST body) answers **400** and
+  Sentry records an unhandled error – a probe from a scanner is enough, no login needed. B-72 alone does not help:
+  this method throws first.
+
+**Done:** fixed in the boutique fork line `release/2.1` by `ffc726b6cb` (`six-it/pimcore-source` v2.1.11), merged into
+this branch: the raw `all()` values are read and an array counts as not given (`is_scalar($value) && $value`); scalar
+values behave exactly as before (`0` / empty are false, `abc` is true). Whether the method should check the user at all
+is B-90.
