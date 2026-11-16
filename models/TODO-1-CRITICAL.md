@@ -2549,3 +2549,17 @@ title, field name, filter key nor custom-layout description can close the commen
 (they are harmless inside a doc comment). `DocCommentHelperTest::testFieldTitleStaysInsideGetterDocComment` tokenizes a
 generated getter doc block with the breakout payloads. Existing generated files are rewritten by the next
 `pimcore:deployment:classes-rebuild` / class save.
+
+---
+
+## [x] C-62 – `User` perspective checks need the admin UI bundle (`Pimcore\Bundle\AdminBundle\Perspective\Config`)
+
+**File:** `models/User.php` (`getMergedPerspectives()`, `getFirstAllowedPerspective()`)
+
+`User` imported `Pimcore\Bundle\AdminBundle\Perspective\Config`. With no admin bundle installed (or a different admin UI)
+the class does not exist, so every perspective check of a user fails with `Class not found`, and permission checks that
+reach it fail with them.
+
+**Done:** fixed by `77d25eed5a` (Kornél): `User::getDefinedPerspectiveNames()` reads `pimcore.perspectives.definitions`
+through `LocationAwareConfigRepository` and falls back to `default`; `getFirstAllowedPerspective()` no longer reaches
+into the admin bundle.

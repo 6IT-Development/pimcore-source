@@ -1999,3 +1999,19 @@ by `Content-Type` (missing → HTML, as `Response::prepare()` defaults to `text/
 
 **Fix direction:** return `time()` when `$this->requestStack->getMainRequest()` is `null` (and make `setOutputTimestamp()`
 a no-op or keep the value on the service until `reset()`). Add a unit test without a request.
+
+---
+
+## [x] B-96 – `Console\Application` crashes without a command; wrong class names in `lib` return types
+
+**Files:** `lib/Console/Application.php`, `lib/DataObject/BlockDataMarshaller/Date.php` (`marshal()`),
+`lib/Navigation/Container.php` (`current()`)
+
+- The COMMAND listener passes `$event->getCommand()` (nullable) to `isDoctrineCommand(Command)`, and
+  `$command->getName()` is nullable for `str_starts_with()` → `TypeError`.
+- The maintenance-mode check and `--maintenance-mode` handling ignore a maintenance flag created by the legacy
+  `Admin::activateMaintenanceMode()`.
+- `?\Carbon` and `\Page` return types name classes that do not exist → `TypeError` on a normal return.
+
+**Done:** fixed by `b589f240a1` (Kornél, part "small fixes"): null-safe command check, `Admin::isInMaintenanceMode()` /
+`deactivateMaintenanceMode()` as a BC layer, imported class names. Models counterpart: B-353. B-26 / B-29 stay open.

@@ -129,7 +129,8 @@ final class ElementListener implements EventSubscriberInterface
 
     private function handleVersion(Request $request, Document $document): Document
     {
-        $v = $request->query->getInt('v');
+        // public query parameter: a non-numeric or array value (scanners, other apps' own "v") is ignored instead of a 400
+        $v = filter_var($request->query->all()['v'] ?? 0, \FILTER_VALIDATE_INT, \FILTER_NULL_ON_FAILURE) ?? 0;
         if ($v) {
             $version = Version::getById($v);
             $versionDocument = $version?->getPublic() ? $this->getDocumentFromVersion($version, $document) : null;

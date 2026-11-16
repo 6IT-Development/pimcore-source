@@ -181,3 +181,13 @@ override. Symfony 7.1+ supports `new YamlFileLoader($container, $locator, prepen
   insert fails with a duplicate-key exception. Check existence first (or `INSERT IGNORE`/upsert).
 - `uninstall()` drops `application_logs` but leaves all `application_logs_archive_*` tables (also in the alternative
   archive DB) and the `var/application-logger` storage files.
+
+---
+
+### [x] B-24 – An empty PID filter fails the whole log list
+**File:** `src/Controller/LogController.php` (`showAction()`, PID filter)
+The grid sends `pid=""` when the PID box is empty. `ParameterBag::getInt()` throws on it under Symfony 7
+(`Input value "pid" is invalid`), so the list returned an error instead of the log rows.
+
+**Done:** fixed by `1c2033908d` (Kornél): the value is read as a string like the other filters and applied only when it
+is digits. B-02 (`LIKE` instead of `=`) is still open.

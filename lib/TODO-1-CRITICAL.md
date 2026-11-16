@@ -515,3 +515,16 @@ No further critical findings in the rest of Scope 15 (`ClientFactory`, `RequestM
 `ResponseStack`, `Context/PimcoreContextGuesser`, `Exception/ResponseException`, `Request/Resolver/*`). See
 [TODO-2-BUGS.md](TODO-2-BUGS.md) B-88–B-95 and [TODO-3-IMPROVEMENTS.md](TODO-3-IMPROVEMENTS.md) I-78–I-83. The
 `ResponseStack` reset is covered by CoreBundle C-08 (already applied: `ResponseStack implements ResetInterface`).
+
+---
+
+## [x] C-10 – Generated Objectbrick container classes declare `$brickGetters` without a type
+
+**File:** `lib/DataObject/ClassBuilder/ObjectBrickContainerClassBuilder.php:42`
+
+`Objectbrick` declares `protected array $brickGetters`. The generated container class redeclared it untyped
+(`protected $brickGetters = [...]`), and PHP rejects that: `Type of …::$brickGetters must be array`. Loading such a class
+is a fatal error.
+
+**Done:** fixed by `7cb7841b76` (Kornél): the generated property is `protected array $brickGetters`. Existing generated
+classes have to be rebuilt. Models counterpart: B-354.
