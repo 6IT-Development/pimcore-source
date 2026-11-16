@@ -1365,3 +1365,24 @@ with the ownership check of B-35 (same method).
 
 **Status:** fixed in the boutique fork line `release/2.1` (`six-it/pimcore-source` v2.1.9, `abad2beea8`); not ported to
 this branch yet.
+
+---
+
+## [x] B-72 – `PreviewRequestTrait` / `ElementListener`: a non-boolean `?pimcore_preview=` answers 400 (scanner noise)
+
+Scope 3, found while checking the boutique's `?pimcore_preview[]=1` probes (same class as B-71).
+
+**Files:** `src/EventListener/Traits/PreviewRequestTrait.php:37`, `src/EventListener/Frontend/ElementListener.php:147`
+
+- `PreviewRequestTrait::isPreviewRequest()` reads the public `pimcore_preview` parameter with
+  `$request->query->getBoolean()`, which throws `BadRequestException` for anything that is not a boolean
+  (`?pimcore_preview=abc`, `?pimcore_preview[]=1`) – the visitor gets a **400** and Sentry records an unhandled error.
+  The trait is used by the frontend listeners of the google-marketing bundle (`GoogleAnalyticsCodeListener`,
+  `GoogleTagManagerListener`), i.e. on every frontend response.
+- `ElementListener::handleAdminUserDocumentParams()` reads the same parameter the same way (admin-only, after the
+  backend-user check, so not reachable anonymously).
+
+**Done:** fixed in the boutique fork line `release/2.1` by `410872b94f` (`six-it/pimcore-source` v2.1.10), merged into
+this branch: `filter_var($request->query->all()['pimcore_preview'] ?? false, \FILTER_VALIDATE_BOOL,
+\FILTER_NULL_ON_FAILURE)` – a junk or array value is read as false, `1` / `true` / `on` keep working. The other
+`getInt()` calls of the listener (`pimcore_version`, `pimcore_object_preview`) are admin-only. See also B-93 (`lib`).
