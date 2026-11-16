@@ -1340,3 +1340,28 @@ check the bundle via `kernel.bundles` (or move the action into SeoBundle, I-69);
   URIs; consistent only by accident.
 
 **Fix direction:** `rawurldecode()`; check `$storagePath`; document that the argument is the path info.
+
+---
+
+## [ ] B-71 – `ElementListener::handleVersion()`: a non-numeric `?v=` answers 400 (scanner noise)
+
+Scope 3, found in a production Sentry report (boutique, 2026-11-14: `GET /?pp=phpinfo&v=FRbNc`, `/?v=ser35`).
+
+**File:** `src/EventListener/Frontend/ElementListener.php:112`
+
+- `handleVersion()` runs for every frontend request of a document and reads the public `v` parameter with
+  `$request->query->getInt('v')`. `getInt()` is `filter(..., FILTER_VALIDATE_INT, ['flags' => FILTER_REQUIRE_SCALAR])`
+  without `FILTER_NULL_ON_FAILURE`, so any non-numeric value (`?v=abc`, a scanner probe, another application's own `v`
+  parameter such as a cache buster or a version tag) and an array (`?v[]=1`) throws `BadRequestException`: the visitor
+  gets a **400** and Sentry records an unhandled error for every probe. `v` is not a Pimcore-only name, so a shop
+  that uses `?v=<hash>` for assets or a share link on a document URL breaks the page.
+- The other `getInt()` calls of the listener (`pimcore_version`, `pimcore_object_preview`) are admin-only (after the
+  backend-user check) and are not reachable by anonymous visitors.
+
+**Fix direction:** read it without throwing and ignore what is not an integer:
+`filter_var($request->query->all()['v'] ?? 0, \FILTER_VALIDATE_INT, \FILTER_NULL_ON_FAILURE) ?? 0`
+(`InputBag::filter()` still throws for an array, so use the raw value). A numeric `v` keeps working. Do it together
+with the ownership check of B-35 (same method).
+
+**Status:** fixed in the boutique fork line `release/2.1` (`six-it/pimcore-source` v2.1.9, `abad2beea8`); not ported to
+this branch yet.
