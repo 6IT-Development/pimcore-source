@@ -97,6 +97,11 @@ class GD extends Adapter
             imagesavealpha($this->resource, true);
         }
 
+        // imagewebp() / imageavif() fail on a palette image (8-bit PNG / GIF source) with a warning
+        if (($functionName === 'imagewebp' || $functionName === 'imageavif') && !imageistruecolor($this->resource)) {
+            imagepalettetotruecolor($this->resource);
+        }
+
         if ($functionName === 'imagejpeg' || $functionName === 'imagewebp') {
             $functionName($this->resource, $path, $quality);
         } else {
