@@ -159,6 +159,28 @@ abstract class AbstractObject extends Model\Element\AbstractElement
         return self::$hideUnpublished;
     }
 
+    /**
+     * Runs the callback with unpublished objects visible, then restores the previous
+     * hide-unpublished state, even if the callback throws.
+     *
+     * @template T
+     *
+     * @param callable(): T $callback
+     *
+     * @return T
+     */
+    public static function withUnpublished(callable $callback): mixed
+    {
+        $hideUnpublishedBackup = self::getHideUnpublished();
+        self::setHideUnpublished(false);
+
+        try {
+            return $callback();
+        } finally {
+            self::setHideUnpublished($hideUnpublishedBackup);
+        }
+    }
+
     public static function setGetInheritedValues(bool $getInheritedValues): void
     {
         self::$getInheritedValues = $getInheritedValues;
