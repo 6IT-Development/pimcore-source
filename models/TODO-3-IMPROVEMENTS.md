@@ -3421,3 +3421,17 @@ ManyToManyObjectRelation,StructuredTable,Multiselect,ImageTrait,Slider,Video,Tex
 - Ordering with equal priority across groups `News` / `NewsLetter` / no group, and case differences (B-352).
 - `setFilter()` / `setOrder()` after a first `getDocTypes()`; `getTotalCount()` not changing the cached list (B-352).
 - `$listing->save()` / `->delete()` not reaching the single-item DAO methods (I-205).
+
+### [x] I-208 – `AbstractObject::withUnpublished()`: run a callback with unpublished objects visible
+
+**File:** `models/DataObject/AbstractObject.php`
+
+- Code that has to load an unpublished object (a preview or draft route, `News::getBySlug()` in a controller) repeated
+  `doHideUnpublished()` / `setHideUnpublished(false)` / `setHideUnpublished($backup)` by hand, and an exception between
+  the two calls left the process-wide flag switched off (B-92, B-175).
+
+**Done:** added in the boutique fork line `release/2.1` by `2a2d41cad4` (`six-it/pimcore-source` v2.1.13), merged into
+this branch: `AbstractObject::withUnpublished(callable $callback): mixed` stores the previous state, switches the flag
+off, returns the callback result and restores the state in a `finally` block. Every DataObject class inherits it
+(`News::withUnpublished(fn () => News::getBySlug($slug, 1))`). It is the first of the scoped helpers planned in I-77; the
+`Document` counterpart and the other flags (`withInheritedValues()`, `withoutDirtyDetection()`) are still open there.
