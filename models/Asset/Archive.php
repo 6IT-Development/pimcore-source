@@ -24,5 +24,5 @@ use Pimcore\Model;
  */
 class Archive extends Model\Asset
 {
-    protected string $type = 'archive';
+    protected string $type = self::TYPE_ARCHIVE;
 }

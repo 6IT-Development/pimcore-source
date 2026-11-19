@@ -24,5 +24,5 @@ use Pimcore\Model;
  */
 class Text extends Model\Asset
 {
-    protected string $type = 'text';
+    protected string $type = self::TYPE_TEXT;
 }

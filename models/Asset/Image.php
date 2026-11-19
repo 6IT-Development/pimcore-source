@@ -36,7 +36,7 @@ class Image extends Model\Asset
 {
     use Model\Asset\MetaData\EmbeddedMetaDataTrait;
 
-    protected string $type = 'image';
+    protected string $type = self::TYPE_IMAGE;
 
     private bool $clearThumbnailsOnSave = false;
 

@@ -34,7 +34,7 @@ class Video extends Model\Asset
 {
     use Model\Asset\MetaData\EmbeddedMetaDataTrait;
 
-    protected string $type = 'video';
+    protected string $type = self::TYPE_VIDEO;
 
     protected function update(array $params = []): void
     {

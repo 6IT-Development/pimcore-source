@@ -24,5 +24,5 @@ use Pimcore\Model;
  */
 class Unknown extends Model\Asset
 {
-    protected string $type = 'unknown';
+    protected string $type = self::TYPE_UNKNOWN;
 }

@@ -24,5 +24,5 @@ use Pimcore\Model;
  */
 class Audio extends Model\Asset
 {
-    protected string $type = 'audio';
+    protected string $type = self::TYPE_AUDIO;
 }

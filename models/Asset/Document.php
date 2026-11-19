@@ -30,7 +30,7 @@ class Document extends Model\Asset
 {
     public const string CUSTOM_SETTING_PDF_SCAN_STATUS = 'document_pdf_scan_status';
 
-    protected string $type = 'document';
+    protected string $type = self::TYPE_DOCUMENT;
 
     protected function update(array $params = []): void
     {

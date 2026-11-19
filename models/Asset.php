@@ -78,6 +78,22 @@ class Asset extends Element\AbstractElement
 
     public const string CUSTOM_SETTING_PROCESSING_FAILED = 'pimcore-asset-processing-failed';
 
+    public const string TYPE_ARCHIVE = 'archive';
+
+    public const string TYPE_AUDIO = 'audio';
+
+    public const string TYPE_DOCUMENT = 'document';
+
+    public const string TYPE_FOLDER = 'folder';
+
+    public const string TYPE_IMAGE = 'image';
+
+    public const string TYPE_TEXT = 'text';
+
+    public const string TYPE_UNKNOWN = 'unknown';
+
+    public const string TYPE_VIDEO = 'video';
+
     /**
      * @internal
      *
@@ -324,7 +340,7 @@ class Asset extends Element\AbstractElement
     {
         // create already the real class for the asset type, this is especially for images, because a system-thumbnail
         // (tree) is generated immediately after creating an image
-        $type = 'unknown';
+        $type = self::TYPE_UNKNOWN;
         $tmpFile = null;
         if (
             array_key_exists('filename', $data) &&
@@ -485,7 +501,7 @@ class Asset extends Element\AbstractElement
         }
 
         if (!$type) {
-            $type = 'unknown';
+            $type = self::TYPE_UNKNOWN;
         }
 
         return $type;
@@ -612,7 +628,7 @@ class Asset extends Element\AbstractElement
 
             if ($this->getDataChanged()) {
                 $this->removeCustomSetting(Asset::CUSTOM_SETTING_PROCESSING_FAILED);
-                if (in_array($this->getType(), ['image', 'video', 'document'])) {
+                if (in_array($this->getType(), [self::TYPE_IMAGE, self::TYPE_VIDEO, self::TYPE_DOCUMENT])) {
                     $this->addToUpdateTaskQueue();
                 }
             }
@@ -787,7 +803,7 @@ class Asset extends Element\AbstractElement
         }
 
         if (!$this->getType()) {
-            $this->setType('unknown');
+            $this->setType(self::TYPE_UNKNOWN);
         }
 
         $this->postPersistData();

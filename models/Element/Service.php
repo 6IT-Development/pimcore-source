@@ -63,6 +63,12 @@ use UnitEnum;
  */
 class Service extends Model\AbstractModel
 {
+    public const string ELEMENT_TYPE_ASSET = 'asset';
+
+    public const string ELEMENT_TYPE_DOCUMENT = 'document';
+
+    public const string ELEMENT_TYPE_OBJECT = 'object';
+
     private static ?EscapeFormula $formatter = null;
 
     /**
@@ -475,9 +481,9 @@ class Service extends Model\AbstractModel
     public static function getElementType(ElementInterface $element): ?string
     {
         return match (true) {
-            $element instanceof Asset => 'asset',
-            $element instanceof Document => 'document',
-            $element instanceof DataObject\AbstractObject => 'object',
+            $element instanceof Asset => self::ELEMENT_TYPE_ASSET,
+            $element instanceof Document => self::ELEMENT_TYPE_DOCUMENT,
+            $element instanceof DataObject\AbstractObject => self::ELEMENT_TYPE_OBJECT,
             default => null,
         };
     }
@@ -490,9 +496,9 @@ class Service extends Model\AbstractModel
         $className = trim($className, '\\');
 
         return match (true) {
-            is_a($className, Asset::class, true) => 'asset',
-            is_a($className, Document::class, true) => 'document',
-            is_a($className, AbstractObject::class, true) => 'object',
+            is_a($className, Asset::class, true) => self::ELEMENT_TYPE_ASSET,
+            is_a($className, Document::class, true) => self::ELEMENT_TYPE_DOCUMENT,
+            is_a($className, AbstractObject::class, true) => self::ELEMENT_TYPE_OBJECT,
             default => null,
         };
     }

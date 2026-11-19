@@ -34,7 +34,7 @@ use Pimcore\Tool\Storage;
  */
 class Folder extends Model\Asset
 {
-    protected string $type = 'folder';
+    protected string $type = self::TYPE_FOLDER;
 
     /**
      * @internal
