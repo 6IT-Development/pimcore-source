@@ -1893,3 +1893,20 @@ Scope 5, found while checking the boutique's `?pimcore_preview[]=1` probes (same
 this branch: the raw `all()` values are read and an array counts as not given (`is_scalar($value) && $value`); scalar
 values behave exactly as before (`0` / empty are false, `abc` is true). Whether the method should check the user at all
 is B-90.
+
+---
+
+## [x] B-94 – `Image\Adapter\GD::save()`: a palette image saved as webp / avif fails with a warning
+
+Scope 5, found in the boutique's Sentry (`ErrorException: Warning: imagewebp(): Palette image not supported by webp`,
+a crawler requesting a webp thumbnail of an 8-bit PNG).
+
+**File:** `lib/Image/Adapter/GD.php:100-107`
+
+- An image loaded from an 8-bit PNG or GIF is a palette image (`imageistruecolor()` is false). `imagewebp()` (and
+  `imageavif()`) refuse it, so `Thumbnail\Processor::process()` throws, the thumbnail is not generated and the request
+  is reported as an unhandled error. The Imagick adapter is not affected, so a server without Imagick in php-fpm hits it.
+
+**Done:** fixed in the boutique fork line `release/2.1` by `9eca082d8f` (`six-it/pimcore-source` v2.1.12), merged into
+this branch: `save()` calls `imagepalettetotruecolor()` before writing webp / avif when the image is not true color.
+Other images behave as before (the transparency of the palette is kept).
